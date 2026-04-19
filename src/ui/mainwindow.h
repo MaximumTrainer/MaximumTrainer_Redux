@@ -24,6 +24,7 @@
 #include "userstudio.h"
 #include "myconstants.h"
 #include "tab_intervals_icu.h"
+#include "historywidget.h"
 #ifdef GC_WASM_BUILD
 #include "btle_hub_wasm.h"
 #else

@@ -176,6 +176,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ftb->insertTab(3, QIcon(":/image/icon/studio"), tr("Studio"));
     ftb->insertTab(4, QIcon(":/image/icon/user"), tr("Profile"));
     ftb->insertTab(5, QIcon(":/image/icon/gear"), tr("Settings"));
+    ftb->insertTab(6, QIcon(":/image/icon/chart"), tr("History"));
 
     ftb->setTabEnabled(0, true);
     ftb->setTabEnabled(1, true);
@@ -183,6 +184,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ftb->setTabEnabled(3, true);
     ftb->setTabEnabled(4, true);
     ftb->setTabEnabled(5, true);
+    ftb->setTabEnabled(6, true);
 
 
 
@@ -1149,6 +1151,7 @@ void MainWindow::enableStudioMode(bool enable) {
 
     ftb->setTabEnabled(4, !enable);
     ftb->setTabEnabled(5, !enable);
+    ftb->setTabEnabled(6, !enable);
 
 }
 
@@ -1573,7 +1576,7 @@ void MainWindow::on_actionOpen_Course_Folder_triggered()
 //-----------------------------------------------
 void MainWindow::on_actionHistory_triggered()
 {
-    Util::openHistoryFolder();
+    ftb->setCurrentIndex(6);
 }
 
 
