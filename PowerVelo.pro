@@ -81,6 +81,7 @@ QT       += network printsupport
 qtHaveModule(concurrent):       QT += concurrent
 qtHaveModule(bluetooth):        QT += bluetooth
 qtHaveModule(webenginewidgets): QT += webenginewidgets
+qtHaveModule(webenginecore):    QT += webenginecore
 
 #QT += serialport
 #QT += multimedia

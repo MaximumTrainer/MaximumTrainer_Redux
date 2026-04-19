@@ -2,7 +2,7 @@
 
 #include "logger.h"
 
-#include <QApplication>
+#include <QCoreApplication>
 #include <QByteArray>
 #include <QDataStream>
 #include <QFile>

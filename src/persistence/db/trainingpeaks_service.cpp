@@ -3,7 +3,7 @@
 #include "environnement.h"
 #include "logger.h"
 
-#include <QApplication>
+#include <QCoreApplication>
 #include <QFile>
 #include <QFileInfo>
 #include <QUrlQuery>
@@ -59,7 +59,7 @@ QNetworkReply *TrainingPeaksService::uploadActivity(const QString &filePath,
     file->deleteLater();
 
     const QString desc = description +
-                         QApplication::translate("TrainingPeaksService",
+                         QCoreApplication::translate("TrainingPeaksService",
                                                  " - Activity done with MaximumTrainer.com");
 
     QJsonObject payload;

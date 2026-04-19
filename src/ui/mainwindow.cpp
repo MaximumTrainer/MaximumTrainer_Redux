@@ -47,7 +47,11 @@
 #include <QWebEngineScriptCollection>
 #include <QWebChannel>
 #ifndef GC_WASM_BUILD
-#include <QWebEngineDownloadRequest>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#include <QtWebEngineCore/QWebEngineDownloadRequest>
+#else
+#include <QWebEngineDownloadItem>
+#endif
 #endif
 #include "myqwebenginepage.h"
 
@@ -568,6 +572,7 @@ void MainWindow::goToWorkoutNameFilterFromIntervals(const QString &workoutName) 
 // ─────────────────────────────────────────────────────────────────────────────
 
 #ifndef GC_WASM_BUILD
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 void MainWindow::onTrainerwebDownloadRequested(QWebEngineDownloadRequest *download)
 {
     const QUrl url        = download->url();
@@ -632,6 +637,12 @@ void MainWindow::onTrainerwebDownloadRequested(QWebEngineDownloadRequest *downlo
             tr("Could not import Trainerweb workout: no intervals found."), 5000);
     });
 }
+#else  // Qt 5 — Trainerweb download interception uses Qt 6-only APIs
+void MainWindow::onTrainerwebDownloadRequested(QWebEngineDownloadItem *download)
+{
+    download->accept();
+}
+#endif // QT_VERSION
 #endif // GC_WASM_BUILD
 
 void MainWindow::saveAndNavigateToWorkout(const Workout &workout, const QString &subFolder)

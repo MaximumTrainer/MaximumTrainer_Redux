@@ -1,6 +1,6 @@
 #include "intervalsicuservice.h"
 
-#include <QApplication>
+#include <QCoreApplication>
 #include <QNetworkRequest>
 #include <QUrl>
 #include <QUrlQuery>

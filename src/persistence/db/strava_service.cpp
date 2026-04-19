@@ -1,7 +1,7 @@
 #include "strava_service.h"
 #include "logger.h"
 
-#include <QApplication>
+#include <QCoreApplication>
 #include <QHttpMultiPart>
 #include <QHttpPart>
 #include <QFile>

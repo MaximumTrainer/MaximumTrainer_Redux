@@ -6,7 +6,11 @@
 #include <QNetworkReply>
 #include <QThread>
 #ifndef GC_WASM_BUILD
-#include <QWebEngineDownloadRequest>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#include <QtWebEngineCore/QWebEngineDownloadRequest>
+#else
+#include <QWebEngineDownloadItem>
+#endif
 #endif
 
 #include "zoneobject.h"
@@ -160,7 +164,11 @@ private slots:
     void showPlanContextMenu(const QPoint &pos);
 
 #ifndef GC_WASM_BUILD
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     void onTrainerwebDownloadRequested(QWebEngineDownloadRequest *download);
+#else
+    void onTrainerwebDownloadRequested(QWebEngineDownloadItem *download);
+#endif
 #endif
 
     // Screenshot mode — captures a sequence of PNG files then quits the app.

@@ -17,11 +17,11 @@ public:
 
 
 
-    int getId();
-    QString getName();
-    QString getDescription();
-    QString getIconUrl();
-    bool isCompleted();
+    int getId() const;
+    QString getName() const;
+    QString getDescription() const;
+    QString getIconUrl() const;
+    bool isCompleted() const;
 
     void setCompleted(bool completed);
 

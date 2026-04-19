@@ -21,20 +21,20 @@ Achievement::Achievement(int idDB, QString name, QString description, QString ic
 }
 
 
-int Achievement::getId() {
+int Achievement::getId() const {
     return this->idDB;
 }
 
-QString Achievement::getName() {
+QString Achievement::getName() const {
     return this->name;
 }
-QString Achievement::getDescription() {
+QString Achievement::getDescription() const {
     return this->description;
 }
-QString Achievement::getIconUrl() {
+QString Achievement::getIconUrl() const {
     return this->iconUrl;
 }
-bool Achievement::isCompleted() {
+bool Achievement::isCompleted() const {
     return this->completed;
 }
 
