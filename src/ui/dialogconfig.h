@@ -216,6 +216,10 @@ private:
     QComboBox    *comboTrainerModel      = nullptr;
     QSpinBox     *spinErgSmoothing       = nullptr;
     QCheckBox    *checkIntervalsIcuAutoUpload = nullptr;
+
+    // Trainer tab — Sensor dropout (issue #148)
+    QCheckBox    *checkDropoutEnabled    = nullptr;
+    QSpinBox     *spinDropoutTimeout     = nullptr;
 };
 
 #endif // DIALOGCONFIG_H

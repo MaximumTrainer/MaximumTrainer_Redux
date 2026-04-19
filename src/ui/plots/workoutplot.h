@@ -58,6 +58,7 @@ public:
     void setMessage(QString msg);
     void setDisplayIntervalMessage(bool fadeIn, QString text, int timeToDisplay);
     void setAlertMessage(bool fadeIn, bool fadeOut, QString text, int timeToDisplay);
+    void removeAlertMessage();
     void removeMainMessage();
 
 

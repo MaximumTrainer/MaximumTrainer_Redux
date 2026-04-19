@@ -51,6 +51,9 @@ Account::Account(QObject *parent) : QObject(parent)  {
     // OAuth2 tokens — loaded to restore an existing OAuth session across restarts.
     intervals_icu_access_token  = settings.value("intervals_icu_access_token",  "").toString();
     intervals_icu_refresh_token = settings.value("intervals_icu_refresh_token", "").toString();
+    // Sensor dropout auto-pause
+    sensor_dropout_enabled   = settings.value("sensor_dropout_enabled",   true).toBool();
+    sensor_dropout_timeout_s = settings.value("sensor_dropout_timeout_s", 5   ).toInt();
     settings.endGroup();
 
     // Load encrypted third-party service credentials from the platform credential store.
@@ -236,6 +239,15 @@ void Account::saveSelfloopsCredentials()
 {
     CredentialStore::store("selfloops", "email",    selfloops_user);
     CredentialStore::store("selfloops", "password", selfloops_pw);
+}
+
+void Account::saveSensorDropoutSettings()
+{
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("sensor_dropout_enabled",   sensor_dropout_enabled);
+    settings.setValue("sensor_dropout_timeout_s", sensor_dropout_timeout_s);
+    settings.endGroup();
 }
 
 

@@ -18,6 +18,7 @@
 #include <QLabel>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QDateTime>
 
 #include "interval.h"
 #include "workout.h"
@@ -203,6 +204,12 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     bignoreClickPlot = true;
     timerIgnoreClickPlot->start(1000);
     connect(timerIgnoreClickPlot, SIGNAL(timeout()), this, SLOT(ignoreClickPlot()) );
+
+    // Sensor dropout watchdog — fires every second while WorkoutDialog is open.
+    m_dropoutWatchdog = new QTimer(this);
+    m_dropoutWatchdog->setInterval(1000);
+    connect(m_dropoutWatchdog, &QTimer::timeout, this, &WorkoutDialog::checkSensorDropout);
+    m_dropoutWatchdog->start();
 
 
     /// Sounds timer
@@ -1614,6 +1621,62 @@ void WorkoutDialog::onBleConnectionError(const QString &errorString)
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+void WorkoutDialog::checkSensorDropout()
+{
+    if (!account->sensor_dropout_enabled) return;
+    if (account->enable_studio_mode) return;
+    if (!isWorkoutStarted || isWorkoutOver) return;
+
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    const qint64 timeout_ms = (qint64)account->sensor_dropout_timeout_s * 1000;
+
+    // Only check a sensor if we've ever received data from it (m_last*Ms > 0)
+    const bool powerLost = (m_lastPowerMs > 0) && (now - m_lastPowerMs) > timeout_ms;
+    const bool signalLost = powerLost;   // future: add HR option here
+
+    if (!m_dropoutPaused) {
+        if (!isWorkoutPaused && signalLost) {
+            m_dropoutPaused = true;
+            m_recoveryCountdown = 0;
+            LOG_INFO("WorkoutDialog", "Sensor dropout detected — auto-pausing workout");
+            start_or_pause_workout();  // pause
+            ui->widget_workoutPlot->setAlertMessage(false, false,
+                tr("Sensor signal lost — workout paused"), 0);
+        }
+        return;
+    }
+
+    // We are in dropout-pause state: check for recovery
+    if (signalLost) {
+        // Signal still absent (or dropped again during countdown)
+        if (m_recoveryCountdown > 0) {
+            m_recoveryCountdown = 0;
+            ui->widget_workoutPlot->setAlertMessage(false, false,
+                tr("Sensor signal lost — workout paused"), 0);
+        }
+    } else {
+        // Signal has returned
+        if (m_recoveryCountdown == 0) {
+            m_recoveryCountdown = 3;
+            ui->widget_workoutPlot->setAlertMessage(false, false,
+                tr("Signal recovered — resuming in 3…"), 0);
+        } else {
+            m_recoveryCountdown--;
+            if (m_recoveryCountdown == 0) {
+                m_dropoutPaused = false;
+                LOG_INFO("WorkoutDialog", "Sensor recovered — auto-resuming workout");
+                ui->widget_workoutPlot->removeAlertMessage();
+                if (isWorkoutPaused)
+                    start_or_pause_workout();  // resume
+            } else {
+                ui->widget_workoutPlot->setAlertMessage(false, false,
+                    tr("Signal recovered — resuming in %1…").arg(m_recoveryCountdown), 0);
+            }
+        }
+    }
+}
+
 void WorkoutDialog::start_or_pause_workout() {
 
 
@@ -1648,6 +1711,14 @@ void WorkoutDialog::start_or_pause_workout() {
         ui->widget_topMenu->setButtonStartPaused(true);
         ui->widget_workoutPlot->removeMainMessage();
         isWorkoutPaused = false;
+
+        // Clear dropout state if user manually resumes
+        if (m_dropoutPaused) {
+            m_dropoutPaused = false;
+            m_recoveryCountdown = 0;
+            m_lastPowerMs = QDateTime::currentMSecsSinceEpoch(); // reset to avoid immediate re-trigger
+            ui->widget_workoutPlot->removeAlertMessage();
+        }
 
         setWidgetsStopped(false);
         emit resumeClock();
@@ -1714,6 +1785,10 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
     }
     if (value < 0)
         return;
+
+    // Track for sensor dropout detection
+    if (!account->enable_studio_mode && isWorkoutStarted && !isWorkoutOver)
+        m_lastHrMs = QDateTime::currentMSecsSinceEpoch();
 
 
     // Mark pairing as done
@@ -1988,6 +2063,10 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
         value = value + account->offset_power;
     if (value < 0)
         return;
+
+    // Track for sensor dropout detection (non-studio, user 1 only)
+    if (!account->enable_studio_mode && isWorkoutStarted && !isWorkoutOver)
+        m_lastPowerMs = QDateTime::currentMSecsSinceEpoch();
 
     // Send power To Clock
     emit sendPowerData(userID, value);

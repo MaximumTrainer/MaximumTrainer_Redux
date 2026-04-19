@@ -21,6 +21,7 @@ public:
     void saveNbSecShowIntervalBefore(int nbSec);
     void saveErgSmoothingDuration(int seconds);
     void saveIntervalsIcuCredentials();
+    void saveSensorDropoutSettings();
 
     /// Encrypt and persist Strava OAuth2 tokens to QSettings.
     /// Call after a successful token exchange or refresh.
@@ -108,6 +109,10 @@ public:
     int nb_sec_pairing;
     int erg_smoothing_duration_s;  ///< Ramp duration (seconds) for ERG setpoint transitions; 0 = disabled.
     /* ----- */
+
+    // Sensor dropout auto-pause
+    bool sensor_dropout_enabled;   ///< Master toggle for auto-pause on sensor dropout
+    int  sensor_dropout_timeout_s; ///< Seconds before dropout triggers pause (default 5, range 2–30)
 
     int last_index_selected_config_workout;
     int last_tab_sub_config_selected;
