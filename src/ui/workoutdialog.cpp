@@ -588,9 +588,10 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
 
 
-    //Dialog config
+    //Dialog config — shown non-modally so the workout session continues uninterrupted (#137)
     dconfig = new DialogConfig(lstRadio, this, this);
-    dconfig->setModal(true);
+    dconfig->setModal(false);
+    connect(dconfig, &QDialog::finished, this, [this](int) { emit insideConfig(false); });
 
     //Internet Radio Player
 #ifdef GC_HAVE_VLCQT
@@ -3126,10 +3127,11 @@ void WorkoutDialog::reject() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::showConfig() {
-
     emit insideConfig(true);
-    dconfig->exec();
-    emit insideConfig(false);
+    dconfig->show();
+    dconfig->raise();
+    dconfig->activateWindow();
+    // insideConfig(false) is emitted via the QDialog::finished connection set up in setupUi
 }
 
 
