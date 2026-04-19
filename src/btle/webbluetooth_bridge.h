@@ -66,6 +66,12 @@ void setDisconnectedCallback(BleDisconnectedCallback cb);
 // button after a disconnect.
 void setReconnectRequestCallback(BleReconnectRequestCallback cb);
 
+// Expose window.mt_startBleScan() in the browser environment so that automated
+// tests (Playwright) can trigger a BLE scan without a real UI user gesture.
+// Safe to call unconditionally; in real browsers with no mock, requestDevice()
+// still requires a user gesture and will silently fail if called without one.
+void registerTestScanApi();
+
 // Trigger navigator.bluetooth.requestDevice() – must be called from a
 // user-initiated slot (button click, etc.) to satisfy browser security policy.
 // On success, automatically connects and starts notifications, then fires

@@ -251,6 +251,17 @@ EM_JS(void, js_requestFtmsControl, (), {
     })();
 });
 
+// Register window.mt_startBleScan() so Playwright tests can trigger a BLE scan
+// without requiring a UI user-gesture mock.  Called from BtleHubWasm constructor
+// so the function is available as soon as the WASM module initialises.
+// In production (real browser), calling this still invokes requestDevice() which
+// requires a user gesture – the browser will reject it silently, which is fine.
+EM_JS(void, js_exposeTestScanApi, (), {
+    window.mt_startBleScan = function() {
+        _js_scanAndConnect();
+    };
+});
+
 // Send raw bytes to a FTMS control point characteristic (0x2AD9)
 EM_JS(void, js_sendFtmsCommand, (const uint8_t *dataPtr, int dataLen), {
     (async function() {
@@ -294,6 +305,11 @@ void setDisconnectedCallback(BleDisconnectedCallback cb)
 void setReconnectRequestCallback(BleReconnectRequestCallback cb)
 {
     g_reconnectRequestCallback = std::move(cb);
+}
+
+void registerTestScanApi()
+{
+    js_exposeTestScanApi();
 }
 
 void scanForDevices()
