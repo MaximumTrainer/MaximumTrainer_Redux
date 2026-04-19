@@ -81,7 +81,8 @@ async function injectRecordingBluetoothMock(page) {
   });
 }
 
-// Wait for the Qt canvas to become visible (app fully initialised and BLE started).
+// Wait for the Qt canvas to become visible (app fully initialised), then
+// trigger BLE scanning via the test helper registered by BtleHubWasm::ctor.
 async function waitForCanvas(page) {
   await page.waitForFunction(
     () => {
@@ -98,8 +99,20 @@ async function waitForCanvas(page) {
       window.mt_startBleScan();
     }
   });
-  // Allow async GATT setup (subscribeAll + requestFtmsControl) to complete.
-  await page.waitForTimeout(3000);
+  // Wait until the full async GATT setup chain has completed.
+  // The last step recorded by the mock is writeValueWithResponse on the
+  // FTMS Control Point (0x2AD9), which only fires after subscribeAll and
+  // requestFtmsControl both finish.  Polling for it is more reliable than
+  // a fixed delay.
+  await page.waitForFunction(
+    () => {
+      const calls = window._btleApiCalls;
+      return calls &&
+        Array.isArray(calls.writeValueWithResponse) &&
+        calls.writeValueWithResponse.length > 0;
+    },
+    { timeout: 15000 }
+  );
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
