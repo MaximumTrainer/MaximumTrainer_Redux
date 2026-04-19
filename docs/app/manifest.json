@@ -1,0 +1,20 @@
+{
+  "name": "Maximum Trainer",
+  "short_name": "MaxTrainer",
+  "description": "Free, open-source indoor cycling training — ERG mode, real-time power, BLE sensors & structured intervals.",
+  "start_url": "/app/",
+  "scope": "/app/",
+  "display": "standalone",
+  "background_color": "#0d0d0d",
+  "theme_color": "#e05a00",
+  "orientation": "landscape-primary",
+  "categories": ["sports", "fitness", "health"],
+  "icons": [
+    {
+      "src": "../assets/images/main_icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
