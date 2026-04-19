@@ -50,6 +50,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
     // OAuth2 tokens — loaded to restore an existing OAuth session across restarts.
     intervals_icu_access_token  = settings.value("intervals_icu_access_token",  "").toString();
     intervals_icu_refresh_token = settings.value("intervals_icu_refresh_token", "").toString();
+    battery_warning_threshold = settings.value("battery_warning_threshold", 20).toInt();
     settings.endGroup();
 
     // Load encrypted third-party service credentials from the platform credential store.
@@ -224,6 +225,14 @@ void Account::saveSelfloopsCredentials()
 {
     CredentialStore::store("selfloops", "email",    selfloops_user);
     CredentialStore::store("selfloops", "password", selfloops_pw);
+}
+
+void Account::saveBatteryWarningThreshold()
+{
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("battery_warning_threshold", battery_warning_threshold);
+    settings.endGroup();
 }
 
 

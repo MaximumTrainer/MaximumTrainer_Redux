@@ -214,6 +214,9 @@ private:
     // Trainer tab controls
     QCheckBox    *checkControlResistance = nullptr;
     QComboBox    *comboTrainerModel      = nullptr;
+
+    // Trainer tab — Battery warning threshold (issue #156)
+    QSpinBox     *spinBatteryThreshold   = nullptr;
 };
 
 #endif // DIALOGCONFIG_H

@@ -105,6 +105,12 @@ public:
     bool control_trainer_resistance;
     bool stop_pairing_on_found;
     int nb_sec_pairing;
+
+    /// Battery warning threshold (issue #156): warn when a sensor's battery
+    /// drops at or below this percentage (default 20, range 5–50).
+    int battery_warning_threshold;
+    void saveBatteryWarningThreshold();
+
     /* ----- */
 
     int last_index_selected_config_workout;

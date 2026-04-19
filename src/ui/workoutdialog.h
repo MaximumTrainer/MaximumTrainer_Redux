@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QTime>
 #include <QTimer>
+#include <QHash>
 #include <QKeyEvent>
 #include <QNetworkReply>
 
@@ -148,7 +149,7 @@ public slots:
     void lapButtonPressed();
 
 
-    void batteryStatusReceived(QString sensorType, int level, int antID);
+    void batteryStatusReceived(QString sensorType, int percentage);
 
     void startCalibrateFEC();
     void startCalibrationPM();
@@ -505,6 +506,10 @@ private:
 
     int currentWorkoutDifficultyPercentage; //0 = Normal
 
+    /// Battery warning tracking (issue #156): sensorType → last warned percentage.
+    /// A warning is suppressed for a sensor unless the level drops ≥ 5 % below
+    /// the level at which the last warning was shown.
+    QHash<QString, int> m_warnedBatteryLevels;
 
     WorkoutPlot *mainPlot;
     friend class DialogConfig;

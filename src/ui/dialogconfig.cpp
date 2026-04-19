@@ -1295,6 +1295,28 @@ QWidget *DialogConfig::setupTrainerTab()
     grpLayout->addWidget(note);
 
     layout->addWidget(grp);
+
+    // ── Battery Warning ─────────────────────────────────────────────────────
+    auto *grpBatt = new QGroupBox(tr("Battery Warning"), page);
+    auto *battLayout = new QVBoxLayout(grpBatt);
+
+    auto *battRow = new QHBoxLayout();
+    battRow->addWidget(new QLabel(tr("Warn when battery drops below:"), grpBatt));
+    spinBatteryThreshold = new QSpinBox(grpBatt);
+    spinBatteryThreshold->setRange(5, 50);
+    spinBatteryThreshold->setSuffix(tr(" %"));
+    battRow->addWidget(spinBatteryThreshold);
+    battRow->addStretch();
+    battLayout->addLayout(battRow);
+
+    auto *battNote = new QLabel(
+        tr("A toast notification is shown when a sensor reports a battery level "
+           "at or below this threshold."), grpBatt);
+    battNote->setStyleSheet("color: #888; font-style: italic;");
+    battNote->setWordWrap(true);
+    battLayout->addWidget(battNote);
+
+    layout->addWidget(grpBatt);
     layout->addStretch();
     return page;
 }
@@ -1311,6 +1333,8 @@ void DialogConfig::initTrainerTab()
             break;
         }
     }
+
+    if (spinBatteryThreshold) spinBatteryThreshold->setValue(account->battery_warning_threshold);
 }
 
 void DialogConfig::saveTrainerTab()
@@ -1318,4 +1342,9 @@ void DialogConfig::saveTrainerTab()
     if (!checkControlResistance) return;
     account->control_trainer_resistance = checkControlResistance->isChecked();
     account->powerCurve.setId(comboTrainerModel->currentData().toInt());
+
+    if (spinBatteryThreshold) {
+        account->battery_warning_threshold = spinBatteryThreshold->value();
+        account->saveBatteryWarningThreshold();
+    }
 }
