@@ -793,4 +793,5 @@ void TstBtleHub::testSimulator_noOpSetSlope()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+QTEST_MAIN(TstBtleHub)
 #include "tst_btle_hub.moc"

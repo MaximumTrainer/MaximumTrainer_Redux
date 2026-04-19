@@ -86,6 +86,14 @@ jobs:
         qmake login_screen_tests.pro
         make -j$(nproc)
 
+    - name: Build BTLE unit tests
+      run: |
+        export PATH=/usr/lib/qt5/bin:$PATH
+        mkdir -p build/tests
+        cd tests/btle
+        qmake btle_tests.pro
+        make -j$(nproc)
+
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
@@ -128,6 +136,40 @@ jobs:
     - name: Run logger unit tests
       run: |
         ./build/tests/logger_tests -v2
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # BTLE Unit Tests (Linux)
+  #
+  # Builds and runs the BtleHub unit test suite (tests/btle/) to verify that
+  # BLE characteristic parsing (HR, CSC, Power, FTMS) is correct and that
+  # integer-overflow and bounds-check security fixes have not broken behaviour.
+  # ──────────────────────────────────────────────────────────────────────────
+  test_btle_unit:
+    runs-on: ubuntu-22.04
+    needs: build_linux
+    permissions:
+      contents: read
+
+    steps:
+    - name: Install runtime dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          libqt5core5a \
+          libqt5bluetooth5 \
+          libqt5test5
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: linux
+        path: build
+
+    - name: Make test binary executable
+      run: chmod +x build/tests/btle_tests
+
+    - name: Run BTLE unit tests
+      run: ./build/tests/btle_tests -v2
 
   # ──────────────────────────────────────────────────────────────────────────
   # IntervalsIcuService + ImporterWorkoutZwo Unit Tests (Linux)
