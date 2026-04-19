@@ -81,7 +81,7 @@ async function injectRecordingBluetoothMock(page) {
   });
 }
 
-// Wait for the Qt canvas to become visible (app fully initialised and BLE started).
+// Wait for the Qt canvas to become visible (app fully initialised).
 async function waitForCanvas(page) {
   await page.waitForFunction(
     () => {
@@ -90,7 +90,24 @@ async function waitForCanvas(page) {
     },
     { timeout: 30000 }
   );
-  // Allow async GATT setup (subscribeAll + requestFtmsControl) to complete.
+}
+
+// Trigger a BLE scan via a real user gesture.
+//
+// navigator.bluetooth.requestDevice() requires a user-gesture context in
+// Chrome.  The only HTML-level user-gesture hook into BtleHubWasm::scanForDevice()
+// is the #ble-reconnect-btn, which calls Module._bleReconnectRequestC().
+// We show the overlay programmatically (not a gesture), then let Playwright
+// click the button (which IS a user gesture) to satisfy the browser policy.
+// After the click the async GATT setup chain (subscribeAll + requestFtmsControl)
+// needs a moment to complete.
+async function triggerBleScan(page) {
+  await page.evaluate(() => {
+    const overlay = document.getElementById('ble-reconnect-overlay');
+    if (overlay) overlay.style.display = 'flex';
+  });
+  await page.click('#ble-reconnect-btn');
+  // Allow the async GATT setup (subscribeAll + requestFtmsControl) to complete.
   await page.waitForTimeout(3000);
 }
 
@@ -107,6 +124,7 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
 
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
     await waitForCanvas(page);
+    await triggerBleScan(page);
 
     const recorded = await page.evaluate(() => window._btleApiCalls);
 
@@ -137,6 +155,7 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     await injectRecordingBluetoothMock(page);
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
     await waitForCanvas(page);
+    await triggerBleScan(page);
 
     const recorded = await page.evaluate(() => window._btleApiCalls);
 
@@ -154,6 +173,7 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     await injectRecordingBluetoothMock(page);
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
     await waitForCanvas(page);
+    await triggerBleScan(page);
 
     const recorded = await page.evaluate(() => window._btleApiCalls);
 
@@ -170,6 +190,7 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     await injectRecordingBluetoothMock(page);
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
     await waitForCanvas(page);
+    await triggerBleScan(page);
 
     const recorded = await page.evaluate(() => window._btleApiCalls);
 

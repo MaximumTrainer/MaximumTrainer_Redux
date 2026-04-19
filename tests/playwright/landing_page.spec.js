@@ -50,14 +50,15 @@ test.describe('Landing page content', () => {
   test('navigation links are present', async ({ page }) => {
     await page.goto(SITE_URL, { waitUntil: 'domcontentloaded' });
 
-    const nav = page.locator('nav');
+    const nav = page.locator('nav.nav-container');
     await expect(nav).toBeVisible();
 
-    // Core nav items expected on every deployment
+    // Core nav items expected on every deployment — scoped to the header nav
+    // to avoid matching footer links (the page has two <nav> elements).
     for (const label of ['Features', 'Download', 'User Guide']) {
       await expect(
-        page.locator(`nav a:has-text("${label}")`).first(),
-        `Nav link "${label}" should be present`,
+        nav.locator(`a:has-text("${label}")`),
+        `Nav link "${label}" should be present in header nav`,
       ).toBeVisible();
     }
   });
