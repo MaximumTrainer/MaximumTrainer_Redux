@@ -5,6 +5,8 @@
 #include <QGuiApplication>
 #include <QStyleHints>
 #include <QString>
+#include <QColor>
+#include <QPalette>
 
 /// Manages the two built-in application stylesheets (Light / Dark)
 /// and the automatic "System" mode that tracks the OS colour scheme.
