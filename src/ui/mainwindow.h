@@ -120,6 +120,7 @@ private slots:
     void on_actionAbout_MT_triggered();
     void on_actionAbout_Qt_triggered();
     void on_actionRequest_Help_triggered();
+    void on_actionKeyboard_Shortcuts_triggered();
     void on_actionCheck_for_Updates_triggered();
     void slotVersionCheckFinished();
     void on_actionPreferences_triggered();

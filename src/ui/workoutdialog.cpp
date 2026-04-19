@@ -35,6 +35,7 @@
 #include "dialogconfig.h"
 #include "dialogcalibrate.h"
 #include "dialogcalibratepm.h"
+#include "dialogkeyboardshortcuts.h"
 #include "logger.h"
 #include "strava_service.h"
 #include "trainingpeaks_service.h"
@@ -3185,6 +3186,13 @@ void WorkoutDialog::keyPressEvent(QKeyEvent *event)
     case Qt::Key_Escape:
         if (!event->isAutoRepeat())
             reject();
+        return;
+    case Qt::Key_Question:
+    case Qt::Key_F1:
+        if (!event->isAutoRepeat()) {
+            DialogKeyboardShortcuts dlg(this);
+            dlg.exec();
+        }
         return;
     default:
         break;

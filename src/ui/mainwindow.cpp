@@ -37,6 +37,7 @@
 #include "networkmonitor.h"
 #include "updatedialog.h"
 #include "versiondao.h"
+#include "dialogkeyboardshortcuts.h"
 
 #include <QDir>
 #include <QMenu>
@@ -1497,6 +1498,12 @@ void MainWindow::on_actionRequest_Help_triggered()
     infoAntStick.setUrlWebView(Environnement::getUrlSupport());
     qDebug() << "URL IS : " << Environnement::getUrlSupport();
     infoAntStick.exec();
+}
+//-----------------------------------------------
+void MainWindow::on_actionKeyboard_Shortcuts_triggered()
+{
+    DialogKeyboardShortcuts dlg(this);
+    dlg.exec();
 }
 //-----------------------------------------------
 void MainWindow::on_actionCheck_for_Updates_triggered()
