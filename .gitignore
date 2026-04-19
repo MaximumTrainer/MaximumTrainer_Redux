@@ -22,6 +22,9 @@ _codeql_detected_source_root
 node_modules/
 package.json
 package-lock.json
+# Playwright local test artefacts (CI uploads these; don't commit them)
+test-results/
+playwright-report/
 __pycache__/
 *.pyc
 MaximumTrainer_Archived/
