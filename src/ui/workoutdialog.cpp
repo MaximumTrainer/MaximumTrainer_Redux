@@ -1560,6 +1560,7 @@ void WorkoutDialog::startWorkout() {
 void WorkoutDialog::workoutOver() {
 
     isWorkoutOver = true;
+    stopErgSmoothing();
 
     qDebug() << "STOPPING WORKOUT";
     if (account->enable_sound && account->sound_end_workout)
@@ -1659,6 +1660,7 @@ void WorkoutDialog::start_or_pause_workout() {
             soundPlayer->playSoundPauseWorkout();
         ui->widget_topMenu->setButtonStartPaused(false);
         isWorkoutPaused = true;
+        stopErgSmoothing();
         setWidgetsStopped(true);
         setMessagePlot();
         emit pauseClock();
@@ -2251,8 +2253,10 @@ void WorkoutDialog::sendSlopes(double slope) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::sendLoads(double percentageFTP) {
 
+    // Studio mode: no smoothing — each rider has a different FTP, broadcast directly.
     if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
+        stopErgSmoothing();
+        for (int i = 0; i < account->nb_user_studio; i++) {
             UserStudio myUserStudio = vecUserStudio.at(i);
             if (myUserStudio.getFecID() > 0 && myUserStudio.getFTP() > 0) {
                 int userTarget = qRound(percentageFTP * myUserStudio.getFTP());
@@ -2260,14 +2264,82 @@ void WorkoutDialog::sendLoads(double percentageFTP) {
                 emit setLoad(myUserStudio.getFecID(), userTarget);
             }
         }
-    }
-    else {
-        if (idFecMainUser != -1){
-            emit setLoad(idFecMainUser, currentTargetPower);
-        }
+        return;
     }
 
+    if (idFecMainUser == -1) {
+        stopErgSmoothing();
+        return;
+    }
 
+    // Compute the new target in watts from the percentage and current FTP.
+    const double targetWatts = (account->FTP > 0) ? qRound(percentageFTP * account->FTP) : 0.0;
+
+    // If smoothing is disabled or target is zero, send immediately.
+    if (account->erg_smoothing_duration_s <= 0 || targetWatts <= 0) {
+        stopErgSmoothing();
+        emit setLoad(idFecMainUser, qRound(targetWatts));
+        return;
+    }
+
+    // Start a ramp from the last emitted value (handles mid-ramp retargeting correctly).
+    const double fromWatts = (m_ergSmoothLast > 0) ? m_ergSmoothLast : targetWatts;
+    startErgSmoothing(fromWatts, targetWatts);
+}
+
+
+void WorkoutDialog::startErgSmoothing(double fromWatts, double toWatts)
+{
+    stopErgSmoothing();
+
+    m_ergSmoothFrom  = fromWatts;
+    m_ergSmoothTo    = toWatts;
+    m_ergSmoothStep  = 0;
+    // Use (duration + 1) steps: step 0 is the immediate command, steps 1..N are timer-driven.
+    m_ergSmoothSteps = qMax(1, account->erg_smoothing_duration_s);
+    m_ergSmoothAntID = idFecMainUser;
+
+    if (!m_ergSmoothTimer) {
+        m_ergSmoothTimer = new QTimer(this);
+        m_ergSmoothTimer->setInterval(1000);
+        connect(m_ergSmoothTimer, &QTimer::timeout, this, &WorkoutDialog::ergSmoothStep);
+    }
+
+    // Emit step 0 immediately (the "from" value to start the transition).
+    const int startWatts = qRound(fromWatts);
+    m_ergSmoothLast = startWatts;
+    emit setLoad(m_ergSmoothAntID, startWatts);
+
+    m_ergSmoothTimer->start();
+}
+
+void WorkoutDialog::stopErgSmoothing()
+{
+    if (m_ergSmoothTimer)
+        m_ergSmoothTimer->stop();
+    m_ergSmoothStep  = 0;
+    m_ergSmoothSteps = 0;
+    // Do NOT clear m_ergSmoothLast — it is the "current position" for mid-ramp retargeting.
+    m_ergSmoothAntID = -1;
+}
+
+void WorkoutDialog::ergSmoothStep()
+{
+    if (m_ergSmoothAntID == -1 || m_ergSmoothSteps <= 0) {
+        stopErgSmoothing();
+        return;
+    }
+
+    m_ergSmoothStep++;
+    const double progress = static_cast<double>(m_ergSmoothStep) / static_cast<double>(m_ergSmoothSteps);
+    const double watts    = m_ergSmoothFrom + (m_ergSmoothTo - m_ergSmoothFrom) * qMin(progress, 1.0);
+    const int rounded     = qRound(watts);
+
+    m_ergSmoothLast = rounded;
+    emit setLoad(m_ergSmoothAntID, rounded);
+
+    if (m_ergSmoothStep >= m_ergSmoothSteps)
+        stopErgSmoothing();
 }
 
 

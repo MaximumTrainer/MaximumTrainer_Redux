@@ -1294,6 +1294,23 @@ QWidget *DialogConfig::setupTrainerTab()
     note->setWordWrap(true);
     grpLayout->addWidget(note);
 
+    // ERG smoothing
+    auto *smoothRow = new QHBoxLayout();
+    smoothRow->addWidget(new QLabel(tr("ERG transition ramp duration (s):"), grp));
+    spinErgSmoothing = new QSpinBox(grp);
+    spinErgSmoothing->setRange(0, 30);
+    spinErgSmoothing->setSuffix(tr(" s"));
+    spinErgSmoothing->setToolTip(tr("Number of seconds to linearly ramp ERG resistance between intervals.\n"
+                                    "Set to 0 to disable smoothing (instant resistance changes)."));
+    smoothRow->addWidget(spinErgSmoothing, 1);
+    grpLayout->addLayout(smoothRow);
+
+    auto *smoothNote = new QLabel(tr("Ramps resistance gradually when transitioning between interval targets,\n"
+                                     "reducing mechanical jolt on the trainer."), grp);
+    smoothNote->setStyleSheet("color: #888; font-style: italic;");
+    smoothNote->setWordWrap(true);
+    grpLayout->addWidget(smoothNote);
+
     layout->addWidget(grp);
     layout->addStretch();
     return page;
@@ -1311,6 +1328,9 @@ void DialogConfig::initTrainerTab()
             break;
         }
     }
+
+    if (spinErgSmoothing)
+        spinErgSmoothing->setValue(account->erg_smoothing_duration_s);
 }
 
 void DialogConfig::saveTrainerTab()
@@ -1318,4 +1338,7 @@ void DialogConfig::saveTrainerTab()
     if (!checkControlResistance) return;
     account->control_trainer_resistance = checkControlResistance->isChecked();
     account->powerCurve.setId(comboTrainerModel->currentData().toInt());
+
+    if (spinErgSmoothing)
+        account->saveErgSmoothingDuration(spinErgSmoothing->value());
 }

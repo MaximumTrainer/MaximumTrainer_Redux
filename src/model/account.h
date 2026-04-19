@@ -19,6 +19,7 @@ public:
 
     void saveNbSecShowInterval(int nbSec);
     void saveNbSecShowIntervalBefore(int nbSec);
+    void saveErgSmoothingDuration(int seconds);
     void saveIntervalsIcuCredentials();
 
     /// Encrypt and persist Strava OAuth2 tokens to QSettings.
@@ -105,6 +106,7 @@ public:
     bool control_trainer_resistance;
     bool stop_pairing_on_found;
     int nb_sec_pairing;
+    int erg_smoothing_duration_s;  ///< Ramp duration (seconds) for ERG setpoint transitions; 0 = disabled.
     /* ----- */
 
     int last_index_selected_config_workout;
