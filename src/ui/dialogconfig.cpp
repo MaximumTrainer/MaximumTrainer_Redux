@@ -1347,6 +1347,28 @@ QWidget *DialogConfig::setupTrainerTab()
     dropoutLayout->addWidget(dropoutNote);
 
     layout->addWidget(grpDropout);
+
+    // ── Battery Warning ─────────────────────────────────────────────────────
+    auto *grpBatt = new QGroupBox(tr("Battery Warning"), page);
+    auto *battLayout = new QVBoxLayout(grpBatt);
+
+    auto *battRow = new QHBoxLayout();
+    battRow->addWidget(new QLabel(tr("Warn when battery drops below:"), grpBatt));
+    spinBatteryThreshold = new QSpinBox(grpBatt);
+    spinBatteryThreshold->setRange(5, 50);
+    spinBatteryThreshold->setSuffix(tr(" %"));
+    battRow->addWidget(spinBatteryThreshold);
+    battRow->addStretch();
+    battLayout->addLayout(battRow);
+
+    auto *battNote = new QLabel(
+        tr("A toast notification is shown when a sensor reports a battery level "
+           "at or below this threshold."), grpBatt);
+    battNote->setStyleSheet("color: #888; font-style: italic;");
+    battNote->setWordWrap(true);
+    battLayout->addWidget(battNote);
+
+    layout->addWidget(grpBatt);
     layout->addStretch();
     return page;
 }
@@ -1372,6 +1394,8 @@ void DialogConfig::initTrainerTab()
 
     if (checkDropoutEnabled) checkDropoutEnabled->setChecked(account->sensor_dropout_enabled);
     if (spinDropoutTimeout)  spinDropoutTimeout->setValue(account->sensor_dropout_timeout_s);
+
+    if (spinBatteryThreshold) spinBatteryThreshold->setValue(account->battery_warning_threshold);
 }
 
 void DialogConfig::saveTrainerTab()
@@ -1391,4 +1415,9 @@ void DialogConfig::saveTrainerTab()
     if (checkDropoutEnabled) account->sensor_dropout_enabled  = checkDropoutEnabled->isChecked();
     if (spinDropoutTimeout)  account->sensor_dropout_timeout_s = spinDropoutTimeout->value();
     account->saveSensorDropoutSettings();
+
+    if (spinBatteryThreshold) {
+        account->battery_warning_threshold = spinBatteryThreshold->value();
+        account->saveBatteryWarningThreshold();
+    }
 }

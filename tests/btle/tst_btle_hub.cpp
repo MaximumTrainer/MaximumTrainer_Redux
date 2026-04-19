@@ -95,6 +95,13 @@ private slots:
     void testSimulator_noOpSetLoad();
     void testSimulator_noOpSetSlope();
 
+    // ── Battery Level parsing ─────────────────────────────────────────────────
+    void testBattery_aboveThreshold_noSignal();
+    void testBattery_atThreshold_emits();
+    void testBattery_belowThreshold_emits();
+    void testBattery_tooShort_ignored();
+    void testBattery_clamped();
+
 private:
     BtleHub *hub = nullptr;
 };
@@ -790,6 +797,55 @@ void TstBtleHub::testSimulator_noOpSetSlope()
     sim.setSlope(0, -3.0);
     QTest::qWait(50);
     QCOMPARE(spySpd.count(), 0);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Battery Level parsing tests (issue #156)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Empty payload — must be silently ignored, no signal emitted.
+void TstBtleHub::testBattery_tooShort_ignored()
+{
+    QSignalSpy spy(hub, &BtleHub::signal_battery);
+    hub->simulateNotification(BTLE_UUID_BATTERY_LEVEL, QByteArray());
+    QCOMPARE(spy.count(), 0);
+}
+
+/// Nominal battery level (85%) — signal emitted with correct percentage.
+void TstBtleHub::testBattery_belowThreshold_emits()
+{
+    QSignalSpy spy(hub, &BtleHub::signal_battery);
+    hub->simulateNotification(BTLE_UUID_BATTERY_LEVEL, QByteArray(1, char(15)));
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(spy.at(0).at(1).toInt(), 15);
+}
+
+/// At the threshold boundary (exactly threshold value) — signal emitted.
+void TstBtleHub::testBattery_atThreshold_emits()
+{
+    QSignalSpy spy(hub, &BtleHub::signal_battery);
+    hub->simulateNotification(BTLE_UUID_BATTERY_LEVEL, QByteArray(1, char(20)));
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(spy.at(0).at(1).toInt(), 20);
+}
+
+/// Above threshold (75%) — signal still emitted (threshold filtering is in WorkoutDialog).
+void TstBtleHub::testBattery_aboveThreshold_noSignal()
+{
+    QSignalSpy spy(hub, &BtleHub::signal_battery);
+    hub->simulateNotification(BTLE_UUID_BATTERY_LEVEL, QByteArray(1, char(75)));
+    // BtleHub emits for any reading; WorkoutDialog applies the threshold
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(spy.at(0).at(1).toInt(), 75);
+}
+
+/// Value > 100 must be clamped to 100.
+void TstBtleHub::testBattery_clamped()
+{
+    QSignalSpy spy(hub, &BtleHub::signal_battery);
+    hub->simulateNotification(BTLE_UUID_BATTERY_LEVEL, QByteArray(1, char(200)));
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(spy.at(0).at(1).toInt(), 100);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

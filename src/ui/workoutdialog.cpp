@@ -760,19 +760,26 @@ void WorkoutDialog::startCalibrationPM() {
 
 
 //------------------------------------------------------------------------------------------------------------
-void WorkoutDialog::batteryStatusReceived(QString sensorType, int level, int antID) {
+void WorkoutDialog::batteryStatusReceived(QString sensorType, int percentage) {
 
-    qDebug() << "batteryStatusReceived" << sensorType << "level:" << level;
+    qDebug() << "batteryStatusReceived" << sensorType << "level:" << percentage << "%";
+
+    // Check against configurable threshold
+    if (percentage > account->battery_warning_threshold)
+        return;
+
+    // Suppress re-warning unless level dropped ≥ 5% below the last warned level
+    if (m_warnedBatteryLevels.contains(sensorType)) {
+        int lastWarned = m_warnedBatteryLevels.value(sensorType);
+        if (percentage > lastWarned - 5)
+            return;
+    }
+
+    m_warnedBatteryLevels[sensorType] = percentage;
 
     labelBatteryStatus->setVisible(true);
-
-    QString levelStr;
-    if (level == 0)
-        levelStr = tr("critical");
-    else  //1
-        levelStr = tr("low");
-
-    labelBatteryStatus->setText(tr("Battery Warning: ") + sensorType  + "(ID: " + QString::number(antID) + tr(") Battery is ") + levelStr);
+    labelBatteryStatus->setText(
+        tr("%1 sensor battery: %2%").arg(sensorType).arg(percentage));
     labelBatteryStatus->fadeInAndFadeOutAfterPause(400, 1000, 15000);
 }
 

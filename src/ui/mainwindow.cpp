@@ -1699,6 +1699,7 @@ void MainWindow::executeWorkout(Workout workout) {
     connect(btleHub, SIGNAL(signal_speed(int,double)),         &w, SLOT(TrainerSpeedDataReceived(int,double)));
     connect(btleHub, SIGNAL(signal_power(int,int)),            &w, SLOT(PowerDataReceived(int,int)));
     connect(btleHub, SIGNAL(signal_oxygen(int,double,double)), &w, SLOT(OxygenValueChanged(int,double,double)));
+    connect(btleHub, &BtleHub::signal_battery, &w, &WorkoutDialog::batteryStatusReceived);
 
     // Surface BLE disconnections mid-workout so WorkoutDialog can pause and
     // the user sees the DOM reconnect overlay (WASM) or a status message.

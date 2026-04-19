@@ -220,6 +220,9 @@ private:
     // Trainer tab — Sensor dropout (issue #148)
     QCheckBox    *checkDropoutEnabled    = nullptr;
     QSpinBox     *spinDropoutTimeout     = nullptr;
+
+    // Trainer tab — Battery warning threshold (issue #156)
+    QSpinBox     *spinBatteryThreshold   = nullptr;
 };
 
 #endif // DIALOGCONFIG_H

@@ -108,6 +108,12 @@ public:
     bool stop_pairing_on_found;
     int nb_sec_pairing;
     int erg_smoothing_duration_s;  ///< Ramp duration (seconds) for ERG setpoint transitions; 0 = disabled.
+
+    /// Battery warning threshold (issue #156): warn when a sensor's battery
+    /// drops at or below this percentage (default 20, range 5–50).
+    int battery_warning_threshold;
+    void saveBatteryWarningThreshold();
+
     /* ----- */
 
     // Sensor dropout auto-pause

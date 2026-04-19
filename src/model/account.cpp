@@ -54,6 +54,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
     // Sensor dropout auto-pause
     sensor_dropout_enabled   = settings.value("sensor_dropout_enabled",   true).toBool();
     sensor_dropout_timeout_s = settings.value("sensor_dropout_timeout_s", 5   ).toInt();
+    battery_warning_threshold = settings.value("battery_warning_threshold", 20).toInt();
     settings.endGroup();
 
     // Load encrypted third-party service credentials from the platform credential store.
@@ -247,6 +248,14 @@ void Account::saveSensorDropoutSettings()
     settings.beginGroup("account");
     settings.setValue("sensor_dropout_enabled",   sensor_dropout_enabled);
     settings.setValue("sensor_dropout_timeout_s", sensor_dropout_timeout_s);
+    settings.endGroup();
+}
+
+void Account::saveBatteryWarningThreshold()
+{
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("battery_warning_threshold", battery_warning_threshold);
     settings.endGroup();
 }
 
