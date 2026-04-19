@@ -152,6 +152,15 @@ Account::Account(QObject *parent) : QObject(parent)  {
     sound_alert_cadence_under_target = false;
     sound_alert_cadence_above_target = false;
 
+    interval_summary_enabled    = true;
+    interval_summary_duration_s = 5;
+    {
+        QSettings s;
+        s.beginGroup("account");
+        interval_summary_enabled    = s.value("interval_summary_enabled",    true).toBool();
+        interval_summary_duration_s = s.value("interval_summary_duration_s", 5).toInt();
+        s.endGroup();
+    }
 
     //-------------------------- not in DB ----------------------
     isOffline = false;
@@ -224,6 +233,15 @@ void Account::saveSelfloopsCredentials()
 {
     CredentialStore::store("selfloops", "email",    selfloops_user);
     CredentialStore::store("selfloops", "password", selfloops_pw);
+}
+
+void Account::saveIntervalSummarySettings()
+{
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("interval_summary_enabled",    interval_summary_enabled);
+    settings.setValue("interval_summary_duration_s", interval_summary_duration_s);
+    settings.endGroup();
 }
 
 

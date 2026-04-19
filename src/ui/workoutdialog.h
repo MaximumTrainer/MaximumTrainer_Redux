@@ -231,6 +231,8 @@ private:
     void initDataWorkout();
     void connectDataWorkout();
     void createUserStudioWidget();
+    void showIntervalSummaryOverlay(double avgPower, double avgHr, double avgCad,
+                                    int durationSec, double targetPowerFraction);
 
     void sendUserInfoToClock();
 

@@ -23,6 +23,7 @@
 
 #include "../../src/btle/btle_hub.h"
 #include "../../src/btle/simulator_hub.h"
+#include "../../src/model/intervalsummaryutil.h"
 #include "btle_device_simulator.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,6 +95,16 @@ private slots:
     // ── SimulatorHub no-op slot verification ─────────────────────────────────
     void testSimulator_noOpSetLoad();
     void testSimulator_noOpSetSlope();
+
+    // ── Interval summary power-adherence classification ───────────────────────
+    void testIntervalSummary_met_exactTarget();
+    void testIntervalSummary_met_upperBoundary();
+    void testIntervalSummary_met_lowerBoundary();
+    void testIntervalSummary_nearMiss_upperBoundary();
+    void testIntervalSummary_nearMiss_lowerBoundary();
+    void testIntervalSummary_missed_above();
+    void testIntervalSummary_missed_below();
+    void testIntervalSummary_zeroTarget_returnsMet();
 
 private:
     BtleHub *hub = nullptr;
@@ -790,6 +801,58 @@ void TstBtleHub::testSimulator_noOpSetSlope()
     sim.setSlope(0, -3.0);
     QTest::qWait(50);
     QCOMPARE(spySpd.count(), 0);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Interval summary — power-adherence classification
+// ─────────────────────────────────────────────────────────────────────────────
+using PA = IntervalSummaryUtil::PowerAdherence;
+
+void TstBtleHub::testIntervalSummary_met_exactTarget()
+{
+    QCOMPARE(IntervalSummaryUtil::classifyPowerAdherence(200.0, 200.0), PA::Met);
+}
+
+void TstBtleHub::testIntervalSummary_met_upperBoundary()
+{
+    // exactly +5% → still Met
+    QCOMPARE(IntervalSummaryUtil::classifyPowerAdherence(210.0, 200.0), PA::Met);
+}
+
+void TstBtleHub::testIntervalSummary_met_lowerBoundary()
+{
+    // exactly -5% → still Met
+    QCOMPARE(IntervalSummaryUtil::classifyPowerAdherence(190.0, 200.0), PA::Met);
+}
+
+void TstBtleHub::testIntervalSummary_nearMiss_upperBoundary()
+{
+    // +7% → NearMiss
+    QCOMPARE(IntervalSummaryUtil::classifyPowerAdherence(214.0, 200.0), PA::NearMiss);
+}
+
+void TstBtleHub::testIntervalSummary_nearMiss_lowerBoundary()
+{
+    // -7% → NearMiss
+    QCOMPARE(IntervalSummaryUtil::classifyPowerAdherence(186.0, 200.0), PA::NearMiss);
+}
+
+void TstBtleHub::testIntervalSummary_missed_above()
+{
+    // +15% → Missed
+    QCOMPARE(IntervalSummaryUtil::classifyPowerAdherence(230.0, 200.0), PA::Missed);
+}
+
+void TstBtleHub::testIntervalSummary_missed_below()
+{
+    // -15% → Missed
+    QCOMPARE(IntervalSummaryUtil::classifyPowerAdherence(170.0, 200.0), PA::Missed);
+}
+
+void TstBtleHub::testIntervalSummary_zeroTarget_returnsMet()
+{
+    // no power target (e.g. HR-only or free-ride interval) → always Met
+    QCOMPARE(IntervalSummaryUtil::classifyPowerAdherence(0.0, 0.0), PA::Met);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

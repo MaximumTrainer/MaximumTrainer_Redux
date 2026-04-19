@@ -214,6 +214,10 @@ private:
     // Trainer tab controls
     QCheckBox    *checkControlResistance = nullptr;
     QComboBox    *comboTrainerModel      = nullptr;
+
+    // Interval Summary overlay controls
+    QCheckBox    *checkIntervalSummary         = nullptr;
+    QSpinBox     *spinIntervalSummaryDuration  = nullptr;
 };
 
 #endif // DIALOGCONFIG_H

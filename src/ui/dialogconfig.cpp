@@ -1295,6 +1295,24 @@ QWidget *DialogConfig::setupTrainerTab()
     grpLayout->addWidget(note);
 
     layout->addWidget(grp);
+
+    // Interval Summary Overlay group
+    auto *grpSummary = new QGroupBox(tr("Interval Summary Overlay"), page);
+    auto *grpSummaryLayout = new QVBoxLayout(grpSummary);
+
+    checkIntervalSummary = new QCheckBox(tr("Show summary overlay on interval transition"), grpSummary);
+    grpSummaryLayout->addWidget(checkIntervalSummary);
+
+    auto *durRow = new QHBoxLayout();
+    durRow->addWidget(new QLabel(tr("Display duration (seconds):"), grpSummary));
+    spinIntervalSummaryDuration = new QSpinBox(grpSummary);
+    spinIntervalSummaryDuration->setRange(2, 15);
+    spinIntervalSummaryDuration->setValue(5);
+    durRow->addWidget(spinIntervalSummaryDuration);
+    durRow->addStretch();
+    grpSummaryLayout->addLayout(durRow);
+
+    layout->addWidget(grpSummary);
     layout->addStretch();
     return page;
 }
@@ -1311,6 +1329,11 @@ void DialogConfig::initTrainerTab()
             break;
         }
     }
+
+    if (checkIntervalSummary) {
+        checkIntervalSummary->setChecked(account->interval_summary_enabled);
+        spinIntervalSummaryDuration->setValue(account->interval_summary_duration_s);
+    }
 }
 
 void DialogConfig::saveTrainerTab()
@@ -1318,4 +1341,10 @@ void DialogConfig::saveTrainerTab()
     if (!checkControlResistance) return;
     account->control_trainer_resistance = checkControlResistance->isChecked();
     account->powerCurve.setId(comboTrainerModel->currentData().toInt());
+
+    if (checkIntervalSummary) {
+        account->interval_summary_enabled    = checkIntervalSummary->isChecked();
+        account->interval_summary_duration_s = spinIntervalSummaryDuration->value();
+        account->saveIntervalSummarySettings();
+    }
 }
