@@ -90,6 +90,14 @@ async function waitForCanvas(page) {
     },
     { timeout: 30000 }
   );
+  // Trigger BLE scan via the test helper registered by BtleHubWasm::ctor.
+  // In a real browser this would require a user gesture; the mock injected by
+  // injectRecordingBluetoothMock() satisfies the call without any gesture.
+  await page.evaluate(() => {
+    if (typeof window.mt_startBleScan === 'function') {
+      window.mt_startBleScan();
+    }
+  });
   // Allow async GATT setup (subscribeAll + requestFtmsControl) to complete.
   await page.waitForTimeout(3000);
 }

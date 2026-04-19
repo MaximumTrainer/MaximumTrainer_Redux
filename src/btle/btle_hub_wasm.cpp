@@ -8,6 +8,8 @@
 
 BtleHubWasm::BtleHubWasm(QObject *parent) : QObject(parent)
 {
+    // Expose window.mt_startBleScan() for Playwright test automation.
+    WebBluetoothBridge::registerTestScanApi();
     WebBluetoothBridge::setNotificationCallback(
         [this](quint16 uuid16, const QByteArray &data) {
             onBleNotification(uuid16, data);
