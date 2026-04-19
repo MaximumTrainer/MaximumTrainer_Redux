@@ -170,7 +170,6 @@ public slots:
     void onBleConnectionError(const QString &errorString);
 
     void checkSensorDropout();   ///< 1-Hz watchdog for sensor dropout auto-pause
-    void onBleConnectionError(const QString &errorString);
 
     void ignoreClickPlot();
 
