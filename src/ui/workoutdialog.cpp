@@ -39,6 +39,7 @@
 #include "strava_service.h"
 #include "trainingpeaks_service.h"
 #include "selfloops_service.h"
+#include "intervalsicuservice.h"
 #include "extrequest.h"
 
 
@@ -3347,8 +3348,10 @@ void WorkoutDialog::showPostWorkoutPanel()
                           && !account->training_peaks_refresh_token.isEmpty();
     const bool hasSL       = !account->selfloops_user.isEmpty()
                           && !account->selfloops_pw.isEmpty();
+    const bool hasIcu      = !account->intervals_icu_api_key.isEmpty()
+                          && !account->intervals_icu_athlete_id.isEmpty();
 
-    if (hasStrava || hasTP || hasSL) {
+    if (hasStrava || hasTP || hasSL || hasIcu) {
         auto *upHeader = new QLabel(tr("Upload Activity:"), widgetPostWorkout);
         upHeader->setStyleSheet("font-size: 10pt; font-weight: bold; color: #80c0ff; margin-top: 8px;");
         layout->addWidget(upHeader);
@@ -3369,6 +3372,12 @@ void WorkoutDialog::showPostWorkoutPanel()
             auto *btn = new QPushButton(tr("Upload to SelfLoops"), widgetPostWorkout);
             btn->setObjectName("btnSelfLoops");
             connect(btn, &QPushButton::clicked, this, &WorkoutDialog::uploadToSelfLoops);
+            layout->addWidget(btn);
+        }
+        if (hasIcu) {
+            auto *btn = new QPushButton(tr("Upload to Intervals.icu"), widgetPostWorkout);
+            btn->setObjectName("btnIntervalsIcu");
+            connect(btn, &QPushButton::clicked, this, &WorkoutDialog::uploadToIntervalsIcu);
             layout->addWidget(btn);
         }
     }
@@ -3574,6 +3583,49 @@ void WorkoutDialog::slotPostSelfloopsUploadDone()
         LOG_WARN("WorkoutDialog", QStringLiteral("SelfLoops unexpected response: ") + msgReply);
         if (btn) { btn->setEnabled(true); btn->setText(tr("Upload to SelfLoops (Failed — Retry)")); }
     }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+void WorkoutDialog::uploadToIntervalsIcu()
+{
+    if (fitFilePath.isEmpty()) return;
+    auto *btn = widgetPostWorkout ? widgetPostWorkout->findChild<QPushButton*>("btnIntervalsIcu") : nullptr;
+
+    auto *svc = new IntervalsIcuService(this);
+    svc->setCredentials(account->intervals_icu_api_key, account->intervals_icu_athlete_id);
+    const QString externalId = QFileInfo(fitFilePath).baseName();
+    replyPostIntervalsIcuUpload = svc->uploadActivity(fitFilePath, fitFileName, externalId);
+    svc->deleteLater();
+
+    if (!replyPostIntervalsIcuUpload) {
+        if (btn) btn->setText(tr("Upload to Intervals.icu (Failed — Retry)"));
+        return;
+    }
+    if (btn) { btn->setEnabled(false); btn->setText(tr("Uploading…")); }
+    connect(replyPostIntervalsIcuUpload, &QNetworkReply::finished,
+            this, &WorkoutDialog::slotPostIntervalsIcuUploadDone);
+}
+
+void WorkoutDialog::slotPostIntervalsIcuUploadDone()
+{
+    auto *reply = qobject_cast<QNetworkReply*>(sender());
+    if (!reply) return;
+    reply->deleteLater();
+    replyPostIntervalsIcuUpload = nullptr;
+
+    auto *btn = widgetPostWorkout ? widgetPostWorkout->findChild<QPushButton*>("btnIntervalsIcu") : nullptr;
+    if (reply->error() != QNetworkReply::NoError) {
+        const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (httpStatus == 409) {
+            if (btn) btn->setText(tr("✓ Activity already on Intervals.icu"));
+        } else {
+            LOG_WARN("WorkoutDialog", QStringLiteral("Intervals.icu upload failed: ") + reply->errorString());
+            if (btn) { btn->setEnabled(true); btn->setText(tr("Upload to Intervals.icu (Failed — Retry)")); }
+        }
+        return;
+    }
+    if (btn) btn->setText(tr("✓ Uploaded to Intervals.icu"));
+    LOG_INFO("WorkoutDialog", "Intervals.icu upload succeeded");
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////

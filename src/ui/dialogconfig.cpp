@@ -1295,6 +1295,18 @@ QWidget *DialogConfig::setupTrainerTab()
     grpLayout->addWidget(note);
 
     layout->addWidget(grp);
+
+    auto *grpUploads = new QGroupBox(tr("Uploads"), page);
+    auto *grpUploadsLayout = new QVBoxLayout(grpUploads);
+    checkIntervalsIcuAutoUpload = new QCheckBox(
+        tr("Auto-upload completed activities to Intervals.icu"), grpUploads);
+    grpUploadsLayout->addWidget(checkIntervalsIcuAutoUpload);
+    auto *uploadNote = new QLabel(
+        tr("Requires Intervals.icu credentials to be configured."), grpUploads);
+    uploadNote->setStyleSheet("color: #888; font-style: italic;");
+    grpUploadsLayout->addWidget(uploadNote);
+    layout->addWidget(grpUploads);
+
     layout->addStretch();
     return page;
 }
@@ -1311,6 +1323,9 @@ void DialogConfig::initTrainerTab()
             break;
         }
     }
+
+    if (checkIntervalsIcuAutoUpload)
+        checkIntervalsIcuAutoUpload->setChecked(account->intervals_icu_auto_upload);
 }
 
 void DialogConfig::saveTrainerTab()
@@ -1318,4 +1333,8 @@ void DialogConfig::saveTrainerTab()
     if (!checkControlResistance) return;
     account->control_trainer_resistance = checkControlResistance->isChecked();
     account->powerCurve.setId(comboTrainerModel->currentData().toInt());
+    if (checkIntervalsIcuAutoUpload) {
+        account->intervals_icu_auto_upload = checkIntervalsIcuAutoUpload->isChecked();
+        account->saveIntervalsIcuCredentials();
+    }
 }

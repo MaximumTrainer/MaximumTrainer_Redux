@@ -214,6 +214,7 @@ private:
     // Trainer tab controls
     QCheckBox    *checkControlResistance = nullptr;
     QComboBox    *comboTrainerModel      = nullptr;
+    QCheckBox    *checkIntervalsIcuAutoUpload = nullptr;
 };
 
 #endif // DIALOGCONFIG_H
