@@ -207,6 +207,9 @@ private:
     QComboBox    *comboLanguage     = nullptr;
     QLabel       *labelRestartNote  = nullptr;
 
+    // Theme controls (Language tab)
+    QComboBox    *comboTheme        = nullptr;
+
     // Studio tab controls
     QCheckBox    *checkStudioMode   = nullptr;
     QSpinBox     *spinNbRiders      = nullptr;

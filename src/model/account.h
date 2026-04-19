@@ -20,6 +20,7 @@ public:
     void saveNbSecShowInterval(int nbSec);
     void saveNbSecShowIntervalBefore(int nbSec);
     void saveIntervalsIcuCredentials();
+    void saveAppTheme();
 
     /// Encrypt and persist Strava OAuth2 tokens to QSettings.
     /// Call after a successful token exchange or refresh.
@@ -199,6 +200,8 @@ public:
     bool sound_alert_power_above_target;
     bool sound_alert_cadence_under_target;
     bool sound_alert_cadence_above_target;
+
+    int app_theme; ///< 0=Light, 1=Dark, 2=System (default)
     //----
 
 

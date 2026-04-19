@@ -152,6 +152,12 @@ Account::Account(QObject *parent) : QObject(parent)  {
     sound_alert_cadence_under_target = false;
     sound_alert_cadence_above_target = false;
 
+    {
+        QSettings s;
+        s.beginGroup("account");
+        app_theme = s.value("app_theme", 2).toInt(); // default: System
+        s.endGroup();
+    }
 
     //-------------------------- not in DB ----------------------
     isOffline = false;
@@ -224,6 +230,14 @@ void Account::saveSelfloopsCredentials()
 {
     CredentialStore::store("selfloops", "email",    selfloops_user);
     CredentialStore::store("selfloops", "password", selfloops_pw);
+}
+
+void Account::saveAppTheme()
+{
+    QSettings s;
+    s.beginGroup("account");
+    s.setValue("app_theme", app_theme);
+    s.endGroup();
 }
 
 
