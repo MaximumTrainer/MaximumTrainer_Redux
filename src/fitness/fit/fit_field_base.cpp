@@ -16,7 +16,6 @@
 
 #include <cmath>
 #include <sstream>
-#include <limits>
 #include "fit_field_base.hpp"
 #include "fit_mesg.hpp"
 #include "fit_unicode.hpp"
