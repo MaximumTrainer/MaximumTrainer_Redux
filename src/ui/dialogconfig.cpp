@@ -1295,6 +1295,30 @@ QWidget *DialogConfig::setupTrainerTab()
     grpLayout->addWidget(note);
 
     layout->addWidget(grp);
+
+    // ── Sensor Dropout ──────────────────────────────────────────────────────
+    auto *grpDropout = new QGroupBox(tr("Sensor Dropout"), page);
+    auto *dropoutLayout = new QVBoxLayout(grpDropout);
+
+    checkDropoutEnabled = new QCheckBox(tr("Auto-pause workout when sensor signal is lost"), grpDropout);
+    dropoutLayout->addWidget(checkDropoutEnabled);
+
+    auto *timeoutRow = new QHBoxLayout();
+    timeoutRow->addWidget(new QLabel(tr("Dropout timeout (seconds):"), grpDropout));
+    spinDropoutTimeout = new QSpinBox(grpDropout);
+    spinDropoutTimeout->setRange(2, 30);
+    spinDropoutTimeout->setSuffix(tr(" s"));
+    timeoutRow->addWidget(spinDropoutTimeout);
+    timeoutRow->addStretch();
+    dropoutLayout->addLayout(timeoutRow);
+
+    auto *dropoutNote = new QLabel(
+        tr("Workout resumes automatically 3 seconds after the signal is restored."), grpDropout);
+    dropoutNote->setStyleSheet("color: #888; font-style: italic;");
+    dropoutNote->setWordWrap(true);
+    dropoutLayout->addWidget(dropoutNote);
+
+    layout->addWidget(grpDropout);
     layout->addStretch();
     return page;
 }
@@ -1311,6 +1335,9 @@ void DialogConfig::initTrainerTab()
             break;
         }
     }
+
+    if (checkDropoutEnabled) checkDropoutEnabled->setChecked(account->sensor_dropout_enabled);
+    if (spinDropoutTimeout)  spinDropoutTimeout->setValue(account->sensor_dropout_timeout_s);
 }
 
 void DialogConfig::saveTrainerTab()
@@ -1318,4 +1345,8 @@ void DialogConfig::saveTrainerTab()
     if (!checkControlResistance) return;
     account->control_trainer_resistance = checkControlResistance->isChecked();
     account->powerCurve.setId(comboTrainerModel->currentData().toInt());
+
+    if (checkDropoutEnabled) account->sensor_dropout_enabled  = checkDropoutEnabled->isChecked();
+    if (spinDropoutTimeout)  account->sensor_dropout_timeout_s = spinDropoutTimeout->value();
+    account->saveSensorDropoutSettings();
 }

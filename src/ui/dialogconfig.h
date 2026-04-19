@@ -214,6 +214,10 @@ private:
     // Trainer tab controls
     QCheckBox    *checkControlResistance = nullptr;
     QComboBox    *comboTrainerModel      = nullptr;
+
+    // Trainer tab — Sensor dropout (issue #148)
+    QCheckBox    *checkDropoutEnabled    = nullptr;
+    QSpinBox     *spinDropoutTimeout     = nullptr;
 };
 
 #endif // DIALOGCONFIG_H

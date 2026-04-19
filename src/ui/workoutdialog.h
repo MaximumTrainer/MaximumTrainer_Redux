@@ -169,6 +169,9 @@ public slots:
     // already shows the Reconnect button; this slot logs and pauses the workout.
     void onBleConnectionError(const QString &errorString);
 
+    void checkSensorDropout();   ///< 1-Hz watchdog for sensor dropout auto-pause
+    void onBleConnectionError(const QString &errorString);
+
     void ignoreClickPlot();
 
     void activateSoundBool();
@@ -505,6 +508,13 @@ private:
 
     int currentWorkoutDifficultyPercentage; //0 = Normal
 
+    ///------ Sensor dropout auto-pause ----------------------
+    qint64 m_lastPowerMs       = 0;  ///< Timestamp (ms) of last valid power reading
+    qint64 m_lastHrMs          = 0;  ///< Timestamp (ms) of last valid HR reading
+    bool   m_dropoutPaused     = false; ///< True when workout is paused due to dropout
+    int    m_recoveryCountdown = 0;  ///< Countdown (s) before auto-resume after recovery
+    QTimer *m_dropoutWatchdog  = nullptr;
+    ///-------------------------------------------------------
 
     WorkoutPlot *mainPlot;
     friend class DialogConfig;

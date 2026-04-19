@@ -20,6 +20,7 @@ public:
     void saveNbSecShowInterval(int nbSec);
     void saveNbSecShowIntervalBefore(int nbSec);
     void saveIntervalsIcuCredentials();
+    void saveSensorDropoutSettings();
 
     /// Encrypt and persist Strava OAuth2 tokens to QSettings.
     /// Call after a successful token exchange or refresh.
@@ -106,6 +107,10 @@ public:
     bool stop_pairing_on_found;
     int nb_sec_pairing;
     /* ----- */
+
+    // Sensor dropout auto-pause
+    bool sensor_dropout_enabled;   ///< Master toggle for auto-pause on sensor dropout
+    int  sensor_dropout_timeout_s; ///< Seconds before dropout triggers pause (default 5, range 2–30)
 
     int last_index_selected_config_workout;
     int last_tab_sub_config_selected;
