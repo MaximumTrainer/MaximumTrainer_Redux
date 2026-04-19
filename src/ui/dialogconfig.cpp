@@ -1185,7 +1185,7 @@ QWidget *DialogConfig::setupLanguageTab()
     layout->addWidget(grp);
     layout->addStretch();
 
-    connect(comboLanguage, &QComboBox::currentIndexChanged, this, [this]() {
+    connect(comboLanguage, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
         labelRestartNote->setVisible(true);
     });
 
