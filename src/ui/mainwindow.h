@@ -5,6 +5,9 @@
 #include <QTranslator>
 #include <QNetworkReply>
 #include <QThread>
+#ifndef GC_WASM_BUILD
+#include <QWebEngineDownloadRequest>
+#endif
 
 #include "zoneobject.h"
 #include "planobject.h"
@@ -156,6 +159,10 @@ private slots:
     void onIntervalsIcuWorkoutDownloaded();
     void showPlanContextMenu(const QPoint &pos);
 
+#ifndef GC_WASM_BUILD
+    void onTrainerwebDownloadRequested(QWebEngineDownloadRequest *download);
+#endif
+
     // Screenshot mode — captures a sequence of PNG files then quits the app.
     void screenshotNextStep();
 
@@ -165,6 +172,8 @@ private:
 
     void savePathImport(const QString& filepath);
     QString loadPathImport() const;
+
+    void saveAndNavigateToWorkout(const Workout &workout, const QString &subFolder);
 
 
     void checkToEnableWindow();

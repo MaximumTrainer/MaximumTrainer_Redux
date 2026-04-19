@@ -46,6 +46,9 @@
 #include <QWebEnginePage>
 #include <QWebEngineScriptCollection>
 #include <QWebChannel>
+#ifndef GC_WASM_BUILD
+#include <QWebEngineDownloadRequest>
+#endif
 #include "myqwebenginepage.h"
 
 #include "extrequest.h"
@@ -124,6 +127,25 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     }
 
     ui->webView_studio->setUrl(QUrl(Environnement::getUrlStudio()));
+
+    // ── Trainerweb integration ────────────────────────────────────────────────
+    ui->webView_trainerweb_plans->setUrl(
+        QUrl(QStringLiteral("https://trainerdb-84bdb.firebaseapp.com/listplan")));
+    ui->webView_trainerweb_creator->setUrl(
+        QUrl(QStringLiteral("https://trainerdb-84bdb.firebaseapp.com/listworkoutcreator")));
+#ifndef GC_WASM_BUILD
+    {
+        // Intercept workout file downloads from both Trainerweb sub-views.
+        // Both views share the same default profile so we only connect once.
+        auto *plansProfile   = ui->webView_trainerweb_plans->page()->profile();
+        auto *creatorProfile = ui->webView_trainerweb_creator->page()->profile();
+        connect(plansProfile, &QWebEngineProfile::downloadRequested,
+                this, &MainWindow::onTrainerwebDownloadRequested);
+        if (creatorProfile != plansProfile)
+            connect(creatorProfile, &QWebEngineProfile::downloadRequested,
+                    this, &MainWindow::onTrainerwebDownloadRequested);
+    }
+#endif
 
     // Initialise the Intervals.icu tab with current credentials
     ui->tab_intervals_icu->refreshCredentials();
@@ -537,8 +559,108 @@ void MainWindow::goToWorkoutNameFilterFromIntervals(const QString &workoutName) 
 }
 
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Trainerweb integration (#121)
+// ─────────────────────────────────────────────────────────────────────────────
 
+#ifndef GC_WASM_BUILD
+void MainWindow::onTrainerwebDownloadRequested(QWebEngineDownloadRequest *download)
+{
+    const QUrl url        = download->url();
+    const QString host    = url.host();
+    const QString fileName = QFileInfo(download->downloadFileName()).fileName();
+    const QString suffix  = QFileInfo(fileName).suffix().toLower();
 
+    // Only intercept downloads from the Trainerweb Firebase domain.
+    // Let other pages' downloads proceed untouched.
+    if (!host.contains(QStringLiteral("trainerdb-84bdb"), Qt::CaseInsensitive)) {
+        download->accept();
+        return;
+    }
+
+    // Only handle recognised workout formats.
+    if (suffix != QLatin1String("zwo") &&
+        suffix != QLatin1String("erg") &&
+        suffix != QLatin1String("mrc")) {
+        download->accept();
+        return;
+    }
+
+    // Redirect the download to a temporary directory and accept it.
+    download->setDownloadDirectory(QDir::tempPath());
+    download->setDownloadFileName(fileName);
+    download->accept();
+
+    // Import the file once the download is complete.
+    connect(download, &QWebEngineDownloadRequest::isFinishedChanged, this,
+            [this, download, suffix]() {
+        if (!download->isFinished())
+            return;
+        if (download->state() != QWebEngineDownloadRequest::DownloadCompleted) {
+            ui->widget_bottomMenu->setGeneralMessage(
+                tr("Trainerweb download failed."), 4000);
+            return;
+        }
+        const QString filePath = download->downloadDirectory()
+                                 + QDir::separator()
+                                 + download->downloadFileName();
+        if (suffix == QLatin1String("zwo")) {
+            QFile f(filePath);
+            if (f.open(QIODevice::ReadOnly)) {
+                const QByteArray data = f.readAll();
+                f.close();
+                Workout w = ImporterWorkoutZwo::importFromByteArray(
+                    data, QFileInfo(filePath).baseName());
+                if (!w.getLstInterval().isEmpty()) {
+                    saveAndNavigateToWorkout(w, QStringLiteral("trainerweb"));
+                    return;
+                }
+            }
+        } else {
+            // .erg / .mrc — use the existing file-based importer.
+            Workout w = ImporterWorkout::importWorkoutFromFile(filePath, account->FTP);
+            if (!w.getLstInterval().isEmpty()) {
+                saveAndNavigateToWorkout(w, QStringLiteral("trainerweb"));
+                return;
+            }
+        }
+        ui->widget_bottomMenu->setGeneralMessage(
+            tr("Could not import Trainerweb workout: no intervals found."), 5000);
+    });
+}
+#endif // GC_WASM_BUILD
+
+void MainWindow::saveAndNavigateToWorkout(const Workout &workout, const QString &subFolder)
+{
+    QString safeName = workout.getName();
+    safeName.replace(QRegularExpression(QStringLiteral("[/\\\\:*?\"<>|]")),
+                     QStringLiteral("_"));
+    if (safeName.isEmpty())
+        safeName = subFolder + QStringLiteral("_workout");
+
+    const QString destDir = Util::getSystemPathWorkout() + QDir::separator() + subFolder;
+    QDir().mkpath(destDir);
+
+    // Find a unique filename so existing workouts are not overwritten.
+    QString uniqueName = safeName;
+    for (int n = 1;
+         QFile::exists(destDir + QDir::separator() + uniqueName + QStringLiteral(".workout"));
+         ++n)
+        uniqueName = safeName + QStringLiteral("_") + QString::number(n);
+
+    const QString destPath = destDir + QDir::separator() + uniqueName + QStringLiteral(".workout");
+    if (XmlUtil::createWorkoutXml(workout, destPath)) {
+        ui->tab_workout1->refreshUserWorkout();
+        ui->tabWidget_workout->setCurrentIndex(0);
+        ui->tab_workout1->setFilterWorkoutName(workout.getName());
+        ftb->setCurrentIndex(0);
+        ui->widget_bottomMenu->setGeneralMessage(
+            tr("Workout '%1' imported from Trainerweb.").arg(workout.getName()), 5000);
+    } else {
+        ui->widget_bottomMenu->setGeneralMessage(
+            tr("Could not save Trainerweb workout to disk."), 5000);
+    }
+}
 
 /////////////////////////////////////////////////////////////////////////////////
 void MainWindow::workoutExecuting() {
