@@ -200,7 +200,7 @@ void BtleHubWasm::parseCscMeasurement(const QByteArray &data)
 void BtleHubWasm::parsePowerMeasurement(const QByteArray &data)
 {
     if (data.size() < 4) return;
-    quint16 power;
+    qint16 power;
     std::memcpy(&power, data.constData() + 2, 2);
     emit signal_power(0, static_cast<int>(power));
 }

@@ -3,6 +3,7 @@
 
 #include "logger.h"
 #include <QLowEnergyDescriptor>
+#include <limits>
 
 // Standard BLE service and characteristic UUIDs (defined locally in the TU)
 // Qt6 moved the enum values into nested enums inside QBluetoothUuid.
@@ -460,8 +461,10 @@ void BtleHub::parseCscMeasurement(const QByteArray &data)
 
         if (deltaCrankTime > 0) {
             // cadence = revs * 60 * 1024 / deltaTime
-            int cadence = static_cast<int>((static_cast<quint32>(deltaCrankRevs) * 60UL * 1024UL)
-                                           / deltaCrankTime);
+            // Use quint64 to avoid overflow when deltaCrankRevs is large
+            const quint64 numerator = static_cast<quint64>(deltaCrankRevs) * 60ULL * 1024ULL;
+            const quint64 raw = numerator / static_cast<quint64>(deltaCrankTime);
+            const int cadence = static_cast<int>(qMin(raw, static_cast<quint64>(std::numeric_limits<int>::max())));
             emit signal_cadence(0, cadence);
         } else if (deltaCrankRevs == 0) {
             emit signal_cadence(0, 0);

@@ -14,9 +14,9 @@
 // Tag = production/akw/20.16.00-0-gce20b51
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include <cmath>
 #include <sstream>
+#include <limits>
 #include "fit_field_base.hpp"
 #include "fit_mesg.hpp"
 #include "fit_unicode.hpp"
@@ -153,10 +153,11 @@ FIT_UINT32 FieldBase::GetBitsValue(const FIT_UINT16 offset, const FIT_UINT8 bits
             if (numDataBitsUsed > (bits - numValueBits))
                 numDataBitsUsed = bits - numValueBits;
 
-            mask = (1 << numDataBitsUsed) - 1;
+            mask = (FIT_UINT8)((1u << numDataBitsUsed) - 1u);
             // OR the data from this byte into our final value, then update number of bits
             // in our final value
-            value |= (FIT_UINT32)(data & mask) << numValueBits;
+            if (numValueBits < 32u)
+                value |= (FIT_UINT32)(data & mask) << numValueBits;
             numValueBits += numDataBitsUsed;
         }
         index++;
@@ -175,7 +176,10 @@ FIT_SINT32 FieldBase::GetBitsSignedValue(const FIT_UINT16 offset, const FIT_UINT
     if (value == FIT_UINT32_INVALID)
         return FIT_SINT32_INVALID;
 
-    signedValue = (1 << (bits - 1));
+    if (bits == 0 || bits > 31)
+        return FIT_SINT32_INVALID;
+
+    signedValue = static_cast<FIT_SINT32>(1U << (bits - 1u));
 
     if ((value & signedValue) != 0) // sign bit set
         signedValue = -signedValue + (value & (signedValue - 1));
@@ -508,6 +512,9 @@ FIT_WSTRING FieldBase::GetSTRINGValue(const FIT_UINT8 fieldArrayIndex, const FIT
         if (numStrings == 0)
             return FIT_WSTRING_INVALID;
 
+        if (fieldArrayIndex >= numStrings)
+            return FIT_WSTRING_INVALID;
+
         FIT_UINT8 i = 0;
         // Get the start position of the string in the byte array
         FIT_UINT8 index = stringIndexes[fieldArrayIndex];
@@ -517,6 +524,8 @@ FIT_WSTRING FieldBase::GetSTRINGValue(const FIT_UINT8 fieldArrayIndex, const FIT
         // by its start position.
         if (fieldArrayIndex + 1 == numStrings)
         {
+            if (index > (FIT_UINT8)values.size())
+                return FIT_WSTRING_INVALID;
             length = (FIT_UINT8)(values.size() - index);
         }
         // Otherwise it is the distance between its start position and the start
@@ -526,7 +535,7 @@ FIT_WSTRING FieldBase::GetSTRINGValue(const FIT_UINT8 fieldArrayIndex, const FIT
             length = stringIndexes[fieldArrayIndex + 1] - index;
         }
 
-        while ((i < length) && (values[index + i] != 0))
+        while ((i < length) && (static_cast<FIT_UINT32>(index) + i < values.size()) && (values[index + i] != 0))
         {
             value += static_cast<Unicode::UTF8_STRING::value_type>(values[index + i]);
             i++;
@@ -589,14 +598,15 @@ FIT_FLOAT64 FieldBase::GetRawValue(const FIT_UINT8 fieldArrayIndex) const
 FIT_BOOL FieldBase::GetMemoryValue( const FIT_UINT8 fieldArrayIndex, FIT_UINT8* buffer, const FIT_UINT8 bufferSize ) const
 {
     FIT_UINT8 baseTypeSize = baseTypeSizes[GetType() & FIT_BASE_TYPE_NUM_MASK];
-    FIT_UINT8 offsetIndex = baseTypeSize * fieldArrayIndex;
+    // Use FIT_UINT32 to prevent 8-bit overflow when baseTypeSize * fieldArrayIndex > 255
+    FIT_UINT32 offsetIndex = static_cast<FIT_UINT32>(baseTypeSize) * fieldArrayIndex;
     if ( bufferSize < baseTypeSize )
     {
         // Buffer is not large enough
         return FIT_FALSE;
     }
 
-    if ( static_cast<FIT_UINT32>(offsetIndex + baseTypeSize) > values.size() )
+    if ( (offsetIndex + baseTypeSize) > values.size() )
     {
         // Values do not contain valid Data
         return FIT_FALSE;
