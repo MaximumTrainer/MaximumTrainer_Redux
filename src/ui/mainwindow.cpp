@@ -145,6 +145,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             connect(creatorProfile, &QWebEngineProfile::downloadRequested,
                     this, &MainWindow::onTrainerwebDownloadRequested);
     }
+#else
+    // In WASM, QWebEngineProfile::downloadRequested is not available, so
+    // workout imports from Trainerweb cannot be intercepted. Hide the tab.
+    ui->tabWidget->setTabVisible(1, false);
 #endif
 
     // Initialise the Intervals.icu tab with current credentials

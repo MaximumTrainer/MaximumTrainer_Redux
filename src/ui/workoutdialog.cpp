@@ -16,6 +16,8 @@
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QLabel>
+#include <QFileDialog>
+#include <QFileInfo>
 
 #include "interval.h"
 #include "workout.h"
@@ -3292,6 +3294,16 @@ void WorkoutDialog::checkFitFileCreated() {
         if (!m_quitAfterSave)
             showPostWorkoutPanel();
         emit fitFileReady(fitFilename, workout.getName(), workout.getDescription());
+#ifdef Q_OS_WASM
+        // The WASM virtual filesystem is not accessible to the user.
+        // Offer the completed FIT file via the browser's native Save dialog.
+        QFile fitFile(fitFilename);
+        if (fitFile.open(QIODevice::ReadOnly)) {
+            QFileDialog::saveFileContent(fitFile.readAll(),
+                                         QFileInfo(fitFilename).fileName());
+            fitFile.close();
+        }
+#endif
     }
 }
 

@@ -11,6 +11,8 @@
 #include "globalvars.h"
 #include "logger.h"
 #include "splashscreen.h"
+#include "account.h"
+#include "xmlutil.h"
 
 #ifdef GC_HAVE_VLCQT
 #include "myvlcplayer.h"
@@ -123,6 +125,27 @@ int main(int argc, char *argv[]) {
         }
     } else {
         splash.hide();
+    }
+#endif // Q_OS_WASM
+
+#ifdef Q_OS_WASM
+    // WASM has no persistent server login. Initialize the global Account with
+    // safe offline/guest defaults — identical to DialogLogin::loginOffline().
+    {
+        Account *wasmAccount = qApp->property("Account").value<Account*>();
+        if (wasmAccount) {
+            wasmAccount->isOffline            = true;
+            wasmAccount->id                   = 0;
+            wasmAccount->email                = QStringLiteral("local@offline");
+            wasmAccount->email_clean          = QStringLiteral("offline_user");
+            wasmAccount->display_name         = QObject::tr("Local User");
+            wasmAccount->first_name           = QObject::tr("Local");
+            wasmAccount->last_name            = QObject::tr("User");
+            wasmAccount->subscription_type_id = 1;
+            // Load any previously saved local preferences (folder paths, etc.).
+            // XmlUtil gracefully returns if the save file does not yet exist.
+            XmlUtil::parseLocalSaveFile(wasmAccount);
+        }
     }
 #endif // Q_OS_WASM
 

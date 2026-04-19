@@ -65,11 +65,11 @@ void FitActivityCreator::initialize_FIT_File(bool createDir, QString username, Q
 
 
 
-#ifdef Q_OS_MAC
-    file.open(fileName.toStdString(), std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-#endif
 #ifdef Q_OS_WIN32
     file.open(fileName.toStdWString(), std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+#else
+    // macOS, Linux, and WebAssembly all use a UTF-8 std::string path.
+    file.open(fileName.toStdString(), std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
 #endif
 
 
