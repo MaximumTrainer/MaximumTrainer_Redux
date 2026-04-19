@@ -43,6 +43,7 @@
 #include "selfloops_service.h"
 #include "intervalsicuservice.h"
 #include "extrequest.h"
+#include "intervalsummaryutil.h"
 
 
 
@@ -3830,6 +3831,20 @@ void WorkoutDialog::changeIntervalsDataWorkout(double timeStarted, double timeNo
 
     qDebug () << "changeIntervalsDataWorkout! - timeStarted" << timeStarted << "timeNow" << timeNow << "timePaused_msec" << timePaused_msec << "workoutOver" << workoutOver << "testInterval" << testInterval;
 
+    // Capture interval summary stats BEFORE changeInterval() resets them.
+    double summaryAvgPower = 0.0, summaryAvgHr = 0.0, summaryAvgCad = 0.0;
+    double intervalDuration = timeNow - timeStarted;
+    double targetPowerFraction = currentIntervalObj.getFTP_start();
+    bool showSummary = !account->enable_studio_mode
+                       && !workoutOver
+                       && account->interval_summary_enabled
+                       && intervalDuration >= 10.0;
+    if (showSummary) {
+        summaryAvgPower = arrDataWorkout[0]->getAvgIntervalPower();
+        summaryAvgHr    = arrDataWorkout[0]->getAvgIntervalHr();
+        summaryAvgCad   = arrDataWorkout[0]->getAvgIntervalCad();
+    }
+
     if (account->enable_studio_mode) {
         for (int i=0; i<account->nb_user_studio; i++) {
             //            qDebug() << "change interval for this user" << i;
@@ -3840,6 +3855,10 @@ void WorkoutDialog::changeIntervalsDataWorkout(double timeStarted, double timeNo
         qDebug() << "OK change interval, timePaused_msec: " << timePaused_msec;
         arrDataWorkout[0]->changeInterval(timeStarted, timeNow, timePaused_msec, workoutOver, testInterval);
     }
+
+    if (showSummary)
+        showIntervalSummaryOverlay(summaryAvgPower, summaryAvgHr, summaryAvgCad,
+                                   static_cast<int>(intervalDuration), targetPowerFraction);
 
     lastIntervalEndTime_msec = timeElapsed_sec;
     lastIntervalTotalTimePausedWorkout_msec = totalTimePausedWorkout_msec;
@@ -3858,6 +3877,51 @@ void WorkoutDialog::initDataWorkout() {
     else {
         arrDataWorkout[0] = new DataWorkout(this->workout, account->FTP, this);
     }
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+void WorkoutDialog::showIntervalSummaryOverlay(double avgPower, double avgHr, double avgCad,
+                                               int durationSec, double targetPowerFraction)
+{
+    const double targetWatts = targetPowerFraction * account->FTP;
+    const auto adherence = IntervalSummaryUtil::classifyPowerAdherence(avgPower, targetWatts);
+
+    QString colorHex;
+    switch (adherence) {
+    case IntervalSummaryUtil::PowerAdherence::Met:      colorHex = "#4CAF50"; break; // green
+    case IntervalSummaryUtil::PowerAdherence::NearMiss: colorHex = "#FF9800"; break; // amber
+    default:                                            colorHex = "#F44336"; break; // red
+    }
+
+    const int mins = durationSec / 60;
+    const int secs = durationSec % 60;
+    const QString duration = (mins > 0)
+        ? QString("%1:%2").arg(mins).arg(secs, 2, 10, QChar('0'))
+        : QString("%1s").arg(secs);
+
+    const int powerPct = (account->FTP > 0)
+        ? qRound(avgPower * 100.0 / account->FTP)
+        : 0;
+
+    // Build HTML summary shown in the existing interval-message overlay
+    QString html = QString(
+        "<div style='text-align:center; line-height:1.5;'>"
+        "<b>%1</b><br>"
+        "<span style='color:%2;font-size:1.2em;'>&#9679; %3 W (%4%% FTP)</span><br>"
+        "<span>HR: %5 bpm &nbsp;&nbsp; Cad: %6 rpm</span><br>"
+        "<span style='color:#aaa;font-size:0.85em;'>%7</span>"
+        "</div>")
+        .arg(tr("Interval Complete"))
+        .arg(colorHex)
+        .arg(qRound(avgPower))
+        .arg(powerPct)
+        .arg(qRound(avgHr))
+        .arg(qRound(avgCad))
+        .arg(duration);
+
+    ui->widget_workoutPlot->setDisplayIntervalMessage(
+        true, html, account->interval_summary_duration_s);
 }
 
 

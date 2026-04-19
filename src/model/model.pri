@@ -37,6 +37,7 @@ HEADERS += src/model/interval.h\
     src/model/zoneobject.h \
     src/model/powercurve.h \
     src/model/planobject.h \
+    src/model/intervalsummaryutil.h \
     $$PWD/radiotablemodel.h \
     $$PWD/radio.h \
     $$PWD/trackpoint.h \
