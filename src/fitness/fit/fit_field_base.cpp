@@ -176,7 +176,7 @@ FIT_SINT32 FieldBase::GetBitsSignedValue(const FIT_UINT16 offset, const FIT_UINT
     if (value == FIT_UINT32_INVALID)
         return FIT_SINT32_INVALID;
 
-    if (bits == 0 || bits > 31)
+    if (bits == 0 || bits >= 32)
         return FIT_SINT32_INVALID;
 
     signedValue = static_cast<FIT_SINT32>(1U << (bits - 1u));
@@ -524,7 +524,7 @@ FIT_WSTRING FieldBase::GetSTRINGValue(const FIT_UINT8 fieldArrayIndex, const FIT
         // by its start position.
         if (fieldArrayIndex + 1 == numStrings)
         {
-            if (index > (FIT_UINT8)values.size())
+            if (static_cast<size_t>(index) >= values.size())
                 return FIT_WSTRING_INVALID;
             length = (FIT_UINT8)(values.size() - index);
         }
