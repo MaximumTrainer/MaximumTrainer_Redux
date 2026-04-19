@@ -44,6 +44,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
     settings.beginGroup("account");
     nb_sec_show_interval = settings.value("nb_sec_show_interval", 5 ).toInt();
     nb_sec_show_interval_before = settings.value("nb_sec_show_interval_before", 4 ).toInt();
+    erg_smoothing_duration_s = settings.value("erg_smoothing_duration_s", 5).toInt();
     intervals_icu_api_key     = settings.value("intervals_icu_api_key", "").toString();
     intervals_icu_athlete_id  = settings.value("intervals_icu_athlete_id", "").toString();
     intervals_icu_auto_upload = settings.value("intervals_icu_auto_upload", false).toBool();
@@ -81,6 +82,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
     control_trainer_resistance = true;
     stop_pairing_on_found = true;
     nb_sec_pairing = 2;
+    erg_smoothing_duration_s = 5;
     /* ----- */
 
     last_index_selected_config_workout = 0;
@@ -191,6 +193,16 @@ void Account::saveNbSecShowIntervalBefore(int nbSec) {
     settings.beginGroup("account");
     settings.setValue("nb_sec_show_interval_before", nb_sec_show_interval_before);
 
+    settings.endGroup();
+}
+
+void Account::saveErgSmoothingDuration(int seconds)
+{
+    erg_smoothing_duration_s = qBound(0, seconds, 30);
+
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("erg_smoothing_duration_s", erg_smoothing_duration_s);
     settings.endGroup();
 }
 

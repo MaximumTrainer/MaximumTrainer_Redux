@@ -508,6 +508,19 @@ private:
 
     WorkoutPlot *mainPlot;
     friend class DialogConfig;
+
+    // ERG mode resistance smoothing
+    QTimer    *m_ergSmoothTimer   = nullptr;
+    double     m_ergSmoothFrom    = 0.0;    ///< Starting watts when ramp began
+    double     m_ergSmoothTo      = 0.0;    ///< Target watts for the ramp
+    double     m_ergSmoothLast    = 0.0;    ///< Most-recently emitted watts (for mid-ramp retargeting)
+    int        m_ergSmoothStep    = 0;      ///< Steps elapsed so far
+    int        m_ergSmoothSteps   = 0;      ///< Total steps in current ramp
+    int        m_ergSmoothAntID   = -1;     ///< ANT ID to target
+
+    void startErgSmoothing(double fromWatts, double toWatts);
+    void stopErgSmoothing();
+    void ergSmoothStep();
 };
 
 #endif // WORKOUTDIALOG_H
