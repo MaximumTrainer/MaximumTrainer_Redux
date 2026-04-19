@@ -78,7 +78,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
     distance_in_km = true;
     strava_private_upload = false;
     training_peaks_public_upload = false;
-    intervals_icu_auto_upload = false;
+    // intervals_icu_auto_upload is loaded from QSettings above; don't reset it here
     control_trainer_resistance = true;
     stop_pairing_on_found = true;
     nb_sec_pairing = 2;

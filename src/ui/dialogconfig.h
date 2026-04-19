@@ -215,6 +215,7 @@ private:
     QCheckBox    *checkControlResistance = nullptr;
     QComboBox    *comboTrainerModel      = nullptr;
     QSpinBox     *spinErgSmoothing       = nullptr;
+    QCheckBox    *checkIntervalsIcuAutoUpload = nullptr;
 };
 
 #endif // DIALOGCONFIG_H

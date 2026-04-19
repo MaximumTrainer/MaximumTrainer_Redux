@@ -210,6 +210,8 @@ private slots:
     void uploadToStrava();
     void uploadToTrainingPeaks();
     void uploadToSelfLoops();
+    void uploadToIntervalsIcu();
+    void slotPostIntervalsIcuUploadDone();
     void slotPostStravaUploadDone();
     void slotPostStravaCheckStatus();
     void slotPostStravaStatusDone();
@@ -340,6 +342,7 @@ private:
     QNetworkReply *replyPostTPRefresh      = nullptr;
     QNetworkReply *replyPostTPUpload       = nullptr;
     QNetworkReply *replyPostSelfloopsUpload = nullptr;
+    QNetworkReply *replyPostIntervalsIcuUpload = nullptr;
 
 
 
