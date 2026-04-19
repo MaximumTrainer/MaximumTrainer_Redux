@@ -1,5 +1,5 @@
 // @ts-check
-const { test, expect, request } = require('@playwright/test');
+const { test, expect } = require('@playwright/test');
 
 const SITE_URL  = 'https://maximumtrainer.github.io/MaximumTrainer_Redux/';
 const BASE_PATH = 'https://maximumtrainer.github.io/MaximumTrainer_Redux';
@@ -40,7 +40,8 @@ test.describe('Landing page content', () => {
 
     // The CTA button that links to the WASM app must be present and have the
     // correct href so post-deployment the browser app is discoverable.
-    const tryInBrowserLink = page.locator('a[href="app/"]');
+    const hero = page.locator('#hero');
+    const tryInBrowserLink = hero.locator('a[href="app/"]');
     await expect(tryInBrowserLink,
       '"Try in Browser" link (href="app/") should exist in the hero section')
       .toHaveCount(1);
@@ -83,7 +84,7 @@ test.describe('Landing page content', () => {
     page.on('pageerror', err => criticalErrors.push(err.message));
 
     await page.goto(SITE_URL, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
 
     expect(
       criticalErrors,
