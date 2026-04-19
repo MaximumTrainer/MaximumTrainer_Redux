@@ -30,6 +30,11 @@ public:
     void start();
     void stop();
 
+    /// Set the userID emitted in every signal (default: 0).
+    /// In Studio Mode each rider's hub must use a distinct ID so that
+    /// WorkoutDialog can route signals to the correct per-rider widget.
+    void setUserID(int id) { m_userID = id; }
+
 signals:
     // Same signatures as BtleHub / Hub so MainWindow can wire them identically
     void signal_hr(int userID, int hr);
@@ -65,6 +70,8 @@ private:
     int m_powerDir   = 1;
     int m_smo2Dir    = 1;
     int m_thbDir     = 1;
+
+    int m_userID     = 0;    ///< userID used in all emitted signals
 };
 
 #endif // SIMULATOR_HUB_H
