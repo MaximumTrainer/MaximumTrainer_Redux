@@ -63,11 +63,6 @@ signals :
     void ftpAndTabProfileChanged();
 
 
-
-
-
-    void addWorkoutToQueue(const Workout &workout);
-
 public slots:
 
     void executeWorkout(Workout workout);
@@ -137,6 +132,7 @@ private slots:
     void on_actionOpen_Course_Folder_triggered();
     void on_actionHistory_triggered();
     void on_actionToggleQueue_triggered();
+    void addWorkoutToQueue(const Workout &workout);
 
 
     void on_actionCreate_New_triggered();
