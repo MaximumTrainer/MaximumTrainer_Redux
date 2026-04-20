@@ -25,15 +25,19 @@ public slots:
 protected:
     void showEvent(QShowEvent *event) override;
 
+private slots:
+    void openCriticalPowerDialog();
+
 private:
     void setupUi();
 
-    QTableView           *m_tableView    = nullptr;
-    WorkoutHistoryModel  *m_model        = nullptr;
-    QSortFilterProxyModel*m_proxy        = nullptr;
-    QLabel               *m_statusLabel  = nullptr;
-    QPushButton          *m_refreshBtn   = nullptr;
-    bool                  m_loaded       = false;
+    QTableView           *m_tableView       = nullptr;
+    WorkoutHistoryModel  *m_model           = nullptr;
+    QSortFilterProxyModel*m_proxy           = nullptr;
+    QLabel               *m_statusLabel     = nullptr;
+    QPushButton          *m_refreshBtn      = nullptr;
+    QPushButton          *m_cpBtn           = nullptr;
+    bool                  m_loaded          = false;
 };
 
 #endif // HISTORYWIDGET_H

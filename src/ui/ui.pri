@@ -21,6 +21,7 @@ $$PWD/workoutdialog.cpp \
     $$PWD/workouthistorymodel.cpp \
     $$PWD/historywidget.cpp \
     $$PWD/dialogkeyboardshortcuts.cpp \
+    $$PWD/criticalpowerdialog.cpp \
     #$$PWD/main_coursepage.cpp
 
 HEADERS += $$PWD/mainwindow.h\
@@ -39,6 +40,7 @@ $$PWD/workoutdialog.h \
     $$PWD/workouthistorymodel.h \
     $$PWD/historywidget.h \
     $$PWD/dialogkeyboardshortcuts.h \
+    $$PWD/criticalpowerdialog.h \
     $$PWD/apptheme.h \
     #$$PWD/main_coursepage.h
 
