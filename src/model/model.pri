@@ -22,7 +22,6 @@ SOURCES += src/model/interval.cpp\
     $$PWD/coursetablemodel.cpp \
     $$PWD/sortfilterproxymodelcourse.cpp \
     $$PWD/userstudio.cpp \
-    $$PWD/workoutqueue.cpp \
     $$PWD/planadherencestore.cpp
 
 HEADERS += src/model/interval.h\
@@ -48,7 +47,6 @@ HEADERS += src/model/interval.h\
     $$PWD/sortfilterproxymodelcourse.h \
     $$PWD/userstudio.h \
     $$PWD/workouthistorysummary.h \
-    $$PWD/workoutqueue.h \
     $$PWD/planadherence.h \
     $$PWD/planadherencestore.h
 
