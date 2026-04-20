@@ -209,8 +209,8 @@ void PlanAdherenceWidget::markSkipped()
     bool ok = false;
     const QString note = QInputDialog::getText(
         this, tr("Mark as Skipped"),
-        tr("Optional note for skipping "%1" on %2:")
-            .arg(e.workoutName, e.date.toString(Qt::DefaultLocaleShortDate)),
+        tr("Optional note for skipping \"%1\" on %2:")
+            .arg(e.workoutName, e.date.toString("d MMM yyyy")),
         QLineEdit::Normal, QString(), &ok);
 
     if (ok)
@@ -227,8 +227,8 @@ void PlanAdherenceWidget::markSubstituted()
     bool ok = false;
     const QString note = QInputDialog::getText(
         this, tr("Mark as Substituted"),
-        tr("What did you do instead of "%1" on %2?")
-            .arg(e.workoutName, e.date.toString(Qt::DefaultLocaleShortDate)),
+        tr("What did you do instead of \"%1\" on %2?")
+            .arg(e.workoutName, e.date.toString("d MMM yyyy")),
         QLineEdit::Normal, QString(), &ok);
 
     if (ok)
