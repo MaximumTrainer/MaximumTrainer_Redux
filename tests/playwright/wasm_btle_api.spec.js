@@ -89,7 +89,7 @@ async function waitForCanvas(page) {
       const canvas = document.querySelector('#qt-canvas-wrapper');
       return canvas && canvas.style.visibility !== 'hidden';
     },
-    { timeout: 30000 }
+    { timeout: 45000 }
   );
   // Trigger BLE scan via the test helper registered by BtleHubWasm::ctor.
   // In a real browser this would require a user gesture; the mock injected by
@@ -111,13 +111,18 @@ async function waitForCanvas(page) {
         Array.isArray(calls.writeValueWithResponse) &&
         calls.writeValueWithResponse.length > 0;
     },
-    { timeout: 15000 }
+    { timeout: 45000 }
   );
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 test.describe('WASM BLE API — Web Bluetooth call verification', () => {
+
+  // These tests load the deployed WASM app and trigger a full BLE scan + GATT
+  // setup flow.  The WASM binary can take 30–50 s to load and initialise on
+  // CI runners, so give each test 120 s (2×default) instead of the global 60 s.
+  test.describe.configure({ timeout: 120_000 });
 
   // ── requestDevice service filters ──────────────────────────────────────────
   test('requestDevice is called with correct service filter UUIDs', async ({ page }) => {
@@ -130,6 +135,11 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     await waitForCanvas(page);
 
     const recorded = await page.evaluate(() => window._btleApiCalls);
+
+    // Diagnostic: log the full BLE call record when requestDevice was not triggered
+    if (!recorded.requestDeviceFilters) {
+      console.error('BLE scan was not initiated. window._btleApiCalls:', JSON.stringify(recorded));
+    }
 
     // requestDevice must have been called by js_scanAndConnect
     expect(recorded.requestDeviceFilters,
