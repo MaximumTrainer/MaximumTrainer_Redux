@@ -115,7 +115,6 @@ public:
     /// Battery warning threshold (issue #156): warn when a sensor's battery
     /// drops at or below this percentage (default 20, range 5–50).
     int battery_warning_threshold;
-    void saveBatteryWarningThreshold();
 
     /* ----- */
 
