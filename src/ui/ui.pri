@@ -19,6 +19,8 @@ $$PWD/workoutdialog.cpp \
     $$PWD/dialog_connection_method.cpp \
     $$PWD/tab_intervals_icu.cpp \
     $$PWD/dialogkeyboardshortcuts.cpp \
+    $$PWD/workoutcountdowndialog.cpp \
+    $$PWD/queuepanelwidget.cpp \
     #$$PWD/main_coursepage.cpp
 
 HEADERS += $$PWD/mainwindow.h\
@@ -35,6 +37,8 @@ $$PWD/workoutdialog.h \
     $$PWD/dialog_connection_method.h \
     $$PWD/tab_intervals_icu.h \
     $$PWD/dialogkeyboardshortcuts.h \
+    $$PWD/workoutcountdowndialog.h \
+    $$PWD/queuepanelwidget.h \
     #$$PWD/main_coursepage.h
 
 FORMS    += $$PWD/mainwindow.ui \

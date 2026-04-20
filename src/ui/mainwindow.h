@@ -5,6 +5,7 @@
 #include <QTranslator>
 #include <QNetworkReply>
 #include <QThread>
+#include <QDockWidget>
 #ifndef GC_WASM_BUILD
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QtWebEngineCore/QWebEngineDownloadRequest>
@@ -30,6 +31,11 @@
 #include "btle_hub.h"
 #endif
 
+
+#include "workoutqueue.h"
+#include "queuepanelwidget.h"
+
+class WorkoutCountdownDialog; // forward
 
 namespace Ui {
 class MainWindow;
@@ -58,6 +64,8 @@ signals :
 
 
 
+
+    void addWorkoutToQueue(const Workout &workout);
 
 public slots:
 
@@ -127,6 +135,7 @@ private slots:
     void on_actionWorkout_triggered();
     void on_actionOpen_Course_Folder_triggered();
     void on_actionHistory_triggered();
+    void on_actionToggleQueue_triggered();
 
 
     void on_actionCreate_New_triggered();
@@ -254,6 +263,10 @@ private:
     WorkoutDialog *m_ssWorkoutDlg = nullptr;
     SimulatorHub  *m_ssSimHub     = nullptr;
 
+    // Workout queue (#152)
+    WorkoutQueue     *m_workoutQueue   = nullptr;
+    QueuePanelWidget *m_queuePanel     = nullptr;
+    QDockWidget      *m_queueDock      = nullptr;
 };
 
 #endif // MAINWINDOW_H
