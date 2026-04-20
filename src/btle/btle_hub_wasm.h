@@ -77,6 +77,10 @@ private:
     void parseMoxyMeasurement(const QByteArray &data);
     void parseBatteryLevel(const QByteArray &data);
 
+    // Infer a human-readable sensor type from the measurement UUIDs seen so
+    // far, mirroring BtleHub::determineSensorType() which checks service ptrs.
+    QString determineSensorType() const;
+
     bool   m_connected         = false;
     bool   m_userDisconnect    = false; // true when disconnectFromDevice() was called intentionally
     int    m_wheelCircMm       = 2100;
@@ -86,6 +90,13 @@ private:
     quint16 m_lastCrankRevs    = 0;
     quint16 m_lastCrankTime    = 0;
     bool    m_firstCsc         = true;
+
+    // Track which measurement types have been seen for determineSensorType()
+    bool    m_seenHr           = false;
+    bool    m_seenPower        = false;
+    bool    m_seenFtms         = false;
+    bool    m_seenCsc          = false;
+    bool    m_seenMoxy         = false;
 };
 
 // Alias so headers that #include "btle_hub.h" can use BtleHub type on Wasm
