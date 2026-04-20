@@ -13,8 +13,6 @@
 #include "qwt_plot_curve.h"
 #include "qwt_plot_marker.h"
 #include "qwt_plot_grid.h"
-#include "qwt_plot_legend_item.h"
-#include "qwt_legend.h"
 #include "qwt_scale_draw.h"
 #include "qwt_text.h"
 
@@ -55,9 +53,6 @@ void PmcDialog::setupUi(const QList<PmcPoint> &points)
     grid->setMajorPen(QPen(Qt::gray, 0, Qt::DashLine));
     grid->attach(m_plot);
 
-    auto *legend = new QwtLegend();
-    m_plot->insertLegend(legend, QwtPlot::BottomLegend);
-
     buildCurves(points);
 
     // ── info labels ───────────────────────────────────────────────────────────
@@ -74,6 +69,13 @@ void PmcDialog::setupUi(const QList<PmcPoint> &points)
 
     buildInfoLabels(points);
 
+    // ── simple color legend ───────────────────────────────────────────────────
+    auto *legendLabel = new QLabel(
+        QStringLiteral("<font color='#4a90d9'>&#9644; CTL (Fitness)</font>&nbsp;&nbsp;"
+                       "<font color='#e05050'>&#9644; ATL (Fatigue)</font>&nbsp;&nbsp;"
+                       "<font color='#2ea055'>&#9146; TSB (Form)</font>"), this);
+    legendLabel->setAlignment(Qt::AlignCenter);
+
     // ── close button ──────────────────────────────────────────────────────────
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::accept);
@@ -81,6 +83,7 @@ void PmcDialog::setupUi(const QList<PmcPoint> &points)
     // ── layout ────────────────────────────────────────────────────────────────
     auto *mainLayout = new QVBoxLayout(this);
     mainLayout->addWidget(m_plot, 1);
+    mainLayout->addWidget(legendLabel);
     mainLayout->addWidget(infoBox);
     mainLayout->addWidget(buttons);
 }
