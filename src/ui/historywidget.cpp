@@ -2,6 +2,8 @@
 #include "workouthistorymodel.h"
 #include "fitactivityreader.h"
 #include "criticalpowerdialog.h"
+#include "pmccalculator.h"
+#include "pmcdialog.h"
 #include "util.h"
 
 #include <QTableView>
@@ -48,11 +50,16 @@ void HistoryWidget::setupUi()
     m_cpBtn = new QPushButton(tr("Critical Power Curve"), this);
     connect(m_cpBtn, &QPushButton::clicked, this, &HistoryWidget::openCriticalPowerDialog);
 
+    m_pmcBtn = new QPushButton(tr("Performance Chart"), this);
+    m_pmcBtn->setMaximumWidth(160);
+    connect(m_pmcBtn, &QPushButton::clicked, this, &HistoryWidget::openPmcDialog);
+
     m_statusLabel = new QLabel(this);
 
     auto *toolBar = new QHBoxLayout();
     toolBar->addWidget(m_refreshBtn);
     toolBar->addWidget(m_cpBtn);
+    toolBar->addWidget(m_pmcBtn);
     toolBar->addWidget(m_statusLabel);
     toolBar->addStretch();
 
@@ -110,4 +117,15 @@ void HistoryWidget::openCriticalPowerDialog()
     const QList<WorkoutHistorySummary> &history = m_model->history();
     CriticalPowerDialog dlg(history, this);
     dlg.exec();
+}
+
+void HistoryWidget::openPmcDialog()
+{
+    if (!m_loaded)
+        loadHistory();
+
+    const QList<PmcPoint> points = PmcCalculator::compute(m_model->history());
+    auto *dlg = new PmcDialog(points, this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->exec();
 }

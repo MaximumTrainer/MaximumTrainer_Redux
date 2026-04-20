@@ -3,5 +3,7 @@ INCLUDEPATH += $$PWD
 include($$PWD/fit/fit.pri)
 include($$PWD/achievements/achievements.pri)
 
-SOURCES += $$PWD/mmpcalculator.cpp
-HEADERS += $$PWD/mmpcalculator.h
+SOURCES += $$PWD/mmpcalculator.cpp \
+           $$PWD/pmccalculator.cpp
+HEADERS += $$PWD/mmpcalculator.h \
+           $$PWD/pmccalculator.h

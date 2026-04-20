@@ -27,6 +27,7 @@ protected:
 
 private slots:
     void openCriticalPowerDialog();
+    void openPmcDialog();
 
 private:
     void setupUi();
@@ -37,6 +38,7 @@ private:
     QLabel               *m_statusLabel     = nullptr;
     QPushButton          *m_refreshBtn      = nullptr;
     QPushButton          *m_cpBtn           = nullptr;
+    QPushButton          *m_pmcBtn          = nullptr;
     bool                  m_loaded          = false;
 };
 
