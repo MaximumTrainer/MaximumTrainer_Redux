@@ -28,6 +28,7 @@ public:
     explicit WorkoutHistoryModel(QObject *parent = nullptr);
 
     void setHistory(const QList<WorkoutHistorySummary> &history);
+    const QList<WorkoutHistorySummary> &history() const { return m_history; }
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;

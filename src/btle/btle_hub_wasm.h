@@ -52,6 +52,9 @@ signals:
     // ── Battery level (same signature as BtleHub) ─────────────────────────
     void signal_battery(QString sensorType, int percentage);
 
+    // ── Battery level (same signature as BtleHub) ─────────────────────────
+    void signal_battery(QString sensorType, int percentage);
+
     // ── Connection status ─────────────────────────────────────────────────
     void deviceConnected();
     void deviceDisconnected();

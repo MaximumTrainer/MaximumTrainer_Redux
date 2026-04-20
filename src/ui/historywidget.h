@@ -25,6 +25,9 @@ public slots:
 protected:
     void showEvent(QShowEvent *event) override;
 
+private slots:
+    void openPmcDialog();
+
 private:
     void setupUi();
 
@@ -33,6 +36,7 @@ private:
     QSortFilterProxyModel*m_proxy        = nullptr;
     QLabel               *m_statusLabel  = nullptr;
     QPushButton          *m_refreshBtn   = nullptr;
+    QPushButton          *m_pmcBtn       = nullptr;
     bool                  m_loaded       = false;
 };
 
