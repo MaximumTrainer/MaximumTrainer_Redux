@@ -5,6 +5,7 @@
 #include <QTranslator>
 #include <QNetworkReply>
 #include <QThread>
+#include <QDockWidget>
 #ifndef GC_WASM_BUILD
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QtWebEngineCore/QWebEngineDownloadRequest>
@@ -33,6 +34,11 @@
 #endif
 
 
+#include "workoutqueue.h"
+#include "queuepanelwidget.h"
+
+class WorkoutCountdownDialog; // forward
+
 namespace Ui {
 class MainWindow;
 }
@@ -56,9 +62,6 @@ public:
 signals :
     void isExpanded(bool isExpanded);
     void ftpAndTabProfileChanged();
-
-
-
 
 
 public slots:
@@ -129,6 +132,8 @@ private slots:
     void on_actionWorkout_triggered();
     void on_actionOpen_Course_Folder_triggered();
     void on_actionHistory_triggered();
+    void on_actionToggleQueue_triggered();
+    void addWorkoutToQueue(const Workout &workout);
 
 
     void on_actionCreate_New_triggered();
@@ -261,6 +266,10 @@ private:
     // Plan Adherence (#157)
     PlanAdherenceStore *m_adherenceStore = nullptr;
 
+    // Workout queue (#152)
+    WorkoutQueue     *m_workoutQueue   = nullptr;
+    QueuePanelWidget *m_queuePanel     = nullptr;
+    QDockWidget      *m_queueDock      = nullptr;
 };
 
 #endif // MAINWINDOW_H
