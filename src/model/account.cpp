@@ -251,7 +251,6 @@ void Account::saveSelfloopsCredentials()
     CredentialStore::store("selfloops", "password", selfloops_pw);
 }
 
-<<<<<<< HEAD
 void Account::saveSensorDropoutSettings()
 {
     QSettings settings;
@@ -266,14 +265,15 @@ void Account::saveBatteryWarningThreshold()
     QSettings settings;
     settings.beginGroup("account");
     settings.setValue("battery_warning_threshold", battery_warning_threshold);
-=======
+    settings.endGroup();
+}
+
 void Account::saveIntervalSummarySettings()
 {
     QSettings settings;
     settings.beginGroup("account");
     settings.setValue("interval_summary_enabled",    interval_summary_enabled);
     settings.setValue("interval_summary_duration_s", interval_summary_duration_s);
->>>>>>> feat/issue-154-interval-overlay
     settings.endGroup();
 }
 
