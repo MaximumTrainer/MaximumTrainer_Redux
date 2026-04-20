@@ -42,6 +42,7 @@ signals :
     void editWorkout(Workout);
 
     void executeWorkout(Workout);
+    void addWorkoutToQueue(const Workout &workout);
 
 
 
@@ -78,6 +79,7 @@ private slots:
     void setAsDone();
     void openFolderWorkout();
     void exportToPdf();
+    void addToQueue();
     void addWorkout(const Workout&);
     void overwriteWorkout(const Workout&);
 
@@ -114,6 +116,7 @@ private:
     QAction *actionSetAsDone;
     QAction *actionOpenFolder;
     QAction *actionExportPDF;
+    QAction *actionAddToQueue;
     QModelIndex indexSourceSelected;
 };
 
