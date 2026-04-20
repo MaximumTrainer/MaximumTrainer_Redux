@@ -22,6 +22,7 @@ public:
     void saveErgSmoothingDuration(int seconds);
     void saveIntervalsIcuCredentials();
     void saveSensorDropoutSettings();
+    void saveBatteryWarningThreshold();
     void saveIntervalSummarySettings();
 
     /// Encrypt and persist Strava OAuth2 tokens to QSettings.
@@ -113,7 +114,6 @@ public:
     /// Battery warning threshold (issue #156): warn when a sensor's battery
     /// drops at or below this percentage (default 20, range 5–50).
     int battery_warning_threshold;
-    void saveBatteryWarningThreshold();
 
     /* ----- */
 
