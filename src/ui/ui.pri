@@ -18,6 +18,8 @@ $$PWD/workoutdialog.cpp \
     $$PWD/dialoginfowebview.cpp \
     $$PWD/dialog_connection_method.cpp \
     $$PWD/tab_intervals_icu.cpp \
+    $$PWD/workouthistorymodel.cpp \
+    $$PWD/historywidget.cpp \
     $$PWD/dialogkeyboardshortcuts.cpp \
     #$$PWD/main_coursepage.cpp
 
@@ -34,6 +36,8 @@ $$PWD/workoutdialog.h \
     $$PWD/dialoginfowebview.h \
     $$PWD/dialog_connection_method.h \
     $$PWD/tab_intervals_icu.h \
+    $$PWD/workouthistorymodel.h \
+    $$PWD/historywidget.h \
     $$PWD/dialogkeyboardshortcuts.h \
     $$PWD/apptheme.h \
     #$$PWD/main_coursepage.h

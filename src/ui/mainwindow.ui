@@ -468,6 +468,25 @@
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="stackedWidget_menuPageHistory">
+       <layout class="QVBoxLayout" name="verticalLayout_history">
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="HistoryWidget" name="historyWidget" native="true"/>
+        </item>
+       </layout>
+      </widget>
      </widget>
     </item>
    </layout>
@@ -644,6 +663,12 @@
    <class>WorkoutCreator</class>
    <extends>QWidget</extends>
    <header>workoutcreator.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>HistoryWidget</class>
+   <extends>QWidget</extends>
+   <header>historywidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
