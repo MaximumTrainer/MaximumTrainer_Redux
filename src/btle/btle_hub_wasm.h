@@ -44,6 +44,10 @@ signals:
     void signal_speed(int userID, double speed);   // km/h
     void signal_power(int userID, int power);      // watts
     void signal_oxygen(int userID, double smo2Percent, double thbGdL);
+    /// Emitted when the connected device's Battery Service reports a level.
+    /// \param sensorType  Human-readable sensor name ("Heart Rate", "Power", …)
+    /// \param percentage  Battery level 0–100 (%)
+    void signal_battery(QString sensorType, int percentage);
 
     // ── Connection status ─────────────────────────────────────────────────
     void deviceConnected();
@@ -71,6 +75,7 @@ private:
     void parsePowerMeasurement(const QByteArray &data);
     void parseFtmsIndoorBikeData(const QByteArray &data);
     void parseMoxyMeasurement(const QByteArray &data);
+    void parseBatteryLevel(const QByteArray &data);
 
     bool   m_connected         = false;
     bool   m_userDisconnect    = false; // true when disconnectFromDevice() was called intentionally

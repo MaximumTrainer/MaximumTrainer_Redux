@@ -123,6 +123,7 @@ void BtleHubWasm::onBleNotification(quint16 uuid16, const QByteArray &data)
     case 0x2A5B: parseCscMeasurement(data);      break; // CSC Measurement
     case 0x2AD2: parseFtmsIndoorBikeData(data);  break; // Indoor Bike Data
     case 0xAAB2: parseMoxyMeasurement(data);     break; // Moxy Muscle Oxygen
+    case 0x2A19: parseBatteryLevel(data);         break; // Battery Level
     default:
         qDebug() << "[BtleHubWasm] Unknown characteristic UUID:" << Qt::hex << uuid16;
         break;
@@ -268,4 +269,17 @@ void BtleHubWasm::parseMoxyMeasurement(const QByteArray &data)
     double thb  = (flags & 0x02) ? rawThb  / 100.0 : 0.0;
 
     emit signal_oxygen(0, smo2, thb);
+}
+
+// Battery Level (0x2A19)
+// Byte 0: Battery percentage 0–100
+void BtleHubWasm::parseBatteryLevel(const QByteArray &data)
+{
+    if (data.isEmpty())
+        return;
+
+    int percentage = static_cast<quint8>(data[0]);
+    percentage = qBound(0, percentage, 100);
+
+    emit signal_battery(QStringLiteral("Sensor"), percentage);
 }
