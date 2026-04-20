@@ -11,6 +11,8 @@
 #include <QFileDialog>
 #include <QTimer>
 #include <QDir>
+#include <QGuiApplication>
+#include <QStyleHints>
 
 #include "util.h"
 #include "logger.h"
@@ -39,6 +41,7 @@
 #include "versiondao.h"
 #include "dialogkeyboardshortcuts.h"
 #include "workoutcountdowndialog.h"
+#include "apptheme.h"
 
 #include <QDir>
 #include <QMenu>
@@ -177,6 +180,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ftb->insertTab(3, QIcon(":/image/icon/studio"), tr("Studio"));
     ftb->insertTab(4, QIcon(":/image/icon/user"), tr("Profile"));
     ftb->insertTab(5, QIcon(":/image/icon/gear"), tr("Settings"));
+    ftb->insertTab(6, QIcon(":/image/icon/chart"), tr("History"));
 
     ftb->setTabEnabled(0, true);
     ftb->setTabEnabled(1, true);
@@ -184,6 +188,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ftb->setTabEnabled(3, true);
     ftb->setTabEnabled(4, true);
     ftb->setTabEnabled(5, true);
+    ftb->setTabEnabled(6, true);
 
 
 
@@ -193,6 +198,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     ui->tabWidget_workout->tabBar()->setObjectName("tabBarWorkout");
     setStyleSheet(qApp->styleSheet());
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    // Track OS colour-scheme changes for System theme mode.
+    connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, this,
+            &MainWindow::slotSystemThemeChanged);
+#endif
 
 
     //Load userStudio xml file to VecUserStudio
@@ -1165,6 +1176,7 @@ void MainWindow::enableStudioMode(bool enable) {
 
     ftb->setTabEnabled(4, !enable);
     ftb->setTabEnabled(5, !enable);
+    ftb->setTabEnabled(6, !enable);
 
 }
 
@@ -1589,7 +1601,7 @@ void MainWindow::on_actionOpen_Course_Folder_triggered()
 //-----------------------------------------------
 void MainWindow::on_actionHistory_triggered()
 {
-    Util::openHistoryFolder();
+    ftb->setCurrentIndex(6);
 }
 
 
@@ -2009,6 +2021,15 @@ void MainWindow::onNetworkOnlineChanged(bool isOnline)
         leftMenuChanged(0);
     }
 #endif
+}
+
+void MainWindow::slotSystemThemeChanged()
+{
+    auto *account = qApp->property("Account").value<Account*>();
+    if (!account) return;
+    // Only react when the user has chosen "System" mode.
+    if (account->app_theme == 2 /*System*/)
+        AppTheme::apply(qApp, AppTheme::System);
 }
 
 

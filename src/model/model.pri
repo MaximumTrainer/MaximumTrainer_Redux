@@ -46,7 +46,8 @@ HEADERS += src/model/interval.h\
     $$PWD/coursetablemodel.h \
     $$PWD/sortfilterproxymodelcourse.h \
     $$PWD/userstudio.h \
-    $$PWD/workoutqueue.h
+    $$PWD/workoutqueue.h \
+    $$PWD/workouthistorysummary.h
 
 
 
