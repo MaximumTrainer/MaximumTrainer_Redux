@@ -45,6 +45,9 @@ signals:
     void signal_power(int userID, int power);      // watts
     void signal_oxygen(int userID, double smo2Percent, double thbGdL);
 
+    // ── Battery level (same signature as BtleHub) ─────────────────────────
+    void signal_battery(QString sensorType, int percentage);
+
     // ── Connection status ─────────────────────────────────────────────────
     void deviceConnected();
     void deviceDisconnected();
