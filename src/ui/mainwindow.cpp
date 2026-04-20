@@ -11,6 +11,8 @@
 #include <QFileDialog>
 #include <QTimer>
 #include <QDir>
+#include <QGuiApplication>
+#include <QStyleHints>
 
 #include "util.h"
 #include "logger.h"
@@ -38,6 +40,7 @@
 #include "updatedialog.h"
 #include "versiondao.h"
 #include "dialogkeyboardshortcuts.h"
+#include "apptheme.h"
 
 #include <QDir>
 #include <QMenu>
@@ -192,6 +195,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     ui->tabWidget_workout->tabBar()->setObjectName("tabBarWorkout");
     setStyleSheet(qApp->styleSheet());
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    // Track OS colour-scheme changes for System theme mode.
+    connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, this,
+            &MainWindow::slotSystemThemeChanged);
+#endif
 
 
     //Load userStudio xml file to VecUserStudio
@@ -1942,6 +1951,15 @@ void MainWindow::onNetworkOnlineChanged(bool isOnline)
         leftMenuChanged(0);
     }
 #endif
+}
+
+void MainWindow::slotSystemThemeChanged()
+{
+    auto *account = qApp->property("Account").value<Account*>();
+    if (!account) return;
+    // Only react when the user has chosen "System" mode.
+    if (account->app_theme == 2 /*System*/)
+        AppTheme::apply(qApp, AppTheme::System);
 }
 
 

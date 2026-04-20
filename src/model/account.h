@@ -22,7 +22,9 @@ public:
     void saveErgSmoothingDuration(int seconds);
     void saveIntervalsIcuCredentials();
     void saveSensorDropoutSettings();
+    void saveBatteryWarningThreshold();
     void saveIntervalSummarySettings();
+    void saveAppTheme();
 
     /// Encrypt and persist Strava OAuth2 tokens to QSettings.
     /// Call after a successful token exchange or refresh.
@@ -216,6 +218,8 @@ public:
 
     bool interval_summary_enabled;
     int  interval_summary_duration_s; ///< seconds to display overlay (2–15)
+
+    int app_theme; ///< 0=Light, 1=Dark, 2=System (default)
     //----
 
 

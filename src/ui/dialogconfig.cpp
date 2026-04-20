@@ -10,9 +10,12 @@
 #include <QDesktopServices>
 #include <QSettings>
 #include <QMessageBox>
+#include <QApplication>
 
 #include "workoutdialog.h"
 #include "logger.h"
+#include "apptheme.h"
+#include "account.h"
 
 
 
@@ -1183,6 +1186,21 @@ QWidget *DialogConfig::setupLanguageTab()
     grpLayout->addWidget(labelRestartNote);
 
     layout->addWidget(grp);
+
+    // Theme group
+    auto *grpTheme = new QGroupBox(tr("Application Theme"), page);
+    auto *grpThemeLayout = new QVBoxLayout(grpTheme);
+
+    auto *themeRow = new QHBoxLayout();
+    themeRow->addWidget(new QLabel(tr("Theme:"), grpTheme));
+    comboTheme = new QComboBox(grpTheme);
+    comboTheme->addItem(tr("Light"),  0);
+    comboTheme->addItem(tr("Dark"),   1);
+    comboTheme->addItem(tr("System (follow OS)"), 2);
+    themeRow->addWidget(comboTheme, 1);
+    grpThemeLayout->addLayout(themeRow);
+
+    layout->addWidget(grpTheme);
     layout->addStretch();
 
     connect(comboLanguage, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
@@ -1204,6 +1222,13 @@ void DialogConfig::initLanguageTab()
     comboLanguage->blockSignals(true);
     comboLanguage->setCurrentIndex(langIdx < comboLanguage->count() ? langIdx : 0);
     comboLanguage->blockSignals(false);
+
+    if (comboTheme) {
+        auto *account = qApp->property("Account").value<Account*>();
+        const int theme = account ? account->app_theme : 2;
+        const int idx = comboTheme->findData(theme);
+        comboTheme->setCurrentIndex(idx >= 0 ? idx : 2);
+    }
 }
 
 void DialogConfig::saveLanguageTab()
@@ -1213,6 +1238,15 @@ void DialogConfig::saveLanguageTab()
     s.beginGroup("language_app");
     s.setValue("lang", comboLanguage->currentData().toInt());
     s.endGroup();
+
+    if (comboTheme) {
+        auto *account = qApp->property("Account").value<Account*>();
+        if (account) {
+            account->app_theme = comboTheme->currentData().toInt();
+            account->saveAppTheme();
+            AppTheme::apply(qApp, static_cast<AppTheme::Mode>(account->app_theme));
+        }
+    }
 }
 
 // ─── Studio tab (#134) ───────────────────────────────────────────────────────

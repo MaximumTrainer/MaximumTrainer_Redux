@@ -13,6 +13,7 @@
 #include "splashscreen.h"
 #include "account.h"
 #include "xmlutil.h"
+#include "apptheme.h"
 
 #ifdef GC_HAVE_VLCQT
 #include "myvlcplayer.h"
@@ -94,9 +95,12 @@ int main(int argc, char *argv[]) {
     splash.setProgress(30);
 #endif // Q_OS_WASM
 
-    /// App Stylesheet (hack so I can type stylesheet in designer instead of source code)
+    /// App Stylesheet — apply light theme as baseline; re-applied after login
+    /// based on the user's saved theme preference (Light / Dark / System).
     Z_StyleSheet styleSheetDummy;
-    app.setStyleSheet(styleSheetDummy.styleSheet());
+    const QString lightQss = styleSheetDummy.styleSheet();
+    qApp->setProperty("lightStylesheet", lightQss);
+    app.setStyleSheet(lightQss);
 
     // --screenshots [dir] / /screenshots [dir]: bypass login, capture UI
     // screenshots to [dir] (default: <appdir>/screenshots), then quit.
@@ -127,6 +131,13 @@ int main(int argc, char *argv[]) {
         splash.hide();
     }
 #endif // Q_OS_WASM
+
+    // Re-apply theme based on user preference now that the Account is loaded.
+    {
+        auto *account = qApp->property("Account").value<Account*>();
+        if (account)
+            AppTheme::apply(&app, static_cast<AppTheme::Mode>(account->app_theme));
+    }
 
 #ifdef Q_OS_WASM
     // WASM has no persistent server login. Initialize the global Account with

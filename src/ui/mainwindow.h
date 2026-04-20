@@ -175,6 +175,8 @@ private slots:
     // Screenshot mode — captures a sequence of PNG files then quits the app.
     void screenshotNextStep();
 
+    void slotSystemThemeChanged();
+
 private:
     void loadSettings();
     void saveSettings();

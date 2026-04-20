@@ -35,6 +35,7 @@ $$PWD/workoutdialog.h \
     $$PWD/dialog_connection_method.h \
     $$PWD/tab_intervals_icu.h \
     $$PWD/dialogkeyboardshortcuts.h \
+    $$PWD/apptheme.h \
     #$$PWD/main_coursepage.h
 
 FORMS    += $$PWD/mainwindow.ui \

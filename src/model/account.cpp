@@ -165,6 +165,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
         s.beginGroup("account");
         interval_summary_enabled    = s.value("interval_summary_enabled",    true).toBool();
         interval_summary_duration_s = s.value("interval_summary_duration_s", 5).toInt();
+        app_theme = s.value("app_theme", 2).toInt(); // default: System
         s.endGroup();
     }
 
@@ -275,6 +276,14 @@ void Account::saveIntervalSummarySettings()
     settings.setValue("interval_summary_enabled",    interval_summary_enabled);
     settings.setValue("interval_summary_duration_s", interval_summary_duration_s);
     settings.endGroup();
+}
+
+void Account::saveAppTheme()
+{
+    QSettings s;
+    s.beginGroup("account");
+    s.setValue("app_theme", app_theme);
+    s.endGroup();
 }
 
 
