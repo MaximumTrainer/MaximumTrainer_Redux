@@ -1621,7 +1621,7 @@ void MainWindow::addWorkoutToQueue(const Workout &workout)
     m_workoutQueue->addWorkout(workout.getFilePath(), workout.getName());
     m_queueDock->show();
     ui->widget_bottomMenu->setGeneralMessage(
-        tr(""%1" added to queue (%2 workout(s)).")
+        tr("\"%1\" added to queue (%2 workout(s)).")
             .arg(workout.getName())
             .arg(m_workoutQueue->count()),
         4000);
