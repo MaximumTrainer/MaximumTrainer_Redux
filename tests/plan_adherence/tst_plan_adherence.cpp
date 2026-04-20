@@ -100,7 +100,7 @@ void TstPlanAdherence::testAddCompleted_basic()
     store->addCompleted(d, QStringLiteral("Sweet Spot 60min"));
 
     QCOMPARE(store->entries().size(), 1);
-    const PlanAdherenceEntry &e = store->entries().first();
+    const PlanAdherenceEntry e = store->entries().first();
     QCOMPARE(e.date,         d);
     QCOMPARE(e.workoutName,  QStringLiteral("Sweet Spot 60min"));
     QCOMPARE(e.status,       PlanAdherenceEntry::Completed);
