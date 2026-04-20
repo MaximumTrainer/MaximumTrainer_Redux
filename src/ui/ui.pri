@@ -21,6 +21,7 @@ $$PWD/workoutdialog.cpp \
     $$PWD/workouthistorymodel.cpp \
     $$PWD/historywidget.cpp \
     $$PWD/dialogkeyboardshortcuts.cpp \
+    $$PWD/planadherencewidget.cpp \
     #$$PWD/main_coursepage.cpp
 
 HEADERS += $$PWD/mainwindow.h\
@@ -40,6 +41,7 @@ $$PWD/workoutdialog.h \
     $$PWD/historywidget.h \
     $$PWD/dialogkeyboardshortcuts.h \
     $$PWD/apptheme.h \
+    $$PWD/planadherencewidget.h \
     #$$PWD/main_coursepage.h
 
 FORMS    += $$PWD/mainwindow.ui \

@@ -1,18 +1,22 @@
 #include "historywidget.h"
 #include "workouthistorymodel.h"
 #include "fitactivityreader.h"
+#include "planadherencewidget.h"
+#include "planadherencestore.h"
 #include "util.h"
 
 #include <QTableView>
 #include <QLabel>
 #include <QPushButton>
 #include <QSortFilterProxyModel>
+#include <QTabWidget>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QDir>
 #include <QStringList>
 #include <QApplication>
+#include <QWidget>
 
 HistoryWidget::HistoryWidget(QWidget *parent)
     : QWidget(parent)
@@ -22,13 +26,17 @@ HistoryWidget::HistoryWidget(QWidget *parent)
 
 void HistoryWidget::setupUi()
 {
+    m_tabs = new QTabWidget(this);
+
+    // ── Workout History tab ──────────────────────────────────────────────────
+    auto *histTab = new QWidget(this);
     m_model = new WorkoutHistoryModel(this);
 
     m_proxy = new QSortFilterProxyModel(this);
     m_proxy->setSourceModel(m_model);
     m_proxy->setSortRole(Qt::DisplayRole);
 
-    m_tableView = new QTableView(this);
+    m_tableView = new QTableView(histTab);
     m_tableView->setModel(m_proxy);
     m_tableView->setSortingEnabled(true);
     m_tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -40,22 +48,37 @@ void HistoryWidget::setupUi()
     m_tableView->verticalHeader()->hide();
     m_tableView->sortByColumn(0, Qt::DescendingOrder);
 
-    m_refreshBtn = new QPushButton(tr("Refresh"), this);
+    m_refreshBtn = new QPushButton(tr("Refresh"), histTab);
     m_refreshBtn->setMaximumWidth(120);
     connect(m_refreshBtn, &QPushButton::clicked, this, &HistoryWidget::loadHistory);
 
-    m_statusLabel = new QLabel(this);
+    m_statusLabel = new QLabel(histTab);
 
     auto *toolBar = new QHBoxLayout();
     toolBar->addWidget(m_refreshBtn);
     toolBar->addWidget(m_statusLabel);
     toolBar->addStretch();
 
+    auto *histLayout = new QVBoxLayout(histTab);
+    histLayout->setContentsMargins(8, 8, 8, 8);
+    histLayout->setSpacing(6);
+    histLayout->addLayout(toolBar);
+    histLayout->addWidget(m_tableView);
+
+    m_tabs->addTab(histTab, tr("Activity History"));
+
+    // Plan Adherence tab placeholder — added in setAdherenceStore()
+
     auto *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(8, 8, 8, 8);
-    mainLayout->setSpacing(6);
-    mainLayout->addLayout(toolBar);
-    mainLayout->addWidget(m_tableView);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->addWidget(m_tabs);
+}
+
+void HistoryWidget::setAdherenceStore(PlanAdherenceStore *store)
+{
+    if (!store || m_adherenceWidget) return;
+    m_adherenceWidget = new PlanAdherenceWidget(store, this);
+    m_tabs->addTab(m_adherenceWidget, tr("Plan Adherence"));
 }
 
 void HistoryWidget::showEvent(QShowEvent *event)
