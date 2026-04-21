@@ -21,7 +21,8 @@ SOURCES += src/model/interval.cpp\
     $$PWD/course.cpp \
     $$PWD/coursetablemodel.cpp \
     $$PWD/sortfilterproxymodelcourse.cpp \
-    $$PWD/userstudio.cpp
+    $$PWD/userstudio.cpp \
+    $$PWD/workoutqueue.cpp
 
 HEADERS += src/model/interval.h\
     src/model/workout.h \
@@ -37,6 +38,7 @@ HEADERS += src/model/interval.h\
     src/model/zoneobject.h \
     src/model/powercurve.h \
     src/model/planobject.h \
+    src/model/intervalsummaryutil.h \
     $$PWD/radiotablemodel.h \
     $$PWD/radio.h \
     $$PWD/trackpoint.h \
@@ -44,6 +46,7 @@ HEADERS += src/model/interval.h\
     $$PWD/coursetablemodel.h \
     $$PWD/sortfilterproxymodelcourse.h \
     $$PWD/userstudio.h \
+    $$PWD/workoutqueue.h \
     $$PWD/workouthistorysummary.h
 
 

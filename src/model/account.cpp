@@ -51,6 +51,10 @@ Account::Account(QObject *parent) : QObject(parent)  {
     // OAuth2 tokens — loaded to restore an existing OAuth session across restarts.
     intervals_icu_access_token  = settings.value("intervals_icu_access_token",  "").toString();
     intervals_icu_refresh_token = settings.value("intervals_icu_refresh_token", "").toString();
+    // Sensor dropout auto-pause
+    sensor_dropout_enabled   = settings.value("sensor_dropout_enabled",   true).toBool();
+    sensor_dropout_timeout_s = settings.value("sensor_dropout_timeout_s", 5   ).toInt();
+    battery_warning_threshold = settings.value("battery_warning_threshold", 20).toInt();
     settings.endGroup();
 
     // Load encrypted third-party service credentials from the platform credential store.
@@ -154,6 +158,16 @@ Account::Account(QObject *parent) : QObject(parent)  {
     sound_alert_cadence_under_target = false;
     sound_alert_cadence_above_target = false;
 
+    interval_summary_enabled    = true;
+    interval_summary_duration_s = 5;
+    {
+        QSettings s;
+        s.beginGroup("account");
+        interval_summary_enabled    = s.value("interval_summary_enabled",    true).toBool();
+        interval_summary_duration_s = s.value("interval_summary_duration_s", 5).toInt();
+        app_theme = s.value("app_theme", 2).toInt(); // default: System
+        s.endGroup();
+    }
 
     //-------------------------- not in DB ----------------------
     isOffline = false;
@@ -236,6 +250,40 @@ void Account::saveSelfloopsCredentials()
 {
     CredentialStore::store("selfloops", "email",    selfloops_user);
     CredentialStore::store("selfloops", "password", selfloops_pw);
+}
+
+void Account::saveSensorDropoutSettings()
+{
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("sensor_dropout_enabled",   sensor_dropout_enabled);
+    settings.setValue("sensor_dropout_timeout_s", sensor_dropout_timeout_s);
+    settings.endGroup();
+}
+
+void Account::saveBatteryWarningThreshold()
+{
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("battery_warning_threshold", battery_warning_threshold);
+    settings.endGroup();
+}
+
+void Account::saveIntervalSummarySettings()
+{
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("interval_summary_enabled",    interval_summary_enabled);
+    settings.setValue("interval_summary_duration_s", interval_summary_duration_s);
+    settings.endGroup();
+}
+
+void Account::saveAppTheme()
+{
+    QSettings s;
+    s.beginGroup("account");
+    s.setValue("app_theme", app_theme);
+    s.endGroup();
 }
 
 

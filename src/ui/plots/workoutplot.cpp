@@ -572,6 +572,9 @@ void WorkoutPlot::setAlertMessage(bool fadeIn, bool fadeOut, QString text, int t
 
 }
 
+void WorkoutPlot::removeAlertMessage() {
+    labelAlertMessage->fadeOut(300);
+}
 
 
 

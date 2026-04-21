@@ -207,6 +207,9 @@ private:
     QComboBox    *comboLanguage     = nullptr;
     QLabel       *labelRestartNote  = nullptr;
 
+    // Theme controls (Language tab)
+    QComboBox    *comboTheme        = nullptr;
+
     // Studio tab controls
     QCheckBox    *checkStudioMode   = nullptr;
     QSpinBox     *spinNbRiders      = nullptr;
@@ -216,6 +219,17 @@ private:
     QComboBox    *comboTrainerModel      = nullptr;
     QSpinBox     *spinErgSmoothing       = nullptr;
     QCheckBox    *checkIntervalsIcuAutoUpload = nullptr;
+
+    // Trainer tab — Sensor dropout (issue #148)
+    QCheckBox    *checkDropoutEnabled    = nullptr;
+    QSpinBox     *spinDropoutTimeout     = nullptr;
+
+    // Trainer tab — Battery warning threshold (issue #156)
+    QSpinBox     *spinBatteryThreshold   = nullptr;
+
+    // Interval Summary overlay controls
+    QCheckBox    *checkIntervalSummary         = nullptr;
+    QSpinBox     *spinIntervalSummaryDuration  = nullptr;
 };
 
 #endif // DIALOGCONFIG_H

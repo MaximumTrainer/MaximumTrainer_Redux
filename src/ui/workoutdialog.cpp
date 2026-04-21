@@ -18,6 +18,7 @@
 #include <QLabel>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QDateTime>
 
 #include "interval.h"
 #include "workout.h"
@@ -42,6 +43,7 @@
 #include "selfloops_service.h"
 #include "intervalsicuservice.h"
 #include "extrequest.h"
+#include "intervalsummaryutil.h"
 
 
 
@@ -203,6 +205,12 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     bignoreClickPlot = true;
     timerIgnoreClickPlot->start(1000);
     connect(timerIgnoreClickPlot, SIGNAL(timeout()), this, SLOT(ignoreClickPlot()) );
+
+    // Sensor dropout watchdog — fires every second while WorkoutDialog is open.
+    m_dropoutWatchdog = new QTimer(this);
+    m_dropoutWatchdog->setInterval(1000);
+    connect(m_dropoutWatchdog, &QTimer::timeout, this, &WorkoutDialog::checkSensorDropout);
+    m_dropoutWatchdog->start();
 
 
     /// Sounds timer
@@ -753,19 +761,26 @@ void WorkoutDialog::startCalibrationPM() {
 
 
 //------------------------------------------------------------------------------------------------------------
-void WorkoutDialog::batteryStatusReceived(QString sensorType, int level, int antID) {
+void WorkoutDialog::batteryStatusReceived(QString sensorType, int percentage) {
 
-    qDebug() << "batteryStatusReceived" << sensorType << "level:" << level;
+    qDebug() << "batteryStatusReceived" << sensorType << "level:" << percentage << "%";
+
+    // Check against configurable threshold
+    if (percentage > account->battery_warning_threshold)
+        return;
+
+    // Suppress re-warning unless level dropped ≥ 5% below the last warned level
+    if (m_warnedBatteryLevels.contains(sensorType)) {
+        int lastWarned = m_warnedBatteryLevels.value(sensorType);
+        if (percentage > lastWarned - 5)
+            return;
+    }
+
+    m_warnedBatteryLevels[sensorType] = percentage;
 
     labelBatteryStatus->setVisible(true);
-
-    QString levelStr;
-    if (level == 0)
-        levelStr = tr("critical");
-    else  //1
-        levelStr = tr("low");
-
-    labelBatteryStatus->setText(tr("Battery Warning: ") + sensorType  + "(ID: " + QString::number(antID) + tr(") Battery is ") + levelStr);
+    labelBatteryStatus->setText(
+        tr("%1 sensor battery: %2%").arg(sensorType).arg(percentage));
     labelBatteryStatus->fadeInAndFadeOutAfterPause(400, 1000, 15000);
 }
 
@@ -1614,6 +1629,62 @@ void WorkoutDialog::onBleConnectionError(const QString &errorString)
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+void WorkoutDialog::checkSensorDropout()
+{
+    if (!account->sensor_dropout_enabled) return;
+    if (account->enable_studio_mode) return;
+    if (!isWorkoutStarted || isWorkoutOver) return;
+
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    const qint64 timeout_ms = (qint64)account->sensor_dropout_timeout_s * 1000;
+
+    // Only check a sensor if we've ever received data from it (m_last*Ms > 0)
+    const bool powerLost = (m_lastPowerMs > 0) && (now - m_lastPowerMs) > timeout_ms;
+    const bool signalLost = powerLost;   // future: add HR option here
+
+    if (!m_dropoutPaused) {
+        if (!isWorkoutPaused && signalLost) {
+            m_dropoutPaused = true;
+            m_recoveryCountdown = 0;
+            LOG_INFO("WorkoutDialog", "Sensor dropout detected — auto-pausing workout");
+            start_or_pause_workout();  // pause
+            ui->widget_workoutPlot->setAlertMessage(false, false,
+                tr("Sensor signal lost — workout paused"), 0);
+        }
+        return;
+    }
+
+    // We are in dropout-pause state: check for recovery
+    if (signalLost) {
+        // Signal still absent (or dropped again during countdown)
+        if (m_recoveryCountdown > 0) {
+            m_recoveryCountdown = 0;
+            ui->widget_workoutPlot->setAlertMessage(false, false,
+                tr("Sensor signal lost — workout paused"), 0);
+        }
+    } else {
+        // Signal has returned
+        if (m_recoveryCountdown == 0) {
+            m_recoveryCountdown = 3;
+            ui->widget_workoutPlot->setAlertMessage(false, false,
+                tr("Signal recovered — resuming in 3…"), 0);
+        } else {
+            m_recoveryCountdown--;
+            if (m_recoveryCountdown == 0) {
+                m_dropoutPaused = false;
+                LOG_INFO("WorkoutDialog", "Sensor recovered — auto-resuming workout");
+                ui->widget_workoutPlot->removeAlertMessage();
+                if (isWorkoutPaused)
+                    start_or_pause_workout();  // resume
+            } else {
+                ui->widget_workoutPlot->setAlertMessage(false, false,
+                    tr("Signal recovered — resuming in %1…").arg(m_recoveryCountdown), 0);
+            }
+        }
+    }
+}
+
 void WorkoutDialog::start_or_pause_workout() {
 
 
@@ -1648,6 +1719,14 @@ void WorkoutDialog::start_or_pause_workout() {
         ui->widget_topMenu->setButtonStartPaused(true);
         ui->widget_workoutPlot->removeMainMessage();
         isWorkoutPaused = false;
+
+        // Clear dropout state if user manually resumes
+        if (m_dropoutPaused) {
+            m_dropoutPaused = false;
+            m_recoveryCountdown = 0;
+            m_lastPowerMs = QDateTime::currentMSecsSinceEpoch(); // reset to avoid immediate re-trigger
+            ui->widget_workoutPlot->removeAlertMessage();
+        }
 
         setWidgetsStopped(false);
         emit resumeClock();
@@ -1714,6 +1793,10 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
     }
     if (value < 0)
         return;
+
+    // Track for sensor dropout detection
+    if (!account->enable_studio_mode && isWorkoutStarted && !isWorkoutOver)
+        m_lastHrMs = QDateTime::currentMSecsSinceEpoch();
 
 
     // Mark pairing as done
@@ -1988,6 +2071,10 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
         value = value + account->offset_power;
     if (value < 0)
         return;
+
+    // Track for sensor dropout detection (non-studio, user 1 only)
+    if (!account->enable_studio_mode && isWorkoutStarted && !isWorkoutOver)
+        m_lastPowerMs = QDateTime::currentMSecsSinceEpoch();
 
     // Send power To Clock
     emit sendPowerData(userID, value);
@@ -3744,6 +3831,20 @@ void WorkoutDialog::changeIntervalsDataWorkout(double timeStarted, double timeNo
 
     qDebug () << "changeIntervalsDataWorkout! - timeStarted" << timeStarted << "timeNow" << timeNow << "timePaused_msec" << timePaused_msec << "workoutOver" << workoutOver << "testInterval" << testInterval;
 
+    // Capture interval summary stats BEFORE changeInterval() resets them.
+    double summaryAvgPower = 0.0, summaryAvgHr = 0.0, summaryAvgCad = 0.0;
+    double intervalDuration = timeNow - timeStarted;
+    double targetPowerFraction = currentIntervalObj.getFTP_start();
+    bool showSummary = !account->enable_studio_mode
+                       && !workoutOver
+                       && account->interval_summary_enabled
+                       && intervalDuration >= 10.0;
+    if (showSummary) {
+        summaryAvgPower = arrDataWorkout[0]->getAvgIntervalPower();
+        summaryAvgHr    = arrDataWorkout[0]->getAvgIntervalHr();
+        summaryAvgCad   = arrDataWorkout[0]->getAvgIntervalCad();
+    }
+
     if (account->enable_studio_mode) {
         for (int i=0; i<account->nb_user_studio; i++) {
             //            qDebug() << "change interval for this user" << i;
@@ -3754,6 +3855,10 @@ void WorkoutDialog::changeIntervalsDataWorkout(double timeStarted, double timeNo
         qDebug() << "OK change interval, timePaused_msec: " << timePaused_msec;
         arrDataWorkout[0]->changeInterval(timeStarted, timeNow, timePaused_msec, workoutOver, testInterval);
     }
+
+    if (showSummary)
+        showIntervalSummaryOverlay(summaryAvgPower, summaryAvgHr, summaryAvgCad,
+                                   static_cast<int>(intervalDuration), targetPowerFraction);
 
     lastIntervalEndTime_msec = timeElapsed_sec;
     lastIntervalTotalTimePausedWorkout_msec = totalTimePausedWorkout_msec;
@@ -3772,6 +3877,51 @@ void WorkoutDialog::initDataWorkout() {
     else {
         arrDataWorkout[0] = new DataWorkout(this->workout, account->FTP, this);
     }
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+void WorkoutDialog::showIntervalSummaryOverlay(double avgPower, double avgHr, double avgCad,
+                                               int durationSec, double targetPowerFraction)
+{
+    const double targetWatts = targetPowerFraction * account->FTP;
+    const auto adherence = IntervalSummaryUtil::classifyPowerAdherence(avgPower, targetWatts);
+
+    QString colorHex;
+    switch (adherence) {
+    case IntervalSummaryUtil::PowerAdherence::Met:      colorHex = "#4CAF50"; break; // green
+    case IntervalSummaryUtil::PowerAdherence::NearMiss: colorHex = "#FF9800"; break; // amber
+    default:                                            colorHex = "#F44336"; break; // red
+    }
+
+    const int mins = durationSec / 60;
+    const int secs = durationSec % 60;
+    const QString duration = (mins > 0)
+        ? QString("%1:%2").arg(mins).arg(secs, 2, 10, QChar('0'))
+        : QString("%1s").arg(secs);
+
+    const int powerPct = (account->FTP > 0)
+        ? qRound(avgPower * 100.0 / account->FTP)
+        : 0;
+
+    // Build HTML summary shown in the existing interval-message overlay
+    QString html = QString(
+        "<div style='text-align:center; line-height:1.5;'>"
+        "<b>%1</b><br>"
+        "<span style='color:%2;font-size:1.2em;'>&#9679; %3 W (%4%% FTP)</span><br>"
+        "<span>HR: %5 bpm &nbsp;&nbsp; Cad: %6 rpm</span><br>"
+        "<span style='color:#aaa;font-size:0.85em;'>%7</span>"
+        "</div>")
+        .arg(tr("Interval Complete"))
+        .arg(colorHex)
+        .arg(qRound(avgPower))
+        .arg(powerPct)
+        .arg(qRound(avgHr))
+        .arg(qRound(avgCad))
+        .arg(duration);
+
+    ui->widget_workoutPlot->setDisplayIntervalMessage(
+        true, html, account->interval_summary_duration_s);
 }
 
 

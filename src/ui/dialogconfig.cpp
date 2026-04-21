@@ -10,9 +10,12 @@
 #include <QDesktopServices>
 #include <QSettings>
 #include <QMessageBox>
+#include <QApplication>
 
 #include "workoutdialog.h"
 #include "logger.h"
+#include "apptheme.h"
+#include "account.h"
 
 
 
@@ -1183,6 +1186,21 @@ QWidget *DialogConfig::setupLanguageTab()
     grpLayout->addWidget(labelRestartNote);
 
     layout->addWidget(grp);
+
+    // Theme group
+    auto *grpTheme = new QGroupBox(tr("Application Theme"), page);
+    auto *grpThemeLayout = new QVBoxLayout(grpTheme);
+
+    auto *themeRow = new QHBoxLayout();
+    themeRow->addWidget(new QLabel(tr("Theme:"), grpTheme));
+    comboTheme = new QComboBox(grpTheme);
+    comboTheme->addItem(tr("Light"),  0);
+    comboTheme->addItem(tr("Dark"),   1);
+    comboTheme->addItem(tr("System (follow OS)"), 2);
+    themeRow->addWidget(comboTheme, 1);
+    grpThemeLayout->addLayout(themeRow);
+
+    layout->addWidget(grpTheme);
     layout->addStretch();
 
     connect(comboLanguage, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
@@ -1204,6 +1222,13 @@ void DialogConfig::initLanguageTab()
     comboLanguage->blockSignals(true);
     comboLanguage->setCurrentIndex(langIdx < comboLanguage->count() ? langIdx : 0);
     comboLanguage->blockSignals(false);
+
+    if (comboTheme) {
+        auto *account = qApp->property("Account").value<Account*>();
+        const int theme = account ? account->app_theme : 2;
+        const int idx = comboTheme->findData(theme);
+        comboTheme->setCurrentIndex(idx >= 0 ? idx : 2);
+    }
 }
 
 void DialogConfig::saveLanguageTab()
@@ -1213,6 +1238,15 @@ void DialogConfig::saveLanguageTab()
     s.beginGroup("language_app");
     s.setValue("lang", comboLanguage->currentData().toInt());
     s.endGroup();
+
+    if (comboTheme) {
+        auto *account = qApp->property("Account").value<Account*>();
+        if (account) {
+            account->app_theme = comboTheme->currentData().toInt();
+            account->saveAppTheme();
+            AppTheme::apply(qApp, static_cast<AppTheme::Mode>(account->app_theme));
+        }
+    }
 }
 
 // ─── Studio tab (#134) ───────────────────────────────────────────────────────
@@ -1324,6 +1358,69 @@ QWidget *DialogConfig::setupTrainerTab()
     grpUploadsLayout->addWidget(uploadNote);
     layout->addWidget(grpUploads);
 
+    // ── Sensor Dropout ──────────────────────────────────────────────────────
+    auto *grpDropout = new QGroupBox(tr("Sensor Dropout"), page);
+    auto *dropoutLayout = new QVBoxLayout(grpDropout);
+
+    checkDropoutEnabled = new QCheckBox(tr("Auto-pause workout when sensor signal is lost"), grpDropout);
+    dropoutLayout->addWidget(checkDropoutEnabled);
+
+    auto *timeoutRow = new QHBoxLayout();
+    timeoutRow->addWidget(new QLabel(tr("Dropout timeout (seconds):"), grpDropout));
+    spinDropoutTimeout = new QSpinBox(grpDropout);
+    spinDropoutTimeout->setRange(2, 30);
+    spinDropoutTimeout->setSuffix(tr(" s"));
+    timeoutRow->addWidget(spinDropoutTimeout);
+    timeoutRow->addStretch();
+    dropoutLayout->addLayout(timeoutRow);
+
+    auto *dropoutNote = new QLabel(
+        tr("Workout resumes automatically 3 seconds after the signal is restored."), grpDropout);
+    dropoutNote->setStyleSheet("color: #888; font-style: italic;");
+    dropoutNote->setWordWrap(true);
+    dropoutLayout->addWidget(dropoutNote);
+
+    layout->addWidget(grpDropout);
+
+    // ── Battery Warning ─────────────────────────────────────────────────────
+    auto *grpBatt = new QGroupBox(tr("Battery Warning"), page);
+    auto *battLayout = new QVBoxLayout(grpBatt);
+
+    auto *battRow = new QHBoxLayout();
+    battRow->addWidget(new QLabel(tr("Warn when battery drops below:"), grpBatt));
+    spinBatteryThreshold = new QSpinBox(grpBatt);
+    spinBatteryThreshold->setRange(5, 50);
+    spinBatteryThreshold->setSuffix(tr(" %"));
+    battRow->addWidget(spinBatteryThreshold);
+    battRow->addStretch();
+    battLayout->addLayout(battRow);
+
+    auto *battNote = new QLabel(
+        tr("A toast notification is shown when a sensor reports a battery level "
+           "at or below this threshold."), grpBatt);
+    battNote->setStyleSheet("color: #888; font-style: italic;");
+    battNote->setWordWrap(true);
+    battLayout->addWidget(battNote);
+
+    layout->addWidget(grpBatt);
+
+    // Interval Summary Overlay group
+    auto *grpSummary = new QGroupBox(tr("Interval Summary Overlay"), page);
+    auto *grpSummaryLayout = new QVBoxLayout(grpSummary);
+
+    checkIntervalSummary = new QCheckBox(tr("Show summary overlay on interval transition"), grpSummary);
+    grpSummaryLayout->addWidget(checkIntervalSummary);
+
+    auto *durRow = new QHBoxLayout();
+    durRow->addWidget(new QLabel(tr("Display duration (seconds):"), grpSummary));
+    spinIntervalSummaryDuration = new QSpinBox(grpSummary);
+    spinIntervalSummaryDuration->setRange(2, 15);
+    spinIntervalSummaryDuration->setValue(5);
+    durRow->addWidget(spinIntervalSummaryDuration);
+    durRow->addStretch();
+    grpSummaryLayout->addLayout(durRow);
+
+    layout->addWidget(grpSummary);
     layout->addStretch();
     return page;
 }
@@ -1346,6 +1443,16 @@ void DialogConfig::initTrainerTab()
 
     if (checkIntervalsIcuAutoUpload)
         checkIntervalsIcuAutoUpload->setChecked(account->intervals_icu_auto_upload);
+
+    if (checkDropoutEnabled) checkDropoutEnabled->setChecked(account->sensor_dropout_enabled);
+    if (spinDropoutTimeout)  spinDropoutTimeout->setValue(account->sensor_dropout_timeout_s);
+
+    if (spinBatteryThreshold) spinBatteryThreshold->setValue(account->battery_warning_threshold);
+
+    if (checkIntervalSummary) {
+        checkIntervalSummary->setChecked(account->interval_summary_enabled);
+        spinIntervalSummaryDuration->setValue(account->interval_summary_duration_s);
+    }
 }
 
 void DialogConfig::saveTrainerTab()
@@ -1360,5 +1467,20 @@ void DialogConfig::saveTrainerTab()
     if (checkIntervalsIcuAutoUpload) {
         account->intervals_icu_auto_upload = checkIntervalsIcuAutoUpload->isChecked();
         account->saveIntervalsIcuCredentials();
+    }
+
+    if (checkDropoutEnabled) account->sensor_dropout_enabled  = checkDropoutEnabled->isChecked();
+    if (spinDropoutTimeout)  account->sensor_dropout_timeout_s = spinDropoutTimeout->value();
+    account->saveSensorDropoutSettings();
+
+    if (spinBatteryThreshold) {
+        account->battery_warning_threshold = spinBatteryThreshold->value();
+        account->saveBatteryWarningThreshold();
+    }
+
+    if (checkIntervalSummary) {
+        account->interval_summary_enabled    = checkIntervalSummary->isChecked();
+        account->interval_summary_duration_s = spinIntervalSummaryDuration->value();
+        account->saveIntervalSummarySettings();
     }
 }

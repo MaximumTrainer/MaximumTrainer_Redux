@@ -44,6 +44,10 @@ signals:
     void signal_speed(int userID, double speed);   // km/h
     void signal_power(int userID, int power);      // watts
     void signal_oxygen(int userID, double smo2Percent, double thbGdL);
+    /// Emitted when the connected device's Battery Service reports a level.
+    /// \param sensorType  Human-readable sensor name ("Heart Rate", "Power", …)
+    /// \param percentage  Battery level 0–100 (%)
+    void signal_battery(QString sensorType, int percentage);
 
     // ── Connection status ─────────────────────────────────────────────────
     void deviceConnected();
@@ -71,6 +75,11 @@ private:
     void parsePowerMeasurement(const QByteArray &data);
     void parseFtmsIndoorBikeData(const QByteArray &data);
     void parseMoxyMeasurement(const QByteArray &data);
+    void parseBatteryLevel(const QByteArray &data);
+
+    // Infer a human-readable sensor type from the measurement UUIDs seen so
+    // far, mirroring BtleHub::determineSensorType() which checks service ptrs.
+    QString determineSensorType() const;
 
     bool   m_connected         = false;
     bool   m_userDisconnect    = false; // true when disconnectFromDevice() was called intentionally
@@ -81,6 +90,13 @@ private:
     quint16 m_lastCrankRevs    = 0;
     quint16 m_lastCrankTime    = 0;
     bool    m_firstCsc         = true;
+
+    // Track which measurement types have been seen for determineSensorType()
+    bool    m_seenHr           = false;
+    bool    m_seenPower        = false;
+    bool    m_seenFtms         = false;
+    bool    m_seenCsc          = false;
+    bool    m_seenMoxy         = false;
 };
 
 // Alias so headers that #include "btle_hub.h" can use BtleHub type on Wasm
