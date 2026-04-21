@@ -17,7 +17,7 @@ QueuePanelWidget::QueuePanelWidget(WorkoutQueue *queue, QWidget *parent)
     layout->addWidget(titleLbl);
 
     m_list = new QListWidget(this);
-    m_list->setDragDropMode(QAbstractItemView::InternalMove);
+    m_list->setDragDropMode(QAbstractItemView::NoDragDrop);
     layout->addWidget(m_list, 1);
 
     // Button row
