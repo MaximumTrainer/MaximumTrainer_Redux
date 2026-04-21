@@ -19,6 +19,8 @@
 #include <QtTest/QtTest>
 #include <QSignalSpy>
 #include <QDate>
+#include <QCoreApplication>
+#include <QSettings>
 
 #include "planadherencestore.h"
 #include "planadherence.h"
@@ -28,6 +30,8 @@ class TstPlanAdherence : public QObject
     Q_OBJECT
 
 private slots:
+    void initTestCase();
+    void cleanupTestCase();
     void init();
     void cleanup();
 
@@ -62,6 +66,7 @@ private slots:
     // ── encode / decode round-trip ────────────────────────────────────────────
     void testEncodeDecodeRoundTrip_normal();
     void testEncodeDecodeRoundTrip_specialChars();
+    void testEncodeDecodeRoundTrip_backslash();
 
     // ── storeChanged signal ───────────────────────────────────────────────────
     void testStoreChanged_emittedOnAdd();
@@ -72,12 +77,22 @@ private:
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+void TstPlanAdherence::initTestCase()
+{
+    // Use an isolated QSettings scope so tests never read/write a real user profile.
+    QCoreApplication::setOrganizationName("MaximumTrainer_Test");
+    QCoreApplication::setApplicationName("PlanAdherenceTests");
+}
+
+void TstPlanAdherence::cleanupTestCase()
+{
+    QSettings s;
+    s.remove("planAdherence");
+}
+
 void TstPlanAdherence::init()
 {
     store = new PlanAdherenceStore();
-    // Use a unique QSettings scope per test via INI file to avoid cross-test contamination
-    // (PlanAdherenceStore uses QSettings with default scope)
-    // We rely on cleanup() to clear it after each test.
 }
 
 void TstPlanAdherence::cleanup()
@@ -313,6 +328,36 @@ void TstPlanAdherence::testEncodeDecodeRoundTrip_specialChars()
         }
     }
     QVERIFY2(found, "Special-char entry not found after save/load");
+
+    const auto es = store2.entries();
+    for (const PlanAdherenceEntry &e : es)
+        store2.remove(e.date, e.workoutName);
+}
+
+void TstPlanAdherence::testEncodeDecodeRoundTrip_backslash()
+{
+    // Windows-style paths contain backslashes, including sequences that look
+    // like \n (e.g. C:\new\ride.fit).  Verify that the encode/decode round-trip
+    // preserves them correctly.
+    const QDate d(2024, 10, 17);
+    const QString winPath  = QStringLiteral("C:\\Users\\athlete\\new\\ride.fit");
+    const QString winName  = QStringLiteral("Winter\\Base");
+
+    store->addCompleted(d, winName, winPath);
+    store->save();
+
+    PlanAdherenceStore store2;
+    store2.load();
+
+    bool found = false;
+    for (const PlanAdherenceEntry &e : store2.entries()) {
+        if (e.date == d) {
+            QCOMPARE(e.workoutName, winName);
+            QCOMPARE(e.fitFilePath, winPath);
+            found = true;
+        }
+    }
+    QVERIFY2(found, "Backslash entry not found after save/load");
 
     const auto es = store2.entries();
     for (const PlanAdherenceEntry &e : es)

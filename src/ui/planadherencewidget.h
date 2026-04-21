@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QAbstractTableModel>
+#include <QColor>
 #include <QList>
 #include "planadherence.h"
 
@@ -10,6 +11,7 @@ class QTableView;
 class QLabel;
 class QPushButton;
 class QProgressBar;
+class QSortFilterProxyModel;
 class PlanAdherenceStore;
 
 // ── Table model ──────────────────────────────────────────────────────────────
@@ -42,7 +44,8 @@ private:
 ///
 /// Shows all recorded plan adherence entries in a sortable table, with a
 /// summary card (completion %, 30-day rolling) at the top.
-/// Right-click context menu lets the user add/edit Skipped or Substituted entries.
+/// Right-click context menu lets the user add/edit Skipped or Substituted
+/// entries (desktop only; read-only in WASM builds).
 class PlanAdherenceWidget : public QWidget
 {
     Q_OBJECT
@@ -54,20 +57,18 @@ public slots:
 
 private slots:
     void showContextMenu(const QPoint &pos);
-    void markSkipped();
-    void markSubstituted();
-    void removeEntry();
 
 private:
     void setupUi();
     void updateSummary();
 
-    PlanAdherenceStore  *m_store       = nullptr;
-    PlanAdherenceModel  *m_model       = nullptr;
-    QTableView          *m_tableView   = nullptr;
-    QLabel              *m_summaryLbl  = nullptr;
-    QProgressBar        *m_progressBar = nullptr;
-    QPushButton         *m_refreshBtn  = nullptr;
+    PlanAdherenceStore     *m_store       = nullptr;
+    PlanAdherenceModel     *m_model       = nullptr;
+    QSortFilterProxyModel  *m_proxy       = nullptr;
+    QTableView             *m_tableView   = nullptr;
+    QLabel                 *m_summaryLbl  = nullptr;
+    QProgressBar           *m_progressBar = nullptr;
+    QPushButton            *m_refreshBtn  = nullptr;
 };
 
 #endif // PLANADHERENCEWIDGET_H

@@ -175,9 +175,12 @@ void PlanAdherenceStore::upsert(const PlanAdherenceEntry &e)
 QString PlanAdherenceStore::encodeEntry(const PlanAdherenceEntry &e)
 {
     // Format: date|workoutName|status|note|fitFilePath
-    // Pipe characters in name/note/path are replaced with \| during encode
+    // Backslashes are escaped first (\→\\), then pipes (|→\|) and newlines (\n→\n).
     auto escape = [](const QString &s) {
-        return QString(s).replace('|', QLatin1String("\\|")).replace('\n', QLatin1String("\\n"));
+        return QString(s)
+            .replace(QLatin1Char('\\'), QLatin1String("\\\\"))
+            .replace(QLatin1Char('|'),  QLatin1String("\\|"))
+            .replace(QLatin1Char('\n'), QLatin1String("\\n"));
     };
     return QStringList{
         e.date.toString(Qt::ISODate),
@@ -190,17 +193,17 @@ QString PlanAdherenceStore::encodeEntry(const PlanAdherenceEntry &e)
 
 PlanAdherenceEntry PlanAdherenceStore::decodeEntry(const QString &line)
 {
-    // Split on unescaped |
+    // Split on unescaped |, handling \\ → \, \| → |, \n → newline
     QStringList parts;
     QString cur;
     for (int i = 0; i < line.size(); ++i) {
-        if (line[i] == '\\' && i + 1 < line.size() && line[i+1] == '|') {
-            cur += '|';
-            ++i;
-        } else if (line[i] == '\\' && i + 1 < line.size() && line[i+1] == 'n') {
-            cur += '\n';
-            ++i;
-        } else if (line[i] == '|') {
+        if (line[i] == QLatin1Char('\\') && i + 1 < line.size()) {
+            const QChar next = line[i + 1];
+            if (next == QLatin1Char('\\')) { cur += QLatin1Char('\\'); ++i; }
+            else if (next == QLatin1Char('|')) { cur += QLatin1Char('|'); ++i; }
+            else if (next == QLatin1Char('n')) { cur += QLatin1Char('\n'); ++i; }
+            else { cur += line[i]; }   // unknown escape — keep the backslash
+        } else if (line[i] == QLatin1Char('|')) {
             parts.append(cur);
             cur.clear();
         } else {
@@ -211,10 +214,15 @@ PlanAdherenceEntry PlanAdherenceStore::decodeEntry(const QString &line)
 
     if (parts.size() < 3) return {};
 
+    bool ok = false;
+    const int statusInt = parts.at(2).toInt(&ok);
+    if (!ok || statusInt < 0 || statusInt > static_cast<int>(PlanAdherenceEntry::Substituted))
+        return {};  // Out-of-range or non-numeric status — treat as decode failure
+
     PlanAdherenceEntry e;
     e.date        = QDate::fromString(parts.at(0), Qt::ISODate);
     e.workoutName = parts.at(1);
-    e.status      = static_cast<PlanAdherenceEntry::Status>(parts.at(2).toInt());
+    e.status      = static_cast<PlanAdherenceEntry::Status>(statusInt);
     e.note        = parts.size() > 3 ? parts.at(3) : QString();
     e.fitFilePath = parts.size() > 4 ? parts.at(4) : QString();
     return e;

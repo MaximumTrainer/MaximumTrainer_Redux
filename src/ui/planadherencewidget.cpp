@@ -12,8 +12,8 @@
 #include <QInputDialog>
 #include <QDate>
 #include <QColor>
-#include <QFont>
 #include <QFrame>
+#include <QSortFilterProxyModel>
 
 // ── PlanAdherenceModel ───────────────────────────────────────────────────────
 
@@ -105,8 +105,12 @@ void PlanAdherenceWidget::setupUi()
 {
     m_model = new PlanAdherenceModel(this);
 
+    m_proxy = new QSortFilterProxyModel(this);
+    m_proxy->setSourceModel(m_model);
+    m_proxy->setSortCaseSensitivity(Qt::CaseInsensitive);
+
     m_tableView = new QTableView(this);
-    m_tableView->setModel(m_model);
+    m_tableView->setModel(m_proxy);
     m_tableView->setSortingEnabled(true);
     m_tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_tableView->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -126,9 +130,6 @@ void PlanAdherenceWidget::setupUi()
     auto *cardLayout = new QVBoxLayout(cardFrame);
     cardLayout->setContentsMargins(8, 6, 8, 6);
     cardLayout->setSpacing(4);
-
-    QFont boldFont = font();
-    boldFont.setBold(true);
 
     auto *summaryTitle = new QLabel(tr("<b>30-Day Adherence Summary</b>"), this);
     m_summaryLbl = new QLabel(this);
@@ -182,64 +183,47 @@ void PlanAdherenceWidget::updateSummary()
 
 void PlanAdherenceWidget::showContextMenu(const QPoint &pos)
 {
-    const QModelIndex idx = m_tableView->indexAt(pos);
-    if (!idx.isValid()) return;
+    const QModelIndex proxyIdx = m_tableView->indexAt(pos);
+    if (!proxyIdx.isValid()) return;
+
+#ifndef GC_WASM_BUILD
+    const int row = m_proxy->mapToSource(proxyIdx).row();
 
     QMenu menu(this);
-    QAction *actSkip  = menu.addAction(tr("Mark as Skipped…"));
-    QAction *actSub   = menu.addAction(tr("Mark as Substituted…"));
+    QAction *actSkip   = menu.addAction(tr("Mark as Skipped…"));
+    QAction *actSub    = menu.addAction(tr("Mark as Substituted…"));
     menu.addSeparator();
     QAction *actRemove = menu.addAction(tr("Remove Entry"));
 
-    connect(actSkip,   &QAction::triggered, this, &PlanAdherenceWidget::markSkipped);
-    connect(actSub,    &QAction::triggered, this, &PlanAdherenceWidget::markSubstituted);
-    connect(actRemove, &QAction::triggered, this, &PlanAdherenceWidget::removeEntry);
+    connect(actSkip, &QAction::triggered, this, [this, row] {
+        const PlanAdherenceEntry &e = m_model->entryAt(row);
+        bool ok = false;
+        const QString note = QInputDialog::getText(
+            this, tr("Mark as Skipped"),
+            tr("Optional note for skipping \"%1\" on %2:")
+                .arg(e.workoutName, e.date.toString("d MMM yyyy")),
+            QLineEdit::Normal, QString(), &ok);
+        if (ok)
+            m_store->addSkipped(e.date, e.workoutName, note);
+    });
+
+    connect(actSub, &QAction::triggered, this, [this, row] {
+        const PlanAdherenceEntry &e = m_model->entryAt(row);
+        bool ok = false;
+        const QString note = QInputDialog::getText(
+            this, tr("Mark as Substituted"),
+            tr("What did you do instead of \"%1\" on %2?")
+                .arg(e.workoutName, e.date.toString("d MMM yyyy")),
+            QLineEdit::Normal, QString(), &ok);
+        if (ok)
+            m_store->addSubstituted(e.date, e.workoutName, note);
+    });
+
+    connect(actRemove, &QAction::triggered, this, [this, row] {
+        const PlanAdherenceEntry &e = m_model->entryAt(row);
+        m_store->remove(e.date, e.workoutName);
+    });
 
     menu.exec(m_tableView->viewport()->mapToGlobal(pos));
-}
-
-void PlanAdherenceWidget::markSkipped()
-{
-    const QModelIndex idx = m_tableView->currentIndex();
-    if (!idx.isValid()) return;
-
-    // Map through sort proxy — model index is direct since no proxy here
-    const PlanAdherenceEntry &e = m_model->entryAt(idx.row());
-
-    bool ok = false;
-    const QString note = QInputDialog::getText(
-        this, tr("Mark as Skipped"),
-        tr("Optional note for skipping \"%1\" on %2:")
-            .arg(e.workoutName, e.date.toString("d MMM yyyy")),
-        QLineEdit::Normal, QString(), &ok);
-
-    if (ok)
-        m_store->addSkipped(e.date, e.workoutName, note);
-}
-
-void PlanAdherenceWidget::markSubstituted()
-{
-    const QModelIndex idx = m_tableView->currentIndex();
-    if (!idx.isValid()) return;
-
-    const PlanAdherenceEntry &e = m_model->entryAt(idx.row());
-
-    bool ok = false;
-    const QString note = QInputDialog::getText(
-        this, tr("Mark as Substituted"),
-        tr("What did you do instead of \"%1\" on %2?")
-            .arg(e.workoutName, e.date.toString("d MMM yyyy")),
-        QLineEdit::Normal, QString(), &ok);
-
-    if (ok)
-        m_store->addSubstituted(e.date, e.workoutName, note);
-}
-
-void PlanAdherenceWidget::removeEntry()
-{
-    const QModelIndex idx = m_tableView->currentIndex();
-    if (!idx.isValid()) return;
-
-    const PlanAdherenceEntry &e = m_model->entryAt(idx.row());
-    m_store->remove(e.date, e.workoutName);
+#endif
 }
