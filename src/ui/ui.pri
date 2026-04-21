@@ -22,6 +22,8 @@ $$PWD/workoutdialog.cpp \
     $$PWD/historywidget.cpp \
     $$PWD/dialogkeyboardshortcuts.cpp \
     $$PWD/planadherencewidget.cpp \
+    $$PWD/criticalpowerdialog.cpp \
+    $$PWD/pmcdialog.cpp \
     $$PWD/workoutcountdowndialog.cpp \
     $$PWD/queuepanelwidget.cpp \
     #$$PWD/main_coursepage.cpp
@@ -42,6 +44,8 @@ $$PWD/workoutdialog.h \
     $$PWD/workouthistorymodel.h \
     $$PWD/historywidget.h \
     $$PWD/dialogkeyboardshortcuts.h \
+    $$PWD/criticalpowerdialog.h \
+    $$PWD/pmcdialog.h \
     $$PWD/workoutcountdowndialog.h \
     $$PWD/queuepanelwidget.h \
     $$PWD/apptheme.h \

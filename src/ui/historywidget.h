@@ -31,6 +31,10 @@ public slots:
 protected:
     void showEvent(QShowEvent *event) override;
 
+private slots:
+    void openCriticalPowerDialog();
+    void openPmcDialog();
+
 private:
     void setupUi();
 
@@ -42,6 +46,8 @@ private:
     QSortFilterProxyModel*m_proxy         = nullptr;
     QLabel               *m_statusLabel   = nullptr;
     QPushButton          *m_refreshBtn    = nullptr;
+    QPushButton          *m_cpBtn         = nullptr;
+    QPushButton          *m_pmcBtn        = nullptr;
 
     // Plan adherence tab (added when store is injected)
     PlanAdherenceWidget  *m_adherenceWidget = nullptr;
