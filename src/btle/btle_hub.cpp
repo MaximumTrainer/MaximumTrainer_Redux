@@ -20,6 +20,8 @@ static const QBluetoothUuid CyclingPower          (QBluetoothUuid::CyclingPower)
 #endif
 // Fitness Machine Service (FTMS) – not in Qt enum, use raw 16-bit UUID
 static const QBluetoothUuid FitnessMachine        (quint16(0x1826));
+// Battery Service – standard BT SIG service for battery level percentage
+static const QBluetoothUuid BatteryService        (quint16(0x180F));
 
 // Characteristics
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
@@ -33,6 +35,7 @@ static const QBluetoothUuid CyclingPowerMeasurement (QBluetoothUuid::CyclingPowe
 #endif
 static const QBluetoothUuid FtmsIndoorBikeData      (quint16(0x2AD2));
 static const QBluetoothUuid FtmsControlPoint        (quint16(0x2AD9));
+static const QBluetoothUuid BatteryLevel            (quint16(0x2A19));
 // Moxy Muscle Oxygen Monitor (proprietary UUIDs - not in BT SIG enum)
 static const QBluetoothUuid MoxyService             (quint16(0xAAB0));
 static const QBluetoothUuid MoxyMeasurement         (quint16(0xAAB2));
@@ -194,6 +197,7 @@ void BtleHub::simulateNotification(quint16 characteristicUuid, const QByteArray 
     case BTLE_UUID_POWER_MEASUREMENT: parsePowerMeasurement(data);   break;
     case BTLE_UUID_FTMS_BIKE_DATA:    parseFtmsIndoorBikeData(data); break;
     case BTLE_UUID_MOXY_MEASUREMENT:  parseMoxyMeasurement(data);    break;
+    case BTLE_UUID_BATTERY_LEVEL:     parseBatteryLevel(data);       break;
     default: break;
     }
 }
@@ -261,6 +265,15 @@ void BtleHub::onServiceDiscovered(const QBluetoothUuid &serviceUuid)
         m_moxyService = m_controller->createServiceObject(serviceUuid, this);
         if (m_moxyService)
             setupService(m_moxyService);
+    }
+    else if (serviceUuid == BtleUuid::BatteryService) {
+        m_batteryService = m_controller->createServiceObject(serviceUuid, this);
+        if (m_batteryService) {
+            // Also handle characteristicRead for the initial one-shot read
+            connect(m_batteryService, &QLowEnergyService::characteristicRead,
+                    this, &BtleHub::onCharacteristicChanged);
+            setupService(m_batteryService);
+        }
     }
 }
 
@@ -352,6 +365,16 @@ void BtleHub::onServiceStateChanged(QLowEnergyService::ServiceState state)
         enableNotification(service,
             service->characteristic(BtleUuid::MoxyMeasurement));
     }
+    else if (service == m_batteryService) {
+        QLowEnergyCharacteristic battChar =
+            service->characteristic(BtleUuid::BatteryLevel);
+        if (battChar.isValid()) {
+            // Enable notifications if the device supports them
+            enableNotification(service, battChar);
+            // Also do an immediate read for instant level on connect
+            service->readCharacteristic(battChar);
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -372,6 +395,8 @@ void BtleHub::onCharacteristicChanged(const QLowEnergyCharacteristic &characteri
         parseFtmsIndoorBikeData(value);
     else if (uuid == BtleUuid::MoxyMeasurement)
         parseMoxyMeasurement(value);
+    else if (uuid == BtleUuid::BatteryLevel)
+        parseBatteryLevel(value);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -606,4 +631,28 @@ void BtleHub::parseMoxyMeasurement(const QByteArray &data)
     double thb  = (flags & 0x02) ? rawThb  / 100.0 : 0.0;
 
     emit signal_oxygen(0, smo2, thb);
+}
+
+// Battery Level (0x2A19)
+// Single byte: battery percentage 0–100
+void BtleHub::parseBatteryLevel(const QByteArray &data)
+{
+    if (data.isEmpty())
+        return;
+
+    int percentage = static_cast<quint8>(data[0]);
+    percentage = qBound(0, percentage, 100);
+
+    emit signal_battery(determineSensorType(), percentage);
+}
+
+// Return a human-readable sensor type based on which services are connected.
+QString BtleHub::determineSensorType() const
+{
+    if (m_hrService)      return QStringLiteral("Heart Rate");
+    if (m_powerService)   return QStringLiteral("Power");
+    if (m_ftmsService)    return QStringLiteral("Trainer");
+    if (m_cscService)     return QStringLiteral("Speed/Cadence");
+    if (m_moxyService)    return QStringLiteral("Oxygen");
+    return QStringLiteral("Sensor");
 }

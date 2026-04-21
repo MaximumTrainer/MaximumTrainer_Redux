@@ -5,6 +5,7 @@
 #include <QTranslator>
 #include <QNetworkReply>
 #include <QThread>
+#include <QDockWidget>
 #ifndef GC_WASM_BUILD
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QtWebEngineCore/QWebEngineDownloadRequest>
@@ -24,12 +25,18 @@
 #include "userstudio.h"
 #include "myconstants.h"
 #include "tab_intervals_icu.h"
+#include "historywidget.h"
 #ifdef GC_WASM_BUILD
 #include "btle_hub_wasm.h"
 #else
 #include "btle_hub.h"
 #endif
 
+
+#include "workoutqueue.h"
+#include "queuepanelwidget.h"
+
+class WorkoutCountdownDialog; // forward
 
 namespace Ui {
 class MainWindow;
@@ -54,9 +61,6 @@ public:
 signals :
     void isExpanded(bool isExpanded);
     void ftpAndTabProfileChanged();
-
-
-
 
 
 public slots:
@@ -120,12 +124,15 @@ private slots:
     void on_actionAbout_MT_triggered();
     void on_actionAbout_Qt_triggered();
     void on_actionRequest_Help_triggered();
+    void on_actionKeyboard_Shortcuts_triggered();
     void on_actionCheck_for_Updates_triggered();
     void slotVersionCheckFinished();
     void on_actionPreferences_triggered();
     void on_actionWorkout_triggered();
     void on_actionOpen_Course_Folder_triggered();
     void on_actionHistory_triggered();
+    void on_actionToggleQueue_triggered();
+    void addWorkoutToQueue(const Workout &workout);
 
 
     void on_actionCreate_New_triggered();
@@ -173,6 +180,8 @@ private slots:
 
     // Screenshot mode — captures a sequence of PNG files then quits the app.
     void screenshotNextStep();
+
+    void slotSystemThemeChanged();
 
 private:
     void loadSettings();
@@ -253,6 +262,10 @@ private:
     WorkoutDialog *m_ssWorkoutDlg = nullptr;
     SimulatorHub  *m_ssSimHub     = nullptr;
 
+    // Workout queue (#152)
+    WorkoutQueue     *m_workoutQueue   = nullptr;
+    QueuePanelWidget *m_queuePanel     = nullptr;
+    QDockWidget      *m_queueDock      = nullptr;
 };
 
 #endif // MAINWINDOW_H

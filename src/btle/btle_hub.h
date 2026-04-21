@@ -49,6 +49,10 @@ signals:
     void signal_speed(int userID, double speed);       // km/h
     void signal_power(int userID, int power);          // watts
     void signal_oxygen(int userID, double smo2Percent, double thbGdL);
+    /// Emitted when the connected device's Battery Service reports a level.
+    /// \param sensorType  Human-readable sensor name ("Heart Rate", "Power", …)
+    /// \param percentage  Battery level 0–100 (%)
+    void signal_battery(QString sensorType, int percentage);
 
     // ----------- Connection status signals ---------------------------------
     void deviceConnected();
@@ -93,14 +97,17 @@ private:
     void parsePowerMeasurement(const QByteArray &data);
     void parseFtmsIndoorBikeData(const QByteArray &data);
     void parseMoxyMeasurement(const QByteArray &data);
+    void parseBatteryLevel(const QByteArray &data);
+    QString determineSensorType() const; ///< Infer sensor type from connected services
 
     QLowEnergyController *m_controller = nullptr;
 
-    QLowEnergyService *m_hrService    = nullptr;
-    QLowEnergyService *m_cscService   = nullptr;
-    QLowEnergyService *m_powerService = nullptr;
-    QLowEnergyService *m_ftmsService  = nullptr;
-    QLowEnergyService *m_moxyService  = nullptr;
+    QLowEnergyService *m_hrService       = nullptr;
+    QLowEnergyService *m_cscService      = nullptr;
+    QLowEnergyService *m_powerService    = nullptr;
+    QLowEnergyService *m_ftmsService     = nullptr;
+    QLowEnergyService *m_moxyService     = nullptr;
+    QLowEnergyService *m_batteryService  = nullptr;
 
     bool m_ftmsControlRequested = false;
 

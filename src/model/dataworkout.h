@@ -52,6 +52,12 @@ public:
     int getLTHR();
     //-----------------
 
+    // Interval average accessors — valid until the next changeInterval() call
+    double getAvgIntervalPower() const { return avgIntervalPower; }
+    double getAvgIntervalHr()    const { return avgIntervalHr; }
+    double getAvgIntervalCad()   const { return avgIntervalCad; }
+    int    getNbPointsIntervalPower() const { return nbPointsIntervalPower; }
+
 
 
 
