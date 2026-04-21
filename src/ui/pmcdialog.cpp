@@ -78,7 +78,7 @@ void PmcDialog::setupUi(const QList<PmcPoint> &points)
 
     // ── close button ──────────────────────────────────────────────────────────
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
-    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     // ── layout ────────────────────────────────────────────────────────────────
     auto *mainLayout = new QVBoxLayout(this);
