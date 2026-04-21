@@ -192,6 +192,7 @@ private:
 
     void saveAndNavigateToWorkout(const Workout &workout, const QString &subFolder);
 
+    void tryAdvanceWorkoutQueue();
 
     void checkToEnableWindow();
     void sendDataToSettingsOrStudioPage(int deviceType, int numberDeviceFound, QList<int> lstDevicePairedr, QList<int> lstTypeDevicePairedr, bool fromStudioPage);
