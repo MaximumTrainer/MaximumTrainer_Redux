@@ -1705,11 +1705,17 @@ void MainWindow::executeWorkout(Workout workout) {
             QString nextPath = m_workoutQueue->filePath(0);
             WorkoutCountdownDialog countdown(nextName, 60, this);
             if (countdown.exec() == QDialog::Accepted) {
-                m_workoutQueue->dequeueFilePath();
                 XmlUtil xmlNext(settings->language);
                 Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
-                if (!next.getName().isEmpty())
+                if (!next.getName().isEmpty()) {
+                    m_workoutQueue->dequeueFilePath();
                     executeWorkout(next);
+                } else {
+                    QMessageBox::warning(this,
+                                         tr("Queue Error"),
+                                         tr("Could not load the next queued workout:\n%1").arg(nextPath));
+                    m_workoutQueue->dequeueFilePath();
+                }
             }
         }
         return;
@@ -1803,11 +1809,17 @@ void MainWindow::executeWorkout(Workout workout) {
         QString nextPath = m_workoutQueue->filePath(0);
         WorkoutCountdownDialog countdown(nextName, 60, this);
         if (countdown.exec() == QDialog::Accepted) {
-            m_workoutQueue->dequeueFilePath();
             XmlUtil xmlNext(settings->language);
             Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
-            if (!next.getName().isEmpty())
+            if (!next.getName().isEmpty()) {
+                m_workoutQueue->dequeueFilePath();
                 executeWorkout(next);
+            } else {
+                QMessageBox::warning(this,
+                                     tr("Queue Error"),
+                                     tr("Could not load the next queued workout:\n%1").arg(nextPath));
+                m_workoutQueue->dequeueFilePath();
+            }
         }
     }
 }

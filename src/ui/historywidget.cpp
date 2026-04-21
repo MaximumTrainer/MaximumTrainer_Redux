@@ -29,7 +29,7 @@ void HistoryWidget::setupUi()
 
     m_proxy = new QSortFilterProxyModel(this);
     m_proxy->setSourceModel(m_model);
-    m_proxy->setSortRole(Qt::DisplayRole);
+    m_proxy->setSortRole(Qt::UserRole);
 
     m_tableView = new QTableView(this);
     m_tableView->setModel(m_proxy);

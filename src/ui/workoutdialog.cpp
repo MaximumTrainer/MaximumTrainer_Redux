@@ -2371,6 +2371,18 @@ void WorkoutDialog::sendLoads(double percentageFTP) {
         return;
     }
 
+    // If a ramp is already active toward the same target, let the timer proceed.
+    if (m_ergSmoothTimer && m_ergSmoothTimer->isActive() &&
+            qRound(targetWatts) == qRound(m_ergSmoothTo)) {
+        return;
+    }
+
+    // If target matches the last emitted value and no ramp is running, nothing to do.
+    if (qRound(targetWatts) == m_ergSmoothLast &&
+            (!m_ergSmoothTimer || !m_ergSmoothTimer->isActive())) {
+        return;
+    }
+
     // Start a ramp from the last emitted value (handles mid-ramp retargeting correctly).
     const double fromWatts = (m_ergSmoothLast > 0) ? m_ergSmoothLast : targetWatts;
     startErgSmoothing(fromWatts, targetWatts);

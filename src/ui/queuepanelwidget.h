@@ -22,6 +22,8 @@ private slots:
     void onMoveUp();
     void onMoveDown();
     void onClear();
+    void onItemsMoved(const QModelIndex &sourceParent, int sourceStart, int sourceEnd,
+                      const QModelIndex &destinationParent, int destinationRow);
 
 private:
     WorkoutQueue  *m_queue      = nullptr;

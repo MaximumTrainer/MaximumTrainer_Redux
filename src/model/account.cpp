@@ -86,7 +86,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
     control_trainer_resistance = true;
     stop_pairing_on_found = true;
     nb_sec_pairing = 2;
-    erg_smoothing_duration_s = 5;
+    erg_smoothing_duration_s = qBound(0, erg_smoothing_duration_s, 30);
     /* ----- */
 
     last_index_selected_config_workout = 0;

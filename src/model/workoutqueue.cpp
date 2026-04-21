@@ -43,6 +43,17 @@ void WorkoutQueue::moveDown(int index)
     emit queueChanged();
 }
 
+void WorkoutQueue::moveItem(int fromIndex, int toIndex)
+{
+    if (fromIndex == toIndex) return;
+    if (fromIndex < 0 || fromIndex >= m_filePaths.size()) return;
+    if (toIndex   < 0 || toIndex   >= m_filePaths.size()) return;
+    m_filePaths.move(fromIndex, toIndex);
+    m_names.move(fromIndex, toIndex);
+    save();
+    emit queueChanged();
+}
+
 void WorkoutQueue::clear()
 {
     m_filePaths.clear();
