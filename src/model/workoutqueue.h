@@ -27,9 +27,12 @@ public:
     QStringList filePaths() const { return m_filePaths; }
     QStringList names()     const { return m_names; }
 
-    /// Consume (remove and return) the first workout in the queue.
+    /// Consume (remove and return) the first workout file path in the queue.
     /// Returns an empty string if the queue is empty.
     QString dequeueFilePath();
+
+    /// Return the name of the first workout in the queue without removing it.
+    /// Returns an empty string if the queue is empty.
     QString dequeueName();
 
     void save() const;

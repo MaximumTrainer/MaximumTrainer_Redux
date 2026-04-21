@@ -63,7 +63,12 @@ QString WorkoutQueue::dequeueFilePath()
 
 QString WorkoutQueue::dequeueName()
 {
-    return m_names.isEmpty() ? QString() : m_names.first();
+    if (m_names.isEmpty()) return {};
+    QString name = m_names.takeFirst();
+    if (!m_filePaths.isEmpty()) m_filePaths.takeFirst();
+    save();
+    emit queueChanged();
+    return name;
 }
 
 void WorkoutQueue::save() const

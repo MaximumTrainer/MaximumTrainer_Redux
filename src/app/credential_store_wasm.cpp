@@ -27,26 +27,33 @@ bool CredentialStore::store(const QString &service,
 {
     const std::string k = makeLocalStorageKey(service, key);
     const std::string v = value.toStdString();
-    EM_ASM({
+    const int stored = EM_ASM_INT({
         try {
             window.localStorage.setItem(
                 UTF8ToString($0),
                 UTF8ToString($1));
-        } catch(e) {}
+            return 1;
+        } catch(e) {
+            return 0;
+        }
     }, k.c_str(), v.c_str());
-    return true;
+    return stored != 0;
 }
 
 QString CredentialStore::load(const QString &service, const QString &key)
 {
     const std::string k = makeLocalStorageKey(service, key);
     char *raw = reinterpret_cast<char *>(EM_ASM_PTR({
-        const val = window.localStorage.getItem(UTF8ToString($0));
-        if (!val) return 0;
-        const len  = lengthBytesUTF8(val) + 1;
-        const heap = _malloc(len);
-        stringToUTF8(val, heap, len);
-        return heap;
+        try {
+            const val = window.localStorage.getItem(UTF8ToString($0));
+            if (!val) return 0;
+            const len  = lengthBytesUTF8(val) + 1;
+            const heap = _malloc(len);
+            stringToUTF8(val, heap, len);
+            return heap;
+        } catch(e) {
+            return 0;
+        }
     }, k.c_str()));
     if (!raw)
         return {};
