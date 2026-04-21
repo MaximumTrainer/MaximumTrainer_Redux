@@ -20,7 +20,7 @@ const APP_URL = 'https://maximumtrainer.github.io/MaximumTrainer_Redux/app/';
 async function injectRecordingBluetoothMock(page) {
   await page.addInitScript(() => {
     const calls = window._btleApiCalls = {
-      requestDeviceFilters: null,
+      requestDeviceFilters: undefined,
       getPrimaryService: [],
       getCharacteristic: [],
       startNotifications: [],
@@ -103,10 +103,12 @@ async function triggerBleScanAndWaitForRequestDevice(page) {
   await page.evaluate(() => window.mt_startBleScan());
 
   // Earliest reliable signal: our injected mock recorded a requestDevice call.
+  // requestDeviceFilters starts as `undefined`; it becomes defined (even if null
+  // for a filter-less call) the moment requestDevice is invoked.
   await page.waitForFunction(
     () => {
       const calls = window._btleApiCalls;
-      return calls && calls.requestDeviceFilters !== null;
+      return calls && calls.requestDeviceFilters !== undefined;
     },
     { timeout: 45000 }
   );
