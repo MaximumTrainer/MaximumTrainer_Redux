@@ -65,6 +65,22 @@ QVariant WorkoutHistoryModel::data(const QModelIndex &index, int role) const
         default:
             break;
         }
+    } else if (role == Qt::UserRole) {
+        // Numeric sort values for QSortFilterProxyModel — avoids lexicographic ordering
+        // on formatted strings like "120 W", "9.5 km", "1h 05m".
+        switch (index.column()) {
+        case ColDate:     return s.startTime.toSecsSinceEpoch();
+        case ColWorkout:  return s.workoutName;
+        case ColDuration: return s.durationSec;
+        case ColAvgPower: return s.avgPowerW;
+        case ColNP:       return s.normalizedPower;
+        case ColHR:       return s.avgHrBpm;
+        case ColCadence:  return s.avgCadence;
+        case ColTSS:      return s.tss;
+        case ColDistance: return s.totalDistanceKm;
+        case ColCalories: return s.calories;
+        default:          break;
+        }
     } else if (role == Qt::TextAlignmentRole) {
         switch (index.column()) {
         case ColDate:

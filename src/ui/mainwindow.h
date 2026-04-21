@@ -26,6 +26,7 @@
 #include "myconstants.h"
 #include "tab_intervals_icu.h"
 #include "historywidget.h"
+#include "planadherencestore.h"
 #ifdef GC_WASM_BUILD
 #include "btle_hub_wasm.h"
 #else
@@ -192,6 +193,7 @@ private:
 
     void saveAndNavigateToWorkout(const Workout &workout, const QString &subFolder);
 
+    void tryAdvanceWorkoutQueue();
 
     void checkToEnableWindow();
     void sendDataToSettingsOrStudioPage(int deviceType, int numberDeviceFound, QList<int> lstDevicePairedr, QList<int> lstTypeDevicePairedr, bool fromStudioPage);
@@ -261,6 +263,9 @@ private:
     int            m_ssStep       = 0;
     WorkoutDialog *m_ssWorkoutDlg = nullptr;
     SimulatorHub  *m_ssSimHub     = nullptr;
+
+    // Plan Adherence (#157)
+    PlanAdherenceStore *m_adherenceStore = nullptr;
 
     // Workout queue (#152)
     WorkoutQueue     *m_workoutQueue   = nullptr;

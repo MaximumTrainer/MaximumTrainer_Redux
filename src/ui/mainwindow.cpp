@@ -326,6 +326,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                 QMessageBox::warning(this, tr("Intervals.icu Sync Failed"), err);
             });
 
+    // ── Plan Adherence (#157) ─────────────────────────────────────────────────
+    m_adherenceStore = new PlanAdherenceStore(this);
+    if (auto *hw = qobject_cast<HistoryWidget*>(ui->historyWidget))
+        hw->setAdherenceStore(m_adherenceStore);
+
     // ── Workout Queue (#152) ─────────────────────────────────────────────────
     m_workoutQueue = new WorkoutQueue(this);
     m_queuePanel   = new QueuePanelWidget(m_workoutQueue, this);
@@ -703,6 +708,34 @@ void MainWindow::saveAndNavigateToWorkout(const Workout &workout, const QString 
         ui->widget_bottomMenu->setGeneralMessage(
             tr("Could not save Trainerweb workout to disk."), 5000);
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+void MainWindow::tryAdvanceWorkoutQueue()
+{
+    if (m_workoutQueue->isEmpty())
+        return;
+
+    const QString nextName = m_workoutQueue->name(0);
+    const QString nextPath = m_workoutQueue->filePath(0);
+    WorkoutCountdownDialog countdown(nextName, 60, this);
+    if (countdown.exec() != QDialog::Accepted)
+        return;
+
+    // Defer via singleShot so this stack frame fully unwinds before
+    // the next workout begins — avoids unbounded recursion with long queues.
+    QTimer::singleShot(0, this, [this, nextPath]() {
+        XmlUtil xmlNext(settings->language);
+        Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
+        m_workoutQueue->dequeueFilePath();
+        if (!next.getName().isEmpty()) {
+            executeWorkout(next);
+        } else {
+            QMessageBox::warning(this,
+                                 tr("Queue Error"),
+                                 tr("Could not load the next queued workout:\n%1").arg(nextPath));
+        }
+    });
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -1700,18 +1733,7 @@ void MainWindow::executeWorkout(Workout workout) {
         ui->webView_achiev->reload();
 
         // Auto-advance to next queued workout if one exists
-        if (!m_workoutQueue->isEmpty()) {
-            QString nextName = m_workoutQueue->name(0);
-            QString nextPath = m_workoutQueue->filePath(0);
-            WorkoutCountdownDialog countdown(nextName, 60, this);
-            if (countdown.exec() == QDialog::Accepted) {
-                m_workoutQueue->dequeueFilePath();
-                XmlUtil xmlNext(settings->language);
-                Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
-                if (!next.getName().isEmpty())
-                    executeWorkout(next);
-            }
-        }
+        tryAdvanceWorkoutQueue();
         return;
     }
 
@@ -1798,18 +1820,7 @@ void MainWindow::executeWorkout(Workout workout) {
     ui->webView_achiev->reload();
 
     // Auto-advance to next queued workout if one exists
-    if (!m_workoutQueue->isEmpty()) {
-        QString nextName = m_workoutQueue->name(0);
-        QString nextPath = m_workoutQueue->filePath(0);
-        WorkoutCountdownDialog countdown(nextName, 60, this);
-        if (countdown.exec() == QDialog::Accepted) {
-            m_workoutQueue->dequeueFilePath();
-            XmlUtil xmlNext(settings->language);
-            Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
-            if (!next.getName().isEmpty())
-                executeWorkout(next);
-        }
-    }
+    tryAdvanceWorkoutQueue();
 }
 
 
@@ -1908,6 +1919,12 @@ void MainWindow::on_actionMultiple_Workouts_triggered()
 void MainWindow::checkToUploadFile(const QString& filename, const QString& nameOnly, const QString& description) {
 
     qDebug() << "check to upload Fit file";
+
+    // ── Plan adherence: auto-mark this workout as completed ──────────────────
+    if (m_adherenceStore && !nameOnly.isEmpty()) {
+        const QDate today = QDate::currentDate();
+        m_adherenceStore->addCompleted(today, nameOnly, filename);
+    }
 
     // Note: Strava, TrainingPeaks, and SelfLoops uploads are now triggered
     // explicitly by the post-workout upload buttons inside WorkoutDialog.

@@ -64,10 +64,11 @@ void CriticalPowerDialog::setupUi()
     m_plot->setAxisTitle(QwtPlot::yLeft,   tr("Power (W)"));
     m_plot->setAxisScaleEngine(QwtPlot::xBottom, new QwtLogScaleEngine());
     m_plot->setAxisScaleDraw(QwtPlot::xBottom, new DurationScaleDraw());
-    m_plot->setCanvasBackground(Qt::white);
+    const QPalette appPalette = QApplication::palette();
+    m_plot->setCanvasBackground(appPalette.color(QPalette::Base));
 
     auto *grid = new QwtPlotGrid();
-    grid->setMajorPen(Qt::lightGray, 1, Qt::DashLine);
+    grid->setMajorPen(appPalette.color(QPalette::Mid), 1, Qt::DashLine);
     grid->attach(m_plot);
 
     m_mmpCurve = new QwtPlotCurve(tr("MMP"));

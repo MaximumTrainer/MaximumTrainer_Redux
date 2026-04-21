@@ -10,7 +10,10 @@
  *   - Uncached requests: Network-first.
  */
 
-const SW_VERSION = 'v1';
+const SW_URL = new URL(self.location.href);
+const SW_VERSION =
+  (SW_URL.searchParams.get('v') || SW_URL.searchParams.get('version') || 'v1')
+    .replace(/[^a-zA-Z0-9._-]/g, '-');
 const CACHE_NAME = `maximum-trainer-${SW_VERSION}`;
 
 // Assets to pre-cache at install time.
