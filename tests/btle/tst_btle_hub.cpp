@@ -822,7 +822,7 @@ void TstBtleHub::testBattery_tooShort_ignored()
     QCOMPARE(spy.count(), 0);
 }
 
-/// Battery level 15% — signal emitted with correct percentage.
+/// Battery level at 15% — signal emitted with correct percentage.
 void TstBtleHub::testBattery_belowThreshold_emits()
 {
     QSignalSpy spy(hub, &BtleHub::signal_battery);

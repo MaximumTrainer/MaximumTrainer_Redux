@@ -2367,6 +2367,7 @@ void WorkoutDialog::sendLoads(double percentageFTP) {
     // If smoothing is disabled or target is zero, send immediately.
     if (account->erg_smoothing_duration_s <= 0 || targetWatts <= 0) {
         stopErgSmoothing();
+        m_ergSmoothLast = targetWatts;
         emit setLoad(idFecMainUser, qRound(targetWatts));
         return;
     }

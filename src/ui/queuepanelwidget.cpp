@@ -17,7 +17,7 @@ QueuePanelWidget::QueuePanelWidget(WorkoutQueue *queue, QWidget *parent)
     layout->addWidget(titleLbl);
 
     m_list = new QListWidget(this);
-    m_list->setDragDropMode(QAbstractItemView::InternalMove);
+    m_list->setDragDropMode(QAbstractItemView::NoDragDrop);
     layout->addWidget(m_list, 1);
 
     // Button row
@@ -47,8 +47,6 @@ QueuePanelWidget::QueuePanelWidget(WorkoutQueue *queue, QWidget *parent)
     connect(m_upBtn,     &QPushButton::clicked, this, &QueuePanelWidget::onMoveUp);
     connect(m_downBtn,   &QPushButton::clicked, this, &QueuePanelWidget::onMoveDown);
     connect(m_clearBtn,  &QPushButton::clicked, this, &QueuePanelWidget::onClear);
-    connect(m_list->model(), &QAbstractItemModel::rowsMoved,
-            this, &QueuePanelWidget::onItemsMoved);
 
     connect(m_queue, &WorkoutQueue::queueChanged, this, &QueuePanelWidget::refresh);
     refresh();
@@ -100,15 +98,4 @@ void QueuePanelWidget::onMoveDown()
 void QueuePanelWidget::onClear()
 {
     m_queue->clear();
-}
-
-void QueuePanelWidget::onItemsMoved(const QModelIndex &, int sourceStart, int sourceEnd,
-                                    const QModelIndex &, int destinationRow)
-{
-    // Propagate single-item drag/drop reordering from QListWidget to WorkoutQueue.
-    if (sourceStart != sourceEnd) return;
-    // Qt's destinationRow is the insertion position before which the item lands;
-    // adjust for the gap left by the removed source item when moving downward.
-    const int toIndex = (destinationRow > sourceStart) ? destinationRow - 1 : destinationRow;
-    m_queue->moveItem(sourceStart, toIndex);
 }

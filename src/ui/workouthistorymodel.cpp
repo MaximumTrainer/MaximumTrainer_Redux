@@ -66,9 +66,10 @@ QVariant WorkoutHistoryModel::data(const QModelIndex &index, int role) const
             break;
         }
     } else if (role == Qt::UserRole) {
-        // Numeric values for correct column sorting
+        // Numeric sort values for QSortFilterProxyModel — avoids lexicographic ordering
+        // on formatted strings like "120 W", "9.5 km", "1h 05m".
         switch (index.column()) {
-        case ColDate:     return s.startTime.toMSecsSinceEpoch();
+        case ColDate:     return s.startTime.toSecsSinceEpoch();
         case ColWorkout:  return s.workoutName;
         case ColDuration: return s.durationSec;
         case ColAvgPower: return s.avgPowerW;

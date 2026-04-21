@@ -86,6 +86,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
     control_trainer_resistance = true;
     stop_pairing_on_found = true;
     nb_sec_pairing = 2;
+    // Clamp the loaded value to the valid range (0–30 s)
     erg_smoothing_duration_s = qBound(0, erg_smoothing_duration_s, 30);
     /* ----- */
 

@@ -16,7 +16,6 @@ public:
     void removeAt(int index);
     void moveUp(int index);
     void moveDown(int index);
-    void moveItem(int fromIndex, int toIndex);
     void clear();
 
     bool isEmpty() const { return m_filePaths.isEmpty(); }
@@ -32,7 +31,7 @@ public:
     /// Returns an empty string if the queue is empty.
     QString dequeueFilePath();
 
-    /// Consume (remove and return) the name of the first workout in the queue.
+    /// Consume (remove and return) the first workout name in the queue.
     /// Returns an empty string if the queue is empty.
     QString dequeueName();
 
