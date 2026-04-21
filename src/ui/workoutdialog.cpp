@@ -2367,7 +2367,14 @@ void WorkoutDialog::sendLoads(double percentageFTP) {
     // If smoothing is disabled or target is zero, send immediately.
     if (account->erg_smoothing_duration_s <= 0 || targetWatts <= 0) {
         stopErgSmoothing();
+        m_ergSmoothLast = targetWatts;
         emit setLoad(idFecMainUser, qRound(targetWatts));
+        return;
+    }
+
+    // If a ramp is already progressing toward the same target, let it continue.
+    if (m_ergSmoothTimer && m_ergSmoothTimer->isActive() &&
+        qRound(m_ergSmoothTo) == qRound(targetWatts)) {
         return;
     }
 

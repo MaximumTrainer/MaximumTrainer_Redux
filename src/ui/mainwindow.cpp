@@ -1711,10 +1711,14 @@ void MainWindow::executeWorkout(Workout workout) {
             WorkoutCountdownDialog countdown(nextName, 60, this);
             if (countdown.exec() == QDialog::Accepted) {
                 m_workoutQueue->dequeueFilePath();
-                XmlUtil xmlNext(settings->language);
-                Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
-                if (!next.getName().isEmpty())
-                    executeWorkout(next);
+                // Defer via singleShot so this stack frame fully unwinds before
+                // the next workout begins — avoids unbounded recursion with long queues.
+                QTimer::singleShot(0, this, [this, nextPath]() {
+                    XmlUtil xmlNext(settings->language);
+                    Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
+                    if (!next.getName().isEmpty())
+                        executeWorkout(next);
+                });
             }
         }
         return;
@@ -1809,10 +1813,14 @@ void MainWindow::executeWorkout(Workout workout) {
         WorkoutCountdownDialog countdown(nextName, 60, this);
         if (countdown.exec() == QDialog::Accepted) {
             m_workoutQueue->dequeueFilePath();
-            XmlUtil xmlNext(settings->language);
-            Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
-            if (!next.getName().isEmpty())
-                executeWorkout(next);
+            // Defer via singleShot so this stack frame fully unwinds before
+            // the next workout begins — avoids unbounded recursion with long queues.
+            QTimer::singleShot(0, this, [this, nextPath]() {
+                XmlUtil xmlNext(settings->language);
+                Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
+                if (!next.getName().isEmpty())
+                    executeWorkout(next);
+            });
         }
     }
 }

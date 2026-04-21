@@ -97,7 +97,7 @@ private slots:
     void testSimulator_noOpSetSlope();
 
     // ── Battery Level parsing ─────────────────────────────────────────────────
-    void testBattery_aboveThreshold_noSignal();
+    void testBattery_aboveThreshold_emits();
     void testBattery_atThreshold_emits();
     void testBattery_belowThreshold_emits();
     void testBattery_tooShort_ignored();
@@ -822,7 +822,7 @@ void TstBtleHub::testBattery_tooShort_ignored()
     QCOMPARE(spy.count(), 0);
 }
 
-/// Nominal battery level (85%) — signal emitted with correct percentage.
+/// Battery level at 15% — signal emitted with correct percentage.
 void TstBtleHub::testBattery_belowThreshold_emits()
 {
     QSignalSpy spy(hub, &BtleHub::signal_battery);
@@ -841,7 +841,7 @@ void TstBtleHub::testBattery_atThreshold_emits()
 }
 
 /// Above threshold (75%) — signal still emitted (threshold filtering is in WorkoutDialog).
-void TstBtleHub::testBattery_aboveThreshold_noSignal()
+void TstBtleHub::testBattery_aboveThreshold_emits()
 {
     QSignalSpy spy(hub, &BtleHub::signal_battery);
     hub->simulateNotification(BTLE_UUID_BATTERY_LEVEL, QByteArray(1, char(75)));

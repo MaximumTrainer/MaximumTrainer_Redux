@@ -31,7 +31,7 @@ public:
     /// Returns an empty string if the queue is empty.
     QString dequeueFilePath();
 
-    /// Return the name of the first workout in the queue without removing it.
+    /// Consume (remove and return) the first workout name in the queue.
     /// Returns an empty string if the queue is empty.
     QString dequeueName();
 
