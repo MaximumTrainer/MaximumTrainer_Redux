@@ -20,7 +20,7 @@ const APP_URL = 'https://maximumtrainer.github.io/MaximumTrainer_Redux/app/';
 async function injectRecordingBluetoothMock(page) {
   await page.addInitScript(() => {
     const calls = window._btleApiCalls = {
-      requestDeviceFilters: null,
+      requestDeviceFilters: undefined,
       getPrimaryService: [],
       getCharacteristic: [],
       startNotifications: [],
@@ -81,9 +81,8 @@ async function injectRecordingBluetoothMock(page) {
   });
 }
 
-// Wait for the Qt canvas to become visible (app fully initialised), then
-// trigger BLE scanning via the test helper registered by BtleHubWasm::ctor.
-async function waitForCanvas(page) {
+// Wait for the Qt canvas to become visible (app fully initialised).
+async function waitForAppReady(page) {
   await page.waitForFunction(
     () => {
       const canvas = document.querySelector('#qt-canvas-wrapper');
@@ -91,19 +90,36 @@ async function waitForCanvas(page) {
     },
     { timeout: 45000 }
   );
-  // Trigger BLE scan via the test helper registered by BtleHubWasm::ctor.
-  // In a real browser this would require a user gesture; the mock injected by
-  // injectRecordingBluetoothMock() satisfies the call without any gesture.
-  await page.evaluate(() => {
-    if (typeof window.mt_startBleScan === 'function') {
-      window.mt_startBleScan();
-    }
-  });
-  // Wait until the full async GATT setup chain has completed.
-  // The last step recorded by the mock is writeValueWithResponse on the
-  // FTMS Control Point (0x2AD9), which only fires after subscribeAll and
-  // requestFtmsControl both finish.  Polling for it is more reliable than
-  // a fixed delay.
+}
+
+// Trigger BLE scanning via the test helper registered by BtleHubWasm::ctor
+// and wait for requestDevice to be called — the earliest reliable signal that
+// the WASM bridge has initiated scanning.
+async function triggerBleScanAndWaitForRequestDevice(page) {
+  // Fail fast if the deployed app didn't expose the expected test hook.
+  const hasHook = await page.evaluate(() => typeof window.mt_startBleScan === 'function');
+  expect(hasHook, 'window.mt_startBleScan was not registered by the app build').toBeTruthy();
+
+  await page.evaluate(() => window.mt_startBleScan());
+
+  // Earliest reliable signal: our injected mock recorded a requestDevice call.
+  // requestDeviceFilters starts as `undefined`; it becomes defined (even if null
+  // for a filter-less call) the moment requestDevice is invoked.
+  await page.waitForFunction(
+    () => {
+      const calls = window._btleApiCalls;
+      return calls && calls.requestDeviceFilters !== undefined;
+    },
+    { timeout: 45000 }
+  );
+}
+
+// Wait until the full async GATT setup chain has completed.
+// The last step recorded by the mock is writeValueWithResponse on the
+// FTMS Control Point (0x2AD9), which only fires after subscribeAll and
+// requestFtmsControl both finish.  Polling for it is more reliable than
+// a fixed delay.
+async function waitForFtmsWrite(page) {
   await page.waitForFunction(
     () => {
       const calls = window._btleApiCalls;
@@ -132,14 +148,10 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     page.on('console', msg => consoleLogs.push({ type: msg.type(), text: msg.text() }));
 
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForCanvas(page);
+    await waitForAppReady(page);
+    await triggerBleScanAndWaitForRequestDevice(page);
 
     const recorded = await page.evaluate(() => window._btleApiCalls);
-
-    // Diagnostic: log the full BLE call record when requestDevice was not triggered
-    if (!recorded.requestDeviceFilters) {
-      console.error('BLE scan was not initiated. window._btleApiCalls:', JSON.stringify(recorded));
-    }
 
     // requestDevice must have been called by js_scanAndConnect
     expect(recorded.requestDeviceFilters,
@@ -167,7 +179,8 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   test('getPrimaryService is called for each sensor profile', async ({ page }) => {
     await injectRecordingBluetoothMock(page);
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForCanvas(page);
+    await waitForAppReady(page);
+    await triggerBleScanAndWaitForRequestDevice(page);
 
     const recorded = await page.evaluate(() => window._btleApiCalls);
 
@@ -184,7 +197,8 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   test('startNotifications is called for each sensor characteristic', async ({ page }) => {
     await injectRecordingBluetoothMock(page);
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForCanvas(page);
+    await waitForAppReady(page);
+    await triggerBleScanAndWaitForRequestDevice(page);
 
     const recorded = await page.evaluate(() => window._btleApiCalls);
 
@@ -200,7 +214,9 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   test('FTMS Request Control (opcode 0x00) is written to characteristic 0x2AD9', async ({ page }) => {
     await injectRecordingBluetoothMock(page);
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForCanvas(page);
+    await waitForAppReady(page);
+    await triggerBleScanAndWaitForRequestDevice(page);
+    await waitForFtmsWrite(page);
 
     const recorded = await page.evaluate(() => window._btleApiCalls);
 
