@@ -719,8 +719,13 @@ void MainWindow::tryAdvanceWorkoutQueue()
     const QString nextName = m_workoutQueue->name(0);
     const QString nextPath = m_workoutQueue->filePath(0);
     WorkoutCountdownDialog countdown(nextName, 60, this);
-    if (countdown.exec() != QDialog::Accepted)
+    if (countdown.exec() != QDialog::Accepted) {
+        // User chose "Cancel Queue" — clear the remaining queue so it doesn't
+        // auto-advance after subsequent workouts.
+        if (countdown.dialogResult() == WorkoutCountdownDialog::Result::Cancelled)
+            m_workoutQueue->clear();
         return;
+    }
 
     // Defer via singleShot so this stack frame fully unwinds before
     // the next workout begins — avoids unbounded recursion with long queues.

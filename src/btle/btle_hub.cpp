@@ -88,11 +88,12 @@ void BtleHub::connectToDevice(const QBluetoothDeviceInfo &device)
     }
 
     // Clean up any previously-created service objects
-    delete m_hrService;    m_hrService    = nullptr;
-    delete m_cscService;   m_cscService   = nullptr;
-    delete m_powerService; m_powerService = nullptr;
-    delete m_ftmsService;  m_ftmsService  = nullptr;
-    delete m_moxyService;  m_moxyService  = nullptr;
+    delete m_hrService;       m_hrService       = nullptr;
+    delete m_cscService;      m_cscService      = nullptr;
+    delete m_powerService;    m_powerService    = nullptr;
+    delete m_ftmsService;     m_ftmsService     = nullptr;
+    delete m_moxyService;     m_moxyService     = nullptr;
+    delete m_batteryService;  m_batteryService  = nullptr;
 
     m_firstCscMeasurement   = true;
     m_ftmsControlRequested  = false;
