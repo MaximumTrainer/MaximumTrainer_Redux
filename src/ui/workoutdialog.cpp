@@ -2372,9 +2372,15 @@ void WorkoutDialog::sendLoads(double percentageFTP) {
         return;
     }
 
-    // If a ramp is already progressing toward the same target, let it continue.
+    // If a ramp is already active toward the same target, let the timer proceed.
     if (m_ergSmoothTimer && m_ergSmoothTimer->isActive() &&
-        qRound(m_ergSmoothTo) == qRound(targetWatts)) {
+            qRound(targetWatts) == qRound(m_ergSmoothTo)) {
+        return;
+    }
+
+    // If target matches the last emitted value and no ramp is running, nothing to do.
+    if (qRound(targetWatts) == m_ergSmoothLast &&
+            (!m_ergSmoothTimer || !m_ergSmoothTimer->isActive())) {
         return;
     }
 

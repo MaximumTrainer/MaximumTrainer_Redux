@@ -95,7 +95,7 @@ QNetworkReply *IntervalsIcuService::uploadActivity(const QString &filePath,
                                                     const QString &externalId)
 {
     // Build URL with optional query parameters
-    QUrl url(INTERVALS_BASE_URL + "/athlete/0/activities");
+    QUrl url(INTERVALS_BASE_URL + "/athlete/" + m_athleteId + "/activities");
     QUrlQuery q;
     if (!name.isEmpty())
         q.addQueryItem("name", name);

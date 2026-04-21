@@ -711,6 +711,34 @@ void MainWindow::saveAndNavigateToWorkout(const Workout &workout, const QString 
 }
 
 /////////////////////////////////////////////////////////////////////////////////
+void MainWindow::tryAdvanceWorkoutQueue()
+{
+    if (m_workoutQueue->isEmpty())
+        return;
+
+    const QString nextName = m_workoutQueue->name(0);
+    const QString nextPath = m_workoutQueue->filePath(0);
+    WorkoutCountdownDialog countdown(nextName, 60, this);
+    if (countdown.exec() != QDialog::Accepted)
+        return;
+
+    // Defer via singleShot so this stack frame fully unwinds before
+    // the next workout begins — avoids unbounded recursion with long queues.
+    QTimer::singleShot(0, this, [this, nextPath]() {
+        XmlUtil xmlNext(settings->language);
+        Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
+        m_workoutQueue->dequeueFilePath();
+        if (!next.getName().isEmpty()) {
+            executeWorkout(next);
+        } else {
+            QMessageBox::warning(this,
+                                 tr("Queue Error"),
+                                 tr("Could not load the next queued workout:\n%1").arg(nextPath));
+        }
+    });
+}
+
+/////////////////////////////////////////////////////////////////////////////////
 void MainWindow::workoutExecuting() {
 
     this->setDisabled(true);
@@ -1705,22 +1733,7 @@ void MainWindow::executeWorkout(Workout workout) {
         ui->webView_achiev->reload();
 
         // Auto-advance to next queued workout if one exists
-        if (!m_workoutQueue->isEmpty()) {
-            QString nextName = m_workoutQueue->name(0);
-            QString nextPath = m_workoutQueue->filePath(0);
-            WorkoutCountdownDialog countdown(nextName, 60, this);
-            if (countdown.exec() == QDialog::Accepted) {
-                m_workoutQueue->dequeueFilePath();
-                // Defer via singleShot so this stack frame fully unwinds before
-                // the next workout begins — avoids unbounded recursion with long queues.
-                QTimer::singleShot(0, this, [this, nextPath]() {
-                    XmlUtil xmlNext(settings->language);
-                    Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
-                    if (!next.getName().isEmpty())
-                        executeWorkout(next);
-                });
-            }
-        }
+        tryAdvanceWorkoutQueue();
         return;
     }
 
@@ -1807,22 +1820,7 @@ void MainWindow::executeWorkout(Workout workout) {
     ui->webView_achiev->reload();
 
     // Auto-advance to next queued workout if one exists
-    if (!m_workoutQueue->isEmpty()) {
-        QString nextName = m_workoutQueue->name(0);
-        QString nextPath = m_workoutQueue->filePath(0);
-        WorkoutCountdownDialog countdown(nextName, 60, this);
-        if (countdown.exec() == QDialog::Accepted) {
-            m_workoutQueue->dequeueFilePath();
-            // Defer via singleShot so this stack frame fully unwinds before
-            // the next workout begins — avoids unbounded recursion with long queues.
-            QTimer::singleShot(0, this, [this, nextPath]() {
-                XmlUtil xmlNext(settings->language);
-                Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
-                if (!next.getName().isEmpty())
-                    executeWorkout(next);
-            });
-        }
-    }
+    tryAdvanceWorkoutQueue();
 }
 
 
