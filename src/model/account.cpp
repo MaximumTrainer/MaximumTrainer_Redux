@@ -44,12 +44,17 @@ Account::Account(QObject *parent) : QObject(parent)  {
     settings.beginGroup("account");
     nb_sec_show_interval = settings.value("nb_sec_show_interval", 5 ).toInt();
     nb_sec_show_interval_before = settings.value("nb_sec_show_interval_before", 4 ).toInt();
+    erg_smoothing_duration_s = settings.value("erg_smoothing_duration_s", 5).toInt();
     intervals_icu_api_key     = settings.value("intervals_icu_api_key", "").toString();
     intervals_icu_athlete_id  = settings.value("intervals_icu_athlete_id", "").toString();
     intervals_icu_auto_upload = settings.value("intervals_icu_auto_upload", false).toBool();
     // OAuth2 tokens — loaded to restore an existing OAuth session across restarts.
     intervals_icu_access_token  = settings.value("intervals_icu_access_token",  "").toString();
     intervals_icu_refresh_token = settings.value("intervals_icu_refresh_token", "").toString();
+    // Sensor dropout auto-pause
+    sensor_dropout_enabled   = settings.value("sensor_dropout_enabled",   true).toBool();
+    sensor_dropout_timeout_s = settings.value("sensor_dropout_timeout_s", 5   ).toInt();
+    battery_warning_threshold = settings.value("battery_warning_threshold", 20).toInt();
     settings.endGroup();
 
     // Load encrypted third-party service credentials from the platform credential store.
@@ -77,10 +82,11 @@ Account::Account(QObject *parent) : QObject(parent)  {
     distance_in_km = true;
     strava_private_upload = false;
     training_peaks_public_upload = false;
-    intervals_icu_auto_upload = false;
+    // intervals_icu_auto_upload is loaded from QSettings above; don't reset it here
     control_trainer_resistance = true;
     stop_pairing_on_found = true;
     nb_sec_pairing = 2;
+    erg_smoothing_duration_s = 5;
     /* ----- */
 
     last_index_selected_config_workout = 0;
@@ -152,9 +158,13 @@ Account::Account(QObject *parent) : QObject(parent)  {
     sound_alert_cadence_under_target = false;
     sound_alert_cadence_above_target = false;
 
+    interval_summary_enabled    = true;
+    interval_summary_duration_s = 5;
     {
         QSettings s;
         s.beginGroup("account");
+        interval_summary_enabled    = s.value("interval_summary_enabled",    true).toBool();
+        interval_summary_duration_s = s.value("interval_summary_duration_s", 5).toInt();
         app_theme = s.value("app_theme", 2).toInt(); // default: System
         s.endGroup();
     }
@@ -200,6 +210,16 @@ void Account::saveNbSecShowIntervalBefore(int nbSec) {
     settings.endGroup();
 }
 
+void Account::saveErgSmoothingDuration(int seconds)
+{
+    erg_smoothing_duration_s = qBound(0, seconds, 30);
+
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("erg_smoothing_duration_s", erg_smoothing_duration_s);
+    settings.endGroup();
+}
+
 void Account::saveIntervalsIcuCredentials() {
 
     QSettings settings;
@@ -230,6 +250,32 @@ void Account::saveSelfloopsCredentials()
 {
     CredentialStore::store("selfloops", "email",    selfloops_user);
     CredentialStore::store("selfloops", "password", selfloops_pw);
+}
+
+void Account::saveSensorDropoutSettings()
+{
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("sensor_dropout_enabled",   sensor_dropout_enabled);
+    settings.setValue("sensor_dropout_timeout_s", sensor_dropout_timeout_s);
+    settings.endGroup();
+}
+
+void Account::saveBatteryWarningThreshold()
+{
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("battery_warning_threshold", battery_warning_threshold);
+    settings.endGroup();
+}
+
+void Account::saveIntervalSummarySettings()
+{
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("interval_summary_enabled",    interval_summary_enabled);
+    settings.setValue("interval_summary_duration_s", interval_summary_duration_s);
+    settings.endGroup();
 }
 
 void Account::saveAppTheme()

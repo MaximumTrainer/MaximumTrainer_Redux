@@ -242,6 +242,45 @@ test.describe('Browser compatibility guard', () => {
   });
 });
 
+// ── PWA / manifest checks ─────────────────────────────────────────────────
+test.describe('PWA support', () => {
+  test('manifest.json returns 200', async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/manifest.json`);
+    expect(res.status(), 'manifest.json should be deployed (200)').toBe(200);
+  });
+
+  test('manifest.json has required PWA fields', async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/manifest.json`);
+    expect(res.status()).toBe(200);
+    const manifest = await res.json();
+    expect(manifest.name, 'manifest must have a name').toBeTruthy();
+    expect(manifest.short_name, 'manifest must have a short_name').toBeTruthy();
+    expect(manifest.start_url, 'manifest must have a start_url').toBeTruthy();
+    expect(manifest.display, 'manifest must have a display mode').toBeTruthy();
+    expect(manifest.icons, 'manifest must have icons array').toBeDefined();
+    expect(Array.isArray(manifest.icons)).toBe(true);
+    expect(manifest.icons.length, 'manifest must have at least one icon').toBeGreaterThan(0);
+  });
+
+  test('service-worker.js returns 200', async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/service-worker.js`);
+    expect(res.status(), 'service-worker.js should be deployed (200)').toBe(200);
+  });
+
+  test('app/index.html links to manifest', async ({ request }) => {
+    const res = await request.get(APP_URL);
+    expect(res.status()).toBe(200);
+    const html = await res.text();
+    expect(html, 'index.html should contain manifest link').toContain('manifest.json');
+  });
+
+  test('app/index.html has theme-color meta tag', async ({ request }) => {
+    const res = await request.get(APP_URL);
+    const html = await res.text();
+    expect(html, 'index.html should have theme-color meta tag').toContain('theme-color');
+  });
+});
+
 // ── BLE reconnect overlay checks ──────────────────────────────────────────
 test.describe('BLE reconnect overlay', () => {
   test('reconnect overlay is present in the DOM and hidden by default', async ({ page }) => {

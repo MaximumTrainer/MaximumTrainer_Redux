@@ -7,6 +7,12 @@
   <title>Maximum Trainer — Web App (Beta)</title>
   <meta name="description" content="Maximum Trainer running in your browser via WebAssembly and WebBluetooth." />
   <link rel="icon" type="image/png" href="../assets/images/main_icon.png" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#e05a00" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Maximum Trainer" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -314,6 +320,21 @@
         });
       }
     });
+  </script>
+
+  <!-- PWA Service Worker registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('./service-worker.js', { scope: './' })
+          .then(function(reg) {
+            console.log('[SW] Registered, scope:', reg.scope);
+          })
+          .catch(function(err) {
+            console.warn('[SW] Registration failed:', err);
+          });
+      });
+    }
   </script>
 </body>
 </html>

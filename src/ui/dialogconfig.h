@@ -217,6 +217,19 @@ private:
     // Trainer tab controls
     QCheckBox    *checkControlResistance = nullptr;
     QComboBox    *comboTrainerModel      = nullptr;
+    QSpinBox     *spinErgSmoothing       = nullptr;
+    QCheckBox    *checkIntervalsIcuAutoUpload = nullptr;
+
+    // Trainer tab — Sensor dropout (issue #148)
+    QCheckBox    *checkDropoutEnabled    = nullptr;
+    QSpinBox     *spinDropoutTimeout     = nullptr;
+
+    // Trainer tab — Battery warning threshold (issue #156)
+    QSpinBox     *spinBatteryThreshold   = nullptr;
+
+    // Interval Summary overlay controls
+    QCheckBox    *checkIntervalSummary         = nullptr;
+    QSpinBox     *spinIntervalSummaryDuration  = nullptr;
 };
 
 #endif // DIALOGCONFIG_H

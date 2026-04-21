@@ -39,6 +39,8 @@
 #include "networkmonitor.h"
 #include "updatedialog.h"
 #include "versiondao.h"
+#include "dialogkeyboardshortcuts.h"
+#include "workoutcountdowndialog.h"
 #include "apptheme.h"
 
 #include <QDir>
@@ -178,6 +180,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ftb->insertTab(3, QIcon(":/image/icon/studio"), tr("Studio"));
     ftb->insertTab(4, QIcon(":/image/icon/user"), tr("Profile"));
     ftb->insertTab(5, QIcon(":/image/icon/gear"), tr("Settings"));
+    ftb->insertTab(6, QIcon(":/image/icon/chart"), tr("History"));
 
     ftb->setTabEnabled(0, true);
     ftb->setTabEnabled(1, true);
@@ -185,6 +188,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ftb->setTabEnabled(3, true);
     ftb->setTabEnabled(4, true);
     ftb->setTabEnabled(5, true);
+    ftb->setTabEnabled(6, true);
 
 
 
@@ -321,6 +325,21 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             this, [this](const QString &err) {
                 QMessageBox::warning(this, tr("Intervals.icu Sync Failed"), err);
             });
+
+    // ── Workout Queue (#152) ─────────────────────────────────────────────────
+    m_workoutQueue = new WorkoutQueue(this);
+    m_queuePanel   = new QueuePanelWidget(m_workoutQueue, this);
+
+    m_queueDock = new QDockWidget(tr("Workout Queue"), this);
+    m_queueDock->setObjectName(QStringLiteral("workoutQueueDock"));
+    m_queueDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    m_queueDock->setWidget(m_queuePanel);
+    m_queueDock->setMinimumWidth(220);
+    addDockWidget(Qt::RightDockWidgetArea, m_queueDock);
+    m_queueDock->hide();
+
+    connect(ui->tab_workout1, &Main_WorkoutPage::addWorkoutToQueue,
+            this, &MainWindow::addWorkoutToQueue);
 }
 
 
@@ -1157,6 +1176,7 @@ void MainWindow::enableStudioMode(bool enable) {
 
     ftb->setTabEnabled(4, !enable);
     ftb->setTabEnabled(5, !enable);
+    ftb->setTabEnabled(6, !enable);
 
 }
 
@@ -1508,6 +1528,12 @@ void MainWindow::on_actionRequest_Help_triggered()
     infoAntStick.exec();
 }
 //-----------------------------------------------
+void MainWindow::on_actionKeyboard_Shortcuts_triggered()
+{
+    DialogKeyboardShortcuts dlg(this);
+    dlg.exec();
+}
+//-----------------------------------------------
 void MainWindow::on_actionCheck_for_Updates_triggered()
 {
     // Abort any in-flight check before starting a new one to prevent races.
@@ -1575,7 +1601,30 @@ void MainWindow::on_actionOpen_Course_Folder_triggered()
 //-----------------------------------------------
 void MainWindow::on_actionHistory_triggered()
 {
-    Util::openHistoryFolder();
+    ftb->setCurrentIndex(6);
+}
+
+
+//------------------------------------------------------
+void MainWindow::on_actionToggleQueue_triggered()
+{
+    if (m_queueDock->isVisible())
+        m_queueDock->hide();
+    else
+        m_queueDock->show();
+}
+
+
+//------------------------------------------------------
+void MainWindow::addWorkoutToQueue(const Workout &workout)
+{
+    m_workoutQueue->addWorkout(workout.getFilePath(), workout.getName());
+    m_queueDock->show();
+    ui->widget_bottomMenu->setGeneralMessage(
+        tr("\"%1\" added to queue (%2 workout(s)).")
+            .arg(workout.getName())
+            .arg(m_workoutQueue->count()),
+        4000);
 }
 
 
@@ -1649,6 +1698,20 @@ void MainWindow::executeWorkout(Workout workout) {
         simHub->stopDecodingMsg();
         delete simHub;
         ui->webView_achiev->reload();
+
+        // Auto-advance to next queued workout if one exists
+        if (!m_workoutQueue->isEmpty()) {
+            QString nextName = m_workoutQueue->name(0);
+            QString nextPath = m_workoutQueue->filePath(0);
+            WorkoutCountdownDialog countdown(nextName, 60, this);
+            if (countdown.exec() == QDialog::Accepted) {
+                m_workoutQueue->dequeueFilePath();
+                XmlUtil xmlNext(settings->language);
+                Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
+                if (!next.getName().isEmpty())
+                    executeWorkout(next);
+            }
+        }
         return;
     }
 
@@ -1701,6 +1764,7 @@ void MainWindow::executeWorkout(Workout workout) {
     connect(btleHub, SIGNAL(signal_speed(int,double)),         &w, SLOT(TrainerSpeedDataReceived(int,double)));
     connect(btleHub, SIGNAL(signal_power(int,int)),            &w, SLOT(PowerDataReceived(int,int)));
     connect(btleHub, SIGNAL(signal_oxygen(int,double,double)), &w, SLOT(OxygenValueChanged(int,double,double)));
+    connect(btleHub, &BtleHub::signal_battery, &w, &WorkoutDialog::batteryStatusReceived);
 
     // Surface BLE disconnections mid-workout so WorkoutDialog can pause and
     // the user sees the DOM reconnect overlay (WASM) or a status message.
@@ -1732,6 +1796,20 @@ void MainWindow::executeWorkout(Workout workout) {
     delete btleHub;
 
     ui->webView_achiev->reload();
+
+    // Auto-advance to next queued workout if one exists
+    if (!m_workoutQueue->isEmpty()) {
+        QString nextName = m_workoutQueue->name(0);
+        QString nextPath = m_workoutQueue->filePath(0);
+        WorkoutCountdownDialog countdown(nextName, 60, this);
+        if (countdown.exec() == QDialog::Accepted) {
+            m_workoutQueue->dequeueFilePath();
+            XmlUtil xmlNext(settings->language);
+            Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
+            if (!next.getName().isEmpty())
+                executeWorkout(next);
+        }
+    }
 }
 
 
