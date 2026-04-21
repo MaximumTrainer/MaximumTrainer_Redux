@@ -13,7 +13,7 @@ An open-source, high-performance indoor cycling training application built with 
 | **Trainer protocol** | Bluetooth LE Fitness Machine Service (FTMS / 0x1826) for ERG resistance control |
 | **Sensor profiles** | Heart Rate (0x180D) · Cycling Speed & Cadence (0x1816) · Cycling Power (0x1818) |
 | **Workout formats** | `.erg`, `.mrc` (imported and converted to the native `.workout` XML format) |
-| **Workout source** | Integrated TrainerDay.com browser for online workout plans |
+| **Workout source** | Integrated intervals.icu for online workout plans |
 
 ## Hardware Setup
 

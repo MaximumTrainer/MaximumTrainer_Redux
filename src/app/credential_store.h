@@ -11,7 +11,8 @@
 ///   macOS    — Security.framework Keychain (SecItemAdd / SecItemCopyMatching).
 ///   Linux    — AES-256-GCM via OpenSSL with a randomly-generated key persisted
 ///              in a chmod-600 protected file in the application data directory.
-///   WASM     — No-op: third-party tokens are not persisted in the browser context.
+///   WASM     — browser localStorage via Emscripten JS interop (not encrypted;
+///              consistent with standard browser-based web app security model).
 ///
 /// Credentials are keyed by (service, key), e.g.:
 ///   store("strava", "access_token", token)

@@ -118,11 +118,12 @@ void BtleHubWasm::simulateNotification(quint16 characteristicUuid, const QByteAr
 void BtleHubWasm::onBleNotification(quint16 uuid16, const QByteArray &data)
 {
     switch (uuid16) {
-    case 0x2A37: parseHrMeasurement(data);       break; // Heart Rate Measurement
-    case 0x2A63: parsePowerMeasurement(data);    break; // Cycling Power Measurement
-    case 0x2A5B: parseCscMeasurement(data);      break; // CSC Measurement
-    case 0x2AD2: parseFtmsIndoorBikeData(data);  break; // Indoor Bike Data
-    case 0xAAB2: parseMoxyMeasurement(data);     break; // Moxy Muscle Oxygen
+    case 0x2A37: m_seenHr    = true; parseHrMeasurement(data);       break; // Heart Rate Measurement
+    case 0x2A63: m_seenPower = true; parsePowerMeasurement(data);    break; // Cycling Power Measurement
+    case 0x2A5B: m_seenCsc   = true; parseCscMeasurement(data);      break; // CSC Measurement
+    case 0x2AD2: m_seenFtms  = true; parseFtmsIndoorBikeData(data);  break; // Indoor Bike Data
+    case 0xAAB2: m_seenMoxy  = true; parseMoxyMeasurement(data);     break; // Moxy Muscle Oxygen
+    case 0x2A19: parseBatteryLevel(data);         break; // Battery Level
     default:
         qDebug() << "[BtleHubWasm] Unknown characteristic UUID:" << Qt::hex << uuid16;
         break;
@@ -200,7 +201,7 @@ void BtleHubWasm::parseCscMeasurement(const QByteArray &data)
 void BtleHubWasm::parsePowerMeasurement(const QByteArray &data)
 {
     if (data.size() < 4) return;
-    quint16 power;
+    qint16 power;
     std::memcpy(&power, data.constData() + 2, 2);
     emit signal_power(0, static_cast<int>(power));
 }
@@ -268,4 +269,29 @@ void BtleHubWasm::parseMoxyMeasurement(const QByteArray &data)
     double thb  = (flags & 0x02) ? rawThb  / 100.0 : 0.0;
 
     emit signal_oxygen(0, smo2, thb);
+}
+
+// Battery Level (0x2A19)
+// Byte 0: Battery percentage 0–100
+void BtleHubWasm::parseBatteryLevel(const QByteArray &data)
+{
+    if (data.isEmpty())
+        return;
+
+    int percentage = static_cast<quint8>(data[0]);
+    percentage = qBound(0, percentage, 100);
+
+    emit signal_battery(determineSensorType(), percentage);
+}
+
+// Return a human-readable sensor type based on which measurement UUIDs have
+// been received, mirroring BtleHub::determineSensorType().
+QString BtleHubWasm::determineSensorType() const
+{
+    if (m_seenHr)    return QStringLiteral("Heart Rate");
+    if (m_seenPower) return QStringLiteral("Power");
+    if (m_seenFtms)  return QStringLiteral("Trainer");
+    if (m_seenCsc)   return QStringLiteral("Speed/Cadence");
+    if (m_seenMoxy)  return QStringLiteral("Oxygen");
+    return QStringLiteral("Sensor");
 }

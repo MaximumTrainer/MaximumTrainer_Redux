@@ -19,8 +19,12 @@ public:
 
     void saveNbSecShowInterval(int nbSec);
     void saveNbSecShowIntervalBefore(int nbSec);
+    void saveErgSmoothingDuration(int seconds);
     void saveIntervalsIcuCredentials();
     void saveSensorDropoutSettings();
+    void saveBatteryWarningThreshold();
+    void saveIntervalSummarySettings();
+    void saveAppTheme();
 
     /// Encrypt and persist Strava OAuth2 tokens to QSettings.
     /// Call after a successful token exchange or refresh.
@@ -106,6 +110,12 @@ public:
     bool control_trainer_resistance;
     bool stop_pairing_on_found;
     int nb_sec_pairing;
+    int erg_smoothing_duration_s;  ///< Ramp duration (seconds) for ERG setpoint transitions; 0 = disabled.
+
+    /// Battery warning threshold (issue #156): warn when a sensor's battery
+    /// drops at or below this percentage (default 20, range 5–50).
+    int battery_warning_threshold;
+
     /* ----- */
 
     // Sensor dropout auto-pause
@@ -204,6 +214,11 @@ public:
     bool sound_alert_power_above_target;
     bool sound_alert_cadence_under_target;
     bool sound_alert_cadence_above_target;
+
+    bool interval_summary_enabled;
+    int  interval_summary_duration_s; ///< seconds to display overlay (2–15)
+
+    int app_theme; ///< 0=Light, 1=Dark, 2=System (default)
     //----
 
 

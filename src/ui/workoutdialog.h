@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QTime>
 #include <QTimer>
+#include <QHash>
 #include <QKeyEvent>
 #include <QNetworkReply>
 
@@ -148,7 +149,7 @@ public slots:
     void lapButtonPressed();
 
 
-    void batteryStatusReceived(QString sensorType, int level, int antID);
+    void batteryStatusReceived(QString sensorType, int percentage);
 
     void startCalibrateFEC();
     void startCalibrationPM();
@@ -212,6 +213,8 @@ private slots:
     void uploadToStrava();
     void uploadToTrainingPeaks();
     void uploadToSelfLoops();
+    void uploadToIntervalsIcu();
+    void slotPostIntervalsIcuUploadDone();
     void slotPostStravaUploadDone();
     void slotPostStravaCheckStatus();
     void slotPostStravaStatusDone();
@@ -233,6 +236,8 @@ private:
     void initDataWorkout();
     void connectDataWorkout();
     void createUserStudioWidget();
+    void showIntervalSummaryOverlay(double avgPower, double avgHr, double avgCad,
+                                    int durationSec, double targetPowerFraction);
 
     void sendUserInfoToClock();
 
@@ -342,6 +347,7 @@ private:
     QNetworkReply *replyPostTPRefresh      = nullptr;
     QNetworkReply *replyPostTPUpload       = nullptr;
     QNetworkReply *replyPostSelfloopsUpload = nullptr;
+    QNetworkReply *replyPostIntervalsIcuUpload = nullptr;
 
 
 
@@ -515,8 +521,26 @@ private:
     QTimer *m_dropoutWatchdog  = nullptr;
     ///-------------------------------------------------------
 
+    /// Battery warning tracking (issue #156): sensorType → last warned percentage.
+    /// A warning is suppressed for a sensor unless the level drops ≥ 5 % below
+    /// the level at which the last warning was shown.
+    QHash<QString, int> m_warnedBatteryLevels;
+
     WorkoutPlot *mainPlot;
     friend class DialogConfig;
+
+    // ERG mode resistance smoothing
+    QTimer    *m_ergSmoothTimer   = nullptr;
+    double     m_ergSmoothFrom    = 0.0;    ///< Starting watts when ramp began
+    double     m_ergSmoothTo      = 0.0;    ///< Target watts for the ramp
+    double     m_ergSmoothLast    = 0.0;    ///< Most-recently emitted watts (for mid-ramp retargeting)
+    int        m_ergSmoothStep    = 0;      ///< Steps elapsed so far
+    int        m_ergSmoothSteps   = 0;      ///< Total steps in current ramp
+    int        m_ergSmoothAntID   = -1;     ///< ANT ID to target
+
+    void startErgSmoothing(double fromWatts, double toWatts);
+    void stopErgSmoothing();
+    void ergSmoothStep();
 };
 
 #endif // WORKOUTDIALOG_H

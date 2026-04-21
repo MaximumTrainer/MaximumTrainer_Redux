@@ -468,6 +468,25 @@
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="stackedWidget_menuPageHistory">
+       <layout class="QVBoxLayout" name="verticalLayout_history">
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="HistoryWidget" name="historyWidget" native="true"/>
+        </item>
+       </layout>
+      </widget>
      </widget>
     </item>
    </layout>
@@ -495,6 +514,7 @@
     <addaction name="actionAbout_MT"/>
     <addaction name="actionAbout_Qt"/>
     <addaction name="actionRequest_Help"/>
+    <addaction name="actionKeyboard_Shortcuts"/>
     <addaction name="separator"/>
     <addaction name="actionCheck_for_Updates"/>
    </widget>
@@ -560,6 +580,14 @@
   <action name="actionRequest_Help">
    <property name="text">
     <string>Help</string>
+   </property>
+  </action>
+  <action name="actionKeyboard_Shortcuts">
+   <property name="text">
+    <string>Keyboard Shortcuts…</string>
+   </property>
+   <property name="shortcut">
+    <string>F1</string>
    </property>
   </action>
   <action name="actionCheck_for_Updates">
@@ -635,6 +663,12 @@
    <class>WorkoutCreator</class>
    <extends>QWidget</extends>
    <header>workoutcreator.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>HistoryWidget</class>
+   <extends>QWidget</extends>
+   <header>historywidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
