@@ -689,3 +689,33 @@ jobs:
 
     - name: Run CredentialStore tests
       run: ./build/tests/credential_store_tests -v2
+
+  test_plan_adherence:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install Qt and dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          qtbase5-dev \
+          build-essential
+
+    - name: Build PlanAdherence tests
+      run: |
+        export PATH=/usr/lib/qt5/bin:$PATH
+        mkdir -p build/tests
+        cd tests/plan_adherence
+        qmake plan_adherence_tests.pro
+        make -j$(nproc)
+
+    - name: Run PlanAdherence tests
+      run: ./build/tests/plan_adherence_tests -v2
+

@@ -326,6 +326,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                 QMessageBox::warning(this, tr("Intervals.icu Sync Failed"), err);
             });
 
+    // ── Plan Adherence (#157) ─────────────────────────────────────────────────
+    m_adherenceStore = new PlanAdherenceStore(this);
+    if (auto *hw = qobject_cast<HistoryWidget*>(ui->historyWidget))
+        hw->setAdherenceStore(m_adherenceStore);
+
     // ── Workout Queue (#152) ─────────────────────────────────────────────────
     m_workoutQueue = new WorkoutQueue(this);
     m_queuePanel   = new QueuePanelWidget(m_workoutQueue, this);
@@ -1908,6 +1913,12 @@ void MainWindow::on_actionMultiple_Workouts_triggered()
 void MainWindow::checkToUploadFile(const QString& filename, const QString& nameOnly, const QString& description) {
 
     qDebug() << "check to upload Fit file";
+
+    // ── Plan adherence: auto-mark this workout as completed ──────────────────
+    if (m_adherenceStore && !nameOnly.isEmpty()) {
+        const QDate today = QDate::currentDate();
+        m_adherenceStore->addCompleted(today, nameOnly, filename);
+    }
 
     // Note: Strava, TrainingPeaks, and SelfLoops uploads are now triggered
     // explicitly by the post-workout upload buttons inside WorkoutDialog.
