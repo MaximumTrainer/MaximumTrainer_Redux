@@ -66,6 +66,8 @@ jobs:
         target: 'desktop'
         arch: 'wasm_singlethread'
         modules: 'qtwebchannel'
+        cache: true
+        cache-key-prefix: qt-wasm
 
     - name: Install Qt (linux host tools)
       uses: jurplel/install-qt-action@v3
@@ -75,8 +77,18 @@ jobs:
         target: 'desktop'
         arch: 'gcc_64'
         set-env: false
+        cache: true
+        cache-key-prefix: qt-wasm-host
+
+    - name: Restore QWT cache (Wasm)
+      id: qwt-wasm-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/qwt-wasm
+        key: qwt-6.3.0-qt-6.6.3-wasm-em3.1.43
 
     - name: Build QWT (Wasm)
+      if: steps.qwt-wasm-cache.outputs.cache-hit != 'true'
       run: |
         cd /tmp
         curl -L -o qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.3.0/qwt-6.3.0.tar.bz2/download"
