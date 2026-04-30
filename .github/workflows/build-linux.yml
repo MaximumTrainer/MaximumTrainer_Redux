@@ -33,19 +33,29 @@ jobs:
           cmake \
           build-essential
 
+    - name: Restore VLC-Qt cache
+      id: vlcqt-cache
+      uses: actions/cache@v4
+      with:
+        path: /tmp/vlcqt-install
+        key: vlcqt-1.1.1-qt5-ubuntu22.04
+
     - name: Build and install VLC-Qt
       run: |
-        cd /tmp
-        git clone --branch 1.1.1 --depth 1 https://github.com/vlc-qt/vlc-qt
-        cd vlc-qt
-        mkdir build && cd build
-        cmake .. \
-          -DQT_VERSION=5 \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX=/usr/local \
-          -DCMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu
-        make -j$(nproc)
-        sudo make install
+        if [ "${{ steps.vlcqt-cache.outputs.cache-hit }}" != "true" ]; then
+          cd /tmp
+          git clone --branch 1.1.1 --depth 1 https://github.com/vlc-qt/vlc-qt
+          cd vlc-qt
+          mkdir build && cd build
+          cmake .. \
+            -DQT_VERSION=5 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/tmp/vlcqt-install \
+            -DCMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu
+          make -j$(nproc)
+          make install
+        fi
+        sudo cp -r /tmp/vlcqt-install/. /usr/local/
         sudo ldconfig
 
     - name: Determine build version

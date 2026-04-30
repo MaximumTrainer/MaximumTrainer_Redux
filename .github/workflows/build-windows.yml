@@ -15,6 +15,8 @@ jobs:
       # For local Windows builds, set QT_HOME to the parent of your Qt installation
       # (e.g. C:\ if Qt is at C:\Qt\5.15.2\msvc2019_64).
       QT_HOME: C:\Qt
+      # Stable QWT install directory used by the cache action and PowerShell build steps.
+      QWT_INSTALL_DIR: C:\qwt
 
     steps:
     - name: MSVC Environment Setup
@@ -31,6 +33,8 @@ jobs:
         version: '5.15.2'
         modules: 'qtwebengine'
         dir: ${{ env.QT_HOME }}
+        cache: true
+        cache-key-prefix: qt-win
 
     - name: Set QTDIR
       run: echo "QTDIR=${{ env.QT_HOME }}\Qt\5.15.2\msvc2019_64" >> $env:GITHUB_ENV
@@ -56,48 +60,84 @@ jobs:
         '@ | Set-Content C:\helpers.ps1
       shell: powershell
 
+    - name: Restore OpenSSL cache
+      id: openssl-cache
+      uses: actions/cache@v4
+      with:
+        path: C:\openssl
+        key: openssl-1.1.1w-win64
+
     - name: Download OpenSSL 1.1.x
       # Qt 5.15.2 requires OpenSSL 1.1.x DLLs (libssl-1_1-x64.dll / libcrypto-1_1-x64.dll)
       # for HTTPS/TLS. Download the pre-built FireDaemon distribution and expose the
       # DLL directory as OPENSSL_BIN so later steps can reference it.
+      if: steps.openssl-cache.outputs.cache-hit != 'true'
       run: |
         . C:\helpers.ps1
         Invoke-WebRequestWithRetry `
           -Uri "https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-1.1.1w.zip" `
           -OutFile "$env:TEMP\openssl.zip"
-        Expand-Archive -Path "$env:TEMP\openssl.zip" -DestinationPath "$env:TEMP\openssl" -Force
-        $dll = Get-ChildItem "$env:TEMP\openssl" -Recurse -Filter "libssl-1_1-x64.dll" |
+        Expand-Archive -Path "$env:TEMP\openssl.zip" -DestinationPath "C:\openssl" -Force
+        Write-Host "OpenSSL extracted to C:\openssl"
+      shell: powershell
+
+    - name: Set OPENSSL_BIN
+      run: |
+        $dll = Get-ChildItem "C:\openssl" -Recurse -Filter "libssl-1_1-x64.dll" |
                Select-Object -First 1
-        if (-not $dll) { Write-Error "libssl-1_1-x64.dll not found in archive"; exit 1 }
+        if (-not $dll) { Write-Error "libssl-1_1-x64.dll not found in C:\openssl"; exit 1 }
         echo "OPENSSL_BIN=$($dll.DirectoryName)" >> $env:GITHUB_ENV
         Write-Host "OpenSSL DLLs at: $($dll.DirectoryName)"
       shell: powershell
 
+    - name: Restore VLC-Qt cache
+      id: vlcqt-cache
+      uses: actions/cache@v4
+      with:
+        path: C:\vlcqt
+        key: vlcqt-1.1.0-msvc2015-win64
+
     - name: Download and install VLC-Qt
       # Using 1.1.0 as it is the last release with pre-built Windows MSVC binaries
+      if: steps.vlcqt-cache.outputs.cache-hit != 'true'
       run: |
         . C:\helpers.ps1
         Invoke-WebRequestWithRetry -Uri "https://github.com/vlc-qt/vlc-qt/releases/download/1.1.0/VLC-Qt_1.1.0_win64_msvc2015.7z" -OutFile "$env:TEMP\vlcqt.7z"
         # Archive extracts directly to bin/, include/, lib/ with no wrapper dir
         & "C:\Program Files\7-Zip\7z.exe" x "$env:TEMP\vlcqt.7z" -o"C:\vlcqt"
-        $vlcqtInstall = "C:/vlcqt"
-        echo "VLCQT_DIR=$vlcqtInstall" >> $env:GITHUB_ENV
         Write-Host "=== VLC-Qt lib files ==="
         Get-ChildItem "C:\vlcqt\lib" -Filter "*.lib"
       shell: powershell
 
+    - name: Set VLCQT_DIR
+      run: echo "VLCQT_DIR=C:/vlcqt" >> $env:GITHUB_ENV
+      shell: powershell
+
+    - name: Restore SFML cache
+      id: sfml-cache
+      uses: actions/cache@v4
+      with:
+        path: C:\sfml
+        key: sfml-2.6.1-vc17-win64
+
     - name: Download and install SFML
+      if: steps.sfml-cache.outputs.cache-hit != 'true'
       run: |
         curl.exe -L -o "$env:TEMP\sfml.zip" "https://github.com/SFML/SFML/releases/download/2.6.1/SFML-2.6.1-windows-vc17-64-bit.zip"
         Expand-Archive -Path "$env:TEMP\sfml.zip" -DestinationPath "C:\sfml"
       shell: powershell
 
+    - name: Restore QWT cache
+      id: qwt-cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.QWT_INSTALL_DIR }}
+        key: qwt-6.2.0-qt-5.15.2-msvc2019-win64
+
     - name: Build QWT
+      if: steps.qwt-cache.outputs.cache-hit != 'true'
       run: |
-        # Install QWT to a stable user-profile directory that works both locally
-        # and in CI - avoids path issues with workspace-relative paths
-        $qwtInstallDir = "$env:USERPROFILE\qwt"
-        $qwtInstallDirFwd = $qwtInstallDir -replace '\\', '/'
+        $qwtInstallDirFwd = $env:QWT_INSTALL_DIR -replace '\\', '/'
         Set-Location ..
         # Use curl.exe -L to follow SourceForge redirects reliably
         curl.exe -L -o "$env:TEMP\qwt.tar.bz2" "https://sourceforge.net/projects/qwt/files/qwt/6.2.0/qwt-6.2.0.tar.bz2/download"
@@ -112,8 +152,8 @@ jobs:
             } else { $_ }
         } | Set-Content "qwtconfig.pri"
         qmake qwt.pro
-        nmake
-        nmake install
+        & "$env:QTDIR\bin\jom.exe" /J 4
+        & "$env:QTDIR\bin\jom.exe" install
       shell: powershell
 
     - name: Determine build version
@@ -126,11 +166,10 @@ jobs:
 
     - name: Create Makefile
       run: |
-        $qwtInstallDir = "$env:USERPROFILE\qwt"
-        $qwtInstallDirFwd = $qwtInstallDir -replace '\\','/'
+        $qwtInstallDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
         $sfmlDir = (Get-ChildItem "C:\sfml" -Directory | Select-Object -First 1).FullName
         $sfmlDirFwd = $sfmlDir -replace '\\','/'
-        $env:QMAKEFEATURES = "$qwtInstallDir\features"
+        $env:QMAKEFEATURES = "$env:QWT_INSTALL_DIR\features"
         $env:TP_CLIENT_SECRET = "${{ secrets.TP_CLIENT_SECRET }}"
         qmake PowerVelo.pro `
           "VLCQT_INSTALL=$($env:VLCQT_DIR -replace '\\','/')" `
@@ -142,7 +181,8 @@ jobs:
       shell: powershell
 
     - name: Build
-      run: nmake
+      run: '& "$env:QTDIR\bin\jom.exe" /J 4'
+      shell: powershell
 
     - name: Copy QWT runtime DLL
       # qwt.dll is linked at build time but windeployqt does not know about it.
@@ -150,8 +190,7 @@ jobs:
       # and MaximumTrainer.exe can be launched directly from build\release\ without
       # a "qwt.dll not found" loader error.
       run: |
-        $qwtInstallDir = "$env:USERPROFILE\qwt"
-        $qwtDll = "$qwtInstallDir\lib\qwt.dll"
+        $qwtDll = "$env:QWT_INSTALL_DIR\lib\qwt.dll"
         if (-not (Test-Path $qwtDll)) {
           Write-Error "qwt.dll not found at expected path: $qwtDll"
           exit 1
@@ -185,7 +224,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\integration
         qmake runtime_validation_tests.pro
-        nmake
+        & "$env:QTDIR\bin\jom.exe" /J 4
       shell: powershell
 
     - name: Build BLE API smoke test
@@ -193,7 +232,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\integration
         qmake btle_api_tests.pro
-        nmake
+        & "$env:QTDIR\bin\jom.exe" /J 4
       shell: powershell
 
     - name: Build offline mode test
@@ -201,7 +240,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\integration
         qmake offline_mode_tests.pro
-        nmake
+        & "$env:QTDIR\bin\jom.exe" /J 4
       shell: powershell
 
     - name: Build online mode test
@@ -209,7 +248,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\integration
         qmake online_mode_tests.pro
-        nmake
+        & "$env:QTDIR\bin\jom.exe" /J 4
       shell: powershell
 
     - name: Build login screen test
@@ -217,7 +256,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\integration
         qmake login_screen_tests.pro
-        nmake
+        & "$env:QTDIR\bin\jom.exe" /J 4
       shell: powershell
 
     - name: Deploy Qt for test binaries
@@ -382,17 +421,33 @@ jobs:
       with:
         version: '5.15.2'
         dir: 'C:\Qt'
+        cache: true
+        cache-key-prefix: qt-win
 
     - name: Set QTDIR
       run: echo "QTDIR=C:\Qt\Qt\5.15.2\msvc2019_64" >> $env:GITHUB_ENV
       shell: powershell
 
+    - name: Restore OpenSSL cache
+      id: openssl-cache
+      uses: actions/cache@v4
+      with:
+        path: C:\openssl
+        key: openssl-1.1.1w-win64
+
     - name: Download OpenSSL 1.1.x
+      if: steps.openssl-cache.outputs.cache-hit != 'true'
       run: |
         Invoke-WebRequest -Uri "https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-1.1.1w.zip" `
           -OutFile "$env:TEMP\openssl.zip" -UseBasicParsing
-        Expand-Archive -Path "$env:TEMP\openssl.zip" -DestinationPath "$env:TEMP\openssl" -Force
-        $dll = Get-ChildItem "$env:TEMP\openssl" -Recurse -Filter "libssl-1_1-x64.dll" | Select-Object -First 1
+        Expand-Archive -Path "$env:TEMP\openssl.zip" -DestinationPath "C:\openssl" -Force
+        Write-Host "OpenSSL extracted to C:\openssl"
+      shell: powershell
+
+    - name: Set OPENSSL_BIN
+      run: |
+        $dll = Get-ChildItem "C:\openssl" -Recurse -Filter "libssl-1_1-x64.dll" | Select-Object -First 1
+        if (-not $dll) { Write-Error "libssl-1_1-x64.dll not found in C:\openssl"; exit 1 }
         echo "OPENSSL_BIN=$($dll.DirectoryName)" >> $env:GITHUB_ENV
       shell: powershell
 
@@ -401,7 +456,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\intervals_icu_integration
         qmake intervals_icu_integration_tests.pro
-        nmake
+        & "$env:QTDIR\bin\jom.exe" /J 4
       shell: powershell
 
     - name: Deploy Qt DLLs for test binary
