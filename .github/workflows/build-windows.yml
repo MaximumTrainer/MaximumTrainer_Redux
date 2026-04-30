@@ -40,6 +40,10 @@ jobs:
       run: echo "QTDIR=${{ env.QT_HOME }}\Qt\5.15.2\msvc2019_64" >> $env:GITHUB_ENV
       shell: powershell
 
+    - name: Install jom
+      run: choco install jom -y
+      shell: cmd
+
     - name: Write PowerShell helpers
       run: |
         @'
@@ -152,8 +156,8 @@ jobs:
             } else { $_ }
         } | Set-Content "qwtconfig.pri"
         qmake qwt.pro
-        & "$env:QTDIR\bin\jom.exe" /J $env:NUMBER_OF_PROCESSORS
-        & "$env:QTDIR\bin\jom.exe" install
+        jom /J $env:NUMBER_OF_PROCESSORS
+        jom install
       shell: powershell
 
     - name: Determine build version
@@ -181,7 +185,7 @@ jobs:
       shell: powershell
 
     - name: Build
-      run: '& "$env:QTDIR\bin\jom.exe" /J $env:NUMBER_OF_PROCESSORS'
+      run: 'jom /J $env:NUMBER_OF_PROCESSORS'
       shell: powershell
 
     - name: Copy QWT runtime DLL
@@ -224,7 +228,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\integration
         qmake runtime_validation_tests.pro
-        & "$env:QTDIR\bin\jom.exe" /J $env:NUMBER_OF_PROCESSORS
+        jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
     - name: Build BLE API smoke test
@@ -232,7 +236,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\integration
         qmake btle_api_tests.pro
-        & "$env:QTDIR\bin\jom.exe" /J $env:NUMBER_OF_PROCESSORS
+        jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
     - name: Build offline mode test
@@ -240,7 +244,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\integration
         qmake offline_mode_tests.pro
-        & "$env:QTDIR\bin\jom.exe" /J $env:NUMBER_OF_PROCESSORS
+        jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
     - name: Build online mode test
@@ -248,7 +252,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\integration
         qmake online_mode_tests.pro
-        & "$env:QTDIR\bin\jom.exe" /J $env:NUMBER_OF_PROCESSORS
+        jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
     - name: Build login screen test
@@ -256,7 +260,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\integration
         qmake login_screen_tests.pro
-        & "$env:QTDIR\bin\jom.exe" /J $env:NUMBER_OF_PROCESSORS
+        jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
     - name: Deploy Qt for test binaries
@@ -428,6 +432,10 @@ jobs:
       run: echo "QTDIR=C:\Qt\Qt\5.15.2\msvc2019_64" >> $env:GITHUB_ENV
       shell: powershell
 
+    - name: Install jom
+      run: choco install jom -y
+      shell: cmd
+
     - name: Restore OpenSSL cache
       id: openssl-cache
       uses: actions/cache@v4
@@ -456,7 +464,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\intervals_icu_integration
         qmake intervals_icu_integration_tests.pro
-        & "$env:QTDIR\bin\jom.exe" /J $env:NUMBER_OF_PROCESSORS
+        jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
     - name: Deploy Qt DLLs for test binary
