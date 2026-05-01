@@ -92,9 +92,10 @@ async function injectRecordingBluetoothMock(page) {
 //   2. Loading screen gains the 'hidden' class (set inside onLoaded)
 //   3. Canvas wrapper's computed visibility becomes 'visible' (set inside onLoaded)
 //
-// The WASM binary (~18 MB, ASYNCIFY-transformed) can take 2+ minutes to JIT-
-// compile on cold CI runners.  The timeout is set generously here; the calling
-// context (beforeAll) carries its own 5-minute outer limit.
+// The WASM binary (~18 MB, ASYNCIFY-transformed) can take 3+ minutes to JIT-
+// compile on cold CI runners (observed: ~184 s on GitHub Actions ubuntu-latest).
+// The timeout is set generously here; the calling context (beforeAll) carries
+// its own 7-minute outer limit set via test.setTimeout().
 //
 // NOTE: pass `null` as the explicit arg so that the options object is correctly
 // parsed as the third positional parameter by Playwright, not as the page
@@ -112,7 +113,7 @@ async function waitForAppReady(page) {
       return !!(wrapper && window.getComputedStyle(wrapper).visibility === 'visible');
     },
     null,          // no argument passed to the page function
-    { timeout: 180_000 }   // 180 s — leaves ample buffer within the 5-min beforeAll timeout
+    { timeout: 300_000 }   // 5 min — WASM JIT takes 3+ min on cold CI runners
   );
 }
 
@@ -165,12 +166,12 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   // JIT-compile on cold CI runners.  Loading it once in beforeAll and sharing
   // the page across all four tests avoids repeating that cost four times.
   //
-  // describe timeout: 5 min — applies to beforeAll hooks AND individual tests.
+  // describe timeout: 7 min — applies to beforeAll hooks AND individual tests.
   // test.beforeAll(fn, { timeout }) is silently ignored in some Playwright
   // versions when no describe-level timeout is set; test.describe.configure is
   // the authoritative override that Playwright docs guarantee for hooks.
-  // Individual test assertions complete in <60 s; the 5 min ceiling causes no harm.
-  test.describe.configure({ timeout: 300_000 });
+  // Individual test assertions complete in <60 s; the 7 min ceiling causes no harm.
+  test.describe.configure({ timeout: 420_000 });
 
   /** @type {import('@playwright/test').Page} */
   let sharedPage;
@@ -179,19 +180,19 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   const consoleLogs = [];
 
   test.beforeAll(async ({ browser }) => {
-    // Extend timeout for this hook — WASM JIT compilation takes 2+ min on cold
+    // Extend timeout for this hook — WASM JIT compilation takes 3+ min on cold
     // CI runners.  test.setTimeout() inside a beforeAll changes the currently-
     // running hook's deadline; this is the only approach that works reliably
     // across all Playwright versions (test.describe.configure and the
     // beforeAll { timeout } option are silently ignored in some versions).
-    test.setTimeout(300_000);
+    test.setTimeout(420_000);
     sharedContext = await browser.newContext();
     sharedPage = await sharedContext.newPage();
     sharedPage.on('console', msg => consoleLogs.push({ type: msg.type(), text: msg.text() }));
     await injectRecordingBluetoothMock(sharedPage);
     await sharedPage.goto(APP_URL, { waitUntil: 'domcontentloaded' });
     await waitForAppReady(sharedPage);
-  }, { timeout: 300_000 }); // 5 min: WASM JIT-compilation can exceed 2 min on cold CI runners
+  }, { timeout: 420_000 }); // 7 min: WASM JIT-compilation takes 3+ min on cold CI runners
 
   test.afterAll(async () => {
     await sharedPage?.close();
