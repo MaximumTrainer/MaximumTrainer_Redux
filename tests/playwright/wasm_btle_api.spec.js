@@ -165,9 +165,11 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   // JIT-compile on cold CI runners.  Loading it once in beforeAll and sharing
   // the page across all four tests avoids repeating that cost four times.
   //
-  // beforeAll timeout: 5 min  (WASM loading + initialisation)
-  // Per-test timeout:  60 s   (assertions only — no WASM loading)
-  test.describe.configure({ timeout: 60_000 });
+  // beforeAll timeout: 5 min  (WASM loading + initialisation) — set per-hook
+  //                           via { timeout } options object, NOT via
+  //                           describe.configure (which would also cap hooks)
+  // Per-test timeout:  60 s   (assertions only — no WASM loading; inherited
+  //                           from playwright.config.js global timeout)
 
   /** @type {import('@playwright/test').Page} */
   let sharedPage;
@@ -182,7 +184,7 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     await injectRecordingBluetoothMock(sharedPage);
     await sharedPage.goto(APP_URL, { waitUntil: 'domcontentloaded' });
     await waitForAppReady(sharedPage);
-  }, 300_000); // 5 min: WASM JIT-compilation can exceed 2 min on cold CI runners
+  }, { timeout: 300_000 }); // 5 min: WASM JIT-compilation can exceed 2 min on cold CI runners
 
   test.afterAll(async () => {
     await sharedPage?.close();
