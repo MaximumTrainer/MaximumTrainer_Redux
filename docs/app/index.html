@@ -264,10 +264,12 @@
         appScript.src = 'MaximumTrainer.js';
         appScript.onerror = () => { log('ERROR: Failed to load MaximumTrainer.js'); showNotDeployed(); };
         appScript.onload = () => {
-          log('MaximumTrainer.js ready — starting QtLoader…');
+          log('MaximumTrainer.js ready — starting qtLoad…');
 
-          // Step 3: initialise with the Qt 6.6 QtLoader API
-          QtLoader({
+          // Step 3: initialise with the Qt 6.6 qtLoad() API.
+          // (QtLoader() is the deprecated compat wrapper — it returns a plain
+          // object, not a Promise, so .then() would throw.)
+          qtLoad({
             qt: {
               entryFunction: window.createQtAppInstance,
               containerElements: [document.getElementById('qt-canvas')],
@@ -282,19 +284,17 @@
                 loadingStatus.textContent = 'Application exited' + code;
               },
             },
-            // Emscripten module config — used for download progress
-            moduleConfig: {
-              setStatus: (msg) => {
-                if (msg) { log(msg); loadingStatus.textContent = msg; }
-              },
-              monitorRunDependencies: (left) => {
-                // Rough progress: dependencies count down from ~100 to 0
-                if (left === 0) {
-                  loadingProgress.style.width = '100%';
-                } else {
-                  loadingProgress.style.width = Math.max(5, 100 - left) + '%';
-                }
-              },
+            // Emscripten module config keys go at the top level in qtLoad().
+            setStatus: (msg) => {
+              if (msg) { log(msg); loadingStatus.textContent = msg; }
+            },
+            monitorRunDependencies: (left) => {
+              // Rough progress: dependencies count down from ~100 to 0
+              if (left === 0) {
+                loadingProgress.style.width = '100%';
+              } else {
+                loadingProgress.style.width = Math.max(5, 100 - left) + '%';
+              }
             },
           }).then(instance => {
             window._qtInstance = instance;
