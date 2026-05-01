@@ -83,11 +83,14 @@ async function injectRecordingBluetoothMock(page) {
 }
 
 // Wait for the Qt canvas to become visible (app fully initialised).
+// The onLoaded callback in index.html sets style.visibility = 'visible' explicitly.
+// The canvas element has no inline style initially (only CSS visibility:hidden),
+// so checking !== 'hidden' would be trivially true from page load; we need === 'visible'.
 async function waitForAppReady(page) {
   await page.waitForFunction(
     () => {
       const canvas = document.querySelector('#qt-canvas-wrapper');
-      return canvas && canvas.style.visibility !== 'hidden';
+      return canvas && canvas.style.visibility === 'visible';
     },
     { timeout: 45000 }
   );
