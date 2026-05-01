@@ -263,6 +263,13 @@ EM_JS(void, js_exposeTestScanApi, (), {
     window.mt_startBleScan = function() {
         js_scanAndConnect();
     };
+    // Direct test hook so Playwright can verify js_requestFtmsControl writes
+    // the correct UUID / opcode without requiring a live BtleHubWasm instance.
+    // In production the call comes via bleConnectedC → g_connectedCallback;
+    // this hook tests only the JS leg (UUID and byte sequence correctness).
+    window.mt_requestFtmsControl = function() {
+        js_requestFtmsControl();
+    };
 });
 
 // Send raw bytes to a FTMS control point characteristic (0x2AD9)

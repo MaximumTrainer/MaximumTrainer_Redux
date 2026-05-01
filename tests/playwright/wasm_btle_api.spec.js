@@ -327,6 +327,15 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   test('FTMS Request Control (opcode 0x00) is written to characteristic 0x2AD9', async () => {
     await resetRecordingMock();
     await triggerBleScanAndWaitForRequestDevice(sharedPage);
+    // BtleHubWasm is only instantiated when a workout runs, so g_connectedCallback
+    // is never set during Playwright CI.  Call the dedicated test hook
+    // mt_requestFtmsControl() which invokes js_requestFtmsControl() directly,
+    // bypassing the C++ callback chain but testing the same JS UUID/opcode logic.
+    const hasFtmsHook = await sharedPage.evaluate(() => typeof window.mt_requestFtmsControl === 'function');
+    expect(hasFtmsHook,
+      'window.mt_requestFtmsControl hook absent — WASM build must be rebuilt with updated js_exposeTestScanApi')
+      .toBeTruthy();
+    await sharedPage.evaluate(() => window.mt_requestFtmsControl());
     await waitForFtmsWrite(sharedPage);
 
     const recorded = await sharedPage.evaluate(() => window._btleApiCalls);
