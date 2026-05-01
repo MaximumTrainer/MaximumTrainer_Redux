@@ -82,28 +82,37 @@ async function injectRecordingBluetoothMock(page) {
   });
 }
 
-// Wait for the Qt canvas to become visible (app fully initialised).
+// Wait for the WASM app to be ready for BLE testing.
 //
-// Two signals are checked — both are set together inside the onLoaded callback
-// in index.html — so either one is sufficient:
-//   1. Loading screen gains the 'hidden' class
-//   2. Canvas wrapper becomes visible
+// Three independent signals are checked — any one being true means the app
+// has reached a state where window.mt_startBleScan is callable:
+//   1. window.mt_startBleScan is defined (set by WasmTestScanApiRegistrar
+//      during C++ static init — fires before onRuntimeInitialized, so this
+//      is the earliest possible reliable signal)
+//   2. Loading screen gains the 'hidden' class (set inside onLoaded)
+//   3. Canvas wrapper's computed visibility becomes 'visible' (set inside onLoaded)
 //
-// getComputedStyle is used instead of element.style so the check works whether
-// visibility is applied as an inline style or via a CSS rule.  The timeout is
-// 90 s to accommodate WASM binaries that can take 30–50 s to load and
-// initialise on CI runners (overall test timeout is 120 s).
+// The WASM binary (~18 MB, ASYNCIFY-transformed) can take 2+ minutes to JIT-
+// compile on cold CI runners.  The timeout is set generously here; the calling
+// context (beforeAll) carries its own 5-minute outer limit.
+//
+// NOTE: pass `null` as the explicit arg so that the options object is correctly
+// parsed as the third positional parameter by Playwright, not as the page
+// function's argument.
 async function waitForAppReady(page) {
   await page.waitForFunction(
     () => {
+      // Signal 1: test hook registered by C++ static initializer (before onLoaded)
+      if (typeof window.mt_startBleScan === 'function') return true;
+      // Signal 2: loading screen hidden (onLoaded in index.html)
       const loadingScreen = document.querySelector('#loading-screen');
+      if (loadingScreen && loadingScreen.classList.contains('hidden')) return true;
+      // Signal 3: canvas wrapper visible by computed style (onLoaded in index.html)
       const wrapper = document.querySelector('#qt-canvas-wrapper');
-      const loadingHidden = loadingScreen && loadingScreen.classList.contains('hidden');
-      const canvasVisible = wrapper &&
-        window.getComputedStyle(wrapper).visibility === 'visible';
-      return !!(loadingHidden || canvasVisible);
+      return !!(wrapper && window.getComputedStyle(wrapper).visibility === 'visible');
     },
-    { timeout: 90000 }
+    null,          // no argument passed to the page function
+    { timeout: 180_000 }   // 180 s — leaves ample buffer within the 5-min beforeAll timeout
   );
 }
 
@@ -125,7 +134,8 @@ async function triggerBleScanAndWaitForRequestDevice(page) {
       const calls = window._btleApiCalls;
       return calls && calls.requestDeviceFilters !== undefined;
     },
-    { timeout: 45000 }
+    null,
+    { timeout: 45_000 }
   );
 }
 
@@ -142,7 +152,8 @@ async function waitForFtmsWrite(page) {
         Array.isArray(calls.writeValueWithResponse) &&
         calls.writeValueWithResponse.length > 0;
     },
-    { timeout: 45000 }
+    null,
+    { timeout: 45_000 }
   );
 }
 
@@ -150,23 +161,55 @@ async function waitForFtmsWrite(page) {
 
 test.describe('WASM BLE API — Web Bluetooth call verification', () => {
 
-  // These tests load the deployed WASM app and trigger a full BLE scan + GATT
-  // setup flow.  The WASM binary can take 30–50 s to load and initialise on
-  // CI runners, so give each test 120 s (2×default) instead of the global 60 s.
-  test.describe.configure({ timeout: 120_000 });
+  // The WASM binary (~18 MB, ASYNCIFY-transformed) can take 2+ minutes to
+  // JIT-compile on cold CI runners.  Loading it once in beforeAll and sharing
+  // the page across all four tests avoids repeating that cost four times.
+  //
+  // beforeAll timeout: 5 min  (WASM loading + initialisation)
+  // Per-test timeout:  60 s   (assertions only — no WASM loading)
+  test.describe.configure({ timeout: 60_000 });
+
+  /** @type {import('@playwright/test').Page} */
+  let sharedPage;
+  /** @type {import('@playwright/test').BrowserContext} */
+  let sharedContext;
+  const consoleLogs = [];
+
+  test.beforeAll(async ({ browser }) => {
+    sharedContext = await browser.newContext();
+    sharedPage = await sharedContext.newPage();
+    sharedPage.on('console', msg => consoleLogs.push({ type: msg.type(), text: msg.text() }));
+    await injectRecordingBluetoothMock(sharedPage);
+    await sharedPage.goto(APP_URL, { waitUntil: 'domcontentloaded' });
+    await waitForAppReady(sharedPage);
+  }, 300_000); // 5 min: WASM JIT-compilation can exceed 2 min on cold CI runners
+
+  test.afterAll(async () => {
+    await sharedPage?.close();
+    await sharedContext?.close();
+  });
+
+  // Reset the recording mock before each BLE test so every assertion starts
+  // with a clean slate (all call arrays empty, requestDeviceFilters undefined).
+  async function resetRecordingMock() {
+    consoleLogs.length = 0;
+    await sharedPage.evaluate(() => {
+      window._btleApiCalls = {
+        requestDeviceFilters: undefined,
+        getPrimaryService:    [],
+        getCharacteristic:    [],
+        startNotifications:   [],
+        writeValueWithResponse: []
+      };
+    });
+  }
 
   // ── requestDevice service filters ──────────────────────────────────────────
-  test('requestDevice is called with correct service filter UUIDs', async ({ page }) => {
-    await injectRecordingBluetoothMock(page);
+  test('requestDevice is called with correct service filter UUIDs', async () => {
+    await resetRecordingMock();
+    await triggerBleScanAndWaitForRequestDevice(sharedPage);
 
-    const consoleLogs = [];
-    page.on('console', msg => consoleLogs.push({ type: msg.type(), text: msg.text() }));
-
-    await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForAppReady(page);
-    await triggerBleScanAndWaitForRequestDevice(page);
-
-    const recorded = await page.evaluate(() => window._btleApiCalls);
+    const recorded = await sharedPage.evaluate(() => window._btleApiCalls);
 
     // requestDevice must have been called by js_scanAndConnect
     expect(recorded.requestDeviceFilters,
@@ -191,13 +234,11 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   });
 
   // ── getPrimaryService for each sensor profile ──────────────────────────────
-  test('getPrimaryService is called for each sensor profile', async ({ page }) => {
-    await injectRecordingBluetoothMock(page);
-    await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForAppReady(page);
-    await triggerBleScanAndWaitForRequestDevice(page);
+  test('getPrimaryService is called for each sensor profile', async () => {
+    await resetRecordingMock();
+    await triggerBleScanAndWaitForRequestDevice(sharedPage);
 
-    const recorded = await page.evaluate(() => window._btleApiCalls);
+    const recorded = await sharedPage.evaluate(() => window._btleApiCalls);
 
     // subscribeAll iterates over all services in profileMap; js_requestFtmsControl
     // also calls getPrimaryService(0x1826) separately.
@@ -209,13 +250,11 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   });
 
   // ── startNotifications for each sensor characteristic ─────────────────────
-  test('startNotifications is called for each sensor characteristic', async ({ page }) => {
-    await injectRecordingBluetoothMock(page);
-    await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForAppReady(page);
-    await triggerBleScanAndWaitForRequestDevice(page);
+  test('startNotifications is called for each sensor characteristic', async () => {
+    await resetRecordingMock();
+    await triggerBleScanAndWaitForRequestDevice(sharedPage);
 
-    const recorded = await page.evaluate(() => window._btleApiCalls);
+    const recorded = await sharedPage.evaluate(() => window._btleApiCalls);
 
     // One startNotifications per characteristic in profileMap
     for (const charUuid of [0x2A37, 0x2A5B, 0x2A63, 0x2AD2]) {
@@ -226,14 +265,12 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   });
 
   // ── FTMS Request Control write ─────────────────────────────────────────────
-  test('FTMS Request Control (opcode 0x00) is written to characteristic 0x2AD9', async ({ page }) => {
-    await injectRecordingBluetoothMock(page);
-    await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForAppReady(page);
-    await triggerBleScanAndWaitForRequestDevice(page);
-    await waitForFtmsWrite(page);
+  test('FTMS Request Control (opcode 0x00) is written to characteristic 0x2AD9', async () => {
+    await resetRecordingMock();
+    await triggerBleScanAndWaitForRequestDevice(sharedPage);
+    await waitForFtmsWrite(sharedPage);
 
-    const recorded = await page.evaluate(() => window._btleApiCalls);
+    const recorded = await sharedPage.evaluate(() => window._btleApiCalls);
 
     // js_requestFtmsControl writes [0x00] to FTMS Control Point (0x2AD9)
     const ftmsWrite = (recorded.writeValueWithResponse || [])
