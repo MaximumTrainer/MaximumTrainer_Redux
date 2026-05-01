@@ -165,11 +165,12 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   // JIT-compile on cold CI runners.  Loading it once in beforeAll and sharing
   // the page across all four tests avoids repeating that cost four times.
   //
-  // beforeAll timeout: 5 min  (WASM loading + initialisation) — set per-hook
-  //                           via { timeout } options object, NOT via
-  //                           describe.configure (which would also cap hooks)
-  // Per-test timeout:  60 s   (assertions only — no WASM loading; inherited
-  //                           from playwright.config.js global timeout)
+  // describe timeout: 5 min — applies to beforeAll hooks AND individual tests.
+  // test.beforeAll(fn, { timeout }) is silently ignored in some Playwright
+  // versions when no describe-level timeout is set; test.describe.configure is
+  // the authoritative override that Playwright docs guarantee for hooks.
+  // Individual test assertions complete in <60 s; the 5 min ceiling causes no harm.
+  test.describe.configure({ timeout: 300_000 });
 
   /** @type {import('@playwright/test').Page} */
   let sharedPage;
