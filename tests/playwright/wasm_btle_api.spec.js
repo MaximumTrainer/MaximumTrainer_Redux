@@ -191,7 +191,22 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     sharedPage.on('console', msg => consoleLogs.push({ type: msg.type(), text: msg.text() }));
     await injectRecordingBluetoothMock(sharedPage);
     await sharedPage.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForAppReady(sharedPage);
+    try {
+      await waitForAppReady(sharedPage);
+    } catch (loadErr) {
+      // Dump page console logs so CI logs show what the WASM was doing before
+      // the timeout.  This is the primary diagnostic for load failures.
+      console.error('[diagnostic] waitForAppReady timed out. Page console output:');
+      for (const entry of consoleLogs) {
+        console.error(`  [${entry.type}] ${entry.text}`);
+      }
+      const pageTitle = await sharedPage.title().catch(() => '<unavailable>');
+      const isSecure = await sharedPage.evaluate(() => window.isSecureContext).catch(() => '<unavailable>');
+      const hasBt = await sharedPage.evaluate(() => typeof navigator.bluetooth).catch(() => '<unavailable>');
+      const hasScan = await sharedPage.evaluate(() => typeof window.mt_startBleScan).catch(() => '<unavailable>');
+      console.error(`[diagnostic] page title: ${pageTitle}, isSecureContext: ${isSecure}, typeof navigator.bluetooth: ${hasBt}, typeof mt_startBleScan: ${hasScan}`);
+      throw loadErr;
+    }
   }, { timeout: 420_000 }); // 7 min: WASM JIT-compilation takes 3+ min on cold CI runners
 
   test.afterAll(async () => {
