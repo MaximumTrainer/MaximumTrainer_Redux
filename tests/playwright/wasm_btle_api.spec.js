@@ -179,6 +179,12 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   const consoleLogs = [];
 
   test.beforeAll(async ({ browser }) => {
+    // Extend timeout for this hook — WASM JIT compilation takes 2+ min on cold
+    // CI runners.  test.setTimeout() inside a beforeAll changes the currently-
+    // running hook's deadline; this is the only approach that works reliably
+    // across all Playwright versions (test.describe.configure and the
+    // beforeAll { timeout } option are silently ignored in some versions).
+    test.setTimeout(300_000);
     sharedContext = await browser.newContext();
     sharedPage = await sharedContext.newPage();
     sharedPage.on('console', msg => consoleLogs.push({ type: msg.type(), text: msg.text() }));
