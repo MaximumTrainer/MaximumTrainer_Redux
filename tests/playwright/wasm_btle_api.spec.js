@@ -20,6 +20,12 @@ const APP_URL = `${BASE_ORIGIN}/app/`;
 //   0xAAB0 → [0xAAB2]   Moxy Muscle Oxygen Measurement
 async function injectRecordingBluetoothMock(page) {
   await page.addInitScript(() => {
+    // Forward all index.html wasm-logger messages to the browser console so
+    // Playwright's console event captures them.  Without this shim every
+    // log() call in index.html is silently dropped (window._wasmLogger is
+    // undefined) and the CI diagnostic dump shows nothing.
+    window._wasmLogger = { log: (msg) => console.log('[wasm-load] ' + msg) };
+
     const calls = window._btleApiCalls = {
       requestDeviceFilters: undefined,
       getPrimaryService: [],
@@ -178,6 +184,8 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   /** @type {import('@playwright/test').BrowserContext} */
   let sharedContext;
   const consoleLogs = [];
+  const pageErrors = [];
+  const failedRequests = [];
 
   test.beforeAll(async ({ browser }) => {
     // Extend timeout for this hook — WASM JIT compilation takes 3+ min on cold
@@ -189,22 +197,41 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     sharedContext = await browser.newContext();
     sharedPage = await sharedContext.newPage();
     sharedPage.on('console', msg => consoleLogs.push({ type: msg.type(), text: msg.text() }));
+    sharedPage.on('pageerror', err => pageErrors.push(err.message));
+    sharedPage.on('requestfailed', req => failedRequests.push(`${req.url()} — ${req.failure()?.errorText}`));
     await injectRecordingBluetoothMock(sharedPage);
     await sharedPage.goto(APP_URL, { waitUntil: 'domcontentloaded' });
     try {
       await waitForAppReady(sharedPage);
     } catch (loadErr) {
-      // Dump page console logs so CI logs show what the WASM was doing before
-      // the timeout.  This is the primary diagnostic for load failures.
-      console.error('[diagnostic] waitForAppReady timed out. Page console output:');
+      // Dump all available diagnostics so CI logs show exactly what happened.
+      console.error('[diagnostic] waitForAppReady timed out.');
+      console.error('[diagnostic] Page console output:');
       for (const entry of consoleLogs) {
         console.error(`  [${entry.type}] ${entry.text}`);
       }
-      const pageTitle = await sharedPage.title().catch(() => '<unavailable>');
-      const isSecure = await sharedPage.evaluate(() => window.isSecureContext).catch(() => '<unavailable>');
-      const hasBt = await sharedPage.evaluate(() => typeof navigator.bluetooth).catch(() => '<unavailable>');
-      const hasScan = await sharedPage.evaluate(() => typeof window.mt_startBleScan).catch(() => '<unavailable>');
-      console.error(`[diagnostic] page title: ${pageTitle}, isSecureContext: ${isSecure}, typeof navigator.bluetooth: ${hasBt}, typeof mt_startBleScan: ${hasScan}`);
+      if (pageErrors.length) {
+        console.error('[diagnostic] JavaScript errors:');
+        for (const e of pageErrors) console.error(`  [pageerror] ${e}`);
+      }
+      if (failedRequests.length) {
+        console.error('[diagnostic] Failed network requests:');
+        for (const r of failedRequests) console.error(`  [req-fail] ${r}`);
+      }
+      const ev = async (fn, label) => sharedPage.evaluate(fn).catch(e => `<eval failed: ${e.message}>`);
+      const isSecure     = await ev(() => window.isSecureContext,                     'isSecureContext');
+      const hasBt        = await ev(() => typeof navigator.bluetooth,                 'navigator.bluetooth');
+      const hasScan      = await ev(() => typeof window.mt_startBleScan,              'mt_startBleScan');
+      const hasQtLoader  = await ev(() => typeof window.QtLoader,                     'QtLoader');
+      const hasAppInst   = await ev(() => typeof window.createQtAppInstance,          'createQtAppInstance');
+      const loadingText  = await ev(() => document.getElementById('loading-status')?.textContent, 'loading-status');
+      const loadingClass = await ev(() => document.getElementById('loading-screen')?.className,   'loading-screen class');
+      console.error(
+        `[diagnostic] isSecureContext=${isSecure} navigator.bluetooth=${hasBt} ` +
+        `mt_startBleScan=${hasScan} QtLoader=${hasQtLoader} ` +
+        `createQtAppInstance=${hasAppInst}`
+      );
+      console.error(`[diagnostic] loading-screen class="${loadingClass}", status text="${loadingText}"`);
       throw loadErr;
     }
   }, { timeout: 420_000 }); // 7 min: WASM JIT-compilation takes 3+ min on cold CI runners
@@ -218,6 +245,8 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   // with a clean slate (all call arrays empty, requestDeviceFilters undefined).
   async function resetRecordingMock() {
     consoleLogs.length = 0;
+    pageErrors.length = 0;
+    failedRequests.length = 0;
     await sharedPage.evaluate(() => {
       window._btleApiCalls = {
         requestDeviceFilters: undefined,
