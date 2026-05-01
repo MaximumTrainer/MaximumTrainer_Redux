@@ -83,16 +83,27 @@ async function injectRecordingBluetoothMock(page) {
 }
 
 // Wait for the Qt canvas to become visible (app fully initialised).
-// The onLoaded callback in index.html sets style.visibility = 'visible' explicitly.
-// The canvas element has no inline style initially (only CSS visibility:hidden),
-// so checking !== 'hidden' would be trivially true from page load; we need === 'visible'.
+//
+// Two signals are checked — both are set together inside the onLoaded callback
+// in index.html — so either one is sufficient:
+//   1. Loading screen gains the 'hidden' class
+//   2. Canvas wrapper becomes visible
+//
+// getComputedStyle is used instead of element.style so the check works whether
+// visibility is applied as an inline style or via a CSS rule.  The timeout is
+// 90 s to accommodate WASM binaries that can take 30–50 s to load and
+// initialise on CI runners (overall test timeout is 120 s).
 async function waitForAppReady(page) {
   await page.waitForFunction(
     () => {
-      const canvas = document.querySelector('#qt-canvas-wrapper');
-      return canvas && canvas.style.visibility === 'visible';
+      const loadingScreen = document.querySelector('#loading-screen');
+      const wrapper = document.querySelector('#qt-canvas-wrapper');
+      const loadingHidden = loadingScreen && loadingScreen.classList.contains('hidden');
+      const canvasVisible = wrapper &&
+        window.getComputedStyle(wrapper).visibility === 'visible';
+      return !!(loadingHidden || canvasVisible);
     },
-    { timeout: 45000 }
+    { timeout: 90000 }
   );
 }
 
