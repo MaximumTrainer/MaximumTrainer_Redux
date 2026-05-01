@@ -252,13 +252,16 @@ EM_JS(void, js_requestFtmsControl, (), {
 });
 
 // Register window.mt_startBleScan() so Playwright tests can trigger a BLE scan
-// without requiring a UI user-gesture mock.  Called from BtleHubWasm constructor
-// so the function is available as soon as the WASM module initialises.
+// without requiring a UI user-gesture mock.
 // In production (real browser), calling this still invokes requestDevice() which
 // requires a user gesture – the browser will reject it silently, which is fine.
+//
+// Note: references js_scanAndConnect (no leading underscore).  Emscripten 3.1.x
+// names EM_JS helper functions without a '_' prefix inside the module scope,
+// unlike EMSCRIPTEN_KEEPALIVE C exports which use the '_' convention.
 EM_JS(void, js_exposeTestScanApi, (), {
     window.mt_startBleScan = function() {
-        _js_scanAndConnect();
+        js_scanAndConnect();
     };
 });
 
@@ -347,3 +350,33 @@ void requestFtmsControl()
 }
 
 } // namespace WebBluetoothBridge
+
+// ─── Playwright test-hook auto-registration ───────────────────────────────────
+//
+// Emscripten's initialisation sequence (MODULARIZE + ASYNCIFY) is:
+//   1. C++ static constructors  ← this object's ctor runs here
+//   2. onRuntimeInitialized     ← QtLoader's onLoaded fires here (canvas becomes visible)
+//   3. main()                   ← Qt application starts here
+//
+// The Playwright tests wait for the Qt canvas to become visible (step 2) and
+// then immediately check for window.mt_startBleScan.  Any call made in main()
+// or in a Qt constructor would arrive *after* the test's readiness check, so
+// the hook must be installed no later than step 1.
+//
+// Using a file-scope C++ object whose constructor calls js_exposeTestScanApi()
+// guarantees the window global is in place before the canvas is ever shown.
+//
+// Production safety: this global is always present in WASM builds, but calling
+// it in a real browser triggers navigator.bluetooth.requestDevice() which
+// requires a browser user gesture.  Programmatic calls from untrusted scripts
+// are silently rejected by the browser's Web Bluetooth security model, so
+// exposing window.mt_startBleScan in release builds is safe.
+//
+// Why not #ifdef QT_DEBUG: Playwright CI runs against Release WASM builds, so
+// a debug-only guard would disable the hook in the very builds being tested.
+namespace {
+struct WasmTestScanApiRegistrar {
+    WasmTestScanApiRegistrar() { js_exposeTestScanApi(); }
+};
+static WasmTestScanApiRegistrar g_wasmTestScanApiRegistrar;
+} // anonymous namespace

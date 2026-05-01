@@ -63,7 +63,6 @@
 #include "extrequest.h"
 #ifdef GC_WASM_BUILD
 #include "btle_scanner_dialog_wasm.h"
-#include "webbluetooth_bridge.h"
 #else
 #include "btle_scanner_dialog.h"
 #endif
@@ -346,14 +345,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     connect(ui->tab_workout1, &Main_WorkoutPage::addWorkoutToQueue,
             this, &MainWindow::addWorkoutToQueue);
-
-#ifdef GC_WASM_BUILD
-    // Expose window.mt_startBleScan() at app startup so Playwright tests can
-    // trigger a BLE scan without waiting for a workout session to start.
-    // BtleHubWasm is only instantiated inside executeWorkout(), so without this
-    // call the hook would never be registered during a test run.
-    WebBluetoothBridge::registerTestScanApi();
-#endif
 }
 
 
