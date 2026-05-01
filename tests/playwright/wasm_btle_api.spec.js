@@ -243,18 +243,23 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
 
   // Reset the recording mock before each BLE test so every assertion starts
   // with a clean slate (all call arrays empty, requestDeviceFilters undefined).
+  //
+  // IMPORTANT: mutate the existing _btleApiCalls object in-place rather than
+  // replacing it.  The mock's requestDevice closure captured the original
+  // `calls` reference at init-script time; if we assign a new object to
+  // window._btleApiCalls the mock would keep writing to the old one while
+  // waitForFunction reads from the new one, and every check would time out.
   async function resetRecordingMock() {
     consoleLogs.length = 0;
     pageErrors.length = 0;
     failedRequests.length = 0;
     await sharedPage.evaluate(() => {
-      window._btleApiCalls = {
-        requestDeviceFilters: undefined,
-        getPrimaryService:    [],
-        getCharacteristic:    [],
-        startNotifications:   [],
-        writeValueWithResponse: []
-      };
+      const c = window._btleApiCalls;
+      c.requestDeviceFilters  = undefined;
+      c.getPrimaryService     = [];
+      c.getCharacteristic     = [];
+      c.startNotifications    = [];
+      c.writeValueWithResponse = [];
     });
   }
 
