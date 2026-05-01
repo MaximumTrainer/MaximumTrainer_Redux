@@ -1,7 +1,8 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
-const APP_URL = 'https://maximumtrainer.github.io/MaximumTrainer_Redux/app/';
+const BASE_ORIGIN = process.env.PLAYWRIGHT_BASE_URL || 'https://maximumtrainer.github.io/MaximumTrainer_Redux';
+const APP_URL = `${BASE_ORIGIN}/app/`;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
