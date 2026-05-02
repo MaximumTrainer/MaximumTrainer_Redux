@@ -222,18 +222,18 @@ jobs:
         path: playwright-report/
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Auto-tag a new semantic version on master so that release.yml fires.
-  # Only runs when all build and test jobs succeed on the master branch.
+  # Compute the next semantic version on master.
+  # Only runs when all three main platform builds succeed on master.
+  # Serialised so that concurrent master pushes don't race on the same version.
   # ──────────────────────────────────────────────────────────────────────────
-  tag_release:
+  compute_version:
     needs: [build_linux, build_windows, build_mac]
     runs-on: ubuntu-latest
-    # Only auto-release from the master branch
     if: github.ref == 'refs/heads/master'
     permissions:
-      contents: write
-      actions: write
-    # Serialize tag creation so concurrent master builds don't race on the same version
+      contents: read
+    outputs:
+      new_tag: ${{ steps.semver.outputs.new_tag }}
     concurrency:
       group: tag_release
       cancel-in-progress: false
@@ -262,25 +262,185 @@ jobs:
         echo "New tag: $new_tag"
         echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
 
-    - name: Dispatch release workflow
-      # Do not pre-create the tag here — softprops/action-gh-release in the
-      # publish job creates (or reuses) the tag when it creates the GitHub
-      # Release.  Pre-creating it caused a double-run: the tag push fired
-      # release.yml AND the workflow_dispatch fired it again.
-      # Pass build_run_id so release jobs can download pre-built artifacts
-      # instead of rebuilding from source.
-      uses: actions/github-script@v7
+  # ──────────────────────────────────────────────────────────────────────────
+  # Package jobs — produce release-ready artifacts (AppImage, zip, MSI, dmg,
+  # wasm zip) by calling the existing reusable release-*.yml workflows.
+  # Each job passes github.run_id as build_run_id so artifact downloads stay
+  # within this workflow run — no cross-run lookup needed.
+  # ──────────────────────────────────────────────────────────────────────────
+  package_linux:
+    needs: [compute_version]
+    uses: ./.github/workflows/release-linux.yml
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+      actions: read
+    with:
+      build_run_id: ${{ github.run_id }}
+
+  package_windows:
+    needs: [compute_version]
+    uses: ./.github/workflows/release-windows.yml
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+      actions: read
+    with:
+      tag_name: ${{ needs.compute_version.outputs.new_tag }}
+      build_run_id: ${{ github.run_id }}
+
+  package_mac:
+    needs: [compute_version]
+    uses: ./.github/workflows/release-mac.yml
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+      actions: read
+    with:
+      build_run_id: ${{ github.run_id }}
+
+  package_wasm:
+    needs: [compute_version]
+    uses: ./.github/workflows/release-wasm.yml
+    if: github.ref == 'refs/heads/master'
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    with:
+      build_run_id: ${{ github.run_id }}
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Publish — create the GitHub Release and deploy WASM files to docs/app/.
+  # Runs whenever the three main platform packages succeed, even if WASM failed.
+  # ──────────────────────────────────────────────────────────────────────────
+  publish:
+    needs: [compute_version, package_linux, package_windows, package_mac, package_wasm]
+    runs-on: ubuntu-latest
+    if: |
+      always() &&
+      github.ref == 'refs/heads/master' &&
+      needs.package_linux.result == 'success' &&
+      needs.package_windows.result == 'success' &&
+      needs.package_mac.result == 'success'
+    permissions:
+      contents: write
+
+    steps:
+    - name: Download Linux AppImage
+      uses: actions/download-artifact@v4
       with:
-        script: |
-          const tag = '${{ steps.semver.outputs.new_tag }}';
-          await github.rest.actions.createWorkflowDispatch({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            workflow_id: 'release.yml',
-            ref: 'master',
-            inputs: {
-              tag_name: tag,
-              build_run_id: context.runId.toString()
-            }
-          });
-          console.log(`Dispatched release.yml for ${tag} (build_run_id=${context.runId})`);
+        name: linux-appimage
+
+    - name: Download Windows zip
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-zip
+
+    - name: Download Windows MSI
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-msi
+
+    - name: Download macOS dmg
+      uses: actions/download-artifact@v4
+      with:
+        name: macos-dmg
+
+    - name: Download Wasm zip
+      id: download_wasm
+      uses: actions/download-artifact@v4
+      continue-on-error: true
+      with:
+        name: wasm-zip
+
+    - name: Checkout repo (for docs/app deploy)
+      uses: actions/checkout@v4
+      with:
+        path: repo
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Deploy Wasm files to docs/app/
+      if: steps.download_wasm.outcome == 'success'
+      run: |
+        mkdir -p repo/docs/app
+        unzip -o MaximumTrainer-wasm.zip -d repo/docs/app/
+        cd repo
+        git config user.name  "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add docs/app/
+        git diff --cached --quiet || git commit -m "chore: deploy Wasm build artifacts for ${{ needs.compute_version.outputs.new_tag }}"
+        git push origin HEAD:refs/heads/master
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ needs.compute_version.outputs.new_tag }}
+        generate_release_notes: true
+        fail_on_unmatched_files: false
+        # Don't try to delete/overwrite existing assets - attempting to delete
+        # assets from an immutable release causes a fatal API error.
+        overwrite_files: false
+        files: |
+          MaximumTrainer-linux-x86_64.AppImage
+          MaximumTrainer-windows-x64.zip
+          MaximumTrainer-windows-x64.msi
+          MaximumTrainer-macos.dmg
+          MaximumTrainer-wasm.zip
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Verify — smoke-test that all required release assets are downloadable.
+  # ──────────────────────────────────────────────────────────────────────────
+  verify_assets:
+    needs: [compute_version, publish]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ needs.compute_version.outputs.new_tag }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+    - name: Verify release assets are downloadable
+      run: |
+        REPO="${{ github.repository }}"
+        mkdir -p /tmp/release-assets
+        cd /tmp/release-assets
+
+        echo "Verifying release assets for tag: $TAG"
+
+        # Required assets – the job fails if any of these are missing or empty
+        REQUIRED=(
+          "MaximumTrainer-linux-x86_64.AppImage"
+          "MaximumTrainer-windows-x64.zip"
+          "MaximumTrainer-windows-x64.msi"
+          "MaximumTrainer-macos.dmg"
+        )
+
+        for asset in "${REQUIRED[@]}"; do
+          echo "Downloading $asset ..."
+          gh release download "$TAG" --repo "$REPO" --pattern "$asset"
+          if [ ! -s "$asset" ]; then
+            echo "ERROR: $asset is missing or empty in release $TAG"
+            exit 1
+          fi
+          SIZE=$(stat -c%s "$asset")
+          echo "✓ $asset  (${SIZE} bytes)"
+        done
+
+        # WASM asset is best-effort: warn but do not fail if absent
+        echo "Checking optional WASM asset ..."
+        if gh release download "$TAG" --repo "$REPO" --pattern "MaximumTrainer-wasm.zip" 2>/dev/null; then
+          if [ -s "MaximumTrainer-wasm.zip" ]; then
+            SIZE=$(stat -c%s "MaximumTrainer-wasm.zip")
+            echo "✓ MaximumTrainer-wasm.zip  (${SIZE} bytes)"
+          else
+            echo "WARNING: MaximumTrainer-wasm.zip is present but empty"
+          fi
+        else
+          echo "NOTE: MaximumTrainer-wasm.zip not found in release (Wasm build is best-effort)"
+        fi
+
+        echo ""
+        echo "All required release assets are present and downloadable."
