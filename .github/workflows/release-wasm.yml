@@ -38,10 +38,10 @@ jobs:
     - name: Package Wasm artifacts
       run: |
         mkdir -p wasm-out
-        cp build-wasm/build/release/MaximumTrainer.wasm wasm-out/
-        cp build-wasm/build/release/MaximumTrainer.js   wasm-out/
-        cp build-wasm/build/release/qtloader.js         wasm-out/ 2>/dev/null || true
-        cp build-wasm/build/release/qtlogo.svg          wasm-out/ 2>/dev/null || true
+        cp MaximumTrainer.wasm wasm-out/
+        cp MaximumTrainer.js   wasm-out/
+        cp qtloader.js         wasm-out/ 2>/dev/null || true
+        cp qtlogo.svg          wasm-out/ 2>/dev/null || true
         cp docs/app/index.html            wasm-out/
         cd wasm-out
         zip -r ../MaximumTrainer-wasm.zip .

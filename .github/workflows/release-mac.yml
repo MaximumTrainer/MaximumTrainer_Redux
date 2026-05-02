@@ -65,8 +65,9 @@ jobs:
     - name: Package with macdeployqt
       run: |
         # Add rpath for QWT and OpenSSL so macdeployqt can resolve and bundle them.
-        install_name_tool -add_rpath /usr/local/lib build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
-        install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
+        # '|| true' tolerates the case where the rpath was already baked in at build time.
+        install_name_tool -add_rpath /usr/local/lib build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer || true
+        install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer || true
         macdeployqt build/release/MaximumTrainer.app -dmg
         mv build/release/MaximumTrainer.dmg MaximumTrainer-macos.dmg
 
