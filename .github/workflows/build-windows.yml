@@ -223,6 +223,28 @@ jobs:
         }
       shell: powershell
 
+    - name: Copy VLC-Qt runtime DLLs
+      # VLCQtCore.dll / VLCQtWidgets.dll live in C:\vlcqt\bin\ (dynamic build).
+      # If VLC-Qt was compiled as a static library there will be no DLLs here
+      # and the step will simply log a warning and move on.
+      run: |
+        $vlcqtBin = "C:\vlcqt\bin"
+        if (Test-Path $vlcqtBin) {
+          $dlls = Get-ChildItem $vlcqtBin -Filter "VLCQt*.dll"
+          if ($dlls.Count -gt 0) {
+            foreach ($dll in $dlls) {
+              Copy-Item $dll.FullName "build\release\" -Force
+              Write-Host "Copied $($dll.Name)"
+            }
+          } else {
+            Write-Warning "No VLCQt*.dll found in $vlcqtBin (static build?). Listing contents:"
+            Get-ChildItem $vlcqtBin | ForEach-Object { Write-Host "  $($_.Name)" }
+          }
+        } else {
+          Write-Warning "VLC-Qt bin directory not found: $vlcqtBin"
+        }
+      shell: powershell
+
     - name: Copy SFML runtime DLLs
       # sfml-audio-2.dll (and its dependencies sfml-system-2.dll, openal32.dll)
       # are not discovered by windeployqt. Copy the release-mode DLLs from the

@@ -247,7 +247,10 @@ jobs:
           "Qt5Core.dll",
           "Qt5Widgets.dll",
           "libssl-1_1-x64.dll",
-          "libcrypto-1_1-x64.dll"
+          "libcrypto-1_1-x64.dll",
+          "sfml-audio-2.dll",
+          "sfml-system-2.dll",
+          "openal32.dll"
         )
         $failed = $false
         foreach ($file in $required) {
