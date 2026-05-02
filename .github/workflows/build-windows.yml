@@ -223,6 +223,24 @@ jobs:
         }
       shell: powershell
 
+    - name: Copy SFML runtime DLLs
+      # sfml-audio-2.dll (and its dependencies sfml-system-2.dll, openal32.dll)
+      # are not discovered by windeployqt. Copy the release-mode DLLs from the
+      # SFML bin directory so the installed app can load them at runtime.
+      run: |
+        $sfmlDir = (Get-ChildItem "C:\sfml" -Directory | Select-Object -First 1).FullName
+        $sfmlBin = "$sfmlDir\bin"
+        foreach ($dll in @("sfml-audio-2.dll", "sfml-system-2.dll", "openal32.dll")) {
+          $src = "$sfmlBin\$dll"
+          if (Test-Path $src) {
+            Copy-Item $src "build\release\" -Force
+            Write-Host "Copied $dll"
+          } else {
+            Write-Warning "SFML DLL not found: $src"
+          }
+        }
+      shell: powershell
+
     - name: Deploy Qt for main executable
       run: |
         & "$env:QTDIR\bin\windeployqt.exe" --release `
