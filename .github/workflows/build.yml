@@ -303,7 +303,6 @@ jobs:
     needs: [compute_version]
     uses: ./.github/workflows/release-wasm.yml
     if: github.ref == 'refs/heads/master'
-    continue-on-error: true
     permissions:
       contents: read
       actions: read
