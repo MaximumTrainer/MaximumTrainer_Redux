@@ -52,6 +52,17 @@ jobs:
         make -j$(sysctl -n hw.logicalcpu)
         sudo make install
 
+    - name: Fix QWT install_name for macdeployqt compatibility
+      # QWT 6.2.0 default LC_ID_DYLIB is /usr/lib/libqwt.6.dylib but the actual
+      # file is at /usr/local/qwt-6.2.0/lib/.  macdeployqt resolves dependencies
+      # by following LC_ID_DYLIB, so it errors "no file at /usr/lib/..." if the
+      # install_name is wrong.  Fix it before the app is linked so the app binary's
+      # LC_LOAD_DYLIB also records the correct path.
+      run: |
+        QWT_LIB=/usr/local/qwt-6.2.0/lib/libqwt.6.dylib
+        sudo install_name_tool -id "$QWT_LIB" "$QWT_LIB"
+        echo "QWT install_name: $(otool -D $QWT_LIB | tail -1)"
+
     - name: Determine build version
       run: |
         GIT_TAG=$(git describe --tags --match 'v[0-9]*' --always | tr -d '\r' | sed 's/-[0-9]*-g[0-9a-f]*$//')

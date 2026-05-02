@@ -65,20 +65,22 @@ jobs:
     - name: Package with macdeployqt
       run: |
         APP=build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
+        QWT_LIB=/usr/local/qwt-6.2.0/lib/libqwt.6.dylib
 
-        # macdeployqt resolves dependencies using the load commands baked into the
-        # binary at link time.  QWT is built with its install_name set to
-        # /usr/lib/libqwt.6.dylib (the QWT default), but the actual dylib is
-        # installed to /usr/local/qwt-6.2.0/lib/.  Fix the reference so
-        # macdeployqt can find and bundle QWT.
-        install_name_tool -change /usr/lib/libqwt.6.dylib \
-            /usr/local/qwt-6.2.0/lib/libqwt.6.dylib "$APP" || true
+        # QWT 6.2.0 default LC_ID_DYLIB is /usr/lib/libqwt.6.dylib but the actual
+        # file is at $QWT_LIB. macdeployqt follows LC_ID_DYLIB to locate a library,
+        # so it cannot find QWT unless we fix the install_name first.
+        sudo install_name_tool -id "$QWT_LIB" "$QWT_LIB"
 
-        # Add rpaths for QWT, OpenSSL, and SFML as a belt-and-suspenders fallback.
+        # The app binary's LC_LOAD_DYLIB was baked in at link time using QWT's old
+        # install_name. Fix it so macdeployqt can match it to the corrected dylib.
+        install_name_tool -change /usr/lib/libqwt.6.dylib "$QWT_LIB" "$APP" || true
+
+        # Add SFML rpath (belt-and-suspenders; SFML uses absolute install_names on
+        # Homebrew so macdeployqt typically resolves it without rpaths, but adding
+        # the rpath makes the .app self-contained when moved between machines).
         # '|| true' tolerates duplicate rpaths already baked in at build time.
         install_name_tool -add_rpath /usr/local/qwt-6.2.0/lib "$APP" || true
-        install_name_tool -add_rpath /usr/local/lib "$APP" || true
-        install_name_tool -add_rpath $(brew --prefix openssl@3)/lib "$APP" || true
         install_name_tool -add_rpath $(brew --prefix sfml)/lib "$APP" || true
 
         macdeployqt build/release/MaximumTrainer.app -dmg
