@@ -244,7 +244,8 @@ jobs:
         $required = @(
           "MaximumTrainer.exe",
           "qwt.dll",
-          "Qt5OpenGL.dll",
+          "Qt5Core.dll",
+          "Qt5Widgets.dll",
           "libssl-1_1-x64.dll",
           "libcrypto-1_1-x64.dll"
         )
