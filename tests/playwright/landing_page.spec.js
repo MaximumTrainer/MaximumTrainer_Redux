@@ -1,8 +1,9 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
-const SITE_URL  = 'https://maximumtrainer.github.io/MaximumTrainer_Redux/';
-const BASE_PATH = 'https://maximumtrainer.github.io/MaximumTrainer_Redux';
+const BASE_ORIGIN = process.env.PLAYWRIGHT_BASE_URL || 'https://maximumtrainer.github.io/MaximumTrainer_Redux';
+const SITE_URL  = `${BASE_ORIGIN}/`;
+const BASE_PATH = BASE_ORIGIN;
 
 // ── HTTP asset checks ──────────────────────────────────────────────────────
 test.describe('Landing page assets are deployed', () => {

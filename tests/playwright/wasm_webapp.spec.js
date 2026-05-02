@@ -1,8 +1,9 @@
 // @ts-check
 const { test, expect, request } = require('@playwright/test');
 
-const APP_URL = 'https://maximumtrainer.github.io/MaximumTrainer_Redux/app/';
-const BASE_URL = 'https://maximumtrainer.github.io/MaximumTrainer_Redux/app';
+const BASE_ORIGIN = process.env.PLAYWRIGHT_BASE_URL || 'https://maximumtrainer.github.io/MaximumTrainer_Redux';
+const APP_URL = `${BASE_ORIGIN}/app/`;
+const BASE_URL = `${BASE_ORIGIN}/app`;
 
 // Helper: inject a full Web Bluetooth stub that passes the capability check
 async function stubBluetooth(page) {

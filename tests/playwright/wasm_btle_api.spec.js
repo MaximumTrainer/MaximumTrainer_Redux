@@ -1,7 +1,8 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
-const APP_URL = 'https://maximumtrainer.github.io/MaximumTrainer_Redux/app/';
+const BASE_ORIGIN = process.env.PLAYWRIGHT_BASE_URL || 'https://maximumtrainer.github.io/MaximumTrainer_Redux';
+const APP_URL = `${BASE_ORIGIN}/app/`;
 
 // ─── Recording Web Bluetooth mock ─────────────────────────────────────────────
 //
@@ -19,6 +20,12 @@ const APP_URL = 'https://maximumtrainer.github.io/MaximumTrainer_Redux/app/';
 //   0xAAB0 → [0xAAB2]   Moxy Muscle Oxygen Measurement
 async function injectRecordingBluetoothMock(page) {
   await page.addInitScript(() => {
+    // Forward all index.html wasm-logger messages to the browser console so
+    // Playwright's console event captures them.  Without this shim every
+    // log() call in index.html is silently dropped (window._wasmLogger is
+    // undefined) and the CI diagnostic dump shows nothing.
+    window._wasmLogger = { log: (msg) => console.log('[wasm-load] ' + msg) };
+
     const calls = window._btleApiCalls = {
       requestDeviceFilters: undefined,
       getPrimaryService: [],
@@ -81,14 +88,38 @@ async function injectRecordingBluetoothMock(page) {
   });
 }
 
-// Wait for the Qt canvas to become visible (app fully initialised).
+// Wait for the WASM app to be ready for BLE testing.
+//
+// Three independent signals are checked — any one being true means the app
+// has reached a state where window.mt_startBleScan is callable:
+//   1. window.mt_startBleScan is defined (set by WasmTestScanApiRegistrar
+//      during C++ static init — fires before onRuntimeInitialized, so this
+//      is the earliest possible reliable signal)
+//   2. Loading screen gains the 'hidden' class (set inside onLoaded)
+//   3. Canvas wrapper's computed visibility becomes 'visible' (set inside onLoaded)
+//
+// The WASM binary (~18 MB, ASYNCIFY-transformed) can take 3+ minutes to JIT-
+// compile on cold CI runners (observed: ~184 s on GitHub Actions ubuntu-latest).
+// The timeout is set generously here; the calling context (beforeAll) carries
+// its own 7-minute outer limit set via test.setTimeout().
+//
+// NOTE: pass `null` as the explicit arg so that the options object is correctly
+// parsed as the third positional parameter by Playwright, not as the page
+// function's argument.
 async function waitForAppReady(page) {
   await page.waitForFunction(
     () => {
-      const canvas = document.querySelector('#qt-canvas-wrapper');
-      return canvas && canvas.style.visibility !== 'hidden';
+      // Signal 1: test hook registered by C++ static initializer (before onLoaded)
+      if (typeof window.mt_startBleScan === 'function') return true;
+      // Signal 2: loading screen hidden (onLoaded in index.html)
+      const loadingScreen = document.querySelector('#loading-screen');
+      if (loadingScreen && loadingScreen.classList.contains('hidden')) return true;
+      // Signal 3: canvas wrapper visible by computed style (onLoaded in index.html)
+      const wrapper = document.querySelector('#qt-canvas-wrapper');
+      return !!(wrapper && window.getComputedStyle(wrapper).visibility === 'visible');
     },
-    { timeout: 45000 }
+    null,          // no argument passed to the page function
+    { timeout: 300_000 }   // 5 min — WASM JIT takes 3+ min on cold CI runners
   );
 }
 
@@ -110,7 +141,8 @@ async function triggerBleScanAndWaitForRequestDevice(page) {
       const calls = window._btleApiCalls;
       return calls && calls.requestDeviceFilters !== undefined;
     },
-    { timeout: 45000 }
+    null,
+    { timeout: 45_000 }
   );
 }
 
@@ -127,7 +159,8 @@ async function waitForFtmsWrite(page) {
         Array.isArray(calls.writeValueWithResponse) &&
         calls.writeValueWithResponse.length > 0;
     },
-    { timeout: 45000 }
+    null,
+    { timeout: 45_000 }
   );
 }
 
@@ -135,23 +168,107 @@ async function waitForFtmsWrite(page) {
 
 test.describe('WASM BLE API — Web Bluetooth call verification', () => {
 
-  // These tests load the deployed WASM app and trigger a full BLE scan + GATT
-  // setup flow.  The WASM binary can take 30–50 s to load and initialise on
-  // CI runners, so give each test 120 s (2×default) instead of the global 60 s.
-  test.describe.configure({ timeout: 120_000 });
+  // The WASM binary (~18 MB, ASYNCIFY-transformed) can take 2+ minutes to
+  // JIT-compile on cold CI runners.  Loading it once in beforeAll and sharing
+  // the page across all four tests avoids repeating that cost four times.
+  //
+  // describe timeout: 7 min — applies to beforeAll hooks AND individual tests.
+  // test.beforeAll(fn, { timeout }) is silently ignored in some Playwright
+  // versions when no describe-level timeout is set; test.describe.configure is
+  // the authoritative override that Playwright docs guarantee for hooks.
+  // Individual test assertions complete in <60 s; the 7 min ceiling causes no harm.
+  test.describe.configure({ timeout: 420_000 });
+
+  /** @type {import('@playwright/test').Page} */
+  let sharedPage;
+  /** @type {import('@playwright/test').BrowserContext} */
+  let sharedContext;
+  const consoleLogs = [];
+  const pageErrors = [];
+  const failedRequests = [];
+
+  test.beforeAll(async ({ browser }) => {
+    // Extend timeout for this hook — WASM JIT compilation takes 3+ min on cold
+    // CI runners.  test.setTimeout() inside a beforeAll changes the currently-
+    // running hook's deadline; this is the only approach that works reliably
+    // across all Playwright versions (test.describe.configure and the
+    // beforeAll { timeout } option are silently ignored in some versions).
+    test.setTimeout(420_000);
+    sharedContext = await browser.newContext();
+    sharedPage = await sharedContext.newPage();
+    sharedPage.on('console', msg => consoleLogs.push({ type: msg.type(), text: msg.text() }));
+    sharedPage.on('pageerror', err => pageErrors.push(err.message));
+    sharedPage.on('requestfailed', req => failedRequests.push(`${req.url()} — ${req.failure()?.errorText}`));
+    await injectRecordingBluetoothMock(sharedPage);
+    await sharedPage.goto(APP_URL, { waitUntil: 'domcontentloaded' });
+    try {
+      await waitForAppReady(sharedPage);
+    } catch (loadErr) {
+      // Dump all available diagnostics so CI logs show exactly what happened.
+      console.error('[diagnostic] waitForAppReady timed out.');
+      console.error('[diagnostic] Page console output:');
+      for (const entry of consoleLogs) {
+        console.error(`  [${entry.type}] ${entry.text}`);
+      }
+      if (pageErrors.length) {
+        console.error('[diagnostic] JavaScript errors:');
+        for (const e of pageErrors) console.error(`  [pageerror] ${e}`);
+      }
+      if (failedRequests.length) {
+        console.error('[diagnostic] Failed network requests:');
+        for (const r of failedRequests) console.error(`  [req-fail] ${r}`);
+      }
+      const ev = async (fn, label) => sharedPage.evaluate(fn).catch(e => `<eval failed: ${e.message}>`);
+      const isSecure     = await ev(() => window.isSecureContext,                     'isSecureContext');
+      const hasBt        = await ev(() => typeof navigator.bluetooth,                 'navigator.bluetooth');
+      const hasScan      = await ev(() => typeof window.mt_startBleScan,              'mt_startBleScan');
+      const hasQtLoader  = await ev(() => typeof window.QtLoader,                     'QtLoader');
+      const hasAppInst   = await ev(() => typeof window.createQtAppInstance,          'createQtAppInstance');
+      const loadingText  = await ev(() => document.getElementById('loading-status')?.textContent, 'loading-status');
+      const loadingClass = await ev(() => document.getElementById('loading-screen')?.className,   'loading-screen class');
+      console.error(
+        `[diagnostic] isSecureContext=${isSecure} navigator.bluetooth=${hasBt} ` +
+        `mt_startBleScan=${hasScan} QtLoader=${hasQtLoader} ` +
+        `createQtAppInstance=${hasAppInst}`
+      );
+      console.error(`[diagnostic] loading-screen class="${loadingClass}", status text="${loadingText}"`);
+      throw loadErr;
+    }
+  }, { timeout: 420_000 }); // 7 min: WASM JIT-compilation takes 3+ min on cold CI runners
+
+  test.afterAll(async () => {
+    await sharedPage?.close();
+    await sharedContext?.close();
+  });
+
+  // Reset the recording mock before each BLE test so every assertion starts
+  // with a clean slate (all call arrays empty, requestDeviceFilters undefined).
+  //
+  // IMPORTANT: mutate the existing _btleApiCalls object in-place rather than
+  // replacing it.  The mock's requestDevice closure captured the original
+  // `calls` reference at init-script time; if we assign a new object to
+  // window._btleApiCalls the mock would keep writing to the old one while
+  // waitForFunction reads from the new one, and every check would time out.
+  async function resetRecordingMock() {
+    consoleLogs.length = 0;
+    pageErrors.length = 0;
+    failedRequests.length = 0;
+    await sharedPage.evaluate(() => {
+      const c = window._btleApiCalls;
+      c.requestDeviceFilters  = undefined;
+      c.getPrimaryService     = [];
+      c.getCharacteristic     = [];
+      c.startNotifications    = [];
+      c.writeValueWithResponse = [];
+    });
+  }
 
   // ── requestDevice service filters ──────────────────────────────────────────
-  test('requestDevice is called with correct service filter UUIDs', async ({ page }) => {
-    await injectRecordingBluetoothMock(page);
+  test('requestDevice is called with correct service filter UUIDs', async () => {
+    await resetRecordingMock();
+    await triggerBleScanAndWaitForRequestDevice(sharedPage);
 
-    const consoleLogs = [];
-    page.on('console', msg => consoleLogs.push({ type: msg.type(), text: msg.text() }));
-
-    await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForAppReady(page);
-    await triggerBleScanAndWaitForRequestDevice(page);
-
-    const recorded = await page.evaluate(() => window._btleApiCalls);
+    const recorded = await sharedPage.evaluate(() => window._btleApiCalls);
 
     // requestDevice must have been called by js_scanAndConnect
     expect(recorded.requestDeviceFilters,
@@ -176,13 +293,11 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   });
 
   // ── getPrimaryService for each sensor profile ──────────────────────────────
-  test('getPrimaryService is called for each sensor profile', async ({ page }) => {
-    await injectRecordingBluetoothMock(page);
-    await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForAppReady(page);
-    await triggerBleScanAndWaitForRequestDevice(page);
+  test('getPrimaryService is called for each sensor profile', async () => {
+    await resetRecordingMock();
+    await triggerBleScanAndWaitForRequestDevice(sharedPage);
 
-    const recorded = await page.evaluate(() => window._btleApiCalls);
+    const recorded = await sharedPage.evaluate(() => window._btleApiCalls);
 
     // subscribeAll iterates over all services in profileMap; js_requestFtmsControl
     // also calls getPrimaryService(0x1826) separately.
@@ -194,13 +309,11 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   });
 
   // ── startNotifications for each sensor characteristic ─────────────────────
-  test('startNotifications is called for each sensor characteristic', async ({ page }) => {
-    await injectRecordingBluetoothMock(page);
-    await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForAppReady(page);
-    await triggerBleScanAndWaitForRequestDevice(page);
+  test('startNotifications is called for each sensor characteristic', async () => {
+    await resetRecordingMock();
+    await triggerBleScanAndWaitForRequestDevice(sharedPage);
 
-    const recorded = await page.evaluate(() => window._btleApiCalls);
+    const recorded = await sharedPage.evaluate(() => window._btleApiCalls);
 
     // One startNotifications per characteristic in profileMap
     for (const charUuid of [0x2A37, 0x2A5B, 0x2A63, 0x2AD2]) {
@@ -211,14 +324,21 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   });
 
   // ── FTMS Request Control write ─────────────────────────────────────────────
-  test('FTMS Request Control (opcode 0x00) is written to characteristic 0x2AD9', async ({ page }) => {
-    await injectRecordingBluetoothMock(page);
-    await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForAppReady(page);
-    await triggerBleScanAndWaitForRequestDevice(page);
-    await waitForFtmsWrite(page);
+  test('FTMS Request Control (opcode 0x00) is written to characteristic 0x2AD9', async () => {
+    await resetRecordingMock();
+    await triggerBleScanAndWaitForRequestDevice(sharedPage);
+    // BtleHubWasm is only instantiated when a workout runs, so g_connectedCallback
+    // is never set during Playwright CI.  Call the dedicated test hook
+    // mt_requestFtmsControl() which invokes js_requestFtmsControl() directly,
+    // bypassing the C++ callback chain but testing the same JS UUID/opcode logic.
+    const hasFtmsHook = await sharedPage.evaluate(() => typeof window.mt_requestFtmsControl === 'function');
+    expect(hasFtmsHook,
+      'window.mt_requestFtmsControl hook absent — WASM build must be rebuilt with updated js_exposeTestScanApi')
+      .toBeTruthy();
+    await sharedPage.evaluate(() => window.mt_requestFtmsControl());
+    await waitForFtmsWrite(sharedPage);
 
-    const recorded = await page.evaluate(() => window._btleApiCalls);
+    const recorded = await sharedPage.evaluate(() => window._btleApiCalls);
 
     // js_requestFtmsControl writes [0x00] to FTMS Control Point (0x2AD9)
     const ftmsWrite = (recorded.writeValueWithResponse || [])

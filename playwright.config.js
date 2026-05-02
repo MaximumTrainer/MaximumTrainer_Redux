@@ -18,5 +18,15 @@ module.exports = defineConfig({
     ignoreHTTPSErrors: true,
     // Capture a screenshot automatically on test failure for easier debugging
     screenshot: 'only-on-failure',
+    launchOptions: {
+      args: [
+        // Force V8 to use only the Liftoff baseline WASM compiler (no Turbofan
+        // tier-up).  The 18 MB ASYNCIFY-transformed WASM binary can take
+        // several minutes for Turbofan to compile on cold CI runners; Liftoff
+        // compiles the same binary in seconds at the cost of slower runtime
+        // performance — which is irrelevant for test assertions.
+        '--js-flags=--no-wasm-tier-up',
+      ],
+    },
   },
 });

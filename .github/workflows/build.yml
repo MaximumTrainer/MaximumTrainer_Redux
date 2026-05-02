@@ -147,16 +147,20 @@ jobs:
           build-wasm/build/release/qtlogo.svg
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Playwright E2E Tests — WASM app on GitHub Pages
+  # Playwright E2E Tests — served locally from docs/ using the freshly built
+  # WASM artifact so that tests are independent of the GitHub Pages deployment.
   #
-  # Runs the full Playwright suite against the live GitHub Pages deployment at
-  # https://maximumtrainer.github.io/MaximumTrainer_Redux/app/.
+  # The job depends on build_wasm so that the fresh WASM binary is available
+  # as an artifact.  If the WASM build failed its artifact is absent; the
+  # download step is marked continue-on-error so testing still proceeds with
+  # the committed binary already present in docs/app/.
   #
   # Layer A tests verify UI structure (tabs, widgets) without credentials.
   # Layer B tests inject Intervals.icu credentials and verify the calendar/
   # workout list renders; they skip gracefully when secrets are absent.
   # ──────────────────────────────────────────────────────────────────────────
   test_playwright:
+    needs: [build_wasm]
     runs-on: ubuntu-latest
     continue-on-error: true
     permissions:
@@ -164,12 +168,31 @@ jobs:
     env:
       INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
       INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
+      PLAYWRIGHT_BASE_URL: http://localhost:8080
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+
+    - name: Download fresh WASM artifact
+      id: download-wasm
+      uses: actions/download-artifact@v4
+      continue-on-error: true   # wasm build may have failed — fall back to committed binary
+      with:
+        name: wasm
+        path: /tmp/wasm-artifact
+
+    - name: Copy fresh WASM files into docs/app
+      if: steps.download-wasm.outcome == 'success'
+      run: |
+        echo "Downloaded artifact contents:"
+        find /tmp/wasm-artifact -maxdepth 3 -type f | sort
+        cp /tmp/wasm-artifact/MaximumTrainer.wasm docs/app/
+        cp /tmp/wasm-artifact/MaximumTrainer.js   docs/app/
+        [ -f /tmp/wasm-artifact/qtloader.js ] && cp /tmp/wasm-artifact/qtloader.js docs/app/ || true
+        [ -f /tmp/wasm-artifact/qtlogo.svg ]  && cp /tmp/wasm-artifact/qtlogo.svg  docs/app/ || true
 
     - name: Install Node.js
       uses: actions/setup-node@v4
@@ -180,6 +203,13 @@ jobs:
       run: |
         npm install --no-save @playwright/test
         npx playwright install chromium --with-deps
+
+    - name: Start local HTTP server
+      run: |
+        python3 -m http.server 8080 --directory docs &
+        # Wait until the server is ready
+        timeout 15 bash -c 'until curl -sf http://localhost:8080 > /dev/null; do sleep 1; done' \
+          || { echo "Failed to start local server on port 8080"; exit 1; }
 
     - name: Run Playwright tests
       run: npx playwright test
