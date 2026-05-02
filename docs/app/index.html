@@ -231,7 +231,7 @@
 
       // ── Bluetooth supported — load WASM assets ──────────────────────────────
       // Deployment layout (written by release.yml publish job):
-      //   docs/app/qtloader.js        — Qt 6.6 loader (defines window.QtLoader)
+      //   docs/app/qtloader.js        — Qt 6.6 loader (defines window.qtLoad)
       //   docs/app/MaximumTrainer.js  — Emscripten glue (defines window.createQtAppInstance)
       //   docs/app/MaximumTrainer.wasm
       const loadingProgress = document.getElementById('loading-progress');
@@ -249,7 +249,7 @@
           </div>`;
       }
 
-      // Step 1: load qtloader.js (Qt 6.6 — defines window.QtLoader)
+      // Step 1: load qtloader.js (Qt 6.6 — defines window.qtLoad)
       const log = (msg) => window._wasmLogger && window._wasmLogger.log(msg);
       log('Loading qtloader.js…');
       const loaderScript = document.createElement('script');
