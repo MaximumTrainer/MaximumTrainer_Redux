@@ -290,6 +290,8 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     expect(bleErrors,
       `Unexpected [MT] BLE errors: ${bleErrors.map(m => m.text).join(', ')}`)
       .toHaveLength(0);
+
+    await sharedPage.screenshot({ path: 'test-results/wasm-screenshots/ble-api-request-device-filters.png' });
   });
 
   // ── getPrimaryService for each sensor profile ──────────────────────────────
@@ -306,6 +308,8 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
         `getPrimaryService(0x${svcUuid.toString(16).toUpperCase()}) was not called`)
         .toContain(svcUuid);
     }
+
+    await sharedPage.screenshot({ path: 'test-results/wasm-screenshots/ble-api-get-primary-service.png' });
   });
 
   // ── startNotifications for each sensor characteristic ─────────────────────
@@ -321,6 +325,8 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
         `startNotifications was not called for 0x${charUuid.toString(16).toUpperCase()}`)
         .toContain(charUuid);
     }
+
+    await sharedPage.screenshot({ path: 'test-results/wasm-screenshots/ble-api-start-notifications.png' });
   });
 
   // ── FTMS Request Control write ─────────────────────────────────────────────
@@ -347,5 +353,7 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     expect(ftmsWrite,
       'writeValueWithResponse([0x00]) on FTMS Control Point 0x2AD9 was not called')
       .toBeDefined();
+
+    await sharedPage.screenshot({ path: 'test-results/wasm-screenshots/ble-api-ftms-request-control.png' });
   });
 });

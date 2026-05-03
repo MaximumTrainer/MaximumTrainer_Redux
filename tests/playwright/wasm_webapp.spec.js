@@ -72,6 +72,8 @@ test.describe('WASM webapp page', () => {
 
     // No WASM asset fetches should have failed
     expect(failedRequests, `These WASM assets failed to load: ${failedRequests.join(', ')}`).toHaveLength(0);
+
+    await page.screenshot({ path: 'test-results/wasm-screenshots/not-deployed-message-absent.png' });
   });
 
   test('loading screen or Qt canvas is present', async ({ page }) => {
@@ -89,6 +91,8 @@ test.describe('WASM webapp page', () => {
 
     expect(loadingVisible || canvasVisible,
       'Either the loading screen or the Qt canvas should be visible').toBe(true);
+
+    await page.screenshot({ path: 'test-results/wasm-screenshots/loading-screen-or-canvas-present.png' });
   });
 
   test('WASM log overlay is present and has the copy button', async ({ page }) => {
@@ -115,6 +119,8 @@ test.describe('WASM webapp page', () => {
     const logLines = overlay.locator('div > div');
     const lineCount = await logLines.count();
     expect(lineCount, 'The log overlay should contain at least one log entry').toBeGreaterThan(0);
+
+    await page.screenshot({ path: 'test-results/wasm-screenshots/wasm-log-overlay-present.png' });
   });
 });
 
@@ -187,6 +193,8 @@ test.describe('BLE GATT ready callback', () => {
       bleErrors,
       `Unexpected [MT] BLE errors with mock device: ${bleErrors.map((m) => m.text).join(', ')}`,
     ).toHaveLength(0);
+
+    await page.screenshot({ path: 'test-results/wasm-screenshots/ble-gatt-ready-no-errors.png' });
   });
 });
 
@@ -219,6 +227,8 @@ test.describe('Browser compatibility guard', () => {
     // The detail paragraph must contain the hardware-unavailable message
     const detail = page.locator('#browser-warning-detail');
     await expect(detail).toContainText('No Bluetooth adapter was detected');
+
+    await page.screenshot({ path: 'test-results/wasm-screenshots/compat-warning-no-adapter.png' });
   });
 
   test('compatibility warning is shown when navigator.bluetooth is absent', async ({ page }) => {
@@ -240,6 +250,8 @@ test.describe('Browser compatibility guard', () => {
     // The detail paragraph must contain the api-missing message
     const detail = page.locator('#browser-warning-detail');
     await expect(detail).toContainText('Web Bluetooth API is not available');
+
+    await page.screenshot({ path: 'test-results/wasm-screenshots/compat-warning-no-bluetooth-api.png' });
   });
 });
 
@@ -295,6 +307,8 @@ test.describe('BLE reconnect overlay', () => {
     // It must be hidden by default (display:none)
     const isVisible = await overlay.isVisible();
     expect(isVisible, '#ble-reconnect-overlay should be hidden by default').toBe(false);
+
+    await page.screenshot({ path: 'test-results/wasm-screenshots/reconnect-overlay-hidden-by-default.png' });
   });
 
   test('reconnect overlay contains a Reconnect button', async ({ page }) => {
@@ -304,6 +318,8 @@ test.describe('BLE reconnect overlay', () => {
     const btn = page.locator('#ble-reconnect-btn');
     await expect(btn).toHaveCount(1);
     await expect(btn).toHaveText(/Reconnect/i);
+
+    await page.screenshot({ path: 'test-results/wasm-screenshots/reconnect-overlay-has-reconnect-btn.png' });
   });
 
   test('reconnect overlay contains a dismiss button', async ({ page }) => {
@@ -312,6 +328,8 @@ test.describe('BLE reconnect overlay', () => {
 
     const dismissBtn = page.locator('#ble-reconnect-dismiss');
     await expect(dismissBtn).toHaveCount(1);
+
+    await page.screenshot({ path: 'test-results/wasm-screenshots/reconnect-overlay-has-dismiss-btn.png' });
   });
 
   test('overlay becomes visible when shown programmatically and dismiss hides it', async ({ page }) => {
@@ -332,8 +350,12 @@ test.describe('BLE reconnect overlay', () => {
     await expect(page.locator('#ble-reconnect-btn')).toBeVisible();
     await expect(page.locator('#ble-reconnect-dismiss')).toBeVisible();
 
+    await page.screenshot({ path: 'test-results/wasm-screenshots/reconnect-overlay-shown.png' });
+
     // Clicking dismiss must hide the overlay
     await page.click('#ble-reconnect-dismiss');
     await expect(overlay).not.toBeVisible();
+
+    await page.screenshot({ path: 'test-results/wasm-screenshots/reconnect-overlay-dismissed.png' });
   });
 });

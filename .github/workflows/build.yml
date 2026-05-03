@@ -221,6 +221,13 @@ jobs:
         name: playwright-report
         path: playwright-report/
 
+    - name: Upload WASM verification screenshots
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: wasm-verification-screenshots
+        path: test-results/wasm-screenshots/
+
   # ──────────────────────────────────────────────────────────────────────────
   # Compute the next semantic version on master.
   # Only runs when all three main platform builds succeed on master.
