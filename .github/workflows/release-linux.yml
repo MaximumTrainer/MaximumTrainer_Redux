@@ -110,6 +110,16 @@ jobs:
         if [ -z "$appimage" ]; then echo "Error: No AppImage found"; exit 1; fi
         mv "$appimage" MaximumTrainer-linux-x86_64.AppImage
 
+    - name: Verify Qt OpenGL library bundled
+      # linuxdeployqt should copy libQt5OpenGL.so.5 into AppDir/usr/lib/ when the
+      # binary links to it. Warn (but do not fail) if it is absent so the root
+      # cause can be diagnosed without blocking the artifact upload.
+      run: |
+        echo "=== Qt OpenGL check ==="
+        find AppDir -name "libQt5OpenGL*" 2>/dev/null && \
+          echo "PASS: libQt5OpenGL found in AppDir" || \
+          echo "WARN: libQt5OpenGL not found in AppDir (may be bundled differently by linuxdeployqt)"
+
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:

@@ -271,6 +271,22 @@ jobs:
             build\release\MaximumTrainer.exe
       shell: powershell
 
+    - name: Copy Qt5OpenGL DLL
+      # Qt5OpenGL.dll is required at runtime but windeployqt does not always
+      # deploy it when OpenGL is used indirectly (e.g. through the QWT plot
+      # library or Qt platform plugins). Copy it explicitly alongside the
+      # executable so the app launches without a loader error.
+      run: |
+        $openglDll = "$env:QTDIR\bin\Qt5OpenGL.dll"
+        if (Test-Path $openglDll) {
+          Copy-Item $openglDll "build\release\" -Force
+          Write-Host "Copied Qt5OpenGL.dll to build\release\"
+        } else {
+          Write-Error "Qt5OpenGL.dll not found at: $openglDll"
+          exit 1
+        }
+      shell: powershell
+
     - name: Build runtime validation test
       run: |
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
@@ -337,6 +353,10 @@ jobs:
           $src = "$env:OPENSSL_BIN\$dll"
           if (Test-Path $src) { Copy-Item $src "build\tests\" -Force }
         }
+        # Qt5OpenGL.dll is missed by windeployqt when used indirectly; copy it
+        # to the tests directory so test binaries that render Qt widgets can load.
+        $openglDll = "$env:QTDIR\bin\Qt5OpenGL.dll"
+        if (Test-Path $openglDll) { Copy-Item $openglDll "build\tests\" -Force }
       shell: powershell
 
     - name: Upload artifact

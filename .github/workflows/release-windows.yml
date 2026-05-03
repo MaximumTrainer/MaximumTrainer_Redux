@@ -246,6 +246,7 @@ jobs:
           "qwt.dll",
           "Qt5Core.dll",
           "Qt5Widgets.dll",
+          "Qt5OpenGL.dll",
           "libssl-1_1-x64.dll",
           "libcrypto-1_1-x64.dll",
           "sfml-audio-2.dll",
