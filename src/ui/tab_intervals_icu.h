@@ -19,9 +19,6 @@ class TabIntervalsIcu;
 /// downloading a planned workout as a .zwo file directly into the local
 /// workout folder.
 ///
-/// In WASM builds (GC_WASM_BUILD) network access is disabled and an
-/// "offline mode" banner is shown instead.
-///
 class TabIntervalsIcu : public QWidget
 {
     Q_OBJECT
@@ -36,8 +33,7 @@ public:
 
     /// Update the widget for the current network state.
     /// When \a isOnline is false the calendar controls are hidden and an
-    /// offline banner is shown (mirrors the WASM compile-time behaviour).
-    /// Has no effect in WASM builds (always offline there).
+    /// offline banner is shown.
     void setOnlineMode(bool isOnline);
 
     /// Fetch calendar for [from, to] and import every event that has a workout

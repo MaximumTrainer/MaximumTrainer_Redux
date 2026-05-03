@@ -4,9 +4,103 @@
  */
 
 /**
- * Read all log entries from the #wasm-log-overlay that begin with 'ERROR:'.
+ * Stub navigator.bluetooth so the WASM app doesn't abort on browsers without
+ * Web Bluetooth support (e.g. headless Chromium in CI).
  *
- * logger.js appends each entry as a <div> child of the logContent <div>
+ * @param {import('@playwright/test').Page} page
+ */
+async function stubBluetooth(page) {
+  await page.addInitScript(() => {
+    if (!navigator.bluetooth) {
+      Object.defineProperty(navigator, 'bluetooth', {
+        value: {
+          requestDevice: async () => { throw new Error('stub'); },
+          getAvailability: async () => true,
+        },
+        configurable: true,
+      });
+    }
+  });
+}
+
+/**
+ * Wait for the WASM Qt app to finish loading (canvas visible).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} [timeoutMs=60000]
+ */
+async function waitForAppReady(page, timeoutMs = 60_000) {
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('#qt-canvas-wrapper');
+    return canvas && getComputedStyle(canvas).visibility !== 'hidden';
+  }, null, { timeout: timeoutMs });
+}
+
+/**
+ * Mock Intervals.icu API endpoints, including CORS preflight (OPTIONS) support.
+ * Returns an array that accumulates `"METHOD URL"` strings for intercepted requests.
+ *
+ * Must be called BEFORE page.goto().
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string[]>} Live array of intercepted request strings.
+ */
+async function mockIntervalsIcuApi(page) {
+  const requestedUrls = [];
+
+  await page.route('https://intervals.icu/**', async (route) => {
+    const url    = route.request().url();
+    const method = route.request().method();
+    requestedUrls.push(`${method} ${url}`);
+
+    const corsHeaders = {
+      'Access-Control-Allow-Origin':  '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'authorization, content-type',
+    };
+
+    if (method === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers: corsHeaders });
+      return;
+    }
+
+    if (url.includes('/events')) {
+      await route.fulfill({
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify([
+          {
+            id: 'evt001',
+            name: 'Playwright Test Workout',
+            start_date_local: new Date().toISOString().split('T')[0],
+            type: 'Ride',
+            moving_time: 3600,
+            workout_id: 'wk001',
+            description: 'Test workout for Playwright',
+          },
+        ]),
+      });
+    } else if (url.includes('/workouts/') && url.endsWith('.zwo')) {
+      // Return a minimal valid ZWO file
+      await route.fulfill({
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/xml' },
+        body: '<?xml version="1.0"?><workout_file><name>Playwright Test</name><workout><SteadyState Duration="60" Power="0.5"/></workout></workout_file>',
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+    }
+  });
+
+  return requestedUrls;
+}
+
+/**
+ * Read all log entries from the #wasm-log-overlay that begin with 'ERROR:'.
  * (itself a direct child of #wasm-log-overlay, after the copy button).
  * We query DOM nodes rather than splitting textContent so we get one entry
  * per line regardless of whether the text contains newlines.
@@ -109,4 +203,4 @@ async function mockBackendApis(page) {
   return requestedUrls;
 }
 
-module.exports = { getOverlayFatalErrorLines, getOverlayLinesContaining, mockBackendApis };
+module.exports = { stubBluetooth, waitForAppReady, mockIntervalsIcuApi, getOverlayFatalErrorLines, getOverlayLinesContaining, mockBackendApis };

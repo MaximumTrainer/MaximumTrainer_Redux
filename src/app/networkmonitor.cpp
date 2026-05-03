@@ -3,8 +3,9 @@
 #include <QCoreApplication>
 #include <QDebug>
 
-#ifndef GC_WASM_BUILD
 #include <QTimer>
+
+#ifndef GC_WASM_BUILD
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
@@ -44,6 +45,11 @@ NetworkMonitor::NetworkMonitor(QObject *parent)
     // Fire the first probe immediately (deferred to next event loop tick so the
     // constructor returns before any callbacks are invoked).
     QTimer::singleShot(0, this, &NetworkMonitor::checkNow);
+#else
+    // WASM always has network access — transition to online on the next event
+    // loop tick so MainWindow's signal connections are in place before the
+    // onlineChanged signal fires.
+    QTimer::singleShot(0, this, [this]() { setOnline(true); });
 #endif
 }
 

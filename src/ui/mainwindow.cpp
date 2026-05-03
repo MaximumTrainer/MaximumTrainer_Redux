@@ -2029,7 +2029,6 @@ void MainWindow::slotIntervalsIcuUploadFinished()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::onNetworkOnlineChanged(bool isOnline)
 {
-#ifndef GC_WASM_BUILD
     // Enable or disable the Intervals.icu sidebar tab (index 1).
     // setTabEnabled grays out the tab entry when offline so users see it is
     // temporarily unavailable rather than it simply vanishing.
@@ -2042,7 +2041,6 @@ void MainWindow::onNetworkOnlineChanged(bool isOnline)
         ftb->setCurrentIndex(0);
         leftMenuChanged(0);
     }
-#endif
 }
 
 void MainWindow::slotSystemThemeChanged()

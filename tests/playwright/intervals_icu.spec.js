@@ -122,9 +122,9 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
     // Keys follow the pattern: <group>/<setting-key>
     await page.addInitScript(({ apiKey, athleteId }) => {
       try {
-        localStorage.setItem('account/intervals_icu_api_key',    apiKey);
-        localStorage.setItem('account/intervals_icu_athlete_id', athleteId);
-        localStorage.setItem('account/intervals_icu_auto_upload', 'false');
+        localStorage.setItem('Max++ inc./MaximumTrainer/account/intervals_icu_api_key',    apiKey);
+        localStorage.setItem('Max++ inc./MaximumTrainer/account/intervals_icu_athlete_id', athleteId);
+        localStorage.setItem('Max++ inc./MaximumTrainer/account/intervals_icu_auto_upload', 'false');
       } catch (e) {
         console.warn('localStorage injection failed:', e);
       }
@@ -167,9 +167,9 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
 
     await page.addInitScript(({ apiKey, athleteId }) => {
       try {
-        localStorage.setItem('account/intervals_icu_api_key',    apiKey);
-        localStorage.setItem('account/intervals_icu_athlete_id', athleteId);
-        localStorage.setItem('account/intervals_icu_auto_upload', 'false');
+        localStorage.setItem('Max++ inc./MaximumTrainer/account/intervals_icu_api_key',    apiKey);
+        localStorage.setItem('Max++ inc./MaximumTrainer/account/intervals_icu_athlete_id', athleteId);
+        localStorage.setItem('Max++ inc./MaximumTrainer/account/intervals_icu_auto_upload', 'false');
       } catch (e) {
         console.warn('localStorage injection failed:', e);
       }
@@ -178,7 +178,7 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(8000);
 
-    // If credentials were injected successfully and the app made API calls,
+    // If credentials were injectedsuccessfully and the app made API calls,
     // at least one should have returned 200.  If zero requests were made it
     // likely means the QSettings key format differs — see NOTE above.
     if (successfulRequests.length === 0) {

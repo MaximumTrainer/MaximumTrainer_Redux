@@ -17,6 +17,33 @@
 #include "xmlutil.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
+// WASM test hook: exposes window.mt_intervalsRefresh() so Playwright tests can
+// trigger a calendar refresh without a real user click.
+// ─────────────────────────────────────────────────────────────────────────────
+#ifdef GC_WASM_BUILD
+#include <emscripten.h>
+#include <QPointer>
+
+static QPointer<TabIntervalsIcu> g_intervalsTab;
+
+extern "C" {
+EMSCRIPTEN_KEEPALIVE
+void mt_intervals_icu_do_refresh()
+{
+    if (g_intervalsTab)
+        QMetaObject::invokeMethod(g_intervalsTab.data(), "onRefreshClicked",
+                                  Qt::QueuedConnection);
+}
+} // extern "C"
+
+EM_JS(void, js_exposeIntervalsTestApi, (), {
+    window.mt_intervalsRefresh = function() {
+        Module._mt_intervals_icu_do_refresh();
+    };
+});
+#endif
+
+// ─────────────────────────────────────────────────────────────────────────────
 TabIntervalsIcu::TabIntervalsIcu(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::TabIntervalsIcu)
@@ -35,18 +62,9 @@ TabIntervalsIcu::TabIntervalsIcu(QWidget *parent)
         1, QHeaderView::Stretch);
 
 #ifdef GC_WASM_BUILD
-    // In WASM mode the app is offline — show the offline banner and hide
-    // all interactive controls.
-    ui->label_offline->setVisible(true);
-    ui->pushButton_refresh->setVisible(false);
-    ui->pushButton_prevWeek->setVisible(false);
-    ui->pushButton_nextWeek->setVisible(false);
-    ui->pushButton_loadWorkout->setVisible(false);
-    ui->pushButton_syncAll->setVisible(false);
-    ui->label_week->setVisible(false);
-    ui->tableWidget_calendar->setVisible(false);
-    ui->label_status->setVisible(false);
-#else
+    g_intervalsTab = this;
+    js_exposeIntervalsTestApi();
+#endif
     connect(ui->pushButton_refresh,  &QPushButton::clicked,
             this, &TabIntervalsIcu::onRefreshClicked);
     connect(ui->pushButton_prevWeek, &QPushButton::clicked,
@@ -66,7 +84,6 @@ TabIntervalsIcu::TabIntervalsIcu(QWidget *parent)
                     !m_rowWorkoutIds[row].isEmpty();
                 ui->pushButton_loadWorkout->setEnabled(hasWorkout);
             });
-#endif
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -78,7 +95,6 @@ TabIntervalsIcu::~TabIntervalsIcu()
 // ─────────────────────────────────────────────────────────────────────────────
 void TabIntervalsIcu::refreshCredentials()
 {
-#ifndef GC_WASM_BUILD
     auto *account = qApp->property("Account").value<Account *>();
     if (!account) {
         LOG_WARN("TabIntervalsIcu", QStringLiteral("refreshCredentials: Account property not available"));
@@ -115,13 +131,11 @@ void TabIntervalsIcu::refreshCredentials()
     } else {
         setStatus(tr("Ready — click Refresh to load this week's schedule."));
     }
-#endif
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 void TabIntervalsIcu::setOnlineMode(bool isOnline)
 {
-#ifndef GC_WASM_BUILD
     if (isOnline) {
         // Restore the normal online UI
         ui->label_offline->setVisible(false);
@@ -170,13 +184,11 @@ void TabIntervalsIcu::setOnlineMode(bool isOnline)
         ui->tableWidget_calendar->setVisible(false);
         ui->label_status->setVisible(false);
     }
-#endif
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 void TabIntervalsIcu::onRefreshClicked()
 {
-#ifndef GC_WASM_BUILD
     auto *account = qApp->property("Account").value<Account *>();
     if (!account || account->intervals_icu_api_key.isEmpty() ||
         account->intervals_icu_athlete_id.isEmpty()) {
@@ -199,7 +211,6 @@ void TabIntervalsIcu::onRefreshClicked()
     m_calendarReply = m_service->fetchCalendar(m_weekStart, newest);
     connect(m_calendarReply, &QNetworkReply::finished,
             this, &TabIntervalsIcu::onCalendarFetchFinished);
-#endif
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -225,7 +236,6 @@ void TabIntervalsIcu::onNextWeekClicked()
 // ─────────────────────────────────────────────────────────────────────────────
 void TabIntervalsIcu::onLoadWorkoutClicked()
 {
-#ifndef GC_WASM_BUILD
     const int row = ui->tableWidget_calendar->currentRow();
     if (row < 0 || row >= m_rowWorkoutIds.size())
         return;
@@ -257,13 +267,11 @@ void TabIntervalsIcu::onLoadWorkoutClicked()
     m_downloadReply = m_service->downloadWorkoutZwo(workoutId);
     connect(m_downloadReply, &QNetworkReply::finished,
             this, &TabIntervalsIcu::onWorkoutDownloadFinished);
-#endif
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 void TabIntervalsIcu::onCalendarFetchFinished()
 {
-#ifndef GC_WASM_BUILD
     setBusy(false);
 
     if (!m_calendarReply)
@@ -293,13 +301,11 @@ void TabIntervalsIcu::onCalendarFetchFinished()
     } else {
         setStatus(tr("%1 event(s) loaded.").arg(events.size()));
     }
-#endif
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 void TabIntervalsIcu::onWorkoutDownloadFinished()
 {
-#ifndef GC_WASM_BUILD
     setBusy(false);
 
     if (!m_downloadReply)
@@ -355,7 +361,6 @@ void TabIntervalsIcu::onWorkoutDownloadFinished()
 
     setStatus(tr("Workout saved: %1").arg(workoutName + ".zwo"));
     emit workoutDownloaded(workoutName);
-#endif
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -420,7 +425,6 @@ void TabIntervalsIcu::setBusy(bool busy)
 // ─────────────────────────────────────────────────────────────────────────────
 void TabIntervalsIcu::startBatchSync(const QDate &from, const QDate &to)
 {
-#ifndef GC_WASM_BUILD
     auto *account = qApp->property("Account").value<Account *>();
     if (!account || account->intervals_icu_api_key.isEmpty() ||
         account->intervals_icu_athlete_id.isEmpty()) {
@@ -449,10 +453,6 @@ void TabIntervalsIcu::startBatchSync(const QDate &from, const QDate &to)
     m_syncCalendarReply = m_service->fetchCalendar(from, to);
     connect(m_syncCalendarReply, &QNetworkReply::finished,
             this, &TabIntervalsIcu::onSyncCalendarFetched);
-#else
-    Q_UNUSED(from) Q_UNUSED(to)
-    emit syncFailed(tr("Sync is not available in the web version."));
-#endif
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -464,7 +464,6 @@ void TabIntervalsIcu::onSyncAllClicked()
 // ─────────────────────────────────────────────────────────────────────────────
 void TabIntervalsIcu::onSyncCalendarFetched()
 {
-#ifndef GC_WASM_BUILD
     if (!m_syncCalendarReply) return;
 
     if (m_syncCalendarReply->error() != QNetworkReply::NoError) {
@@ -503,13 +502,11 @@ void TabIntervalsIcu::onSyncCalendarFetched()
 
     setStatus(tr("Sync: downloading %1 workout(s)…").arg(m_syncTotal));
     downloadNextSyncWorkout();
-#endif
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 void TabIntervalsIcu::downloadNextSyncWorkout()
 {
-#ifndef GC_WASM_BUILD
     if (m_syncQueue.isEmpty()) {
         setBusy(false);
         setStatus(tr("Sync complete — %1 workout(s) imported.").arg(m_syncCount));
@@ -525,13 +522,11 @@ void TabIntervalsIcu::downloadNextSyncWorkout()
     m_syncDownloadReply = m_service->downloadWorkoutZwo(ev.workout_id);
     connect(m_syncDownloadReply, &QNetworkReply::finished,
             this, &TabIntervalsIcu::onSyncWorkoutDownloaded);
-#endif
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 void TabIntervalsIcu::onSyncWorkoutDownloaded()
 {
-#ifndef GC_WASM_BUILD
     if (!m_syncDownloadReply) return;
 
     const QNetworkReply::NetworkError err = m_syncDownloadReply->error();
@@ -586,5 +581,4 @@ void TabIntervalsIcu::onSyncWorkoutDownloaded()
     }
 
     downloadNextSyncWorkout();
-#endif
 }
