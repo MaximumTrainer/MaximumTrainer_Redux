@@ -249,6 +249,23 @@
           </div>`;
       }
 
+      // Emscripten 3.1.43 guard: BigInt(NaN) throws RangeError during Qt startup
+      // when FS nodes lack a timestamp. Override BigInt globally (before any module
+      // code runs) so NaN/non-finite values are silently clamped to 0n instead.
+      (function() {
+        const _BigInt = window.BigInt;
+        const _safe = function(val) {
+          if (typeof val === 'number' && !Number.isFinite(val)) {
+            console.warn('[BigInt guard] Non-finite value clamped to 0n:', val, new Error().stack);
+            return _BigInt(0);
+          }
+          return _BigInt(val);
+        };
+        _safe.asIntN  = _BigInt.asIntN.bind(_BigInt);
+        _safe.asUintN = _BigInt.asUintN.bind(_BigInt);
+        window.BigInt = _safe;
+      })();
+
       // Step 1: load qtloader.js (Qt 6.6 — defines window.qtLoad)
       const log = (msg) => window._wasmLogger && window._wasmLogger.log(msg);
       log('Loading qtloader.js…');
@@ -302,6 +319,7 @@
                 if (!attr.ctime || isNaN(attr.ctime.getTime())) attr.ctime = new Date(now);
                 return attr;
               };
+              if (!instance.FS) return;
               const origStat = instance.FS.stat;
               instance.FS.stat = function(path, dontFollow) {
                 return guardDates(origStat.call(instance.FS, path, dontFollow));
