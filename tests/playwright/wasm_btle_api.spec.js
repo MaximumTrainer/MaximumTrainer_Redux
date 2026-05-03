@@ -264,7 +264,7 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
   }
 
   // ── requestDevice service filters ──────────────────────────────────────────
-  test('requestDevice is called with correct service filter UUIDs', async () => {
+  test('requestDevice is called with correct service filter UUIDs', async ({}, testInfo) => {
     await resetRecordingMock();
     await triggerBleScanAndWaitForRequestDevice(sharedPage);
 
@@ -290,10 +290,13 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     expect(bleErrors,
       `Unexpected [MT] BLE errors: ${bleErrors.map(m => m.text).join(', ')}`)
       .toHaveLength(0);
+
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await sharedPage.screenshot({ path: `test-results/wasm-screenshots/ble-api-request-device-filters${retrySuffix}.png` });
   });
 
   // ── getPrimaryService for each sensor profile ──────────────────────────────
-  test('getPrimaryService is called for each sensor profile', async () => {
+  test('getPrimaryService is called for each sensor profile', async ({}, testInfo) => {
     await resetRecordingMock();
     await triggerBleScanAndWaitForRequestDevice(sharedPage);
 
@@ -306,10 +309,13 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
         `getPrimaryService(0x${svcUuid.toString(16).toUpperCase()}) was not called`)
         .toContain(svcUuid);
     }
+
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await sharedPage.screenshot({ path: `test-results/wasm-screenshots/ble-api-get-primary-service${retrySuffix}.png` });
   });
 
   // ── startNotifications for each sensor characteristic ─────────────────────
-  test('startNotifications is called for each sensor characteristic', async () => {
+  test('startNotifications is called for each sensor characteristic', async ({}, testInfo) => {
     await resetRecordingMock();
     await triggerBleScanAndWaitForRequestDevice(sharedPage);
 
@@ -321,10 +327,13 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
         `startNotifications was not called for 0x${charUuid.toString(16).toUpperCase()}`)
         .toContain(charUuid);
     }
+
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await sharedPage.screenshot({ path: `test-results/wasm-screenshots/ble-api-start-notifications${retrySuffix}.png` });
   });
 
   // ── FTMS Request Control write ─────────────────────────────────────────────
-  test('FTMS Request Control (opcode 0x00) is written to characteristic 0x2AD9', async () => {
+  test('FTMS Request Control (opcode 0x00) is written to characteristic 0x2AD9', async ({}, testInfo) => {
     await resetRecordingMock();
     await triggerBleScanAndWaitForRequestDevice(sharedPage);
     // BtleHubWasm is only instantiated when a workout runs, so g_connectedCallback
@@ -347,5 +356,8 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     expect(ftmsWrite,
       'writeValueWithResponse([0x00]) on FTMS Control Point 0x2AD9 was not called')
       .toBeDefined();
+
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await sharedPage.screenshot({ path: `test-results/wasm-screenshots/ble-api-ftms-request-control${retrySuffix}.png` });
   });
 });

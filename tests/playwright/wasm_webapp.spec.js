@@ -45,7 +45,7 @@ test.describe('WASM assets are deployed', () => {
 
 // ── Page-level checks ──────────────────────────────────────────────────────
 test.describe('WASM webapp page', () => {
-  test('"not deployed" message is absent', async ({ page }) => {
+  test('"not deployed" message is absent', async ({ page }, testInfo) => {
     // Inject a full stub navigator.bluetooth so the page proceeds past the
     // browser-capability guard and attempts to load the WASM assets.
     await stubBluetooth(page);
@@ -72,9 +72,12 @@ test.describe('WASM webapp page', () => {
 
     // No WASM asset fetches should have failed
     expect(failedRequests, `These WASM assets failed to load: ${failedRequests.join(', ')}`).toHaveLength(0);
+
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await page.screenshot({ path: `test-results/wasm-screenshots/not-deployed-message-absent${retrySuffix}.png` });
   });
 
-  test('loading screen or Qt canvas is present', async ({ page }) => {
+  test('loading screen or Qt canvas is present', async ({ page }, testInfo) => {
     await stubBluetooth(page);
 
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
@@ -89,9 +92,12 @@ test.describe('WASM webapp page', () => {
 
     expect(loadingVisible || canvasVisible,
       'Either the loading screen or the Qt canvas should be visible').toBe(true);
+
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await page.screenshot({ path: `test-results/wasm-screenshots/loading-screen-or-canvas-present${retrySuffix}.png` });
   });
 
-  test('WASM log overlay is present and has the copy button', async ({ page }) => {
+  test('WASM log overlay is present and has the copy button', async ({ page }, testInfo) => {
     await stubBluetooth(page);
 
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
@@ -115,12 +121,15 @@ test.describe('WASM webapp page', () => {
     const logLines = overlay.locator('div > div');
     const lineCount = await logLines.count();
     expect(lineCount, 'The log overlay should contain at least one log entry').toBeGreaterThan(0);
+
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await page.screenshot({ path: `test-results/wasm-screenshots/wasm-log-overlay-present${retrySuffix}.png` });
   });
 });
 
 // ── BLE GATT ready callback (Gap 2 fix) ───────────────────────────────────
 test.describe('BLE GATT ready callback', () => {
-  test('page loads without errors when a mock async-GATT BLE device is present', async ({ page }) => {
+  test('page loads without errors when a mock async-GATT BLE device is present', async ({ page }, testInfo) => {
     // Inject a realistic mock BLE device that simulates the full async GATT
     // flow: requestDevice → gatt.connect() (with artificial latency) →
     // getPrimaryService → getCharacteristic → startNotifications.
@@ -187,11 +196,14 @@ test.describe('BLE GATT ready callback', () => {
       bleErrors,
       `Unexpected [MT] BLE errors with mock device: ${bleErrors.map((m) => m.text).join(', ')}`,
     ).toHaveLength(0);
+
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await page.screenshot({ path: `test-results/wasm-screenshots/ble-gatt-ready-no-errors${retrySuffix}.png` });
   });
 });
 
 test.describe('Browser compatibility guard', () => {
-  test('compatibility warning is shown when getAvailability returns false', async ({ page }) => {
+  test('compatibility warning is shown when getAvailability returns false', async ({ page }, testInfo) => {
     // Stub navigator.bluetooth with getAvailability returning false (hardware off)
     await page.addInitScript(() => {
       Object.defineProperty(navigator, 'bluetooth', {
@@ -219,9 +231,12 @@ test.describe('Browser compatibility guard', () => {
     // The detail paragraph must contain the hardware-unavailable message
     const detail = page.locator('#browser-warning-detail');
     await expect(detail).toContainText('No Bluetooth adapter was detected');
+
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await page.screenshot({ path: `test-results/wasm-screenshots/compat-warning-no-adapter${retrySuffix}.png` });
   });
 
-  test('compatibility warning is shown when navigator.bluetooth is absent', async ({ page }) => {
+  test('compatibility warning is shown when navigator.bluetooth is absent', async ({ page }, testInfo) => {
     // Remove navigator.bluetooth to simulate an unsupported browser (e.g. Firefox)
     await page.addInitScript(() => {
       Object.defineProperty(navigator, 'bluetooth', {
@@ -240,6 +255,9 @@ test.describe('Browser compatibility guard', () => {
     // The detail paragraph must contain the api-missing message
     const detail = page.locator('#browser-warning-detail');
     await expect(detail).toContainText('Web Bluetooth API is not available');
+
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await page.screenshot({ path: `test-results/wasm-screenshots/compat-warning-no-bluetooth-api${retrySuffix}.png` });
   });
 });
 
@@ -284,7 +302,7 @@ test.describe('PWA support', () => {
 
 // ── BLE reconnect overlay checks ──────────────────────────────────────────
 test.describe('BLE reconnect overlay', () => {
-  test('reconnect overlay is present in the DOM and hidden by default', async ({ page }) => {
+  test('reconnect overlay is present in the DOM and hidden by default', async ({ page }, testInfo) => {
     await stubBluetooth(page);
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
 
@@ -295,26 +313,35 @@ test.describe('BLE reconnect overlay', () => {
     // It must be hidden by default (display:none)
     const isVisible = await overlay.isVisible();
     expect(isVisible, '#ble-reconnect-overlay should be hidden by default').toBe(false);
+
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await page.screenshot({ path: `test-results/wasm-screenshots/reconnect-overlay-hidden-by-default${retrySuffix}.png` });
   });
 
-  test('reconnect overlay contains a Reconnect button', async ({ page }) => {
+  test('reconnect overlay contains a Reconnect button', async ({ page }, testInfo) => {
     await stubBluetooth(page);
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
 
     const btn = page.locator('#ble-reconnect-btn');
     await expect(btn).toHaveCount(1);
     await expect(btn).toHaveText(/Reconnect/i);
+
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await page.screenshot({ path: `test-results/wasm-screenshots/reconnect-overlay-has-reconnect-btn${retrySuffix}.png` });
   });
 
-  test('reconnect overlay contains a dismiss button', async ({ page }) => {
+  test('reconnect overlay contains a dismiss button', async ({ page }, testInfo) => {
     await stubBluetooth(page);
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
 
     const dismissBtn = page.locator('#ble-reconnect-dismiss');
     await expect(dismissBtn).toHaveCount(1);
+
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await page.screenshot({ path: `test-results/wasm-screenshots/reconnect-overlay-has-dismiss-btn${retrySuffix}.png` });
   });
 
-  test('overlay becomes visible when shown programmatically and dismiss hides it', async ({ page }) => {
+  test('overlay becomes visible when shown programmatically and dismiss hides it', async ({ page }, testInfo) => {
     await stubBluetooth(page);
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
 
@@ -332,8 +359,13 @@ test.describe('BLE reconnect overlay', () => {
     await expect(page.locator('#ble-reconnect-btn')).toBeVisible();
     await expect(page.locator('#ble-reconnect-dismiss')).toBeVisible();
 
+    const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
+    await page.screenshot({ path: `test-results/wasm-screenshots/reconnect-overlay-shown${retrySuffix}.png` });
+
     // Clicking dismiss must hide the overlay
     await page.click('#ble-reconnect-dismiss');
     await expect(overlay).not.toBeVisible();
+
+    await page.screenshot({ path: `test-results/wasm-screenshots/reconnect-overlay-dismissed${retrySuffix}.png` });
   });
 });
