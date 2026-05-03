@@ -95,7 +95,11 @@ jobs:
         echo "=== SFML check ==="
         find build/release/MaximumTrainer.app -name "*sfml*" 2>/dev/null || echo "WARN: sfml not bundled"
         echo "=== QtOpenGL check ==="
-        find build/release/MaximumTrainer.app -name "QtOpenGL*" 2>/dev/null || echo "WARN: QtOpenGL not bundled"
+        if find build/release/MaximumTrainer.app -name "QtOpenGL*" -print -quit 2>/dev/null | grep -q .; then
+          echo "PASS: QtOpenGL found in .app bundle"
+        else
+          echo "WARN: QtOpenGL not bundled"
+        fi
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4

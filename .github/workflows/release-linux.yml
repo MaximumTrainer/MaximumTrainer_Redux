@@ -116,9 +116,11 @@ jobs:
       # cause can be diagnosed without blocking the artifact upload.
       run: |
         echo "=== Qt OpenGL check ==="
-        find AppDir -name "libQt5OpenGL*" 2>/dev/null && \
-          echo "PASS: libQt5OpenGL found in AppDir" || \
+        if find AppDir -name "libQt5OpenGL*" -print -quit 2>/dev/null | grep -q .; then
+          echo "PASS: libQt5OpenGL found in AppDir"
+        else
           echo "WARN: libQt5OpenGL not found in AppDir (may be bundled differently by linuxdeployqt)"
+        fi
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
