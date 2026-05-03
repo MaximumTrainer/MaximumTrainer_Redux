@@ -1,6 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
-const { getOverlayFatalErrorLines } = require('./wasm-test-helpers');
+const { getOverlayFatalErrorLines, getOverlayLinesContaining, mockBackendApis } = require('./wasm-test-helpers');
 
 const BASE_ORIGIN = process.env.PLAYWRIGHT_BASE_URL || 'https://maximumtrainer.github.io/MaximumTrainer_Redux';
 const APP_URL = `${BASE_ORIGIN}/app/`;
@@ -213,6 +213,10 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     sharedPage.on('pageerror', err => pageErrors.push(err.message));
     sharedPage.on('requestfailed', req => failedRequests.push(`${req.url()} — ${req.failure()?.errorText}`));
     await injectRecordingBluetoothMock(sharedPage);
+    // Mock maximumtrainer.com backend APIs before navigation so all XHR requests
+    // from the Qt app (radio list, achievement list) return 200 instead of failing
+    // with CORS / connection-refused errors that produce WARN overlay lines.
+    const apiRequestedUrls = await mockBackendApis(sharedPage);
     await sharedPage.goto(APP_URL, { waitUntil: 'domcontentloaded' });
     try {
       await waitForAppReady(sharedPage);
@@ -278,6 +282,35 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     expect(fatalErrors,
       `WASM log overlay contains unexpected ERROR lines:\n${fatalErrors.join('\n')}`)
       .toHaveLength(0);
+
+    // Assert no Qt network-error WARN lines that indicate the backend API calls
+    // failed.  These appear when QNetworkAccessManager returns HTTP 0 (CORS
+    // blocked / unreachable) or HTTP 404 (Not Found).  With mockBackendApis()
+    // registered before goto() all requests to maximumtrainer.com return 200,
+    // so these lines must not appear.
+    const notFoundLines = await getOverlayLinesContaining(sharedPage, 'Not Found');
+    expect(notFoundLines,
+      `WASM overlay shows "Not Found" — backend API requests are failing:\n${notFoundLines.join('\n')}`)
+      .toHaveLength(0);
+
+    const statusCode0Lines = await getOverlayLinesContaining(sharedPage, 'HTTP status code 0');
+    expect(statusCode0Lines,
+      `WASM overlay shows "HTTP status code 0" — backend API requests are CORS-blocked:\n${statusCode0Lines.join('\n')}`)
+      .toHaveLength(0);
+
+    const radioFetchFailedLines = await getOverlayLinesContaining(sharedPage, 'Radio list fetch failed');
+    expect(radioFetchFailedLines,
+      `WASM overlay shows "Radio list fetch failed" — radio API request failed:\n${radioFetchFailedLines.join('\n')}`)
+      .toHaveLength(0);
+
+    // Verify the backend API endpoints were actually called — proof that the Qt
+    // MainWindow reached the network-initialisation phase.
+    expect(apiRequestedUrls.some(u => u.includes('radio_rest')),
+      `Qt MainWindow did not call the radio API — app may not have reached init phase.\nSeen URLs: ${apiRequestedUrls.join(', ')}`)
+      .toBe(true);
+    expect(apiRequestedUrls.some(u => u.includes('achievement_rest')),
+      `Qt ManagerAchievement did not call the achievement API — app may not have reached init phase.\nSeen URLs: ${apiRequestedUrls.join(', ')}`)
+      .toBe(true);
   }, { timeout: 420_000 }); // 7 min: WASM JIT-compilation takes 3+ min on cold CI runners
 
   test.afterAll(async () => {

@@ -36,4 +36,77 @@ async function getOverlayFatalErrorLines(page) {
   );
 }
 
-module.exports = { getOverlayFatalErrorLines };
+/**
+ * Return all overlay log entries whose text contains the given substring.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} text  Substring to search for (case-sensitive)
+ * @returns {Promise<string[]>}
+ */
+async function getOverlayLinesContaining(page, text) {
+  return page.evaluate((searchText) => {
+    const logContent = document.querySelector('#wasm-log-overlay > div:last-child');
+    if (!logContent) return [];
+    return Array.from(logContent.querySelectorAll('div'))
+      .map(d => d.textContent || '')
+      .filter(t => t.includes(searchText));
+  }, text);
+}
+
+/**
+ * Register Playwright route intercepts for all maximumtrainer.com backend
+ * API endpoints.  Returns the request at the CDP network layer — before the
+ * browser enforces CORS — so Qt WASM's XHR calls succeed even when the
+ * backend is unreachable in the test environment.
+ *
+ * Must be called BEFORE page.goto() so the intercept is in place before the
+ * app starts.
+ *
+ * Both radio and achievement parsers (parseJsonRadioList /
+ * parseJsonAchievementList) expect a top-level JSON array.  Returning '[]'
+ * gives a 200 OK with an empty list — the app accepts this gracefully with no
+ * retry and no WARN log line.  All other maximumtrainer.com routes get a
+ * generic '{}' 200 response to prevent unhandled errors.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {string[]} Live array of `"${METHOD} ${url}"` strings that is
+ *   populated as requests arrive.  Callers can assert expected endpoints were
+ *   actually hit after the app has loaded.
+ */
+async function mockBackendApis(page) {
+  const requestedUrls = [];
+
+  await page.route('https://maximumtrainer.com/**', async (route) => {
+    const url    = route.request().url();
+    const method = route.request().method();
+    requestedUrls.push(`${method} ${url}`);
+
+    if (method === 'OPTIONS') {
+      // Satisfy any CORS preflight that the browser may emit for cross-origin XHR.
+      await route.fulfill({
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin':  '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': '*',
+        },
+      });
+    } else if (url.includes('radio_rest') || url.includes('achievement_rest')) {
+      await route.fulfill({
+        status: 200,
+        headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+        body: '[]',
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+    }
+  });
+
+  return requestedUrls;
+}
+
+module.exports = { getOverlayFatalErrorLines, getOverlayLinesContaining, mockBackendApis };
