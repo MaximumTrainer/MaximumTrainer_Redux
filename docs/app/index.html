@@ -273,6 +273,10 @@
             qt: {
               entryFunction: window.createQtAppInstance,
               containerElements: [document.getElementById('qt-canvas')],
+              // Provide an explicit logical DPI so Qt's platform plugin does not
+              // receive undefined from Module.qtFontDpi, which could propagate as
+              // NaN in floating-point DPI calculations on headless runners.
+              fontDpi: 96,
               onLoaded: () => {
                 log('Qt application loaded');
                 document.getElementById('loading-screen').classList.add('hidden');
@@ -286,15 +290,17 @@
             },
             // Emscripten module config keys go at the top level in qtLoad().
             setStatus: (msg) => {
-              if (msg) { log(msg); loadingStatus.textContent = msg; }
+              if (msg && typeof msg === 'string') { log(msg); loadingStatus.textContent = msg; }
             },
             monitorRunDependencies: (left) => {
-              // Rough progress: dependencies count down from ~100 to 0
+              // Rough progress: dependencies count down from ~100 to 0.
+              // Guard against non-finite values to avoid setting style.width to 'NaN%'.
               if (left === 0) {
                 loadingProgress.style.width = '100%';
-              } else {
+              } else if (typeof left === 'number' && isFinite(left)) {
                 loadingProgress.style.width = Math.max(5, 100 - left) + '%';
               }
+              // Non-finite counts: leave progress bar at its current position.
             },
           }).then(instance => {
             window._qtInstance = instance;

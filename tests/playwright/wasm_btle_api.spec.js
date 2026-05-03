@@ -88,20 +88,31 @@ async function injectRecordingBluetoothMock(page) {
   });
 }
 
+// Screenshot output directory — screenshots are saved here so they can be
+// uploaded as a CI artifact regardless of test pass/fail status.
+const SCREENSHOT_DIR = 'test-results/wasm-screenshots';
+
 // Wait for the WASM app to be ready for BLE testing.
 //
-// Three independent signals are checked — any one being true means the app
-// has reached a state where window.mt_startBleScan is callable:
-//   1. window.mt_startBleScan is defined (set by WasmTestScanApiRegistrar
-//      during C++ static init — fires before onRuntimeInitialized, so this
-//      is the earliest possible reliable signal)
-//   2. Loading screen gains the 'hidden' class (set inside onLoaded)
-//   3. Canvas wrapper's computed visibility becomes 'visible' (set inside onLoaded)
+// Two signals are checked — both are set inside index.html's onLoaded callback,
+// which is triggered by qtloader.js at onRuntimeInitialized time:
+//   1. Loading screen gains the 'hidden' class (set inside onLoaded)
+//   2. Canvas wrapper's computed visibility becomes 'visible' (set inside onLoaded)
 //
-// The WASM binary (~18 MB, ASYNCIFY-transformed) can take 3+ minutes to JIT-
-// compile on cold CI runners (observed: ~184 s on GitHub Actions ubuntu-latest).
-// The timeout is set generously here; the calling context (beforeAll) carries
-// its own 7-minute outer limit set via test.setTimeout().
+// NOTE: A previous version also checked window.mt_startBleScan (set during C++
+// static init, which fires BEFORE onRuntimeInitialized).  That signal fires too
+// early — the loading screen is still visible at that point, so screenshots
+// captured at that moment always show the loading UI rather than the live canvas.
+// By the time Signal 1 or 2 below fires, mt_startBleScan is already registered
+// (static constructors ran first), so there is no loss of functionality.
+//
+// After onLoaded, a 3-second settling window lets Qt's main() start up and
+// surface any initialisation errors (e.g. NaN from headless DPI detection)
+// before we take screenshots or assert on the overlay.
+//
+// The WASM binary (~18 MB, ASYNCIFY-transformed) is compiled with --no-wasm-
+// tier-up (Liftoff only) which cuts compile time from 3+ min to ~30 s on cold
+// CI runners.  The 5-minute timeout is a generous safety margin.
 //
 // NOTE: pass `null` as the explicit arg so that the options object is correctly
 // parsed as the third positional parameter by Playwright, not as the page
@@ -109,18 +120,19 @@ async function injectRecordingBluetoothMock(page) {
 async function waitForAppReady(page) {
   await page.waitForFunction(
     () => {
-      // Signal 1: test hook registered by C++ static initializer (before onLoaded)
-      if (typeof window.mt_startBleScan === 'function') return true;
-      // Signal 2: loading screen hidden (onLoaded in index.html)
+      // Signal 1: loading screen hidden (set inside onLoaded in index.html)
       const loadingScreen = document.querySelector('#loading-screen');
       if (loadingScreen && loadingScreen.classList.contains('hidden')) return true;
-      // Signal 3: canvas wrapper visible by computed style (onLoaded in index.html)
+      // Signal 2: canvas wrapper visible by computed style (set inside onLoaded)
       const wrapper = document.querySelector('#qt-canvas-wrapper');
       return !!(wrapper && window.getComputedStyle(wrapper).visibility === 'visible');
     },
     null,          // no argument passed to the page function
-    { timeout: 300_000 }   // 5 min — WASM JIT takes 3+ min on cold CI runners
+    { timeout: 300_000 }   // 5 min — generous safety margin for cold CI runners
   );
+  // Allow Qt's main() a brief window to start up and surface any initialisation
+  // errors before we capture screenshots or run assertions on the overlay.
+  await page.waitForTimeout(3000);
 }
 
 // Trigger BLE scanning via the test helper registered by BtleHubWasm::ctor
@@ -234,6 +246,26 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
       console.error(`[diagnostic] loading-screen class="${loadingClass}", status text="${loadingText}"`);
       throw loadErr;
     }
+
+    // Capture settled app state — canvas is visible, main() has had 3 s to run.
+    // This screenshot is always saved (regardless of test pass/fail) so CI has
+    // proof of what the app looked like after initialisation completed.
+    await sharedPage.screenshot({ path: `${SCREENSHOT_DIR}/wasm-app-ready.png` });
+
+    // Assert that Qt's initialisation did not emit a 'number NaN' startup error.
+    // logger.js captures window.onerror and console.error into the overlay.
+    // index.html's qtLoad catch handler logs 'Failed to start: TypeError: …'.
+    // Both sources are visible in #wasm-log-overlay after the 3-s settling window.
+    const overlayText = await sharedPage.evaluate(() => {
+      const el = document.querySelector('#wasm-log-overlay');
+      return el ? el.textContent : '';
+    });
+    expect(overlayText,
+      `WASM initialisation produced a NaN error — check Qt DPI / canvas setup:\n${overlayText}`)
+      .not.toContain('number NaN');
+    expect(overlayText,
+      `WASM initialisation failed to start — check Qt entryFunction / ASYNCIFY:\n${overlayText}`)
+      .not.toContain('Failed to start');
   }, { timeout: 420_000 }); // 7 min: WASM JIT-compilation takes 3+ min on cold CI runners
 
   test.afterAll(async () => {

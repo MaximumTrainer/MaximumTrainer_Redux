@@ -227,6 +227,7 @@ jobs:
       with:
         name: wasm-verification-screenshots
         path: test-results/wasm-screenshots/
+        if-no-files-found: warn
 
   # ──────────────────────────────────────────────────────────────────────────
   # Compute the next semantic version on master.
