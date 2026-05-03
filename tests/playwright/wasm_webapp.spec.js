@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect, request } = require('@playwright/test');
+const { getOverlayFatalErrorLines } = require('./wasm-test-helpers');
 
 const BASE_ORIGIN = process.env.PLAYWRIGHT_BASE_URL || 'https://maximumtrainer.github.io/MaximumTrainer_Redux';
 const APP_URL = `${BASE_ORIGIN}/app/`;
@@ -196,6 +197,13 @@ test.describe('BLE GATT ready callback', () => {
       bleErrors,
       `Unexpected [MT] BLE errors with mock device: ${bleErrors.map((m) => m.text).join(', ')}`,
     ).toHaveLength(0);
+
+    // No unexpected ERROR lines in the WASM log overlay (Qt [WARN] messages are
+    // classified as WARN by logger.js after the '] [WARN] [' fix).
+    const fatalErrors = await getOverlayFatalErrorLines(page);
+    expect(fatalErrors,
+      `WASM log overlay contains unexpected ERROR lines:\n${fatalErrors.join('\n')}`)
+      .toHaveLength(0);
 
     const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
     await page.screenshot({ path: `test-results/wasm-screenshots/ble-gatt-ready-no-errors${retrySuffix}.png` });

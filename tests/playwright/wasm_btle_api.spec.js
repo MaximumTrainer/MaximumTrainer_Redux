@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { getOverlayFatalErrorLines } = require('./wasm-test-helpers');
 
 const BASE_ORIGIN = process.env.PLAYWRIGHT_BASE_URL || 'https://maximumtrainer.github.io/MaximumTrainer_Redux';
 const APP_URL = `${BASE_ORIGIN}/app/`;
@@ -266,6 +267,17 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     expect(overlayText,
       `WASM initialisation failed to start — check Qt entryFunction / ASYNCIFY:\n${overlayText}`)
       .not.toContain('Failed to start');
+
+    // Assert that no unexpected ERROR lines appear in the overlay.
+    // logger.js classifies Qt qWarning() messages as WARN (not ERROR) since they
+    // contain '] [WARN] ['. This assertion catches genuine fatal errors (JS
+    // exceptions, WASM instantiation failures) while ignoring Qt runtime warnings.
+    // Known browser-level noise (backend unreachable, User-Agent restriction) is
+    // excluded by getOverlayFatalErrorLines.
+    const fatalErrors = await getOverlayFatalErrorLines(sharedPage);
+    expect(fatalErrors,
+      `WASM log overlay contains unexpected ERROR lines:\n${fatalErrors.join('\n')}`)
+      .toHaveLength(0);
   }, { timeout: 420_000 }); // 7 min: WASM JIT-compilation takes 3+ min on cold CI runners
 
   test.afterAll(async () => {

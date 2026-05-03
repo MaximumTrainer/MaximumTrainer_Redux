@@ -147,12 +147,18 @@
   }
 
   /* ── console.error patch ───────────────────────────────────────────────── */
+  // Qt WASM routes qWarning() to console.error, tagging messages with '] [WARN] ['.
+  // Classify these as WARN (not ERROR) so the overlay is not misleadingly full of
+  // ERROR lines when the app has loaded successfully.  Fatal JS/WASM errors do not
+  // carry the Qt severity tag and are still classified as ERROR.
   var _origConsoleError = console.error.bind(console);
   console.error = function () {
     var parts = Array.prototype.slice.call(arguments);
-    appendLog('ERROR: ' + parts.map(function (a) {
+    var msg = parts.map(function (a) {
       return (a instanceof Error) ? a.message : String(a);
-    }).join(' '));
+    }).join(' ');
+    var prefix = (msg.indexOf('] [WARN] [') !== -1) ? 'WARN' : 'ERROR';
+    appendLog(prefix + ': ' + msg);
     _origConsoleError.apply(console, arguments);
   };
 
