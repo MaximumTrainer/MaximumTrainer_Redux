@@ -289,6 +289,30 @@
               },
             },
             // Emscripten module config keys go at the top level in qtLoad().
+            // Workaround for Emscripten 3.1.43: nodes created through the base
+            // FS.createNode() (SOCKFS root, /proc/self/fd mount) never receive a
+            // .timestamp, so new Date(undefined).getTime() returns NaN and
+            // BigInt(NaN) throws RangeError. Wrap FS.stat/lstat to guarantee
+            // valid Date objects before the BigInt conversion in doStat().
+            preRun: [function(instance) {
+              const guardDates = (attr) => {
+                const now = Date.now();
+                if (!attr.atime || isNaN(attr.atime.getTime())) attr.atime = new Date(now);
+                if (!attr.mtime || isNaN(attr.mtime.getTime())) attr.mtime = new Date(now);
+                if (!attr.ctime || isNaN(attr.ctime.getTime())) attr.ctime = new Date(now);
+                return attr;
+              };
+              const origStat = instance.FS.stat;
+              instance.FS.stat = function(path, dontFollow) {
+                return guardDates(origStat.call(instance.FS, path, dontFollow));
+              };
+              const origLstat = instance.FS.lstat;
+              if (origLstat) {
+                instance.FS.lstat = function(path) {
+                  return guardDates(origLstat.call(instance.FS, path));
+                };
+              }
+            }],
             setStatus: (msg) => {
               if (msg && typeof msg === 'string') { log(msg); loadingStatus.textContent = msg; }
             },
