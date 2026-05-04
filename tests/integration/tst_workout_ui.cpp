@@ -116,6 +116,8 @@
 #include <qwt_plot.h>
 #include <qwt_plot_curve.h>
 #include <qwt_plot_grid.h>
+#include <QPen>
+#include <QColor>
 
 // Full workout model and XML utility
 #include "../../src/btle/simulator_hub.h"
