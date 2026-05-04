@@ -646,7 +646,9 @@ jobs:
 
     - name: Run login screen test
       run: |
-        .\build\tests\login_screen_tests.exe -v2 2>&1 | Tee-Object -FilePath build\tests\login-screen-test-output.txt
+        # Use QTest's -o flag to capture output to file — Tee-Object does not
+        # work for Win32 GUI subsystem apps (no console stdout).
+        .\build\tests\login_screen_tests.exe -v2 -o build\tests\login-screen-test-output.txt,txt
         exit $LASTEXITCODE
       shell: powershell
 
