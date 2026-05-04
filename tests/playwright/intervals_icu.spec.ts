@@ -151,7 +151,8 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
     // Inject credentials via the C++ test hook (avoids clear-text localStorage write).
     await wasmApp.injectIntervalsCredentials(apiKey, athleteId);
 
-    // Wait for at least one intervals.icu response after triggering a refresh.
+    // Register the response listener BEFORE triggering the refresh to avoid a
+    // race where the response arrives before the listener is attached.
     const firstResponsePromise = page.waitForResponse(
       (resp) => resp.url().includes('intervals.icu'),
       { timeout: 30_000 },

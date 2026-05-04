@@ -140,7 +140,7 @@ export class WasmAppPage {
         configurable: true,
         set(impl: { log: (msg: string) => void }) {
           const origLog = impl.log.bind(impl);
-          impl.log = (msg: string) => { console.log('[wasm-load] ' + msg); origLog(msg); };
+          impl.log = (msg: string) => { console.log('[wasm-load] ' + msg); return origLog(msg); };
           Object.defineProperty(window, '_wasmLogger', {
             configurable: true, writable: true, value: impl,
           });
