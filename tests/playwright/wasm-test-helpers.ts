@@ -39,14 +39,7 @@ export async function stubBluetooth(page: Page): Promise<void> {
  * @deprecated Prefer `new WasmAppPage(page).waitForFullyLoaded(timeoutMs)`.
  */
 export async function waitForAppReady(page: Page, timeoutMs = 60_000): Promise<void> {
-  await page.waitForFunction(
-    () => {
-      const canvas = document.querySelector('#qt-canvas-wrapper');
-      return canvas && getComputedStyle(canvas).visibility !== 'hidden';
-    },
-    null,
-    { timeout: timeoutMs },
-  );
+  return new WasmAppPage(page).waitForFullyLoaded(timeoutMs);
 }
 
 /**

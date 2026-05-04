@@ -1,22 +1,31 @@
 import { test, expect, type Page } from '@playwright/test';
-import { WasmAppPage, APP_URL } from './pages/WasmAppPage';
+import { WasmAppPage } from './pages/WasmAppPage';
 
 // ── Shared helper ─────────────────────────────────────────────────────────────
 
+/** Captured data for a single non-preflight intervals.icu request. */
+type IntervalsMockCapture = {
+  /** Request URL. */
+  url: string;
+  /** Whether an Authorization header was present on the request. */
+  hasAuth: boolean;
+};
+
 /**
  * Register Playwright route intercepts for intervals.icu that always return
- * 200 (with CORS headers), recording the non-preflight request URLs.
+ * 200 (with CORS headers), recording each non-preflight request URL and
+ * whether it carried an Authorization header.
  *
  * @param page      Playwright Page instance.
  * @param events    Optional JSON array body to return for `/events` requests.
  *                  Defaults to `'[]'`.
- * @returns Live array of intercepted non-OPTIONS URL strings.
+ * @returns Live array of captured request data (updated as requests arrive).
  */
 async function setupIntervalsIcuMocking(
   page: Page,
   events = '[]',
-): Promise<string[]> {
-  const captured: string[] = [];
+): Promise<IntervalsMockCapture[]> {
+  const captured: IntervalsMockCapture[] = [];
   await page.route('https://intervals.icu/**', async (route) => {
     const req    = route.request();
     const method = req.method();
@@ -27,7 +36,7 @@ async function setupIntervalsIcuMocking(
       'Access-Control-Allow-Headers': 'authorization, content-type',
     };
     if (method === 'OPTIONS') { await route.fulfill({ status: 204, headers: corsHeaders }); return; }
-    captured.push(url);
+    captured.push({ url, hasAuth: !!(req.headers()['authorization']) });
     if (url.includes('/events')) {
       await route.fulfill({
         status: 200,
@@ -53,6 +62,10 @@ async function setupIntervalsIcuMocking(
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe('Intervals.icu UI structure (Layer A)', () => {
+  // WASM binary takes 2+ minutes to JIT-compile on cold CI runners; use a
+  // generous timeout so waitForFullyLoaded() can finish before asserting.
+  test.describe.configure({ timeout: 420_000 });
+
   test('app loads without console errors related to intervals.icu', async ({ page }) => {
     const wasmApp = new WasmAppPage(page);
     await wasmApp.stubBluetooth();
@@ -65,7 +78,7 @@ test.describe('Intervals.icu UI structure (Layer A)', () => {
     });
 
     await wasmApp.goto();
-    await page.waitForTimeout(5000);
+    await wasmApp.waitForFullyLoaded(300_000);
 
     expect(
       intervalsErrors,
@@ -86,7 +99,7 @@ test.describe('Intervals.icu UI structure (Layer A)', () => {
     });
 
     await wasmApp.goto();
-    await page.waitForTimeout(5000);
+    await wasmApp.waitForFullyLoaded(300_000);
 
     expect(
       prematureRequests,
@@ -129,15 +142,7 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
     const wasmApp = new WasmAppPage(page);
     await wasmApp.stubBluetooth();
     await wasmApp.mockBackendApis();
-    await setupIntervalsIcuMocking(page);
-
-    // Track any 401 responses from the mocked intervals.icu endpoints.
-    const authErrors: string[] = [];
-    page.on('requestfinished', async (req) => {
-      if (!req.url().includes('intervals.icu')) return;
-      const resp = await req.response();
-      if (resp && resp.status() === 401) authErrors.push(`401 on ${req.url()}`);
-    });
+    const captured = await setupIntervalsIcuMocking(page);
 
     await wasmApp.goto();
     await wasmApp.waitForFullyLoaded(300_000);
@@ -145,13 +150,26 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
 
     // Inject credentials via the C++ test hook (avoids clear-text localStorage write).
     await wasmApp.injectIntervalsCredentials(apiKey, athleteId);
-    await wasmApp.triggerIntervalsRefresh();
-    await page.waitForTimeout(3_000);
 
+    // Wait for at least one intervals.icu response after triggering a refresh.
+    const firstResponsePromise = page.waitForResponse(
+      (resp) => resp.url().includes('intervals.icu'),
+      { timeout: 30_000 },
+    );
+    await wasmApp.triggerIntervalsRefresh();
+    await firstResponsePromise;
+
+    // Verify that all intercepted requests carried an Authorization header,
+    // proving that mt_setIntervalsCredentials correctly populated the account.
     expect(
-      authErrors,
-      `Intervals.icu returned 401 — credential injection via mt_setIntervalsCredentials failed: ` +
-      authErrors.join(', '),
+      captured.length,
+      'No intervals.icu requests were captured after triggerIntervalsRefresh — ' +
+      'check that mt_setIntervalsCredentials triggered outgoing API calls.',
+    ).toBeGreaterThan(0);
+    expect(
+      captured.filter((c) => !c.hasAuth).map((c) => c.url),
+      'Intervals.icu requests were made without an Authorization header — ' +
+      'credential injection via mt_setIntervalsCredentials may not have set auth correctly.',
     ).toHaveLength(0);
   });
 
@@ -163,7 +181,7 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
     const wasmApp = new WasmAppPage(page);
     await wasmApp.stubBluetooth();
     await wasmApp.mockBackendApis();
-    const successfulRequests = await setupIntervalsIcuMocking(
+    const captured = await setupIntervalsIcuMocking(
       page,
       JSON.stringify([
         {
@@ -190,7 +208,7 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
     await wasmApp.triggerIntervalsRefresh();
     await calendarResponsePromise;
 
-    if (successfulRequests.length === 0) {
+    if (captured.length === 0) {
       test.info().annotations.push({
         type: 'warning',
         description:

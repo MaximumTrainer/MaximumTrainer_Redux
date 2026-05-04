@@ -131,11 +131,22 @@ export class WasmAppPage {
    */
   async injectRecordingBluetoothMock(): Promise<void> {
     await this.page.addInitScript(() => {
-      // Forward WASM logger messages to browser console so Playwright's
-      // `page.on('console')` captures them.
-      (window as any)._wasmLogger = {
-        log: (msg: string) => console.log('[wasm-load] ' + msg),
-      };
+      // Intercept logger.js's unconditional assignment of window._wasmLogger so
+      // that its log() calls are also forwarded to the browser console (and thus
+      // captured by Playwright's `page.on('console')` handler).
+      // A plain assignment here would be overwritten when logger.js loads;
+      // a defineProperty setter fires on that overwrite and wraps the impl.
+      Object.defineProperty(window, '_wasmLogger', {
+        configurable: true,
+        set(impl: { log: (msg: string) => void }) {
+          const origLog = impl.log.bind(impl);
+          impl.log = (msg: string) => { console.log('[wasm-load] ' + msg); origLog(msg); };
+          Object.defineProperty(window, '_wasmLogger', {
+            configurable: true, writable: true, value: impl,
+          });
+        },
+        get() { return undefined; },
+      });
 
       const calls: {
         requestDeviceFilters: any;
