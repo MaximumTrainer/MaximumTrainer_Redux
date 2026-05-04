@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
     permissions:
-      contents: read
+      contents: write
     outputs:
       new_tag: ${{ steps.semver.outputs.new_tag }}
     concurrency:
@@ -48,6 +48,20 @@ jobs:
         new_tag="v${major}.${minor}.${patch}"
         echo "New tag: $new_tag"
         echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
+
+    - name: Create and push tag
+      run: |
+        # Create the git tag so that publish and verify_assets can reference it.
+        # Check the remote directly so re-runs (where the tag was already pushed
+        # in a previous attempt) skip tag creation rather than failing.
+        new_tag="${{ steps.semver.outputs.new_tag }}"
+        if git ls-remote --tags origin "$new_tag" | grep -q "$new_tag"; then
+          echo "Tag $new_tag already exists on origin — skipping creation"
+        else
+          git tag "$new_tag"
+          git push origin "$new_tag"
+          echo "Created and pushed tag $new_tag"
+        fi
 
   # ──────────────────────────────────────────────────────────────────────────
   # Linux build + BTLE integration test (defined in build-linux.yml)
@@ -438,7 +452,7 @@ jobs:
   verify_assets:
     needs: [compute_version, publish]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' && needs.publish.result == 'success'
     permissions:
       contents: read
     env:
