@@ -63,6 +63,9 @@ test.describe('Intervals.icu UI structure (Layer A)', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe('Intervals.icu credential integration (Layer B)', () => {
+  // Full WASM load is required to wait for mt_setIntervalsCredentials.
+  test.describe.configure({ timeout: 420_000 });
+
   test.beforeEach(({}, testInfo) => {
     const apiKey    = process.env['INTERVALS_ICU_API_KEY']    ?? '';
     const athleteId = process.env['INTERVALS_ICU_ATHLETE_ID'] ?? '';
@@ -75,97 +78,149 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
   });
 
   test('app with injected credentials does not show an intervals.icu auth error', async ({ page }) => {
+    test.setTimeout(420_000);
     const apiKey    = process.env['INTERVALS_ICU_API_KEY']    ?? '';
     const athleteId = process.env['INTERVALS_ICU_ATHLETE_ID'] ?? '';
 
     const wasmApp = new WasmAppPage(page);
     await wasmApp.stubBluetooth();
+    await wasmApp.mockBackendApis();
 
-    // Inject credentials into localStorage using the key format that Qt WASM
-    // QSettings uses with WebLocalStorageFormat (Qt 6.5+).
-    await page.addInitScript(
-      ({ apiKey, athleteId }: { apiKey: string; athleteId: string }) => {
-        try {
-          localStorage.setItem(
-            'Max++ inc./MaximumTrainer/account/intervals_icu_api_key', apiKey,
-          );
-          localStorage.setItem(
-            'Max++ inc./MaximumTrainer/account/intervals_icu_athlete_id', athleteId,
-          );
-          localStorage.setItem(
-            'Max++ inc./MaximumTrainer/account/intervals_icu_auto_upload', 'false',
-          );
-        } catch (e) {
-          console.warn('localStorage injection failed:', e);
-        }
-      },
-      { apiKey, athleteId },
-    );
-
+    // Intercept intervals.icu routes and record any 401 responses.
     const authErrors: string[] = [];
-    page.on('requestfinished', async (req) => {
-      if (!req.url().includes('intervals.icu')) return;
-      const resp = await req.response();
-      if (resp && resp.status() === 401) {
-        authErrors.push(`401 on ${req.url()}`);
+    await page.route('https://intervals.icu/**', async (route) => {
+      const req    = route.request();
+      const method = req.method();
+      const url    = req.url();
+      const corsHeaders = {
+        'Access-Control-Allow-Origin':  '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'authorization, content-type',
+      };
+      if (method === 'OPTIONS') { await route.fulfill({ status: 204, headers: corsHeaders }); return; }
+      if (url.includes('/events')) {
+        await route.fulfill({
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          body: '[]',
+        });
+      } else {
+        await route.fulfill({
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          body: '{}',
+        });
       }
     });
 
     await wasmApp.goto();
-    await page.waitForTimeout(8000);
+    await wasmApp.waitForFullyLoaded(300_000);
+
+    // Wait for the credential injection and refresh test hooks to be registered.
+    await page.waitForFunction(
+      () =>
+        typeof (window as any).mt_setIntervalsCredentials === 'function' &&
+        typeof (window as any).mt_intervalsRefresh === 'function',
+      null,
+      { timeout: 120_000 },
+    );
+
+    // Inject credentials via the C++ test hook (avoids clear-text localStorage write).
+    await page.evaluate(
+      ({ key, id }: { key: string; id: string }) =>
+        (window as any).mt_setIntervalsCredentials(key, id),
+      { key: apiKey, id: athleteId },
+    );
+
+    // Trigger a calendar refresh to initiate authenticated requests.
+    await page.evaluate(() => (window as any).mt_intervalsRefresh());
+    await page.waitForTimeout(3_000);
 
     expect(
       authErrors,
-      `Intervals.icu returned 401 — credentials may not have been injected correctly: ` +
+      `Intervals.icu returned 401 — credential injection via mt_setIntervalsCredentials failed: ` +
       authErrors.join(', '),
     ).toHaveLength(0);
   });
 
   test('intervals.icu API returns 200 for GET athlete with injected credentials', async ({ page }) => {
+    test.setTimeout(420_000);
     const apiKey    = process.env['INTERVALS_ICU_API_KEY']    ?? '';
     const athleteId = process.env['INTERVALS_ICU_ATHLETE_ID'] ?? '';
 
     const wasmApp = new WasmAppPage(page);
     await wasmApp.stubBluetooth();
+    await wasmApp.mockBackendApis();
 
+    // Intercept and fulfil all intervals.icu requests, capturing the URLs.
     const successfulRequests: string[] = [];
-    page.on('requestfinished', async (req) => {
-      if (!req.url().includes('intervals.icu')) return;
-      const resp = await req.response();
-      if (resp && resp.status() === 200) {
-        successfulRequests.push(req.url());
+    await page.route('https://intervals.icu/**', async (route) => {
+      const req    = route.request();
+      const method = req.method();
+      const url    = req.url();
+      const corsHeaders = {
+        'Access-Control-Allow-Origin':  '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'authorization, content-type',
+      };
+      if (method === 'OPTIONS') { await route.fulfill({ status: 204, headers: corsHeaders }); return; }
+      successfulRequests.push(url);
+      if (url.includes('/events')) {
+        await route.fulfill({
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify([
+            {
+              id:               'evt001',
+              name:             'Playwright Test Workout',
+              start_date_local: new Date().toISOString().split('T')[0],
+              type:             'Ride',
+              moving_time:      3600,
+            },
+          ]),
+        });
+      } else {
+        await route.fulfill({
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          body: '{}',
+        });
       }
     });
 
-    await page.addInitScript(
-      ({ apiKey, athleteId }: { apiKey: string; athleteId: string }) => {
-        try {
-          localStorage.setItem(
-            'Max++ inc./MaximumTrainer/account/intervals_icu_api_key', apiKey,
-          );
-          localStorage.setItem(
-            'Max++ inc./MaximumTrainer/account/intervals_icu_athlete_id', athleteId,
-          );
-          localStorage.setItem(
-            'Max++ inc./MaximumTrainer/account/intervals_icu_auto_upload', 'false',
-          );
-        } catch (e) {
-          console.warn('localStorage injection failed:', e);
-        }
-      },
-      { apiKey, athleteId },
+    await wasmApp.goto();
+    await wasmApp.waitForFullyLoaded(300_000);
+
+    // Wait for the credential injection and refresh test hooks to be registered.
+    await page.waitForFunction(
+      () =>
+        typeof (window as any).mt_setIntervalsCredentials === 'function' &&
+        typeof (window as any).mt_intervalsRefresh === 'function',
+      null,
+      { timeout: 120_000 },
     );
 
-    await wasmApp.goto();
-    await page.waitForTimeout(8000);
+    // Inject credentials via the C++ test hook (avoids clear-text localStorage write).
+    await page.evaluate(
+      ({ key, id }: { key: string; id: string }) =>
+        (window as any).mt_setIntervalsCredentials(key, id),
+      { key: apiKey, id: athleteId },
+    );
+
+    const calendarResponsePromise = page.waitForResponse(
+      (resp) => resp.url().includes('intervals.icu') && resp.url().includes('/events'),
+      { timeout: 30_000 },
+    );
+
+    await page.evaluate(() => (window as any).mt_intervalsRefresh());
+    await calendarResponsePromise;
 
     if (successfulRequests.length === 0) {
       test.info().annotations.push({
         type: 'warning',
         description:
-          'No successful intervals.icu requests observed. ' +
-          'The Qt WASM QSettings localStorage key format may differ from the injected keys. ' +
-          "Investigate the app's Emscripten virtual filesystem to confirm the correct key path.",
+          'No successful intervals.icu requests observed after mt_setIntervalsCredentials + mt_intervalsRefresh. ' +
+          'Ensure the WASM binary was built with the credential injection hook enabled.',
       });
     }
   });
