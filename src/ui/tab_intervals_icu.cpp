@@ -45,37 +45,17 @@ void mt_intervals_icu_do_refresh()
                                   Qt::QueuedConnection);
 }
 
-// Reads pending credentials stored in window._mt_pending_api_key /
-// window._mt_pending_athlete_id by the JS shim below.
+// Sets credentials directly on the Account object and propagates them to the
+// service layer.  Called from JS via Module._mt_intervals_icu_set_credentials()
+// with heap-allocated UTF-8 strings produced by the shim below.
 EMSCRIPTEN_KEEPALIVE
-void mt_intervals_icu_apply_pending_credentials()
+void mt_intervals_icu_set_credentials(const char *apiKey, const char *athleteId)
 {
-    // Read the JS globals into C strings on the WASM heap.
-    char *apiKey = reinterpret_cast<char *>(EM_ASM_PTR({
-        const k = window._mt_pending_api_key || '';
-        const len = lengthBytesUTF8(k) + 1;
-        const heap = _malloc(len);
-        stringToUTF8(k, heap, len);
-        return heap;
-    }));
-    char *athleteId = reinterpret_cast<char *>(EM_ASM_PTR({
-        const k = window._mt_pending_athlete_id || '';
-        const len = lengthBytesUTF8(k) + 1;
-        const heap = _malloc(len);
-        stringToUTF8(k, heap, len);
-        return heap;
-    }));
-
     auto *account = qApp->property("Account").value<Account *>();
     if (account) {
         account->intervals_icu_api_key    = QString::fromUtf8(apiKey);
         account->intervals_icu_athlete_id = QString::fromUtf8(athleteId);
     }
-    // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
-    free(apiKey);
-    // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
-    free(athleteId);
-
     if (g_intervalsTab)
         g_intervalsTab->refreshCredentials();
 }
@@ -88,13 +68,20 @@ EM_JS(void, js_exposeIntervalsTestApi, (), {
     };
     // Inject credentials directly into the running Account object, bypassing
     // QSettings so Playwright tests don't depend on the localStorage key format.
+    //
+    // Uses TextEncoder (browser-native) + Module.HEAPU8 / _malloc / _free so
+    // this does not depend on any optional Emscripten EXPORTED_RUNTIME_METHODS.
     window.mt_setIntervalsCredentials = function(apiKey, athleteId) {
-        window._mt_pending_api_key     = String(apiKey  || '');
-        window._mt_pending_athlete_id  = String(athleteId || '');
-        Module._mt_intervals_icu_apply_pending_credentials();
-        // Clear after C++ has consumed the values.
-        delete window._mt_pending_api_key;
-        delete window._mt_pending_athlete_id;
+        var enc    = new TextEncoder();
+        var keyBuf = enc.encode(String(apiKey   || '') + '\0');
+        var idBuf  = enc.encode(String(athleteId || '') + '\0');
+        var keyPtr = Module._malloc(keyBuf.length);
+        var idPtr  = Module._malloc(idBuf.length);
+        Module.HEAPU8.set(keyBuf, keyPtr);
+        Module.HEAPU8.set(idBuf,  idPtr);
+        Module._mt_intervals_icu_set_credentials(keyPtr, idPtr);
+        Module._free(keyPtr);
+        Module._free(idPtr);
     };
 });
 #endif
