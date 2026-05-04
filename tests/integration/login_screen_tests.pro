@@ -47,14 +47,34 @@ TEMPLATE = app
 
 DESTDIR  = ../../build/tests
 
+# ── QWT: platform-specific include / link ───────────────────────────────────
+linux {
+    INCLUDEPATH += /usr/include/qwt
+    LIBS        += -lqwt-qt5
+}
+win32 {
+    INCLUDEPATH += ../../qwt/include ../../qwt/include/qwt
+    CONFIG(release, debug|release): LIBS += -L$$PWD/../../qwt/lib -lqwt
+    CONFIG(debug,   debug|release): LIBS += -L$$PWD/../../qwt/lib -lqwtd
+}
+macx {
+    !isEmpty(QWT_INSTALL) {
+        INCLUDEPATH += $${QWT_INSTALL}/include
+        LIBS        += -L$${QWT_INSTALL}/lib -lqwt
+    }
+}
+# ── End QWT ─────────────────────────────────────────────────────────────────
+
 INCLUDEPATH += \
     ../../src/app \
     ../../src/btle \
     ../../src/model \
+    ../../src/fitness/achievements \
     ../../src/persistence/db \
     ../../src/persistence/file \
     ../../src/ui \
-    ../../src/ui/components
+    ../../src/ui/components \
+    ../../src/ui/workout_editor
 
 SOURCES += \
     ../../src/app/logger.cpp \
@@ -63,6 +83,15 @@ SOURCES += \
     ../../src/btle/simulator_hub.cpp \
     ../../src/model/account.cpp \
     ../../src/model/settings.cpp \
+    ../../src/model/workout.cpp \
+    ../../src/model/interval.cpp \
+    ../../src/model/sensor.cpp \
+    ../../src/model/radio.cpp \
+    ../../src/model/repeatdata.cpp \
+    ../../src/model/course.cpp \
+    ../../src/model/userstudio.cpp \
+    ../../src/model/trackpoint.cpp \
+    ../../src/fitness/achievements/achievement.cpp \
     ../../src/persistence/db/environnement.cpp \
     ../../src/persistence/db/extrequest.cpp \
     ../../src/persistence/db/userdao.cpp \
@@ -73,6 +102,7 @@ SOURCES += \
     ../../src/ui/dialoglogin.cpp \
     ../../src/ui/updatedialog.cpp \
     ../../src/ui/dialoginfowebview.cpp \
+    ../../src/ui/workout_editor/repeatwidget.cpp \
     ../intervals_icu/credential_store_stub.cpp \
     tst_login_screen.cpp
 
@@ -87,4 +117,5 @@ HEADERS += \
 FORMS += \
     ../../src/ui/dialoglogin.ui \
     ../../src/ui/updatedialog.ui \
-    ../../src/ui/dialoginfowebview.ui
+    ../../src/ui/dialoginfowebview.ui \
+    ../../src/ui/workout_editor/repeatwidget.ui
