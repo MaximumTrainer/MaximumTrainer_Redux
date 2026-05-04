@@ -346,6 +346,14 @@ jobs:
         jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
+    - name: Build workout UI test
+      run: |
+        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
+        Set-Location tests\integration
+        qmake workout_ui_tests.pro
+        jom /J $env:NUMBER_OF_PROCESSORS
+      shell: powershell
+
     - name: Deploy Qt for test binaries
       run: |
         & "$env:QTDIR\bin\windeployqt.exe" --release `
@@ -368,6 +376,10 @@ jobs:
             --no-translations `
             --no-system-d3d-compiler `
             build\tests\login_screen_tests.exe
+        & "$env:QTDIR\bin\windeployqt.exe" --release `
+            --no-translations `
+            --no-system-d3d-compiler `
+            build\tests\workout_ui_tests.exe
         foreach ($dll in @("libssl-1_1-x64.dll", "libcrypto-1_1-x64.dll")) {
           $src = "$env:OPENSSL_BIN\$dll"
           if (Test-Path $src) { Copy-Item $src "build\tests\" -Force }
@@ -654,3 +666,40 @@ jobs:
       with:
         name: login-screen-screenshot-windows
         path: build\tests\*-windows-*.png
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout UI Integration Test – Windows
+  #
+  # Validates the end-to-end workout pipeline on Windows:
+  #   • User login (offline path)
+  #   • Workout XML creation and retrieval (round-trip)
+  #   • ERG simulation: setLoad and setSlope drive SimulatorHub to the
+  #     correct power target without physical Bluetooth hardware
+  #   • Workout session lifecycle: start / pause / resume / stop with data
+  #     accumulation across all four sensor channels
+  #   • Interval advancement: ERG target changes at each interval boundary
+  #   • A labelled 1280×720 screenshot is captured as visual build evidence
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_ui:
+    runs-on: windows-latest
+    needs: build_windows
+    permissions:
+      contents: read
+
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: windows
+        path: build
+
+    - name: Run workout UI test
+      run: .\build\tests\workout_ui_tests.exe -v2
+      shell: powershell
+
+    - name: Upload workout UI screenshot
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: workout-ui-screenshot-windows
+        path: build\tests\workout-ui-windows-*.png

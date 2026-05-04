@@ -142,6 +142,13 @@ jobs:
         qmake login_screen_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0"
         make -j$(sysctl -n hw.logicalcpu)
 
+    - name: Build workout UI test
+      run: |
+        mkdir -p build/tests
+        cd tests/integration
+        qmake workout_ui_tests.pro
+        make -j$(sysctl -n hw.logicalcpu)
+
     - name: Bind rpath for Qt frameworks and OpenSSL
       run: |
         install_name_tool -add_rpath /usr/local/lib build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
@@ -448,3 +455,52 @@ jobs:
       with:
         name: login-screen-screenshot-macos
         path: build/tests/*-macos-*.png
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout UI Integration Test – macOS
+  #
+  # Validates the end-to-end workout pipeline on macOS:
+  #   • User login (offline path)
+  #   • Workout XML creation and retrieval (round-trip)
+  #   • ERG simulation: setLoad and setSlope drive SimulatorHub to the
+  #     correct power target without physical Bluetooth hardware
+  #   • Workout session lifecycle: start / pause / resume / stop with data
+  #     accumulation across all four sensor channels
+  #   • Interval advancement: ERG target changes at each interval boundary
+  #   • A labelled 1280×720 screenshot is captured as visual build evidence
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_ui:
+    runs-on: macos-latest
+    needs: build_mac
+    permissions:
+      contents: read
+
+    steps:
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.7.3'
+        host: 'mac'
+        target: 'desktop'
+        arch: 'clang_64'
+        cache: true
+        cache-key-prefix: qt-mac
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: macos
+        path: build
+
+    - name: Make test binary executable
+      run: chmod +x build/tests/workout_ui_tests
+
+    - name: Run workout UI test
+      run: ./build/tests/workout_ui_tests -v2
+
+    - name: Upload workout UI screenshot
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: workout-ui-screenshot-macos
+        path: build/tests/workout-ui-macos-*.png
