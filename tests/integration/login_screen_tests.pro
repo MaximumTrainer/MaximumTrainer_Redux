@@ -91,6 +91,7 @@ SOURCES += \
     ../../src/model/course.cpp \
     ../../src/model/userstudio.cpp \
     ../../src/model/trackpoint.cpp \
+    ../../src/model/powercurve.cpp \
     ../../src/fitness/achievements/achievement.cpp \
     ../../src/persistence/db/environnement.cpp \
     ../../src/persistence/db/extrequest.cpp \
@@ -102,6 +103,7 @@ SOURCES += \
     ../../src/ui/dialoglogin.cpp \
     ../../src/ui/updatedialog.cpp \
     ../../src/ui/dialoginfowebview.cpp \
+    ../../src/ui/components/languagecombobox.cpp \
     ../../src/ui/workout_editor/repeatwidget.cpp \
     ../intervals_icu/credential_store_stub.cpp \
     tst_login_screen.cpp
@@ -110,9 +112,13 @@ HEADERS += \
     ../../src/btle/simulator_hub.h \
     ../../src/model/account.h \
     ../../src/model/settings.h \
+    ../../src/persistence/file/xmlutil.h \
     ../../src/ui/dialoglogin.h \
+    ../../src/ui/updatedialog.h \
     ../../src/ui/dialoginfowebview.h \
-    ../../src/ui/components/myqwebenginepage.h
+    ../../src/ui/components/languagecombobox.h \
+    ../../src/ui/components/myqwebenginepage.h \
+    ../../src/ui/workout_editor/repeatwidget.h
 
 FORMS += \
     ../../src/ui/dialoglogin.ui \
