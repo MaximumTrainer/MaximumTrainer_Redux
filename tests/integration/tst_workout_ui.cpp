@@ -7,9 +7,12 @@
  * -----------------------------------------------------------------------
  * Validates the full workout UI pipeline on Windows, macOS, and Linux:
  *
- *   1. User login (offline):  Account properties are set up through the
- *      same offline-login path used by MainWindow, confirming the login
- *      flow works without a network connection.
+ *   1. Account fixture (offline):  A minimal Account object (FTP = 200 W,
+ *      isOffline = true) is registered as a qApp property in initTestCase,
+ *      mirroring the offline-login state that MainWindow establishes when
+ *      the user chooses "Log in offline".  This satisfies the dependency
+ *      that Workout::calculateWorkoutMetrics() has on qApp's Account, and
+ *      allows all model tests to run without a database or network.
  *
  *   2. Workout creation:  A three-interval workout is written to a
  *      temporary XML file using the same format produced by
@@ -139,9 +142,12 @@
 // full Workout / Interval model stack (which would pull in QWT, Account, etc.)
 // ============================================================================
 struct TestIntervalDef {
-    int     durationSec;  ///< Duration in whole seconds
-    double  targetWatts;  ///< Absolute ERG target power (watts)
-    QString name;         ///< Human-readable name shown in the UI
+    int     durationTicks;  ///< Duration in timer ticks (not real seconds).
+                            ///< One tick fires every tickIntervalMs, so a
+                            ///< durationTicks=5 interval at tickIntervalMs=200
+                            ///< lasts ~1 real second.
+    double  targetWatts;   ///< Absolute ERG target power (watts)
+    QString name;           ///< Human-readable name shown in the UI
 };
 
 // ============================================================================
@@ -267,7 +273,7 @@ private slots:
         ++m_secInInterval;
 
         if (m_currentInterval < m_intervals.size()) {
-            if (m_secInInterval >= m_intervals.at(m_currentInterval).durationSec) {
+            if (m_secInInterval >= m_intervals.at(m_currentInterval).durationTicks) {
                 ++m_currentInterval;
                 m_secInInterval = 0;
 
@@ -532,6 +538,17 @@ public slots:
                     .arg(++m_loadCmds));
     }
 
+    /// Call once right after session.start() to show the initial ERG target
+    /// (sent before any intervalChanged signal fires).
+    void setInitialTarget(double watts)
+    {
+        if (m_targetLabel)
+            m_targetLabel->setText(
+                QString("[ERG]  Target: %1 W  |  Load commands sent: %2")
+                    .arg(static_cast<int>(watts))
+                    .arg(m_loadCmds));
+    }
+
     void updateDataCount(int n)
     {
         if (m_dataCountLabel)
@@ -602,7 +619,7 @@ private:
     QLabel *m_targetLabel    = nullptr;
     QLabel *m_dataCountLabel = nullptr;
     int     m_totalIntervals = 0;
-    int     m_loadCmds       = 0;
+    int     m_loadCmds       = 1; // start at 1 — the initial setLoad is sent before any intervalChanged
 
     // QWT power-curve chart
     QwtPlot       *m_plot        = nullptr;
@@ -624,13 +641,14 @@ private:
 
     // ── Shared test-interval set ──────────────────────────────────────────
     // Returns the canonical three-interval workout used throughout the suite.
-    // durationSecEach lets individual tests use ultra-short intervals for speed.
-    static QList<TestIntervalDef> makeTestIntervals(int durationSecEach = 1)
+    // durationTicksEach controls how many timer ticks each interval lasts.
+    // With the default tickIntervalMs=100 ms, 1 tick ≈ 100 ms of real time.
+    static QList<TestIntervalDef> makeTestIntervals(int durationTicksEach = 1)
     {
         return {
-            { durationSecEach, 160.0, QStringLiteral("Warm-Up")   },
-            { durationSecEach, 240.0, QStringLiteral("Main Set")  },
-            { durationSecEach, 130.0, QStringLiteral("Cool-Down") },
+            { durationTicksEach, 160.0, QStringLiteral("Warm-Up")   },
+            { durationTicksEach, 240.0, QStringLiteral("Main Set")  },
+            { durationTicksEach, 130.0, QStringLiteral("Cool-Down") },
         };
     }
 
@@ -661,7 +679,12 @@ private:
 
         w.writeStartElement("Intervals");
         for (const auto &iv : intervals) {
-            const int sec = (durationSecEach > 0) ? durationSecEach : iv.durationSec;
+            // writeWorkoutXml is used by tests that pass makeTestIntervals()
+            // with durationTicksEach == 600 (10 min) for the XML round-trip.
+            // When durationSecEach is provided it overrides; otherwise fall
+            // back to the TestIntervalDef::durationTicks value (which those
+            // tests set to a plausible second count like 600).
+            const int sec = (durationSecEach > 0) ? durationSecEach : iv.durationTicks;
             const int h   = sec / 3600;
             const int m   = (sec % 3600) / 60;
             const int s   = sec % 60;
@@ -724,7 +747,10 @@ private slots:
     {
         m_timestamp = QDateTime::currentDateTimeUtc()
                           .toString("yyyy-MM-ddTHH-mm-ss");
-        m_outputDir = "build/tests";
+        // Use the binary directory so screenshots land next to the test
+        // executable regardless of the working directory at launch time,
+        // matching the convention used by all other integration test suites.
+        m_outputDir = QCoreApplication::applicationDirPath();
         QDir().mkpath(m_outputDir);
 
         // Set up a minimal Account in qApp so that Workout::calculateWorkoutMetrics()
@@ -1036,7 +1062,7 @@ private slots:
         hub.start();
 
         // Use long intervals so the session does not auto-advance during the test
-        TestWorkoutSession session(makeTestIntervals(/*durationSec=*/30));
+        TestWorkoutSession session(makeTestIntervals(/*durationTicks=*/30));
 
         QCOMPARE(static_cast<int>(session.state()),
                  static_cast<int>(TestWorkoutSession::Stopped));
@@ -1073,7 +1099,7 @@ private slots:
         hub.start();
 
         // Long intervals ensure the session does not auto-advance
-        TestWorkoutSession session(makeTestIntervals(/*durationSec=*/60));
+        TestWorkoutSession session(makeTestIntervals(/*durationTicks=*/60));
         session.start(&hub);
 
         // Wait for at least 2 hub ticks to accumulate some data
@@ -1118,8 +1144,8 @@ private slots:
         SimulatorHub hub;
         hub.start();
 
-        // 3 × 1-second intervals, 100 ms tick → completes in ~3 ticks (~300 ms)
-        TestWorkoutSession session(makeTestIntervals(/*durationSec=*/1),
+        // 3 × 1-tick intervals, 100 ms tick → completes in ~3 ticks (~300 ms)
+        TestWorkoutSession session(makeTestIntervals(/*durationTicks=*/1),
                                    /*tickIntervalMs=*/100);
 
         QSignalSpy finishedSpy (&session, &TestWorkoutSession::sessionFinished);
@@ -1161,7 +1187,7 @@ private slots:
         SimulatorHub hub;
         hub.start();
 
-        TestWorkoutSession session(makeTestIntervals(/*durationSec=*/60));
+        TestWorkoutSession session(makeTestIntervals(/*durationTicks=*/60));
         session.start(&hub);
 
         // 3.5 s → at least three 1-second hub ticks → at least three power readings
@@ -1199,14 +1225,14 @@ private slots:
     //
     // Displays a 1280×720 WorkoutExecutionWindow with live sensor data fed by
     // SimulatorHub and a QWT power-curve chart (actual vs target power).
-    // A three-interval session (200 ms ticks, 1 s intervals) runs to
+    // A three-interval session (200 ms ticks, 1 tick per interval) runs to
     // completion and all interval transitions are displayed in the window.
     // A PNG screenshot is saved as CI artefact evidence.
     // ========================================================================
     void testWorkoutExecutionScreenshot()
     {
         const QString workoutName  = QStringLiteral("Three-Interval CI Workout");
-        const auto    intervals    = makeTestIntervals(/*durationSec=*/1);
+        const auto    intervals    = makeTestIntervals(/*durationTicks=*/1);
 
         auto *win = new WorkoutExecutionWindow(
             workoutName,
@@ -1227,13 +1253,17 @@ private slots:
         connect(&session, &TestWorkoutSession::intervalChanged,
                 win, &WorkoutExecutionWindow::onIntervalChanged);
 
-        // Keep the data-count label updated as sensor ticks arrive
+        // Keep the data-count label updated as sensor ticks arrive.
+        // Use QPointer so the lambda is safe if win is deleted while a
+        // queued timeout is still in flight.
+        QPointer<WorkoutExecutionWindow> winGuard(win);
         QTimer refreshTimer;
         refreshTimer.setInterval(100);
         connect(&refreshTimer, &QTimer::timeout,
-                this, [&session, win]() {
-                    win->updateDataCount(session.dataPointCount());
-                    win->updatePowerChart(session.powerHistory());
+                this, [&session, winGuard]() {
+                    if (!winGuard) return;
+                    winGuard->updateDataCount(session.dataPointCount());
+                    winGuard->updatePowerChart(session.powerHistory());
                 });
         refreshTimer.start();
 
@@ -1241,16 +1271,23 @@ private slots:
         QApplication::processEvents();
 
         session.start(&hub);
+        // Show the initial ERG target (first setLoad fires at start, before any
+        // intervalChanged signal, so onIntervalChanged would miss it otherwise).
+        if (!intervals.isEmpty())
+            win->setInitialTarget(intervals.at(0).targetWatts);
 
-        // Budget 3 s for the three 1-second intervals (200 ms ticks each)
+        // Budget 3 s for the three 1-tick intervals (200 ms ticks each →
+        // each interval completes in ~200 ms, full session in ~600 ms).
         QSignalSpy finishedSpy(&session, &TestWorkoutSession::sessionFinished);
         const bool finished = finishedSpy.wait(3000);
         QVERIFY2(finished, "Test session did not complete within 3 s");
 
         refreshTimer.stop();
-        win->updateDataCount(session.dataPointCount());
-        win->updatePowerChart(session.powerHistory());
-        win->updateStateBadge("[ COMPLETE ]", true);
+        if (winGuard) {
+            winGuard->updateDataCount(session.dataPointCount());
+            winGuard->updatePowerChart(session.powerHistory());
+            winGuard->updateStateBadge("[ COMPLETE ]", true);
+        }
         QApplication::processEvents();
         QTest::qWait(200); // allow final repaint
 
@@ -1264,11 +1301,11 @@ private slots:
                  qPrintable(
                      QString("Failed to save screenshot to %1").arg(screenshotPath)));
         QVERIFY2(QFile::exists(screenshotPath), "Screenshot file not found after save");
-        // grab() captures the widget content at its natural size.  setFixedSize(1280, 720)
-        // guarantees exactly those pixel dimensions regardless of window-manager decorations,
-        // since decorations are rendered outside the widget rectangle.
-        QVERIFY2(pix.width()  == 1280, "Screenshot width must be 1280 px");
-        QVERIFY2(pix.height() == 720,  "Screenshot height must be 720 px");
+        // On HiDPI displays (macOS Retina / Windows scaling) grab() returns a
+        // pixmap scaled by devicePixelRatio, so the physical pixel count can
+        // exceed 1280×720.  Assert >= to be robust across all platforms.
+        QVERIFY2(pix.width()  >= 1280, "Screenshot width must be >= 1280 px");
+        QVERIFY2(pix.height() >= 720,  "Screenshot height must be >= 720 px");
 
         hub.stop();
         delete win;
@@ -1467,7 +1504,7 @@ private slots:
         if (apiKey.isEmpty() || athleteId.isEmpty())
             QSKIP("INTERVALS_ICU_API_KEY / INTERVALS_ICU_ATHLETE_ID not set — skipping network test");
 
-        const QString url = QStringLiteral("https://intervals.icu/api/v1/athlete/") + athleteId;
+        const QUrl    url = QUrl(QStringLiteral("https://intervals.icu/api/v1/athlete/") + athleteId);
         QNetworkRequest req(url);
         const QString credentials = QStringLiteral("API_KEY:") + apiKey;
         req.setRawHeader("Authorization",
@@ -1525,12 +1562,12 @@ private slots:
         if (apiKey.isEmpty() || athleteId.isEmpty())
             QSKIP("INTERVALS_ICU_API_KEY / INTERVALS_ICU_ATHLETE_ID not set — skipping network test");
 
-        const QString url =
+        const QUrl url = QUrl(
             QStringLiteral("https://intervals.icu/api/v1/athlete/") + athleteId
             + QStringLiteral("/workouts?oldest=")
             + QDate::currentDate().addDays(-30).toString(Qt::ISODate)
             + QStringLiteral("&newest=")
-            + QDate::currentDate().toString(Qt::ISODate);
+            + QDate::currentDate().toString(Qt::ISODate));
 
         QNetworkRequest req(url);
         const QString credentials = QStringLiteral("API_KEY:") + apiKey;

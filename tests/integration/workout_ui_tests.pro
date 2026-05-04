@@ -33,8 +33,10 @@
 #   • A 1280×720 screenshot of the workout-execution window (including the
 #     QWT power-curve plot) is saved as build evidence.
 #
-# Build (Linux / macOS):
+# Build (Linux):
 #   qmake workout_ui_tests.pro [QWT_INSTALL=/path/to/qwt] && make -j$(nproc)
+# Build (macOS):
+#   qmake workout_ui_tests.pro [QWT_INSTALL=/path/to/qwt] && make -j$(sysctl -n hw.logicalcpu)
 # Build (Windows -- MSVC developer prompt):
 #   qmake workout_ui_tests.pro QWT_INSTALL=C:/qwt && jom /J %NUMBER_OF_PROCESSORS%
 #
