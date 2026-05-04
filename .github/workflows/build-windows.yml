@@ -389,6 +389,16 @@ jobs:
         # to the tests directory so test binaries that render Qt widgets can load.
         $openglDll = "$env:QTDIR\bin\Qt5OpenGL.dll"
         if (Test-Path $openglDll) { Copy-Item $openglDll "build\tests\" -Force }
+        # qwt.dll is a third-party DLL not discovered by windeployqt; any test
+        # binary that directly instantiates QwtPlot/QwtPlotCurve will fail to
+        # load without it.  Copy it alongside the test executables.
+        $qwtDll = "$env:QWT_INSTALL_DIR\lib\qwt.dll"
+        if (Test-Path $qwtDll) {
+          Copy-Item $qwtDll "build\tests\" -Force
+          Write-Host "Copied qwt.dll to build\tests\"
+        } else {
+          Write-Warning "qwt.dll not found at $qwtDll — workout_ui_tests may fail to load"
+        }
       shell: powershell
 
     - name: Upload artifact
