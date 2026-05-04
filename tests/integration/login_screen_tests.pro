@@ -53,9 +53,14 @@ linux {
     LIBS        += -lqwt-qt5
 }
 win32 {
-    INCLUDEPATH += ../../qwt/include ../../qwt/include/qwt
-    CONFIG(release, debug|release): LIBS += -L$$PWD/../../qwt/lib -lqwt
-    CONFIG(debug,   debug|release): LIBS += -L$$PWD/../../qwt/lib -lqwtd
+    # Prefer the QWT_INSTALL_DIR environment variable (set in CI via the job env:
+    # block in build-windows.yml).  Fall back to the sibling-directory layout used
+    # for local developer builds where ../qwt is adjacent to the repository root.
+    QWT_DIR = $$(QWT_INSTALL_DIR)
+    isEmpty(QWT_DIR): QWT_DIR = $$shell_path($$PWD/../../qwt)
+    INCLUDEPATH += $${QWT_DIR}/include $${QWT_DIR}/include/qwt
+    CONFIG(release, debug|release): LIBS += -L$${QWT_DIR}/lib -lqwt
+    CONFIG(debug,   debug|release): LIBS += -L$${QWT_DIR}/lib -lqwtd
 }
 macx {
     !isEmpty(QWT_INSTALL) {
@@ -82,6 +87,7 @@ SOURCES += \
     ../../src/app/simplecrypt.cpp \
     ../../src/btle/simulator_hub.cpp \
     ../../src/model/account.cpp \
+    ../../src/model/powercurve.cpp \
     ../../src/model/settings.cpp \
     ../../src/model/workout.cpp \
     ../../src/model/interval.cpp \
@@ -99,6 +105,7 @@ SOURCES += \
     ../../src/persistence/db/intervalsicudao.cpp \
     ../../src/persistence/file/xmlutil.cpp \
     ../../src/persistence/file/gpxparser.cpp \
+    ../../src/ui/components/languagecombobox.cpp \
     ../../src/ui/dialoglogin.cpp \
     ../../src/ui/updatedialog.cpp \
     ../../src/ui/dialoginfowebview.cpp \
@@ -110,8 +117,12 @@ HEADERS += \
     ../../src/btle/simulator_hub.h \
     ../../src/model/account.h \
     ../../src/model/settings.h \
+    ../../src/persistence/file/xmlutil.h \
+    ../../src/ui/components/languagecombobox.h \
     ../../src/ui/dialoglogin.h \
     ../../src/ui/dialoginfowebview.h \
+    ../../src/ui/updatedialog.h \
+    ../../src/ui/workout_editor/repeatwidget.h \
     ../../src/ui/components/myqwebenginepage.h
 
 FORMS += \
