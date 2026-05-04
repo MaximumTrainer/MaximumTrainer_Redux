@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Functional WASM tests for the Intervals.icu calendar tab.
  *
@@ -16,17 +15,8 @@
  * an older pre-built binary and pass after a fresh CI build.
  */
 
-const { test, expect } = require('@playwright/test');
-const {
-  stubBluetooth,
-  waitForAppReady,
-  mockBackendApis,
-  mockIntervalsIcuApi,
-  getOverlayFatalErrorLines,
-} = require('./wasm-test-helpers');
-
-const BASE_ORIGIN = process.env.PLAYWRIGHT_BASE_URL || 'https://maximumtrainer.github.io/MaximumTrainer_Redux';
-const APP_URL = `${BASE_ORIGIN}/app/`;
+import { test, expect } from '@playwright/test';
+import { WasmAppPage, APP_URL } from './pages/WasmAppPage';
 
 // Fake credentials used only for Playwright route mocking — not real secrets.
 const TEST_ATHLETE_ID = 'i00000';
@@ -38,42 +28,35 @@ test.describe('Intervals.icu WASM functional', () => {
   // The WASM binary (~18 MB, ASYNCIFY-transformed) takes 2+ minutes to
   // JIT-compile on cold CI runners.  We use two shared-page groups to avoid
   // reloading the app multiple times and to stay within the 7-minute budget.
-  //
-  // Group A (no credentials): tests 1 & 2 share one page load.
-  // Group B (with credentials): tests 3 & 4 share one page load.
-  //
-  // test.describe.configure sets 7 min per test (matches btle suite).
-  // test.setTimeout(420_000) inside beforeAll ensures the hook itself
-  // doesn't time out while waiting for the WASM to initialise.
   test.describe.configure({ timeout: 420_000 });
 
   // ── Group A: No credentials ────────────────────────────────────────────────
   test.describe('without credentials', () => {
     test.describe.configure({ timeout: 420_000 });
 
-    /** @type {import('@playwright/test').Page} */
-    let page;
-    /** @type {import('@playwright/test').BrowserContext} */
-    let ctx;
-    let intervalsRequests = [];
+    let wasmApp: WasmAppPage;
+    let ctx: import('@playwright/test').BrowserContext;
+    let intervalsRequests: string[] = [];
 
     test.beforeAll(async ({ browser }) => {
       test.setTimeout(420_000);
-      ctx  = await browser.newContext();
-      page = await ctx.newPage();
-      await stubBluetooth(page);
-      await mockBackendApis(page);
-      intervalsRequests = await mockIntervalsIcuApi(page);
-      await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-      await waitForAppReady(page, 300_000);
+      ctx = await browser.newContext();
+      wasmApp = new WasmAppPage(await ctx.newPage());
+
+      await wasmApp.stubBluetooth();
+      await wasmApp.mockBackendApis();
+      intervalsRequests = await wasmApp.mockIntervalsIcuApi();
+
+      await wasmApp.goto();
+      await wasmApp.waitForFullyLoaded(300_000);
       // Give the app a moment to fire any startup network requests.
-      await page.waitForTimeout(5_000);
+      await wasmApp.page.waitForTimeout(5_000);
     });
 
     test.afterAll(async () => { await ctx.close(); });
 
     test('no API calls to intervals.icu before credentials are set', async () => {
-      const dataRequests = intervalsRequests.filter(r => !r.startsWith('OPTIONS'));
+      const dataRequests = intervalsRequests.filter((r) => !r.startsWith('OPTIONS'));
       expect(
         dataRequests,
         `App made unexpected data requests to intervals.icu on startup (no credentials set): ${dataRequests.join(', ')}`,
@@ -81,7 +64,9 @@ test.describe('Intervals.icu WASM functional', () => {
     });
 
     test('mt_intervalsRefresh test hook is exposed after app loads', async () => {
-      const hookExists = await page.evaluate(() => typeof window.mt_intervalsRefresh === 'function');
+      const hookExists = await wasmApp.page.evaluate(
+        () => typeof (window as any).mt_intervalsRefresh === 'function',
+      );
       expect(
         hookExists,
         'window.mt_intervalsRefresh should be a function after the WASM app loads',
@@ -93,60 +78,53 @@ test.describe('Intervals.icu WASM functional', () => {
   test.describe('with mock credentials', () => {
     test.describe.configure({ timeout: 420_000 });
 
-    /** @type {import('@playwright/test').Page} */
-    let page;
-    /** @type {import('@playwright/test').BrowserContext} */
-    let ctx;
-    let intervalsRequests = [];
+    let wasmApp: WasmAppPage;
+    let ctx: import('@playwright/test').BrowserContext;
+    let intervalsRequests: string[] = [];
 
     test.beforeAll(async ({ browser }) => {
       test.setTimeout(420_000);
-      ctx  = await browser.newContext();
-      page = await ctx.newPage();
-      await stubBluetooth(page);
-      await mockBackendApis(page);
-      intervalsRequests = await mockIntervalsIcuApi(page);
+      ctx = await browser.newContext();
+      wasmApp = new WasmAppPage(await ctx.newPage());
 
-      await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-      await waitForAppReady(page, 300_000);
+      await wasmApp.stubBluetooth();
+      await wasmApp.mockBackendApis();
+      intervalsRequests = await wasmApp.mockIntervalsIcuApi();
+
+      await wasmApp.goto();
+      await wasmApp.waitForFullyLoaded(300_000);
 
       // Wait for BOTH test hooks to be registered by the C++ WASM code.
-      await page.waitForFunction(
-        () => typeof window.mt_setIntervalsCredentials === 'function' &&
-              typeof window.mt_intervalsRefresh === 'function',
+      await wasmApp.page.waitForFunction(
+        () =>
+          typeof (window as any).mt_setIntervalsCredentials === 'function' &&
+          typeof (window as any).mt_intervalsRefresh === 'function',
         null,
         { timeout: 120_000 },
       );
 
-      // Inject credentials directly into the Account object (bypasses QSettings
-      // localStorage format differences across Qt versions / browsers).
-      await page.evaluate(
-        ({ apiKey, athleteId }) => window.mt_setIntervalsCredentials(apiKey, athleteId),
+      // Inject credentials directly into the Account object.
+      await wasmApp.page.evaluate(
+        ({ apiKey, athleteId }: { apiKey: string; athleteId: string }) =>
+          (window as any).mt_setIntervalsCredentials(apiKey, athleteId),
         { apiKey: TEST_API_KEY, athleteId: TEST_ATHLETE_ID },
       );
 
-      // Set up response listener BEFORE triggering the refresh so we don't miss
-      // a fast response.  We wait for the RESPONSE (not just the request) so
-      // the page.route handler has already pushed the URL to intervalsRequests
-      // by the time beforeAll exits — page.waitForRequest fires before the
-      // route handler runs, causing a race condition.
-      const calendarResponsePromise = page.waitForResponse(
-        resp => resp.url().includes('intervals.icu') && resp.url().includes('/events'),
+      // Set up response listener BEFORE triggering refresh to avoid a race.
+      const calendarResponsePromise = wasmApp.page.waitForResponse(
+        (resp) =>
+          resp.url().includes('intervals.icu') && resp.url().includes('/events'),
         { timeout: 30_000 },
       );
 
-      // Trigger calendar refresh.
-      await page.evaluate(() => window.mt_intervalsRefresh());
-
-      // Wait for the mocked response (Qt::QueuedConnection fires on the
-      // next event-loop tick, so this should resolve almost immediately).
+      await wasmApp.page.evaluate(() => (window as any).mt_intervalsRefresh());
       await calendarResponsePromise;
     });
 
     test.afterAll(async () => { await ctx.close(); });
 
     test('calendar fetch is triggered when credentials are set and refresh hook is called', async () => {
-      const calendarRequests = intervalsRequests.filter(r => r.includes('/events'));
+      const calendarRequests = intervalsRequests.filter((r) => r.includes('/events'));
       expect(
         calendarRequests.length,
         `Expected at least one calendar fetch request after mt_intervalsRefresh(). ` +
@@ -155,7 +133,7 @@ test.describe('Intervals.icu WASM functional', () => {
     });
 
     test('no WASM ERROR log entries after calendar fetch with mocked API', async () => {
-      const errorLines = await getOverlayFatalErrorLines(page);
+      const errorLines = await wasmApp.logOverlay.getFatalErrorLines();
       expect(
         errorLines,
         `Unexpected WASM ERROR log entries after calendar fetch: ${errorLines.join('; ')}`,

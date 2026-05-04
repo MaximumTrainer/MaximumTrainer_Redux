@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Intervals.icu Login Verification – WASM
  *
@@ -19,43 +18,10 @@
  *   B2. WASM constructs the correct Authorization header from the injected
  *       credentials.
  *   B3. No WASM errors are reported after a successful authenticated API call.
- *
- * Authentication proof strategy
- * ──────────────────────────────────────────────────────────────────────────────
- * Browser WASM → intervals.icu requests cannot be allowed through in the test
- * environment (the page is served from localhost:8080; CORS headers from
- * intervals.icu do not cover that origin in CI).  Instead:
- *
- *   1. A Node.js Playwright APIRequestContext performs the REAL HTTP call to
- *      https://intervals.icu/api/v1/athlete/{id} with the secret credentials.
- *      This proves the secrets are valid.  Node has no CORS restrictions.
- *
- *   2. In the browser, all intervals.icu routes are intercepted.  The
- *      Authorization header from the first intercepted non-OPTIONS request is
- *      captured and compared against the expected header derived from the
- *      secrets — proving the WASM app uses the correct credentials.
- *
- *   3. Intercepted requests are fulfilled with realistic 200 responses so the
- *      WASM app can proceed through its post-login state machine.
- *
- * Skipping behaviour
- * ──────────────────────────────────────────────────────────────────────────────
- * Layer B tests skip gracefully when credentials are absent (fork PRs, local
- * development without credentials).  When secrets ARE set, EVERY Layer B test
- * must pass — the suite cannot succeed by skipping.
  */
 
-const { test, expect } = require('@playwright/test');
-const {
-  stubBluetooth,
-  waitForAppReady,
-  mockBackendApis,
-  getOverlayFatalErrorLines,
-} = require('./wasm-test-helpers');
-
-const BASE_ORIGIN = process.env.PLAYWRIGHT_BASE_URL
-  || 'https://maximumtrainer.github.io/MaximumTrainer_Redux';
-const APP_URL = `${BASE_ORIGIN}/app/`;
+import { test, expect } from '@playwright/test';
+import { WasmAppPage, APP_URL } from './pages/WasmAppPage';
 
 const SCREENSHOT_DIR = 'test-results/wasm-screenshots';
 
@@ -65,39 +31,36 @@ const SCREENSHOT_DIR = 'test-results/wasm-screenshots';
 test.describe('Login verification – Layer A: pre-authentication state', () => {
   test.describe.configure({ timeout: 420_000 });
 
-  /** @type {import('@playwright/test').Page} */
-  let page;
-  /** @type {import('@playwright/test').BrowserContext} */
-  let ctx;
-  /** @type {string[]} */
-  let earlyIntervalRequests = [];
+  let wasmApp: WasmAppPage;
+  let ctx: import('@playwright/test').BrowserContext;
+  let earlyIntervalRequests: string[] = [];
 
   test.beforeAll(async ({ browser }) => {
     test.setTimeout(420_000);
-    ctx  = await browser.newContext();
-    page = await ctx.newPage();
+    ctx = await browser.newContext();
+    wasmApp = new WasmAppPage(await ctx.newPage());
 
-    await stubBluetooth(page);
-    await mockBackendApis(page);
+    await wasmApp.stubBluetooth();
+    await wasmApp.mockBackendApis();
 
     // Track any intervals.icu requests made before credentials are injected.
-    await page.route('https://intervals.icu/**', async (route) => {
+    await wasmApp.page.route('https://intervals.icu/**', async (route) => {
       earlyIntervalRequests.push(
         `${route.request().method()} ${route.request().url()}`,
       );
       await route.continue();
     });
 
-    await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForAppReady(page, 300_000);
+    await wasmApp.goto();
+    await wasmApp.waitForFullyLoaded(300_000);
     // Allow a startup window for any background API calls to fire.
-    await page.waitForTimeout(5_000);
+    await wasmApp.page.waitForTimeout(5_000);
   });
 
   test.afterAll(async () => { await ctx.close(); });
 
   test('A1 – app loads without premature intervals.icu authentication requests', async () => {
-    const dataRequests = earlyIntervalRequests.filter(r => !r.startsWith('OPTIONS'));
+    const dataRequests = earlyIntervalRequests.filter((r) => !r.startsWith('OPTIONS'));
     expect(
       dataRequests,
       `App issued unexpected intervals.icu requests before credentials were set: ` +
@@ -106,9 +69,10 @@ test.describe('Login verification – Layer A: pre-authentication state', () => 
   });
 
   test('A2 – login test hooks are exposed after WASM app loads', async () => {
-    const hooksExist = await page.evaluate(
-      () => typeof window.mt_setIntervalsCredentials === 'function' &&
-            typeof window.mt_intervalsRefresh === 'function',
+    const hooksExist = await wasmApp.page.evaluate(
+      () =>
+        typeof (window as any).mt_setIntervalsCredentials === 'function' &&
+        typeof (window as any).mt_intervalsRefresh === 'function',
     );
     expect(
       hooksExist,
@@ -124,76 +88,67 @@ test.describe('Login verification – Layer A: pre-authentication state', () => 
 test.describe('Login verification – Layer B: real credentials', () => {
   test.describe.configure({ timeout: 420_000 });
 
-  const apiKey    = process.env.INTERVALS_ICU_API_KEY    || '';
-  const athleteId = process.env.INTERVALS_ICU_ATHLETE_ID || '';
+  const apiKey      = process.env['INTERVALS_ICU_API_KEY']    ?? '';
+  const athleteId   = process.env['INTERVALS_ICU_ATHLETE_ID'] ?? '';
   const hasCredentials = !!(apiKey && athleteId);
 
-  // ── Shared state populated in beforeAll ────────────────────────────────────
-  /** @type {import('@playwright/test').Page} */
-  let page;
-  /** @type {import('@playwright/test').BrowserContext} */
-  let ctx;
+  let wasmApp: WasmAppPage;
+  let ctx: import('@playwright/test').BrowserContext;
 
   // Real HTTP response from the Node.js credential validation call.
-  let realApiStatus = 0;
+  let realApiStatus    = 0;
   let realApiAthleteId = '';
 
   // Captured from browser-side route interception.
-  /** @type {{ method: string; url: string; auth: string }[]} */
-  let capturedRequests = [];
+  let capturedRequests: Array<{ method: string; url: string; auth: string }> = [];
 
   test.beforeAll(async ({ browser, playwright }) => {
-    if (!hasCredentials) return; // Nothing to set up — each test skips individually.
+    if (!hasCredentials) return;
 
     test.setTimeout(420_000);
 
     // ── Step 1: Validate credentials with a real Node.js HTTP call ────────────
-    // Node has no CORS restrictions; this proves the secrets are valid before
-    // we test the WASM browser path.
     const apiContext = await playwright.request.newContext({
       baseURL: 'https://intervals.icu',
       extraHTTPHeaders: {
         Authorization: 'Basic ' + Buffer.from(`API_KEY:${apiKey}`).toString('base64'),
-        Accept: 'application/json',
+        Accept:        'application/json',
       },
     });
 
     try {
       const resp = await apiContext.get(`/api/v1/athlete/${athleteId}`);
       realApiStatus = resp.status();
-
       if (realApiStatus === 200) {
-        const body = await resp.json();
-        realApiAthleteId = String(body.id || body.athlete_id || '');
+        const body = await resp.json() as Record<string, unknown>;
+        realApiAthleteId = String(body['id'] ?? body['athlete_id'] ?? '');
       }
     } finally {
       await apiContext.dispose();
     }
 
     // ── Step 2: Launch WASM browser with route interception ───────────────────
-    ctx  = await browser.newContext();
-    page = await ctx.newPage();
+    ctx = await browser.newContext();
+    wasmApp = new WasmAppPage(await ctx.newPage());
 
-    await stubBluetooth(page);
-    await mockBackendApis(page);
+    await wasmApp.stubBluetooth();
+    await wasmApp.mockBackendApis();
 
-    // Intercept intervals.icu requests to:
-    //   a) capture the Authorization header emitted by the WASM app, and
-    //   b) fulfill with mock 200 responses (CORS-safe in localhost test env).
-    await page.route('https://intervals.icu/**', async (route) => {
+    // Intercept intervals.icu to capture the Authorization header and fulfil
+    // with mock 200 responses (CORS-safe in the localhost test environment).
+    await wasmApp.page.route('https://intervals.icu/**', async (route) => {
       const req    = route.request();
       const method = req.method();
       const url    = req.url();
-      const auth   = req.headers()['authorization'] || '';
+      const auth   = req.headers()['authorization'] ?? '';
 
       capturedRequests.push({ method, url, auth });
 
       const corsHeaders = {
         'Access-Control-Allow-Origin':  '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        // Reflect the requested headers to handle any new headers Qt might add.
         'Access-Control-Allow-Headers':
-          req.headers()['access-control-request-headers'] || 'authorization, content-type',
+          req.headers()['access-control-request-headers'] ?? 'authorization, content-type',
       };
 
       if (method === 'OPTIONS') {
@@ -207,11 +162,11 @@ test.describe('Login verification – Layer B: real credentials', () => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           body: JSON.stringify([
             {
-              id: 'evt001',
-              name: 'Login Verification Test Workout',
+              id:               'evt001',
+              name:             'Login Verification Test Workout',
               start_date_local: new Date().toISOString().split('T')[0],
-              type: 'Ride',
-              moving_time: 3600,
+              type:             'Ride',
+              moving_time:      3600,
             },
           ]),
         });
@@ -224,36 +179,39 @@ test.describe('Login verification – Layer B: real credentials', () => {
       }
     });
 
-    await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-    await waitForAppReady(page, 300_000);
+    await wasmApp.goto();
+    await wasmApp.waitForFullyLoaded(300_000);
 
-    // Wait for both test hooks to be registered by the WASM C++ code.
-    await page.waitForFunction(
-      () => typeof window.mt_setIntervalsCredentials === 'function' &&
-            typeof window.mt_intervalsRefresh === 'function',
+    // Wait for both test hooks to be registered.
+    await wasmApp.page.waitForFunction(
+      () =>
+        typeof (window as any).mt_setIntervalsCredentials === 'function' &&
+        typeof (window as any).mt_intervalsRefresh === 'function',
       null,
       { timeout: 120_000 },
     );
 
     // ── Step 3: Inject real credentials into the running WASM app ─────────────
-    await page.evaluate(
-      ({ key, id }) => window.mt_setIntervalsCredentials(key, id),
+    await wasmApp.page.evaluate(
+      ({ key, id }: { key: string; id: string }) =>
+        (window as any).mt_setIntervalsCredentials(key, id),
       { key: apiKey, id: athleteId },
     );
 
-    // Listen for the /events response before triggering refresh (avoids race).
-    const calendarResponsePromise = page.waitForResponse(
-      resp => resp.url().includes('intervals.icu') && resp.url().includes('/events'),
+    const calendarResponsePromise = wasmApp.page.waitForResponse(
+      (resp) =>
+        resp.url().includes('intervals.icu') && resp.url().includes('/events'),
       { timeout: 30_000 },
     );
 
-    await page.evaluate(() => window.mt_intervalsRefresh());
+    await wasmApp.page.evaluate(() => (window as any).mt_intervalsRefresh());
     await calendarResponsePromise;
 
     // Capture a screenshot as login evidence.
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    await require('fs').promises.mkdir(SCREENSHOT_DIR, { recursive: true }).catch(() => {});
-    await page.screenshot({
+    const fs = await import('fs');
+    await fs.promises.mkdir(SCREENSHOT_DIR, { recursive: true }).catch(() => {});
+    await wasmApp.page.screenshot({
       path: `${SCREENSHOT_DIR}/login-verification-wasm-${ts}.png`,
       fullPage: false,
     });
@@ -270,12 +228,10 @@ test.describe('Login verification – Layer B: real credentials', () => {
         'to run Intervals.icu login verification tests.',
       );
     }
-
     expect(
       realApiStatus,
       `Intervals.icu API returned HTTP ${realApiStatus} for athlete ${athleteId}. ` +
-      `Expected 200 — check that INTERVALS_ICU_API_KEY and INTERVALS_ICU_ATHLETE_ID ` +
-      `are correct and the account has API access enabled.`,
+      `Expected 200 — check credentials and API access.`,
     ).toBe(200);
   });
 
@@ -288,12 +244,10 @@ test.describe('Login verification – Layer B: real credentials', () => {
         'to run Intervals.icu login verification tests.',
       );
     }
-
-    const dataRequests = capturedRequests.filter(r => r.method !== 'OPTIONS');
+    const dataRequests = capturedRequests.filter((r) => r.method !== 'OPTIONS');
     expect(
       dataRequests.length,
-      `No intervals.icu data requests were made after mt_setIntervalsCredentials() + ` +
-      `mt_intervalsRefresh().  The credential injection or refresh pipeline may be broken.`,
+      `No intervals.icu data requests were made after credential injection.`,
     ).toBeGreaterThan(0);
   });
 
@@ -307,28 +261,20 @@ test.describe('Login verification – Layer B: real credentials', () => {
       );
     }
 
-    // Find the first non-OPTIONS request that carries an Authorization header.
     const authRequest = capturedRequests.find(
-      r => r.method !== 'OPTIONS' && r.auth !== '',
+      (r) => r.method !== 'OPTIONS' && r.auth !== '',
     );
-
     expect(
       authRequest,
-      'No intercepted intervals.icu request contained an Authorization header. ' +
-      'The WASM app may not be attaching credentials to its API calls.',
+      'No intercepted intervals.icu request contained an Authorization header.',
     ).toBeTruthy();
 
-    // Qt encodes credentials as: "API_KEY:" + apiKey → UTF-8 bytes → Base64
-    // This must match `Buffer.from("API_KEY:" + apiKey).toString("base64")`.
     const expectedBase64 = Buffer.from(`API_KEY:${apiKey}`).toString('base64');
     const expectedHeader  = `Basic ${expectedBase64}`;
 
     expect(
-      authRequest.auth,
-      `Authorization header mismatch.\n` +
-      `Expected: "${expectedHeader}"\n` +
-      `Received: "${authRequest.auth}"\n` +
-      `This indicates the injected credentials were not used correctly in the WASM app's API call.`,
+      authRequest!.auth,
+      `Authorization header mismatch.\nExpected: "${expectedHeader}"\nReceived: "${authRequest!.auth}"`,
     ).toBe(expectedHeader);
   });
 
@@ -341,8 +287,7 @@ test.describe('Login verification – Layer B: real credentials', () => {
         'to run Intervals.icu login verification tests.',
       );
     }
-
-    const errorLines = await getOverlayFatalErrorLines(page);
+    const errorLines = await wasmApp.logOverlay.getFatalErrorLines();
     expect(
       errorLines,
       `WASM reported errors after authenticated login:\n${errorLines.join('\n')}`,
