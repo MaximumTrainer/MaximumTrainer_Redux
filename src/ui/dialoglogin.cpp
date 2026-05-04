@@ -36,8 +36,9 @@ void DialogLogin::changeEvent(QEvent *event) {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
-DialogLogin::DialogLogin(QWidget *parent) : QDialog(parent), ui(new Ui::DialogLogin) {
-
+DialogLogin::DialogLogin(QWidget *parent, bool testMode)
+    : QDialog(parent), ui(new Ui::DialogLogin)
+{
     ui->setupUi(this);
 
     Qt::WindowFlags flags(Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
@@ -54,7 +55,11 @@ DialogLogin::DialogLogin(QWidget *parent) : QDialog(parent), ui(new Ui::DialogLo
     firstLogin = true;
     replyIntervalsIcuAthlete  = nullptr;
     replyIntervalsIcuSettings = nullptr;
+    replyGoogle               = nullptr;
+    replyVersion              = nullptr;
     m_intervalsIcuTimeout     = nullptr;
+    m_googleTimeout           = nullptr;
+    m_versionTimeout          = nullptr;
     m_pendingIntervalsIcuReplies = 0;
 
 
@@ -78,41 +83,60 @@ DialogLogin::DialogLogin(QWidget *parent) : QDialog(parent), ui(new Ui::DialogLo
     ui->label_version->setText(Environnement::getVersion() );
 
 
-
-    // --------------------------------------------
-    /// CHECK FOR INTERNET CONNECTION
-    ui->label_process->setText(tr("Connecting to server..."));
-    replyGoogle = ExtRequest::checkGoogleConnection();
-    connect(replyGoogle, SIGNAL(finished()), this, SLOT(slotFinishedGoogle()) );
-
-    // Abort the Google connectivity check if it doesn't complete within 10 s.
-    m_googleTimeout = new QTimer(this);
-    m_googleTimeout->setSingleShot(true);
-    connect(m_googleTimeout, &QTimer::timeout, this, &DialogLogin::onGoogleTimeout);
-    m_googleTimeout->start(10000);
-
-
-
-    /// Check if new version APP available
-    replyVersion = VersionDAO::getVersion();
-    connect(replyVersion, SIGNAL(finished()), this, SLOT(slotFinishedGetVersion()));
-
-    // Safety-net: if the version check doesn't complete within 10 s (e.g. network
-    // latency, firewall, TLS failure) abort the request and proceed to login so the
-    // app never hangs on this dialog.
-    m_versionTimeout = new QTimer(this);
-    m_versionTimeout->setSingleShot(true);
-    connect(m_versionTimeout, &QTimer::timeout, this, &DialogLogin::onVersionTimeout);
-    m_versionTimeout->start(10000);
-    // --------------------------------------------
-
-    connect(ui->webView_login, SIGNAL(loadProgress(int)), this, SLOT(showLoadingProgress(int)));
-
     // "Login with Intervals.icu" button
     connect(ui->pushButton_loginIntervalsIcu, &QPushButton::clicked,
             this, &DialogLogin::onLoginWithIntervalsIcuClicked);
     // label_registerIntervalsIcu uses openExternalLinks=true in the .ui, so
     // no extra linkActivated connection is needed here.
+
+    if (testMode) {
+        // In test mode: skip all network requests and immediately reveal the
+        // bottom widget so tests can interact with buttons without waiting for
+        // real network activity.  The web view and loading indicator are hidden
+        // exactly as they would be after loginLoaded(false).
+        ui->label_loading->setVisible(false);
+        ui->webView_login->setVisible(false);
+        ui->widget_loading->setVisible(false);
+        ui->widget_bottom->setVisible(true);
+        ui->label_process->setText(tr("Test mode – offline ready"));
+        return;
+    }
+
+    // --------------------------------------------
+    /// CHECK FOR INTERNET CONNECTION
+    ui->label_process->setText(tr("Connecting to server..."));
+    replyGoogle = ExtRequest::checkGoogleConnection();
+    if (replyGoogle) {
+        connect(replyGoogle, SIGNAL(finished()), this, SLOT(slotFinishedGoogle()));
+        // Abort the Google connectivity check if it doesn't complete within 10 s.
+        m_googleTimeout = new QTimer(this);
+        m_googleTimeout->setSingleShot(true);
+        connect(m_googleTimeout, &QTimer::timeout, this, &DialogLogin::onGoogleTimeout);
+        m_googleTimeout->start(10000);
+    }
+
+
+
+    /// Check if new version APP available
+    replyVersion = VersionDAO::getVersion();
+    if (replyVersion) {
+        connect(replyVersion, SIGNAL(finished()), this, SLOT(slotFinishedGetVersion()));
+        // Safety-net: if the version check doesn't complete within 10 s (e.g. network
+        // latency, firewall, TLS failure) abort the request and proceed to login so the
+        // app never hangs on this dialog.
+        m_versionTimeout = new QTimer(this);
+        m_versionTimeout->setSingleShot(true);
+        connect(m_versionTimeout, &QTimer::timeout, this, &DialogLogin::onVersionTimeout);
+        m_versionTimeout->start(10000);
+    }
+
+    if (!replyGoogle && !replyVersion) {
+        // No network manager available — skip loading sequence and show the
+        // bottom widget directly so the dialog is always usable.
+        QTimer::singleShot(0, this, [this]() { loginLoaded(false); });
+    }
+
+    connect(ui->webView_login, SIGNAL(loadProgress(int)), this, SLOT(showLoadingProgress(int)));
 
     ui->label_loading->setVisible(false);
     ui->webView_login->setVisible(false);

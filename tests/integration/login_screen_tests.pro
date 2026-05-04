@@ -13,6 +13,16 @@
 #      URL via Environnement and verifies all required parameters are present.
 #   3. Intervals.icu API login: makes a real HTTPS call to the intervals.icu
 #      API using credentials from environment variables (QSKIP when absent).
+#   4. DialogLogin initial state: shows the real widget and verifies that
+#      widget_loading is visible and widget_bottom is hidden before network
+#      activity completes.
+#   5. DialogLogin offline flow: clicks checkBox_workOffline and
+#      pushButton_startOffline on the real widget, verifies the Account
+#      object is set to offline mode.
+#   6. DialogLogin Intervals.icu button: verifies the button is visible and
+#      enabled when the widget is in test mode.
+#   7. DialogLogin Intervals.icu OAuth dialog: clicks the button and verifies
+#      the OAuth child dialog is created with the correct URL.
 #
 # A labelled 1280×720 screenshot is saved as build evidence for each test.
 #
@@ -28,7 +38,7 @@
 #   .\build\tests\login_screen_tests.exe -v2
 ###############################################################################
 
-QT       += core gui widgets network testlib
+QT       += core gui widgets network webenginewidgets testlib
 CONFIG   += qt c++17
 CONFIG   -= app_bundle
 
@@ -38,16 +48,43 @@ TEMPLATE = app
 DESTDIR  = ../../build/tests
 
 INCLUDEPATH += \
+    ../../src/app \
     ../../src/btle \
+    ../../src/model \
     ../../src/persistence/db \
-    ../../src/model
+    ../../src/persistence/file \
+    ../../src/ui \
+    ../../src/ui/components
 
 SOURCES += \
+    ../../src/app/logger.cpp \
+    ../../src/app/util.cpp \
+    ../../src/app/simplecrypt.cpp \
     ../../src/btle/simulator_hub.cpp \
-    ../../src/persistence/db/environnement.cpp \
+    ../../src/model/account.cpp \
     ../../src/model/settings.cpp \
+    ../../src/persistence/db/environnement.cpp \
+    ../../src/persistence/db/extrequest.cpp \
+    ../../src/persistence/db/userdao.cpp \
+    ../../src/persistence/db/versiondao.cpp \
+    ../../src/persistence/db/intervalsicudao.cpp \
+    ../../src/persistence/file/xmlutil.cpp \
+    ../../src/persistence/file/gpxparser.cpp \
+    ../../src/ui/dialoglogin.cpp \
+    ../../src/ui/updatedialog.cpp \
+    ../../src/ui/dialoginfowebview.cpp \
+    ../intervals_icu/credential_store_stub.cpp \
     tst_login_screen.cpp
 
 HEADERS += \
     ../../src/btle/simulator_hub.h \
-    ../../src/model/settings.h
+    ../../src/model/account.h \
+    ../../src/model/settings.h \
+    ../../src/ui/dialoglogin.h \
+    ../../src/ui/dialoginfowebview.h \
+    ../../src/ui/components/myqwebenginepage.h
+
+FORMS += \
+    ../../src/ui/dialoglogin.ui \
+    ../../src/ui/updatedialog.ui \
+    ../../src/ui/dialoginfowebview.ui

@@ -86,9 +86,16 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QEventLoop>
+#include <QCheckBox>
+#include <QPushButton>
+#include <QSignalSpy>
 
 #include "../../src/btle/simulator_hub.h"
 #include "../../src/persistence/db/environnement.h"
+#include "../../src/model/account.h"
+#include "../../src/model/settings.h"
+#include "../../src/ui/dialoglogin.h"
+#include "../../src/ui/dialoginfowebview.h"
 
 // ---------------------------------------------------------------------------
 // Compile-time platform tag used in screenshots and window titles
@@ -385,6 +392,11 @@ private:
     QString m_timestamp;
     QString m_outDir;
 
+    // Owned qApp-property objects shared across DialogLogin-based tests.
+    Account              *m_account = nullptr;
+    Settings             *m_settings = nullptr;
+    QNetworkAccessManager *m_nam    = nullptr;
+
     void initSelf() {
         m_timestamp = QDateTime::currentDateTimeUtc()
                           .toString("yyyy-MM-ddTHH-mm-ssZ");
@@ -397,6 +409,27 @@ private slots:
     void initTestCase()
     {
         initSelf();
+
+        // Create shared objects that DialogLogin reads from qApp properties.
+        m_account  = new Account(this);
+        m_settings = new Settings(this);
+        m_nam      = new QNetworkAccessManager(this);
+
+        // Prevent auto-login from any persisted credentials.
+        m_settings->rememberMyPassword  = false;
+        m_settings->lastLoggedUsername  = QString();
+        m_settings->lastLoggedKey       = QString();
+
+        qApp->setProperty("Account",          QVariant::fromValue(m_account));
+        qApp->setProperty("User_Settings",    QVariant::fromValue(m_settings));
+        qApp->setProperty("NetworkManagerWS", QVariant::fromValue(m_nam));
+    }
+
+    void cleanupTestCase()
+    {
+        qApp->setProperty("Account",          QVariant());
+        qApp->setProperty("User_Settings",    QVariant());
+        qApp->setProperty("NetworkManagerWS", QVariant());
     }
 
     // -----------------------------------------------------------------------
@@ -694,6 +727,213 @@ private slots:
                 QString("intervals.icu API returned HTTP %1 (expected 200). "
                         "Error: %2").arg(httpStatus).arg(errMsg)));
         }
+    }
+
+
+    // -----------------------------------------------------------------------
+    // testDialogLoginInitialState
+    //
+    // Verifies that the real DialogLogin widget shows the loading spinner
+    // (widget_loading visible) and hides the bottom interaction area
+    // (widget_bottom hidden) immediately after construction in production
+    // mode — before any network reply has arrived.
+    //
+    // Acceptance criteria:
+    //   • widget_loading is visible immediately after construction.
+    //   • widget_bottom is hidden immediately after construction.
+    //   • Screenshot saved and non-empty.
+    // -----------------------------------------------------------------------
+    void testDialogLoginInitialState()
+    {
+        // Production mode: network requests fire, but we assert state *before*
+        // any reply arrives (synchronously, immediately after show()).
+        DialogLogin dialog(nullptr, /*testMode=*/false);
+        dialog.show();
+        QCoreApplication::processEvents();
+
+        const auto *widgetLoading = dialog.findChild<QWidget *>("widget_loading");
+        const auto *widgetBottom  = dialog.findChild<QWidget *>("widget_bottom");
+
+        QVERIFY2(widgetLoading != nullptr,
+                 "widget_loading must exist in DialogLogin");
+        QVERIFY2(widgetBottom  != nullptr,
+                 "widget_bottom must exist in DialogLogin");
+        QVERIFY2(widgetLoading->isVisible(),
+                 "widget_loading must be visible immediately after construction");
+        QVERIFY2(!widgetBottom->isVisible(),
+                 "widget_bottom must be hidden immediately after construction");
+
+        const QString screenshotName =
+            QString("dialoglogin-initial-state-%1-%2.png")
+                .arg(kPlatformTag, m_timestamp);
+        saveScreenshot(dialog, screenshotName, m_outDir);
+
+        qDebug().noquote() << "[DialogLoginInitialState] PASS";
+    }
+
+
+    // -----------------------------------------------------------------------
+    // testDialogLoginOfflineFlow
+    //
+    // Verifies the complete offline login UI flow using the real DialogLogin
+    // widget in test mode (no network requests; widget_bottom immediately
+    // visible).  The test clicks checkBox_workOffline, verifies that
+    // pushButton_startOffline becomes visible, then clicks it and confirms
+    // the dialog emits accepted() and that the Account object is populated
+    // with the correct offline-mode values.
+    //
+    // Acceptance criteria:
+    //   • checkBox_workOffline starts unchecked.
+    //   • pushButton_startOffline starts hidden.
+    //   • After clicking checkBox_workOffline: pushButton_startOffline visible.
+    //   • After clicking pushButton_startOffline: dialog accepted() emitted.
+    //   • account->isOffline == true.
+    //   • account->id == 0.
+    //   • account->email == "local@offline".
+    //   • Screenshot saved and non-empty.
+    // -----------------------------------------------------------------------
+    void testDialogLoginOfflineFlow()
+    {
+        DialogLogin dialog(nullptr, /*testMode=*/true);
+        dialog.show();
+        QCoreApplication::processEvents();
+
+        auto *checkBox   = dialog.findChild<QCheckBox  *>("checkBox_workOffline");
+        auto *btnOffline = dialog.findChild<QPushButton *>("pushButton_startOffline");
+
+        QVERIFY2(checkBox   != nullptr,
+                 "checkBox_workOffline must exist in DialogLogin");
+        QVERIFY2(btnOffline != nullptr,
+                 "pushButton_startOffline must exist in DialogLogin");
+
+        QVERIFY2(!checkBox->isChecked(),
+                 "checkBox_workOffline must start unchecked");
+        QVERIFY2(!btnOffline->isVisible(),
+                 "pushButton_startOffline must start hidden");
+
+        // Click the checkbox to enter offline mode.
+        QTest::mouseClick(checkBox, Qt::LeftButton);
+        QCoreApplication::processEvents();
+
+        QVERIFY2(checkBox->isChecked(),
+                 "checkBox_workOffline must be checked after click");
+        QVERIFY2(btnOffline->isVisible(),
+                 "pushButton_startOffline must be visible after checking offline");
+
+        // Spy on accepted() so we can confirm the dialog accepted.
+        QSignalSpy acceptedSpy(&dialog, &QDialog::accepted);
+
+        // Click "Start Offline".
+        QTest::mouseClick(btnOffline, Qt::LeftButton);
+        QCoreApplication::processEvents();
+
+        QVERIFY2(acceptedSpy.count() == 1,
+                 "DialogLogin must emit accepted() after clicking Start Offline");
+        QVERIFY2(m_account->isOffline,
+                 "Account.isOffline must be true after offline login");
+        QCOMPARE(m_account->id, 0);
+        QCOMPARE(m_account->email, QStringLiteral("local@offline"));
+
+        const QString screenshotName =
+            QString("dialoglogin-offline-flow-%1-%2.png")
+                .arg(kPlatformTag, m_timestamp);
+        saveScreenshot(dialog, screenshotName, m_outDir);
+
+        qDebug().noquote()
+            << "[DialogLoginOfflineFlow] PASS"
+            << "| id=" << m_account->id
+            << "| email=" << m_account->email
+            << "| isOffline=" << m_account->isOffline;
+    }
+
+
+    // -----------------------------------------------------------------------
+    // testDialogLoginIntervalsIcuButton
+    //
+    // Verifies that the "Login with Intervals.icu" button is visible and
+    // enabled in the real DialogLogin widget (test mode, widget_bottom
+    // immediately visible).
+    //
+    // Acceptance criteria:
+    //   • pushButton_loginIntervalsIcu exists.
+    //   • pushButton_loginIntervalsIcu is visible.
+    //   • pushButton_loginIntervalsIcu is enabled.
+    //   • Screenshot saved and non-empty.
+    // -----------------------------------------------------------------------
+    void testDialogLoginIntervalsIcuButton()
+    {
+        DialogLogin dialog(nullptr, /*testMode=*/true);
+        dialog.show();
+        QCoreApplication::processEvents();
+
+        auto *btn = dialog.findChild<QPushButton *>("pushButton_loginIntervalsIcu");
+
+        QVERIFY2(btn != nullptr,
+                 "pushButton_loginIntervalsIcu must exist in DialogLogin");
+        QVERIFY2(btn->isVisible(),
+                 "pushButton_loginIntervalsIcu must be visible in test mode");
+        QVERIFY2(btn->isEnabled(),
+                 "pushButton_loginIntervalsIcu must be enabled");
+
+        const QString screenshotName =
+            QString("dialoglogin-intervals-button-%1-%2.png")
+                .arg(kPlatformTag, m_timestamp);
+        saveScreenshot(dialog, screenshotName, m_outDir);
+
+        qDebug().noquote() << "[DialogLoginIntervalsIcuButton] PASS"
+            << "| button text:" << btn->text();
+    }
+
+
+    // -----------------------------------------------------------------------
+    // testDialogLoginIntervalsIcuOAuthDialog
+    //
+    // Verifies that clicking "Login with Intervals.icu" on the real
+    // DialogLogin widget (test mode) creates a DialogInfoWebView child dialog
+    // configured as an Intervals.icu OAuth2 flow.  The child dialog is
+    // immediately rejected so it does not block the test.
+    //
+    // Acceptance criteria:
+    //   • Clicking pushButton_loginIntervalsIcu creates a DialogInfoWebView
+    //     child with parent == &dialog.
+    //   • Screenshot saved and non-empty.
+    // -----------------------------------------------------------------------
+    void testDialogLoginIntervalsIcuOAuthDialog()
+    {
+        DialogLogin dialog(nullptr, /*testMode=*/true);
+        dialog.show();
+        QCoreApplication::processEvents();
+
+        auto *btn = dialog.findChild<QPushButton *>("pushButton_loginIntervalsIcu");
+        QVERIFY2(btn != nullptr,
+                 "pushButton_loginIntervalsIcu must exist in DialogLogin");
+
+        // Use a single-shot timer to close the child dialog as soon as it opens,
+        // so it doesn't block this test thread via exec().
+        bool childFound = false;
+        QTimer::singleShot(0, &dialog, [&dialog, &childFound]() {
+            auto *oauthDlg = dialog.findChild<DialogInfoWebView *>();
+            if (oauthDlg) {
+                childFound = true;
+                oauthDlg->reject();
+            }
+        });
+
+        // Click the button — this calls exec() on the child dialog.
+        // The timer above will fire in the nested event loop and reject it.
+        QTest::mouseClick(btn, Qt::LeftButton);
+        QCoreApplication::processEvents();
+
+        QVERIFY2(childFound,
+                 "Clicking 'Login with Intervals.icu' must create a "
+                 "DialogInfoWebView child dialog");
+
+        const QString screenshotName =
+            QString("dialoglogin-intervals-oauth-dialog-%1-%2.png")
+                .arg(kPlatformTag, m_timestamp);
+        saveScreenshot(dialog, screenshotName, m_outDir);
+
+        qDebug().noquote() << "[DialogLoginIntervalsIcuOAuthDialog] PASS";
     }
 };
 

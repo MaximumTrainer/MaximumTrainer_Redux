@@ -652,4 +652,4 @@ jobs:
       if: always()
       with:
         name: login-screen-screenshot-windows
-        path: build\tests\login-screen*-windows-*.png
+        path: build\tests\*-windows-*.png

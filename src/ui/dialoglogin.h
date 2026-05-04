@@ -25,7 +25,10 @@ class DialogLogin : public QDialog
     Q_OBJECT
 
 public:
-    explicit DialogLogin(QWidget *parent = 0);
+    /// @param testMode  When true the constructor skips all network requests
+    ///                  and immediately shows widget_bottom in an "offline
+    ///                  ready" state.  Only use this in unit/integration tests.
+    explicit DialogLogin(QWidget *parent = nullptr, bool testMode = false);
     //    ~DialogLogin();
 
 

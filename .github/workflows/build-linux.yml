@@ -585,6 +585,8 @@ jobs:
           libqt5network5 \
           libqt5bluetooth5 \
           libqt5test5 \
+          libqt5webenginewidgets5 \
+          libqt5webenginecore5 \
           xvfb \
           libfontconfig1 \
           libxrender1 \
@@ -612,7 +614,7 @@ jobs:
       if: always()
       with:
         name: login-screen-screenshot-linux
-        path: build/tests/login-screen*-linux-*.png
+        path: build/tests/*-linux-*.png
 
   # ──────────────────────────────────────────────────────────────────────────
   # Strava / TrainingPeaks / Selfloops Service Unit Tests – Linux

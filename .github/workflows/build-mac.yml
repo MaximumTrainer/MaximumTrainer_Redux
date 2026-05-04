@@ -426,7 +426,7 @@ jobs:
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
-        modules: 'qtconnectivity'
+        modules: 'qtwebengine qtconnectivity'
         cache: true
         cache-key-prefix: qt-mac
 
@@ -447,4 +447,4 @@ jobs:
       if: always()
       with:
         name: login-screen-screenshot-macos
-        path: build/tests/login-screen*-macos-*.png
+        path: build/tests/*-macos-*.png
