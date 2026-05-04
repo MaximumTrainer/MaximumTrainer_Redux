@@ -142,6 +142,17 @@ jobs:
         qmake login_screen_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0"
         make -j$(sysctl -n hw.logicalcpu)
 
+    - name: Bundle QWT dylib into test artifact
+      # The test runner job has no QWT installation. Copy the dylib next to the
+      # binary and rewrite its LC_LOAD_DYLIB to @loader_path so dyld finds it
+      # from the artifact without needing the absolute /usr/local path.
+      run: |
+        cp /usr/local/qwt-6.2.0/lib/libqwt.6.dylib build/tests/
+        install_name_tool \
+          -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+          @loader_path/libqwt.6.dylib \
+          build/tests/login_screen_tests
+
     - name: Bind rpath for Qt frameworks and OpenSSL
       run: |
         install_name_tool -add_rpath /usr/local/lib build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
@@ -429,12 +440,6 @@ jobs:
         modules: 'qtwebengine qtconnectivity'
         cache: true
         cache-key-prefix: qt-mac
-
-    - name: Restore QWT cache
-      uses: actions/cache@v4
-      with:
-        path: /usr/local/qwt-6.2.0
-        key: qwt-6.2.0-qt-6.7.3-macos
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
