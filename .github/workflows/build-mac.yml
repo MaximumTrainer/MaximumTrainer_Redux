@@ -46,8 +46,15 @@ jobs:
       id: qwt-cache
       uses: actions/cache@v4
       with:
-        path: /usr/local/qwt-6.2.0
-        key: qwt-6.2.0-qt-6.7.3-macos
+        # Cache only the directories needed to compile and link against QWT.
+        # Excluding qwt-6.2.0/doc avoids a gtar extraction failure on macOS
+        # runners where that subtree contains paths that confuse GNU tar.
+        path: |
+          /usr/local/qwt-6.2.0/lib
+          /usr/local/qwt-6.2.0/include
+          /usr/local/qwt-6.2.0/features
+          /usr/local/qwt-6.2.0/mkspecs
+        key: qwt-6.2.0-qt-6.7.3-macos-nodoc
 
     - name: Build and install QWT
       if: steps.qwt-cache.outputs.cache-hit != 'true'
@@ -431,10 +438,43 @@ jobs:
         cache-key-prefix: qt-mac
 
     - name: Restore QWT cache
+      id: qwt-cache
       uses: actions/cache@v4
       with:
-        path: /usr/local/qwt-6.2.0
-        key: qwt-6.2.0-qt-6.7.3-macos
+        # Must match the path/key used in the build_mac job so the same
+        # cache entry is used.  We cache only lib/include/features/mkspecs
+        # to avoid the gtar extraction failure that occurs with qwt-6.2.0/doc.
+        path: |
+          /usr/local/qwt-6.2.0/lib
+          /usr/local/qwt-6.2.0/include
+          /usr/local/qwt-6.2.0/features
+          /usr/local/qwt-6.2.0/mkspecs
+        key: qwt-6.2.0-qt-6.7.3-macos-nodoc
+
+    - name: Verify QWT dylib
+      id: verify-qwt
+      run: |
+        if [ -f /usr/local/qwt-6.2.0/lib/libqwt.6.dylib ]; then
+          echo "present=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "present=false" >> "$GITHUB_OUTPUT"
+          sudo rm -rf /usr/local/qwt-6.2.0
+        fi
+
+    - name: Rebuild QWT (cache miss or corrupt restore)
+      if: steps.qwt-cache.outputs.cache-hit != 'true' || steps.verify-qwt.outputs.present != 'true'
+      run: |
+        cd /tmp
+        curl -L -o qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.2.0/qwt-6.2.0.tar.bz2/download"
+        tar -xjf qwt.tar.bz2
+        cd qwt-6.2.0
+        sed -i.bak 's/QwtFramework//' qwtconfig.pri
+        qmake qwt.pro
+        make -j$(sysctl -n hw.logicalcpu)
+        sudo make install
+        sudo install_name_tool -id \
+          "/usr/local/qwt-6.2.0/lib/libqwt.6.dylib" \
+          "/usr/local/qwt-6.2.0/lib/libqwt.6.dylib"
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -447,6 +487,10 @@ jobs:
 
     - name: Run login screen test
       run: ./build/tests/login_screen_tests -v2
+      env:
+        # Ensure macOS dyld can locate libqwt even if the binary's LC_LOAD_DYLIB
+        # records an absolute install_name that differs from the restored path.
+        DYLD_LIBRARY_PATH: /usr/local/qwt-6.2.0/lib
 
     - name: Upload login screen screenshot
       uses: actions/upload-artifact@v4
