@@ -346,6 +346,15 @@ jobs:
         jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
+    - name: Build workout UI test
+      run: |
+        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
+        Set-Location tests\integration
+        $qwtDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
+        qmake workout_ui_tests.pro "QWT_INSTALL=$qwtDirFwd"
+        jom /J $env:NUMBER_OF_PROCESSORS
+      shell: powershell
+
     - name: Deploy Qt for test binaries
       run: |
         & "$env:QTDIR\bin\windeployqt.exe" --release `
@@ -368,6 +377,10 @@ jobs:
             --no-translations `
             --no-system-d3d-compiler `
             build\tests\login_screen_tests.exe
+        & "$env:QTDIR\bin\windeployqt.exe" --release `
+            --no-translations `
+            --no-system-d3d-compiler `
+            build\tests\workout_ui_tests.exe
         foreach ($dll in @("libssl-1_1-x64.dll", "libcrypto-1_1-x64.dll")) {
           $src = "$env:OPENSSL_BIN\$dll"
           if (Test-Path $src) { Copy-Item $src "build\tests\" -Force }
@@ -661,3 +674,52 @@ jobs:
           build\tests\*-windows-*.png
           build\tests\*dialoglogin*-windows-*.png
           build\tests\login-screen-test-output.txt
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout UI Integration Test – Windows
+  #
+  # Validates the end-to-end workout pipeline on Windows, including:
+  #   • User login (offline path)
+  #   • Workout XML creation and retrieval (round-trip, lightweight schema)
+  #   • Workout model construction and field verification (Workout / Interval)
+  #   • Workout XML round-trip via XmlUtil::createWorkoutXml + parseSingleWorkoutXml
+  #   • Workout average-power metric (getAveragePower)
+  #   • ERG simulation: setLoad and setSlope drive SimulatorHub to the
+  #     correct power target without physical Bluetooth hardware
+  #   • Workout session lifecycle: start / pause / resume / stop with data
+  #     accumulation across all four sensor channels
+  #   • Interval advancement: ERG target changes at each interval boundary
+  #   • Power-on-target: actual power stays within ±25 % of ERG target
+  #   • Network connectivity: HTTPS GET to intervals.icu/api/v1 (QSKIP when
+  #     credentials absent)
+  #   • Network workout retrieval: GET /athlete/{id}/workouts returns a JSON
+  #     array (QSKIP when credentials absent)
+  #   • A labelled 1280×720 screenshot with QWT power-curve plot is captured
+  #     as visual build evidence
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_ui:
+    runs-on: windows-latest
+    needs: build_windows
+    permissions:
+      contents: read
+    env:
+      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
+      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
+
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: windows
+        path: build
+
+    - name: Run workout UI test
+      run: .\build\tests\workout_ui_tests.exe -v2
+      shell: powershell
+
+    - name: Upload workout UI screenshot
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: workout-ui-screenshot-windows
+        path: build\tests\workout-ui-windows-*.png

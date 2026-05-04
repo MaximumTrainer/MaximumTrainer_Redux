@@ -111,6 +111,8 @@ jobs:
         make -j$(nproc)
         qmake login_screen_tests.pro
         make -j$(nproc)
+        qmake workout_ui_tests.pro
+        make -j$(nproc)
 
     - name: Build BTLE unit tests
       run: |
@@ -615,6 +617,78 @@ jobs:
       with:
         name: login-screen-screenshot-linux
         path: build/tests/*-linux-*.png
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout UI Integration Test – Linux
+  #
+  # Validates the end-to-end workout pipeline on Linux, including:
+  #   • User login (offline path)
+  #   • Workout XML creation and retrieval (round-trip, lightweight schema)
+  #   • Workout model construction and field verification (Workout / Interval)
+  #   • Workout XML round-trip via XmlUtil::createWorkoutXml + parseSingleWorkoutXml
+  #   • Workout average-power metric (getAveragePower)
+  #   • ERG simulation: setLoad and setSlope drive SimulatorHub to the
+  #     correct power target without physical Bluetooth hardware
+  #   • Workout session lifecycle: start / pause / resume / stop with data
+  #     accumulation across all four sensor channels
+  #   • Interval advancement: ERG target changes at each interval boundary
+  #   • Power-on-target: actual power stays within ±25 % of ERG target
+  #   • Network connectivity: HTTPS GET to intervals.icu/api/v1 (QSKIP when
+  #     credentials absent)
+  #   • Network workout retrieval: GET /athlete/{id}/workouts returns a JSON
+  #     array (QSKIP when credentials absent)
+  #   • A labelled 1280×720 screenshot with QWT power-curve plot is captured
+  #     as visual build evidence
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_ui:
+    runs-on: ubuntu-22.04
+    needs: build_linux
+    permissions:
+      contents: read
+    env:
+      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
+      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
+
+    steps:
+    - name: Install runtime dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          libqt5core5a \
+          libqt5gui5 \
+          libqt5widgets5 \
+          libqt5network5 \
+          libqt5sql5 \
+          libqt5test5 \
+          libqwt-qt5-6 \
+          xvfb \
+          libfontconfig1 \
+          libxrender1 \
+          libxext6 \
+          libgl1-mesa-dev
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: linux
+        path: build
+
+    - name: Make test binary executable
+      run: chmod +x build/tests/workout_ui_tests
+
+    - name: Run workout UI test with Xvfb
+      run: |
+        Xvfb :99 -screen 0 1280x800x24 &
+        sleep 1
+        export DISPLAY=:99
+        ./build/tests/workout_ui_tests -v2
+
+    - name: Upload workout UI screenshot
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: workout-ui-screenshot-linux
+        path: build/tests/workout-ui-linux-*.png
 
   # ──────────────────────────────────────────────────────────────────────────
   # Strava / TrainingPeaks / Selfloops Service Unit Tests – Linux

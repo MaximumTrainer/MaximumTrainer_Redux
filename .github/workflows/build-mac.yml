@@ -142,6 +142,15 @@ jobs:
         qmake login_screen_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0"
         make -j$(sysctl -n hw.logicalcpu)
 
+    - name: Build workout UI test
+      run: |
+        mkdir -p build/tests
+        cd tests/integration
+        qmake workout_ui_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0" \
+          QMAKE_LFLAGS+="-L$(brew --prefix openssl@3)/lib" \
+          QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
+        make -j$(sysctl -n hw.logicalcpu)
+
     - name: Bundle QWT dylib into test artifact
       # The test runner job has no QWT installation. Copy the dylib next to the
       # binary and rewrite its LC_LOAD_DYLIB to @loader_path so dyld finds it
@@ -152,12 +161,17 @@ jobs:
           -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
           @loader_path/libqwt.6.dylib \
           build/tests/login_screen_tests
+        install_name_tool \
+          -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+          @loader_path/libqwt.6.dylib \
+          build/tests/workout_ui_tests
 
     - name: Bind rpath for Qt frameworks and OpenSSL
       run: |
         install_name_tool -add_rpath /usr/local/lib build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
         install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
         install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/tests/online_mode_tests
+        install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/tests/workout_ui_tests
 
     - name: upload artifact
       uses: actions/upload-artifact@v4
@@ -459,3 +473,67 @@ jobs:
       with:
         name: login-screen-screenshot-macos
         path: build/tests/*-macos-*.png
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout UI Integration Test – macOS
+  #
+  # Validates the end-to-end workout pipeline on macOS, including:
+  #   • User login (offline path)
+  #   • Workout XML creation and retrieval (round-trip, lightweight schema)
+  #   • Workout model construction and field verification (Workout / Interval)
+  #   • Workout XML round-trip via XmlUtil::createWorkoutXml + parseSingleWorkoutXml
+  #   • Workout average-power metric (getAveragePower)
+  #   • ERG simulation: setLoad and setSlope drive SimulatorHub to the
+  #     correct power target without physical Bluetooth hardware
+  #   • Workout session lifecycle: start / pause / resume / stop with data
+  #     accumulation across all four sensor channels
+  #   • Interval advancement: ERG target changes at each interval boundary
+  #   • Power-on-target: actual power stays within ±25 % of ERG target
+  #   • Network connectivity: HTTPS GET to intervals.icu/api/v1 (QSKIP when
+  #     credentials absent)
+  #   • Network workout retrieval: GET /athlete/{id}/workouts returns a JSON
+  #     array (QSKIP when credentials absent)
+  #   • A labelled 1280×720 screenshot with QWT power-curve plot is captured
+  #     as visual build evidence
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_ui:
+    runs-on: macos-latest
+    needs: build_mac
+    permissions:
+      contents: read
+    env:
+      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
+      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
+
+    steps:
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.7.3'
+        host: 'mac'
+        target: 'desktop'
+        arch: 'clang_64'
+        cache: true
+        cache-key-prefix: qt-mac
+
+    - name: Install OpenSSL
+      run: brew install openssl@3
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: macos
+        path: build
+
+    - name: Make test binary executable
+      run: chmod +x build/tests/workout_ui_tests
+
+    - name: Run workout UI test
+      run: ./build/tests/workout_ui_tests -v2
+
+    - name: Upload workout UI screenshot
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: workout-ui-screenshot-macos
+        path: build/tests/workout-ui-macos-*.png
