@@ -46,8 +46,15 @@ jobs:
       id: qwt-cache
       uses: actions/cache@v4
       with:
-        path: /usr/local/qwt-6.2.0
-        key: qwt-6.2.0-qt-6.7.3-macos
+        # Cache only the directories needed to compile and link against QWT.
+        # Excluding qwt-6.2.0/doc avoids a gtar extraction failure on macOS
+        # runners where that subtree contains paths that confuse GNU tar.
+        path: |
+          /usr/local/qwt-6.2.0/lib
+          /usr/local/qwt-6.2.0/include
+          /usr/local/qwt-6.2.0/features
+          /usr/local/qwt-6.2.0/mkspecs
+        key: qwt-6.2.0-qt-6.7.3-macos-nodoc
 
     - name: Build and install QWT
       if: steps.qwt-cache.outputs.cache-hit != 'true'

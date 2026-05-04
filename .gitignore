@@ -22,6 +22,8 @@ _codeql_detected_source_root
 node_modules/
 package.json
 package-lock.json
+# TypeScript compilation output (Playwright uses ts-node; no compiled output needed)
+.playwright-ts-out/
 # Playwright local test artefacts (CI uploads these; don't commit them)
 test-results/
 playwright-report/
