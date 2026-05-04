@@ -766,6 +766,8 @@ private slots:
         const QString screenshotName =
             QString("dialoglogin-initial-state-%1-%2.png")
                 .arg(kPlatformTag, m_timestamp);
+        dialog.resize(1280, 720);
+        QCoreApplication::processEvents();
         saveScreenshot(dialog, screenshotName, m_outDir);
 
         qDebug().noquote() << "[DialogLoginInitialState] PASS";
@@ -837,6 +839,8 @@ private slots:
         const QString screenshotName =
             QString("dialoglogin-offline-flow-%1-%2.png")
                 .arg(kPlatformTag, m_timestamp);
+        dialog.resize(1280, 720);
+        QCoreApplication::processEvents();
         saveScreenshot(dialog, screenshotName, m_outDir);
 
         qDebug().noquote()
@@ -878,6 +882,8 @@ private slots:
         const QString screenshotName =
             QString("dialoglogin-intervals-button-%1-%2.png")
                 .arg(kPlatformTag, m_timestamp);
+        dialog.resize(1280, 720);
+        QCoreApplication::processEvents();
         saveScreenshot(dialog, screenshotName, m_outDir);
 
         qDebug().noquote() << "[DialogLoginIntervalsIcuButton] PASS"
@@ -931,6 +937,8 @@ private slots:
         const QString screenshotName =
             QString("dialoglogin-intervals-oauth-dialog-%1-%2.png")
                 .arg(kPlatformTag, m_timestamp);
+        dialog.resize(1280, 720);
+        QCoreApplication::processEvents();
         saveScreenshot(dialog, screenshotName, m_outDir);
 
         qDebug().noquote() << "[DialogLoginIntervalsIcuOAuthDialog] PASS";
