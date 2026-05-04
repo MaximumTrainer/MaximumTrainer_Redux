@@ -1,5 +1,49 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { WasmAppPage, APP_URL } from './pages/WasmAppPage';
+
+// ── Shared helper ─────────────────────────────────────────────────────────────
+
+/**
+ * Register Playwright route intercepts for intervals.icu that always return
+ * 200 (with CORS headers), recording the non-preflight request URLs.
+ *
+ * @param page      Playwright Page instance.
+ * @param events    Optional JSON array body to return for `/events` requests.
+ *                  Defaults to `'[]'`.
+ * @returns Live array of intercepted non-OPTIONS URL strings.
+ */
+async function setupIntervalsIcuMocking(
+  page: Page,
+  events = '[]',
+): Promise<string[]> {
+  const captured: string[] = [];
+  await page.route('https://intervals.icu/**', async (route) => {
+    const req    = route.request();
+    const method = req.method();
+    const url    = req.url();
+    const corsHeaders = {
+      'Access-Control-Allow-Origin':  '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'authorization, content-type',
+    };
+    if (method === 'OPTIONS') { await route.fulfill({ status: 204, headers: corsHeaders }); return; }
+    captured.push(url);
+    if (url.includes('/events')) {
+      await route.fulfill({
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: events,
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+    }
+  });
+  return captured;
+}
 
 // ── Layer A: UI structure checks (no credentials required) ───────────────────
 //
@@ -85,55 +129,23 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
     const wasmApp = new WasmAppPage(page);
     await wasmApp.stubBluetooth();
     await wasmApp.mockBackendApis();
+    await setupIntervalsIcuMocking(page);
 
-    // Intercept intervals.icu routes and record any 401 responses.
+    // Track any 401 responses from the mocked intervals.icu endpoints.
     const authErrors: string[] = [];
-    await page.route('https://intervals.icu/**', async (route) => {
-      const req    = route.request();
-      const method = req.method();
-      const url    = req.url();
-      const corsHeaders = {
-        'Access-Control-Allow-Origin':  '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, content-type',
-      };
-      if (method === 'OPTIONS') { await route.fulfill({ status: 204, headers: corsHeaders }); return; }
-      if (url.includes('/events')) {
-        await route.fulfill({
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          body: '[]',
-        });
-      } else {
-        await route.fulfill({
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          body: '{}',
-        });
-      }
+    page.on('requestfinished', async (req) => {
+      if (!req.url().includes('intervals.icu')) return;
+      const resp = await req.response();
+      if (resp && resp.status() === 401) authErrors.push(`401 on ${req.url()}`);
     });
 
     await wasmApp.goto();
     await wasmApp.waitForFullyLoaded(300_000);
-
-    // Wait for the credential injection and refresh test hooks to be registered.
-    await page.waitForFunction(
-      () =>
-        typeof (window as any).mt_setIntervalsCredentials === 'function' &&
-        typeof (window as any).mt_intervalsRefresh === 'function',
-      null,
-      { timeout: 120_000 },
-    );
+    await wasmApp.waitForIntervalsTestHooks();
 
     // Inject credentials via the C++ test hook (avoids clear-text localStorage write).
-    await page.evaluate(
-      ({ key, id }: { key: string; id: string }) =>
-        (window as any).mt_setIntervalsCredentials(key, id),
-      { key: apiKey, id: athleteId },
-    );
-
-    // Trigger a calendar refresh to initiate authenticated requests.
-    await page.evaluate(() => (window as any).mt_intervalsRefresh());
+    await wasmApp.injectIntervalsCredentials(apiKey, athleteId);
+    await wasmApp.triggerIntervalsRefresh();
     await page.waitForTimeout(3_000);
 
     expect(
@@ -151,68 +163,31 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
     const wasmApp = new WasmAppPage(page);
     await wasmApp.stubBluetooth();
     await wasmApp.mockBackendApis();
-
-    // Intercept and fulfil all intervals.icu requests, capturing the URLs.
-    const successfulRequests: string[] = [];
-    await page.route('https://intervals.icu/**', async (route) => {
-      const req    = route.request();
-      const method = req.method();
-      const url    = req.url();
-      const corsHeaders = {
-        'Access-Control-Allow-Origin':  '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, content-type',
-      };
-      if (method === 'OPTIONS') { await route.fulfill({ status: 204, headers: corsHeaders }); return; }
-      successfulRequests.push(url);
-      if (url.includes('/events')) {
-        await route.fulfill({
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          body: JSON.stringify([
-            {
-              id:               'evt001',
-              name:             'Playwright Test Workout',
-              start_date_local: new Date().toISOString().split('T')[0],
-              type:             'Ride',
-              moving_time:      3600,
-            },
-          ]),
-        });
-      } else {
-        await route.fulfill({
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          body: '{}',
-        });
-      }
-    });
+    const successfulRequests = await setupIntervalsIcuMocking(
+      page,
+      JSON.stringify([
+        {
+          id:               'evt001',
+          name:             'Playwright Test Workout',
+          start_date_local: new Date().toISOString().split('T')[0],
+          type:             'Ride',
+          moving_time:      3600,
+        },
+      ]),
+    );
 
     await wasmApp.goto();
     await wasmApp.waitForFullyLoaded(300_000);
-
-    // Wait for the credential injection and refresh test hooks to be registered.
-    await page.waitForFunction(
-      () =>
-        typeof (window as any).mt_setIntervalsCredentials === 'function' &&
-        typeof (window as any).mt_intervalsRefresh === 'function',
-      null,
-      { timeout: 120_000 },
-    );
+    await wasmApp.waitForIntervalsTestHooks();
 
     // Inject credentials via the C++ test hook (avoids clear-text localStorage write).
-    await page.evaluate(
-      ({ key, id }: { key: string; id: string }) =>
-        (window as any).mt_setIntervalsCredentials(key, id),
-      { key: apiKey, id: athleteId },
-    );
+    await wasmApp.injectIntervalsCredentials(apiKey, athleteId);
 
     const calendarResponsePromise = page.waitForResponse(
       (resp) => resp.url().includes('intervals.icu') && resp.url().includes('/events'),
       { timeout: 30_000 },
     );
-
-    await page.evaluate(() => (window as any).mt_intervalsRefresh());
+    await wasmApp.triggerIntervalsRefresh();
     await calendarResponsePromise;
 
     if (successfulRequests.length === 0) {

@@ -421,6 +421,60 @@ export class WasmAppPage {
     });
   }
 
+  // ── Intervals.icu helpers ────────────────────────────────────────────────
+
+  /**
+   * Wait until both `mt_setIntervalsCredentials` and `mt_intervalsRefresh`
+   * test hooks have been registered by the WASM app.
+   *
+   * These hooks are exposed in `main()` (after Qt initialisation), so calling
+   * this method after `waitForFullyLoaded()` is sufficient.
+   *
+   * @param timeoutMs Maximum wait in ms (default 120 s).
+   */
+  async waitForIntervalsTestHooks(timeoutMs = 120_000): Promise<void> {
+    await this.page.waitForFunction(
+      () =>
+        typeof (window as any).mt_setIntervalsCredentials === 'function' &&
+        typeof (window as any).mt_intervalsRefresh === 'function',
+      null,
+      { timeout: timeoutMs },
+    );
+  }
+
+  /**
+   * Inject Intervals.icu credentials into the running WASM app via the
+   * `mt_setIntervalsCredentials(apiKey, athleteId)` C++ test hook.
+   *
+   * This passes credentials directly to the C++ layer without writing them
+   * to `localStorage` in the test, avoiding clear-text storage of sensitive
+   * data in the browser.
+   *
+   * Requires `waitForIntervalsTestHooks()` to have been called (or awaited)
+   * before this method.
+   *
+   * @param apiKey    Intervals.icu API key.
+   * @param athleteId Intervals.icu athlete ID (e.g. `'i00000'`).
+   */
+  async injectIntervalsCredentials(apiKey: string, athleteId: string): Promise<void> {
+    await this.page.evaluate(
+      ({ key, id }: { key: string; id: string }) =>
+        (window as any).mt_setIntervalsCredentials(key, id),
+      { key: apiKey, id: athleteId },
+    );
+  }
+
+  /**
+   * Trigger an Intervals.icu calendar refresh via the `mt_intervalsRefresh`
+   * C++ test hook.
+   *
+   * Requires `waitForIntervalsTestHooks()` to have been called (or awaited)
+   * before this method.
+   */
+  async triggerIntervalsRefresh(): Promise<void> {
+    await this.page.evaluate(() => (window as any).mt_intervalsRefresh());
+  }
+
   // ── Convenience getters ───────────────────────────────────────────────────
 
   /** Full URL of the WASM app shell page. */

@@ -95,20 +95,10 @@ test.describe('Intervals.icu WASM functional', () => {
       await wasmApp.waitForFullyLoaded(300_000);
 
       // Wait for BOTH test hooks to be registered by the C++ WASM code.
-      await wasmApp.page.waitForFunction(
-        () =>
-          typeof (window as any).mt_setIntervalsCredentials === 'function' &&
-          typeof (window as any).mt_intervalsRefresh === 'function',
-        null,
-        { timeout: 120_000 },
-      );
+      await wasmApp.waitForIntervalsTestHooks();
 
       // Inject credentials directly into the Account object.
-      await wasmApp.page.evaluate(
-        ({ apiKey, athleteId }: { apiKey: string; athleteId: string }) =>
-          (window as any).mt_setIntervalsCredentials(apiKey, athleteId),
-        { apiKey: TEST_API_KEY, athleteId: TEST_ATHLETE_ID },
-      );
+      await wasmApp.injectIntervalsCredentials(TEST_API_KEY, TEST_ATHLETE_ID);
 
       // Set up response listener BEFORE triggering refresh to avoid a race.
       const calendarResponsePromise = wasmApp.page.waitForResponse(
@@ -117,7 +107,7 @@ test.describe('Intervals.icu WASM functional', () => {
         { timeout: 30_000 },
       );
 
-      await wasmApp.page.evaluate(() => (window as any).mt_intervalsRefresh());
+      await wasmApp.triggerIntervalsRefresh();
       await calendarResponsePromise;
     });
 

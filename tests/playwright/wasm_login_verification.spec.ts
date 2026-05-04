@@ -183,20 +183,10 @@ test.describe('Login verification – Layer B: real credentials', () => {
     await wasmApp.waitForFullyLoaded(300_000);
 
     // Wait for both test hooks to be registered.
-    await wasmApp.page.waitForFunction(
-      () =>
-        typeof (window as any).mt_setIntervalsCredentials === 'function' &&
-        typeof (window as any).mt_intervalsRefresh === 'function',
-      null,
-      { timeout: 120_000 },
-    );
+    await wasmApp.waitForIntervalsTestHooks();
 
     // ── Step 3: Inject real credentials into the running WASM app ─────────────
-    await wasmApp.page.evaluate(
-      ({ key, id }: { key: string; id: string }) =>
-        (window as any).mt_setIntervalsCredentials(key, id),
-      { key: apiKey, id: athleteId },
-    );
+    await wasmApp.injectIntervalsCredentials(apiKey, athleteId);
 
     const calendarResponsePromise = wasmApp.page.waitForResponse(
       (resp) =>
@@ -204,7 +194,7 @@ test.describe('Login verification – Layer B: real credentials', () => {
       { timeout: 30_000 },
     );
 
-    await wasmApp.page.evaluate(() => (window as any).mt_intervalsRefresh());
+    await wasmApp.triggerIntervalsRefresh();
     await calendarResponsePromise;
 
     // Capture a screenshot as login evidence.
