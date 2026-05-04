@@ -2,7 +2,18 @@ name: Build - Linux
 
 on:
   workflow_call:
+    inputs:
+      tag_name:
+        description: 'Release tag to embed as APP_VERSION (e.g. v1.2.3). Falls back to git describe when empty.'
+        required: false
+        type: string
+        default: ''
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag to embed as APP_VERSION (e.g. v1.2.3). Falls back to git describe when empty.'
+        required: false
+        default: ''
 
 jobs:
 
@@ -60,9 +71,14 @@ jobs:
 
     - name: Determine build version
       run: |
-        GIT_TAG=$(git describe --tags --match 'v[0-9]*' --always | tr -d '\r' | sed 's/-[0-9]*-g[0-9a-f]*$//')
-        [[ "$GIT_TAG" =~ ^[vV][0-9] ]] || GIT_TAG="v0.0.0"
-        echo "Build version: $GIT_TAG"
+        if [ -n "${{ inputs.tag_name }}" ]; then
+          GIT_TAG="${{ inputs.tag_name }}"
+          echo "Using passed tag: $GIT_TAG"
+        else
+          GIT_TAG=$(git describe --tags --match 'v[0-9]*' --always | tr -d '\r' | sed 's/-[0-9]*-g[0-9a-f]*$//')
+          [[ "$GIT_TAG" =~ ^[vV][0-9] ]] || GIT_TAG="v0.0.0"
+          echo "Using git describe: $GIT_TAG"
+        fi
         echo "GIT_TAG=$GIT_TAG" >> "$GITHUB_ENV"
 
     - name: Create Makefile

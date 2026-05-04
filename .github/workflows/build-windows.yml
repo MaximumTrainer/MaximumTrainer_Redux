@@ -2,7 +2,18 @@ name: Build - Windows
 
 on:
   workflow_call:
+    inputs:
+      tag_name:
+        description: 'Release tag to embed as APP_VERSION (e.g. v1.2.3). Falls back to git describe when empty.'
+        required: false
+        type: string
+        default: ''
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag to embed as APP_VERSION (e.g. v1.2.3). Falls back to git describe when empty.'
+        required: false
+        default: ''
 
 jobs:
 
@@ -162,8 +173,15 @@ jobs:
 
     - name: Determine build version
       run: |
-        $tag = (git describe --tags --match 'v[0-9]*' --always) -replace '\r','' -replace '-\d+-g[0-9a-f]+$',''
-        if (-not ($tag -match '^[vV][0-9]')) { $tag = 'v0.0.0' }
+        $passedTag = "${{ inputs.tag_name }}"
+        if ($passedTag -ne '') {
+          $tag = $passedTag
+          Write-Host "Using passed tag: $tag"
+        } else {
+          $tag = (git describe --tags --match 'v[0-9]*' --always) -replace '\r','' -replace '-\d+-g[0-9a-f]+$',''
+          if (-not ($tag -match '^[vV][0-9]')) { $tag = 'v0.0.0' }
+          Write-Host "Using git describe: $tag"
+        }
         "GIT_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         Write-Host "Build version: $tag"
       shell: powershell
