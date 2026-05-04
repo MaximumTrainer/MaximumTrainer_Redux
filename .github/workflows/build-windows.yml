@@ -350,7 +350,8 @@ jobs:
       run: |
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\integration
-        qmake workout_ui_tests.pro
+        $qwtDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
+        qmake workout_ui_tests.pro "QWT_INSTALL=$qwtDirFwd"
         jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
@@ -670,21 +671,33 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   # Workout UI Integration Test – Windows
   #
-  # Validates the end-to-end workout pipeline on Windows:
+  # Validates the end-to-end workout pipeline on Windows, including:
   #   • User login (offline path)
-  #   • Workout XML creation and retrieval (round-trip)
+  #   • Workout XML creation and retrieval (round-trip, lightweight schema)
+  #   • Workout model construction and field verification (Workout / Interval)
+  #   • Workout XML round-trip via XmlUtil::createWorkoutXml + parseSingleWorkoutXml
+  #   • Workout average-power metric (getAveragePower)
   #   • ERG simulation: setLoad and setSlope drive SimulatorHub to the
   #     correct power target without physical Bluetooth hardware
   #   • Workout session lifecycle: start / pause / resume / stop with data
   #     accumulation across all four sensor channels
   #   • Interval advancement: ERG target changes at each interval boundary
-  #   • A labelled 1280×720 screenshot is captured as visual build evidence
+  #   • Power-on-target: actual power stays within ±25 % of ERG target
+  #   • Network connectivity: HTTPS GET to intervals.icu/api/v1 (QSKIP when
+  #     credentials absent)
+  #   • Network workout retrieval: GET /athlete/{id}/workouts returns a JSON
+  #     array (QSKIP when credentials absent)
+  #   • A labelled 1280×720 screenshot with QWT power-curve plot is captured
+  #     as visual build evidence
   # ──────────────────────────────────────────────────────────────────────────
   test_workout_ui:
     runs-on: windows-latest
     needs: build_windows
     permissions:
       contents: read
+    env:
+      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
+      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
 
     steps:
     - name: Download build artifact

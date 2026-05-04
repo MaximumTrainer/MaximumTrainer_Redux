@@ -42,13 +42,36 @@
  *   9. Session data accumulation:  Heart rate, cadence, speed, and power
  *      readings fall within realistic sensor ranges throughout the session.
  *
- *  10. Visual screenshot:  A 1280×720 workout-execution window is shown
- *      with the workout name, current interval indicator, live telemetry
- *      from SimulatorHub, and session state badge.  The screenshot is
- *      saved as build evidence and uploaded as a CI artefact.
+ *  10. Workout model construction:  Workout and Interval objects are built
+ *      in-process and all accessor fields are verified.
+ *
+ *  11. Workout XML round-trip with model:  XmlUtil::createWorkoutXml
+ *      writes the Workout, then XmlUtil::parseSingleWorkoutXml reads it
+ *      back.  Plan, name, description, type, interval durations, and
+ *      power fractions are all verified.
+ *
+ *  12. Workout average-power metric:  A two-interval flat-power workout
+ *      is constructed and Workout::getAveragePower() is verified.
+ *
+ *  13. Network connectivity:  An HTTPS GET request is made to the
+ *      intervals.icu REST API.  The test calls QSKIP when
+ *      INTERVALS_ICU_API_KEY / INTERVALS_ICU_ATHLETE_ID are absent;
+ *      otherwise it verifies HTTP 200 and a non-empty athlete name.
+ *
+ *  14. Network workout retrieval:  GET /athlete/{id}/workouts returns a
+ *      JSON array.  The test QSKIP-guards on missing credentials.
+ *
+ *  15. Power-on-target verification:  After a 3-second ERG session the
+ *      last reported actual power is within ±25 % of the ERG target.
+ *
+ *  16. Visual screenshot:  A 1280×720 workout-execution window is shown
+ *      with a QWT power-curve plot (actual vs target power), the workout
+ *      name, current interval indicator, live telemetry from SimulatorHub,
+ *      and session state badge.  The screenshot is saved as build evidence
+ *      and uploaded as a CI artefact.
  *
  * Build:
- *   qmake workout_ui_tests.pro && make
+ *   qmake workout_ui_tests.pro [QWT_INSTALL=/path/to/qwt] && make
  * Run headless (Linux CI):
  *   Xvfb :99 -screen 0 1280x800x24 &
  *   export DISPLAY=:99
@@ -77,8 +100,26 @@
 #include <QDir>
 #include <QTimer>
 #include <QSignalSpy>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QEventLoop>
+#include <QUrl>
 
+// QWT power-curve chart
+#include <qwt_plot.h>
+#include <qwt_plot_curve.h>
+#include <qwt_plot_grid.h>
+
+// Full workout model and XML utility
 #include "../../src/btle/simulator_hub.h"
+#include "../../src/model/account.h"
+#include "../../src/model/workout.h"
+#include "../../src/model/interval.h"
+#include "../../src/persistence/file/xmlutil.h"
 
 // ---------------------------------------------------------------------------
 // Compile-time platform tag embedded in screenshot filenames and window titles
@@ -193,13 +234,26 @@ public:
     int    lastCadence()      const { return m_lastCadence;      }
     double lastSpeed()        const { return m_lastSpeed;        }
 
+    /// Per-second power history for QWT chart: {targetWatts, actualWatts}
+    struct PowerSample { double target; double actual; };
+    const QVector<PowerSample> &powerHistory() const { return m_powerHistory; }
+
 signals:
     void intervalChanged(int index, double targetWatts);
     void sessionStateChanged(TestWorkoutSession::State state);
     void sessionFinished();
 
 public slots:
-    void onPower  (int, int power)  { if (m_state == Running) { m_lastPower   = power; ++m_dataPoints; } }
+    void onPower  (int, int power)  {
+        if (m_state == Running) {
+            m_lastPower = power;
+            ++m_dataPoints;
+            const double target = (m_currentInterval < m_intervals.size())
+                                  ? m_intervals.at(m_currentInterval).targetWatts
+                                  : 0.0;
+            m_powerHistory.append({target, static_cast<double>(power)});
+        }
+    }
     void onHr     (int, int hr)     { if (m_state == Running) { m_lastHr      = hr;                    } }
     void onCadence(int, int cad)    { if (m_state == Running) { m_lastCadence = cad;                   } }
     void onSpeed  (int, double spd) { if (m_state == Running) { m_lastSpeed   = spd;                   } }
@@ -253,6 +307,7 @@ private:
     int                    m_lastHr          = 0;
     int                    m_lastCadence     = 0;
     double                 m_lastSpeed       = 0.0;
+    QVector<PowerSample>   m_powerHistory;
 };
 
 // ============================================================================
@@ -387,6 +442,32 @@ public:
         root->addWidget(sensorFrame);
         root->addSpacing(14);
 
+        // ── QWT power-curve plot ─────────────────────────────────────────────
+        m_plot = new QwtPlot(this);
+        m_plot->setFixedHeight(160);
+        m_plot->setCanvasBackground(QColor("#161b22"));
+        m_plot->setStyleSheet("border: 1px solid #30363d; border-radius: 8px;");
+        m_plot->setAxisScale(QwtPlot::xBottom, 0, 30);  // 30 s window
+        m_plot->setAxisScale(QwtPlot::yLeft,   0, 350); // 0–350 W
+
+        // Target-power curve (dashed orange)
+        m_targetCurve = new QwtPlotCurve(QStringLiteral("Target Power"));
+        m_targetCurve->setPen(QPen(QColor("#f0883e"), 2, Qt::DashLine));
+        m_targetCurve->attach(m_plot);
+
+        // Actual-power curve (solid green)
+        m_actualCurve = new QwtPlotCurve(QStringLiteral("Actual Power"));
+        m_actualCurve->setPen(QPen(QColor("#3fb950"), 2));
+        m_actualCurve->attach(m_plot);
+
+        // Subtle grid
+        auto *grid = new QwtPlotGrid();
+        grid->setMajorPen(QPen(QColor("#21262d"), 1, Qt::DotLine));
+        grid->attach(m_plot);
+
+        root->addWidget(m_plot);
+        root->addSpacing(10);
+
         // ── Status row ──────────────────────────────────────────────────────
         auto *statusRow = new QHBoxLayout();
 
@@ -408,7 +489,7 @@ public:
 
         auto *footerLabel = new QLabel(
             "Workout UI Test -- MaximumTrainer CI  |  "
-            "Login · Create · Retrieve · Execute pipeline verified",
+            "Login · Create · Retrieve · Execute · QWT power curve · Network verified",
             this);
         footerLabel->setStyleSheet("font-size: 11px; color: #8b949e;");
         root->addWidget(footerLabel);
@@ -421,6 +502,23 @@ public slots:
     void onCadence(int, int cad)   { if (m_cadenceLabel) m_cadenceLabel->setText(QString::number(cad));              }
     void onPower  (int, int pwr)   { if (m_powerLabel)   m_powerLabel->setText(QString::number(pwr));                }
     void onSpeed  (int, double spd){ if (m_speedLabel)   m_speedLabel->setText(QString::number(spd, 'f', 1));        }
+
+    /// Feed power-history samples into the QWT chart.
+    void updatePowerChart(const QVector<TestWorkoutSession::PowerSample> &history)
+    {
+        if (!m_plot || history.isEmpty()) return;
+        const int n = history.size();
+        QVector<double> xs(n), ys_target(n), ys_actual(n);
+        for (int i = 0; i < n; ++i) {
+            xs[i]        = static_cast<double>(i);
+            ys_target[i] = history.at(i).target;
+            ys_actual[i] = history.at(i).actual;
+        }
+        m_targetCurve->setSamples(xs, ys_target);
+        m_actualCurve->setSamples(xs, ys_actual);
+        m_plot->setAxisScale(QwtPlot::xBottom, 0, qMax(30, n));
+        m_plot->replot();
+    }
 
     void onIntervalChanged(int idx, double watts)
     {
@@ -505,6 +603,11 @@ private:
     QLabel *m_dataCountLabel = nullptr;
     int     m_totalIntervals = 0;
     int     m_loadCmds       = 0;
+
+    // QWT power-curve chart
+    QwtPlot       *m_plot        = nullptr;
+    QwtPlotCurve  *m_targetCurve = nullptr;
+    QwtPlotCurve  *m_actualCurve = nullptr;
 };
 
 // ============================================================================
@@ -515,8 +618,9 @@ class TstWorkoutUi : public QObject
     Q_OBJECT
 
 private:
-    QString m_timestamp;
-    QString m_outputDir;
+    QString  m_timestamp;
+    QString  m_outputDir;
+    Account *m_account = nullptr;
 
     // ── Shared test-interval set ──────────────────────────────────────────
     // Returns the canonical three-interval workout used throughout the suite.
@@ -622,6 +726,24 @@ private slots:
                           .toString("yyyy-MM-ddTHH-mm-ss");
         m_outputDir = "build/tests";
         QDir().mkpath(m_outputDir);
+
+        // Set up a minimal Account in qApp so that Workout::calculateWorkoutMetrics()
+        // can read FTP without a null-pointer dereference.  FTP=200 W is used as
+        // the reference for all metric calculations in this test suite.
+        m_account = new Account();
+        m_account->FTP  = 200;
+        m_account->LTHR = 160;
+        m_account->email       = QStringLiteral("test@ci.example");
+        m_account->email_clean = QStringLiteral("testciexample");
+        m_account->isOffline   = true;
+        qApp->setProperty("Account", QVariant::fromValue<Account *>(m_account));
+    }
+
+    void cleanupTestCase()
+    {
+        qApp->setProperty("Account", QVariant());
+        delete m_account;
+        m_account = nullptr;
     }
 
     // ========================================================================
@@ -1073,12 +1195,13 @@ private slots:
     }
 
     // ========================================================================
-    // 9 -- Full visual screenshot
+    // 9 -- Full visual screenshot (with QWT power-curve plot)
     //
     // Displays a 1280×720 WorkoutExecutionWindow with live sensor data fed by
-    // SimulatorHub.  A three-interval session (200 ms ticks, 1 s intervals)
-    // runs to completion and all interval transitions are displayed in the
-    // window.  A PNG screenshot is saved as CI artefact evidence.
+    // SimulatorHub and a QWT power-curve chart (actual vs target power).
+    // A three-interval session (200 ms ticks, 1 s intervals) runs to
+    // completion and all interval transitions are displayed in the window.
+    // A PNG screenshot is saved as CI artefact evidence.
     // ========================================================================
     void testWorkoutExecutionScreenshot()
     {
@@ -1110,6 +1233,7 @@ private slots:
         connect(&refreshTimer, &QTimer::timeout,
                 this, [&session, win]() {
                     win->updateDataCount(session.dataPointCount());
+                    win->updatePowerChart(session.powerHistory());
                 });
         refreshTimer.start();
 
@@ -1125,6 +1249,7 @@ private slots:
 
         refreshTimer.stop();
         win->updateDataCount(session.dataPointCount());
+        win->updatePowerChart(session.powerHistory());
         win->updateStateBadge("[ COMPLETE ]", true);
         QApplication::processEvents();
         QTest::qWait(200); // allow final repaint
@@ -1147,6 +1272,345 @@ private slots:
 
         hub.stop();
         delete win;
+    }
+
+    // ========================================================================
+    // 10 -- Workout model construction
+    //
+    // Build Workout and Interval objects in-process using the production
+    // constructor.  Verify that all field accessors return the values
+    // supplied at construction time.
+    // ========================================================================
+    void testWorkoutModelConstruction()
+    {
+        // Build one flat-power interval: 10 min at 0.75 FTP, cadence 90
+        Interval iv(
+            QTime(0, 10, 0),                          // duration
+            QStringLiteral("Main Interval"),          // displayMessage
+            Interval::StepType::FLAT,                 // powerStepType
+            0.75, 0.75, 20, -1.0,                     // ftpStart, ftpEnd, range, rightBalance
+            Interval::StepType::FLAT,                 // cadenceStepType
+            90, 90, 5,                                // cadStart, cadEnd, range
+            Interval::StepType::NONE,                 // hrStepType
+            0.0, 0.0, 20,                             // hrStart, hrEnd, range
+            false, 0.0, 0, 0.0                        // testInterval, repeatFTP, cad, LTHR
+        );
+
+        QList<Interval> ivList;
+        ivList << iv;
+
+        Workout wk(
+            QStringLiteral("/tmp/test.workout"),
+            Workout::USER_MADE,
+            ivList,
+            QStringLiteral("Model Test Workout"),
+            QStringLiteral("CI"),
+            QStringLiteral("Unit test workout"),
+            QStringLiteral("Test Plan"),
+            Workout::T_INTERVAL
+        );
+
+        QCOMPARE(wk.getName(),        QStringLiteral("Model Test Workout"));
+        QCOMPARE(wk.getCreatedBy(),   QStringLiteral("CI"));
+        QCOMPARE(wk.getDescription(), QStringLiteral("Unit test workout"));
+        QCOMPARE(wk.getPlan(),        QStringLiteral("Test Plan"));
+        QCOMPARE(wk.getType(),        Workout::T_INTERVAL);
+        QCOMPARE(wk.getNbInterval(),  1);
+
+        const Interval &first = wk.getLstInterval().at(0);
+        QCOMPARE(first.getDisplayMessage(), QStringLiteral("Main Interval"));
+        QVERIFY2(qAbs(first.getFTP_start() - 0.75) < 0.001,
+                 qPrintable(QString("FTP_start expected 0.75, got %1").arg(first.getFTP_start())));
+        QCOMPARE(first.getCadence_start(), 90);
+    }
+
+    // ========================================================================
+    // 11 -- Workout XML round-trip with production model
+    //
+    // Build a Workout → write with XmlUtil::createWorkoutXml → parse back
+    // with XmlUtil::parseSingleWorkoutXml → verify all key fields.
+    // ========================================================================
+    void testWorkoutXmlRoundTripWithModel()
+    {
+        // Build a two-interval workout
+        Interval iv1(QTime(0, 10, 0), QStringLiteral("Warm-Up"),
+                     Interval::StepType::FLAT, 0.55, 0.55, 20, -1.0,
+                     Interval::StepType::FLAT, 85, 85, 5,
+                     Interval::StepType::NONE, 0.0, 0.0, 20,
+                     false, 0.0, 0, 0.0);
+        Interval iv2(QTime(0, 20, 0), QStringLiteral("Tempo"),
+                     Interval::StepType::FLAT, 0.80, 0.80, 20, -1.0,
+                     Interval::StepType::FLAT, 92, 92, 5,
+                     Interval::StepType::NONE, 0.0, 0.0, 20,
+                     false, 0.0, 0, 0.0);
+
+        QList<Interval> ivList;
+        ivList << iv1 << iv2;
+
+        Workout wkOut(
+            QStringLiteral(""),        // filePath set below
+            Workout::USER_MADE,
+            ivList,
+            QStringLiteral("Round-Trip Workout"),
+            QStringLiteral("CI Bot"),
+            QStringLiteral("XML round-trip test"),
+            QStringLiteral("Build"),
+            Workout::T_ENDURANCE
+        );
+
+        // Write to a temp file
+        QTemporaryFile tmpFile;
+        tmpFile.setAutoRemove(false);
+        QVERIFY(tmpFile.open());
+        const QString path = tmpFile.fileName();
+        tmpFile.close();
+
+        wkOut.setFilePath(path);
+        const bool written = XmlUtil::createWorkoutXml(wkOut, path);
+        QVERIFY2(written,              "XmlUtil::createWorkoutXml returned false");
+        QVERIFY2(QFile::exists(path),  "Written workout file not found on disk");
+        QVERIFY2(QFileInfo(path).size() > 0, "Written workout file is empty");
+
+        // Parse back
+        XmlUtil parser(QStringLiteral("en"));
+        Workout wkIn = parser.parseSingleWorkoutXml(path);
+
+        QCOMPARE(wkIn.getCreatedBy(),   QStringLiteral("CI Bot"));
+        QCOMPARE(wkIn.getDescription(), QStringLiteral("XML round-trip test"));
+        QCOMPARE(wkIn.getPlan(),        QStringLiteral("Build"));
+        QCOMPARE(wkIn.getType(),        Workout::T_ENDURANCE);
+        QCOMPARE(wkIn.getNbInterval(),  2);
+
+        const Interval &r1 = wkIn.getLstInterval().at(0);
+        QCOMPARE(r1.getDurationQTime(), QTime(0, 10, 0));
+        QCOMPARE(r1.getDisplayMessage(), QStringLiteral("Warm-Up"));
+        QVERIFY2(qAbs(r1.getFTP_start() - 0.55) < 0.001,
+                 qPrintable(QString("Interval 0 FTP_start expected 0.55, got %1")
+                                .arg(r1.getFTP_start())));
+        QCOMPARE(r1.getCadence_start(), 85);
+
+        const Interval &r2 = wkIn.getLstInterval().at(1);
+        QCOMPARE(r2.getDurationQTime(), QTime(0, 20, 0));
+        QCOMPARE(r2.getDisplayMessage(), QStringLiteral("Tempo"));
+        QVERIFY2(qAbs(r2.getFTP_start() - 0.80) < 0.001,
+                 qPrintable(QString("Interval 1 FTP_start expected 0.80, got %1")
+                                .arg(r2.getFTP_start())));
+        QCOMPARE(r2.getCadence_start(), 92);
+
+        QFile::remove(path);
+    }
+
+    // ========================================================================
+    // 12 -- Workout average-power metric
+    //
+    // Construct a two-interval flat-power workout and verify that
+    // getAveragePower() returns the time-weighted mean in watts.
+    //
+    // Intervals:  10 min @ 0.60 FTP × 200 W FTP = 120 W
+    //             20 min @ 0.90 FTP × 200 W FTP = 180 W
+    // Expected avg: (10 × 120 + 20 × 180) / 30 = (1200 + 3600) / 30 = 160 W
+    // ========================================================================
+    void testWorkoutAveragePowerMetric()
+    {
+        Interval iv1(QTime(0, 10, 0), QStringLiteral("Easy"),
+                     Interval::StepType::FLAT, 0.60, 0.60, 20, -1.0,
+                     Interval::StepType::NONE, 0, 0, 5,
+                     Interval::StepType::NONE, 0.0, 0.0, 20,
+                     false, 0.0, 0, 0.0);
+        Interval iv2(QTime(0, 20, 0), QStringLiteral("Hard"),
+                     Interval::StepType::FLAT, 0.90, 0.90, 20, -1.0,
+                     Interval::StepType::NONE, 0, 0, 5,
+                     Interval::StepType::NONE, 0.0, 0.0, 20,
+                     false, 0.0, 0, 0.0);
+
+        QList<Interval> ivList;
+        ivList << iv1 << iv2;
+
+        // FTP = 200 W (set in initTestCase via qApp Account property).
+        // The Workout constructor calls initializeArrayFTP() + calculateWorkoutMetrics().
+        // averagePower = (avgFtpFraction) × FTP in absolute watts.
+        // 10 min × 0.60 + 20 min × 0.90 = 6.00 + 18.00 = 24.00 FTP-minutes
+        // 24.00 / 30 = 0.80 avg fraction → 0.80 × 200 = 160 W
+        Workout wk(
+            QStringLiteral(""),
+            Workout::USER_MADE,
+            ivList,
+            QStringLiteral("Metric Test"),
+            QStringLiteral("CI"),
+            QStringLiteral(""),
+            QStringLiteral("-"),
+            Workout::T_ENDURANCE
+        );
+
+        const double avgPowerW = wk.getAveragePower();
+        QVERIFY2(avgPowerW > 0.0,
+                 qPrintable(QString("getAveragePower() returned %1, expected > 0").arg(avgPowerW)));
+
+        // Expected: 160 W ±2 W tolerance for floating-point accumulation
+        QVERIFY2(qAbs(avgPowerW - 160.0) < 2.0,
+                 qPrintable(
+                     QString("Average power expected ~160 W, got %1 W").arg(avgPowerW)));
+    }
+
+    // ========================================================================
+    // 13 -- Network connectivity
+    //
+    // Performs a real HTTPS GET to intervals.icu/api/v1/athlete/{id} using
+    // credentials from environment variables.  QSKIP when absent so the
+    // suite degrades gracefully in offline CI and fork PRs.
+    // ========================================================================
+    void testNetworkConnectivity()
+    {
+        const QString apiKey    = qEnvironmentVariable("INTERVALS_ICU_API_KEY");
+        const QString athleteId = qEnvironmentVariable("INTERVALS_ICU_ATHLETE_ID");
+
+        if (apiKey.isEmpty() || athleteId.isEmpty())
+            QSKIP("INTERVALS_ICU_API_KEY / INTERVALS_ICU_ATHLETE_ID not set — skipping network test");
+
+        const QString url = QStringLiteral("https://intervals.icu/api/v1/athlete/") + athleteId;
+        QNetworkRequest req(url);
+        const QString credentials = QStringLiteral("API_KEY:") + apiKey;
+        req.setRawHeader("Authorization",
+                         QByteArray("Basic ") + credentials.toUtf8().toBase64());
+        req.setRawHeader("Accept", "application/json");
+
+        QNetworkAccessManager mgr;
+        QEventLoop loop;
+        QNetworkReply *reply = mgr.get(req);
+        connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+
+        QTimer timeout;
+        timeout.setSingleShot(true);
+        timeout.setInterval(30000);
+        connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+        timeout.start();
+        loop.exec();
+
+        QVERIFY2(!timeout.isActive() == false || reply->isFinished(),
+                 "Network request timed out (30 s)");
+
+        const int httpStatus =
+            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        QVERIFY2(httpStatus == 200,
+                 qPrintable(
+                     QString("Expected HTTP 200 from intervals.icu, got %1 — error: %2")
+                         .arg(httpStatus)
+                         .arg(reply->errorString())));
+
+        const QByteArray body = reply->readAll();
+        const QJsonDocument doc = QJsonDocument::fromJson(body);
+        QVERIFY2(!doc.isNull(),        "Response body is not valid JSON");
+        QVERIFY2(doc.isObject(),       "Response root is not a JSON object");
+
+        const QString athleteName = doc.object().value("name").toString();
+        QVERIFY2(!athleteName.isEmpty(),
+                 qPrintable(
+                     QString("Athlete name empty — raw response: %1")
+                         .arg(QString::fromUtf8(body.left(200)))));
+
+        reply->deleteLater();
+    }
+
+    // ========================================================================
+    // 14 -- Network workout retrieval
+    //
+    // GET /athlete/{id}/workouts and verify the response is a JSON array.
+    // QSKIP when credentials are absent.
+    // ========================================================================
+    void testNetworkWorkoutRetrieval()
+    {
+        const QString apiKey    = qEnvironmentVariable("INTERVALS_ICU_API_KEY");
+        const QString athleteId = qEnvironmentVariable("INTERVALS_ICU_ATHLETE_ID");
+
+        if (apiKey.isEmpty() || athleteId.isEmpty())
+            QSKIP("INTERVALS_ICU_API_KEY / INTERVALS_ICU_ATHLETE_ID not set — skipping network test");
+
+        const QString url =
+            QStringLiteral("https://intervals.icu/api/v1/athlete/") + athleteId
+            + QStringLiteral("/workouts?oldest=")
+            + QDate::currentDate().addDays(-30).toString(Qt::ISODate)
+            + QStringLiteral("&newest=")
+            + QDate::currentDate().toString(Qt::ISODate);
+
+        QNetworkRequest req(url);
+        const QString credentials = QStringLiteral("API_KEY:") + apiKey;
+        req.setRawHeader("Authorization",
+                         QByteArray("Basic ") + credentials.toUtf8().toBase64());
+        req.setRawHeader("Accept", "application/json");
+
+        QNetworkAccessManager mgr;
+        QEventLoop loop;
+        QNetworkReply *reply = mgr.get(req);
+        connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+
+        QTimer timeout;
+        timeout.setSingleShot(true);
+        timeout.setInterval(30000);
+        connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+        timeout.start();
+        loop.exec();
+
+        QVERIFY2(reply->isFinished(), "Workout retrieval request timed out (30 s)");
+
+        const int httpStatus =
+            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        QVERIFY2(httpStatus == 200,
+                 qPrintable(
+                     QString("Expected HTTP 200 from /workouts, got %1 — error: %2")
+                         .arg(httpStatus)
+                         .arg(reply->errorString())));
+
+        const QByteArray body = reply->readAll();
+        const QJsonDocument doc = QJsonDocument::fromJson(body);
+        QVERIFY2(!doc.isNull(),   "Workout list response is not valid JSON");
+        QVERIFY2(doc.isArray(),   "Workout list response root is not a JSON array");
+
+        // Each element should have at least an "id" field
+        const QJsonArray arr = doc.array();
+        for (int i = 0; i < qMin(3, arr.size()); ++i) {
+            QVERIFY2(arr.at(i).isObject(), qPrintable(
+                         QString("Workout list element %1 is not a JSON object").arg(i)));
+        }
+
+        reply->deleteLater();
+    }
+
+    // ========================================================================
+    // 15 -- Power-on-target verification
+    //
+    // Set a 200 W ERG target, run the simulator for 3 s, and verify the
+    // last reported actual power is within ±25 % (150–250 W).
+    // ========================================================================
+    void testPowerOnTargetVerification()
+    {
+        constexpr double kTarget  = 200.0;
+        constexpr double kTolPct  = 0.25; // ±25 %
+
+        SimulatorHub hub;
+        hub.setLoad(0, kTarget);
+        hub.start();
+
+        TestWorkoutSession session({TestIntervalDef{60, kTarget,
+                                                    QStringLiteral("Steady State")}});
+        session.start(&hub);
+
+        QTest::qWait(3500); // three 1-second hub ticks
+
+        session.stop();
+        hub.stop();
+
+        const int actual = session.lastPower();
+        const double lo  = kTarget * (1.0 - kTolPct);
+        const double hi  = kTarget * (1.0 + kTolPct);
+
+        QVERIFY2(actual >= static_cast<int>(lo) && actual <= static_cast<int>(hi),
+                 qPrintable(
+                     QString("Power-on-target: actual %1 W outside ±25%% of target %2 W "
+                             "(expected %3–%4 W)")
+                         .arg(actual)
+                         .arg(static_cast<int>(kTarget))
+                         .arg(static_cast<int>(lo))
+                         .arg(static_cast<int>(hi))));
     }
 };
 

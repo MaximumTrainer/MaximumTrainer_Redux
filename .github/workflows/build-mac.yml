@@ -146,7 +146,9 @@ jobs:
       run: |
         mkdir -p build/tests
         cd tests/integration
-        qmake workout_ui_tests.pro
+        qmake workout_ui_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0" \
+          QMAKE_LFLAGS+="-L$(brew --prefix openssl@3)/lib" \
+          QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
         make -j$(sysctl -n hw.logicalcpu)
 
     - name: Bind rpath for Qt frameworks and OpenSSL
@@ -154,6 +156,8 @@ jobs:
         install_name_tool -add_rpath /usr/local/lib build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
         install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
         install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/tests/online_mode_tests
+        install_name_tool -add_rpath /usr/local/qwt-6.2.0/lib    build/tests/workout_ui_tests
+        install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/tests/workout_ui_tests
 
     - name: upload artifact
       uses: actions/upload-artifact@v4
@@ -459,21 +463,33 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   # Workout UI Integration Test – macOS
   #
-  # Validates the end-to-end workout pipeline on macOS:
+  # Validates the end-to-end workout pipeline on macOS, including:
   #   • User login (offline path)
-  #   • Workout XML creation and retrieval (round-trip)
+  #   • Workout XML creation and retrieval (round-trip, lightweight schema)
+  #   • Workout model construction and field verification (Workout / Interval)
+  #   • Workout XML round-trip via XmlUtil::createWorkoutXml + parseSingleWorkoutXml
+  #   • Workout average-power metric (getAveragePower)
   #   • ERG simulation: setLoad and setSlope drive SimulatorHub to the
   #     correct power target without physical Bluetooth hardware
   #   • Workout session lifecycle: start / pause / resume / stop with data
   #     accumulation across all four sensor channels
   #   • Interval advancement: ERG target changes at each interval boundary
-  #   • A labelled 1280×720 screenshot is captured as visual build evidence
+  #   • Power-on-target: actual power stays within ±25 % of ERG target
+  #   • Network connectivity: HTTPS GET to intervals.icu/api/v1 (QSKIP when
+  #     credentials absent)
+  #   • Network workout retrieval: GET /athlete/{id}/workouts returns a JSON
+  #     array (QSKIP when credentials absent)
+  #   • A labelled 1280×720 screenshot with QWT power-curve plot is captured
+  #     as visual build evidence
   # ──────────────────────────────────────────────────────────────────────────
   test_workout_ui:
     runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
+    env:
+      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
+      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
 
     steps:
     - name: Install Qt
@@ -485,6 +501,15 @@ jobs:
         arch: 'clang_64'
         cache: true
         cache-key-prefix: qt-mac
+
+    - name: Install OpenSSL
+      run: brew install openssl@3
+
+    - name: Restore QWT cache
+      uses: actions/cache@v4
+      with:
+        path: /usr/local/qwt-6.2.0
+        key: qwt-6.2.0-qt-6.7.3-macos
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
