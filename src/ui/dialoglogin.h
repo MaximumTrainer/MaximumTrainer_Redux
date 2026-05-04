@@ -77,6 +77,11 @@ private slots:
     void on_checkBox_workOffline_clicked(bool checked);
     void on_pushButton_startOffline_clicked();
 
+signals:
+    /// Emitted synchronously just before the Intervals.icu OAuth2 dialog
+    /// calls exec().  Integration tests connect to this to detect and
+    /// dismiss the dialog without relying on post-exec() state.
+    void intervalsIcuOAuthDialogCreated(DialogInfoWebView *dialog);
 
 private:
     void loginOffline();

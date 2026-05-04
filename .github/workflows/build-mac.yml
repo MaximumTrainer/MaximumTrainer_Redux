@@ -441,6 +441,12 @@ jobs:
         cache: true
         cache-key-prefix: qt-mac
 
+    - name: Restore QWT cache
+      uses: actions/cache@v4
+      with:
+        path: /usr/local/qwt-6.2.0
+        key: qwt-6.2.0-qt-6.7.3-macos
+
     - name: Download build artifact
       uses: actions/download-artifact@v4
       with:
