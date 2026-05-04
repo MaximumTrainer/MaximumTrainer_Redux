@@ -1486,7 +1486,7 @@ private slots:
         timeout.start();
         loop.exec();
 
-        QVERIFY2(!timeout.isActive() == false || reply->isFinished(),
+        QVERIFY2(reply->isFinished(),
                  "Network request timed out (30 s)");
 
         const int httpStatus =
