@@ -745,11 +745,11 @@ private slots:
     // -----------------------------------------------------------------------
     void testDialogLoginInitialState()
     {
-        // Production mode: network requests fire, but we assert state *before*
-        // any reply arrives (synchronously, immediately after show()).
+        // Production mode: assert the *synchronous* constructor state by
+        // checking isVisibleTo() BEFORE show() — this avoids any race where
+        // a fast network reply fires loginLoaded() during processEvents() and
+        // hides widget_loading before we can assert it.
         DialogLogin dialog(nullptr, /*testMode=*/false);
-        dialog.show();
-        QCoreApplication::processEvents();
 
         const auto *widgetLoading = dialog.findChild<QWidget *>("widget_loading");
         const auto *widgetBottom  = dialog.findChild<QWidget *>("widget_bottom");
@@ -758,16 +758,21 @@ private slots:
                  "widget_loading must exist in DialogLogin");
         QVERIFY2(widgetBottom  != nullptr,
                  "widget_bottom must exist in DialogLogin");
-        QVERIFY2(widgetLoading->isVisible(),
-                 "widget_loading must be visible immediately after construction");
-        QVERIFY2(!widgetBottom->isVisible(),
-                 "widget_bottom must be hidden immediately after construction");
+
+        // isVisibleTo() checks logical visibility relative to the ancestor
+        // without requiring the top-level window to be shown yet.
+        QVERIFY2(widgetLoading->isVisibleTo(&dialog),
+                 "widget_loading must be logically visible immediately after construction");
+        QVERIFY2(!widgetBottom->isVisibleTo(&dialog),
+                 "widget_bottom must be logically hidden immediately after construction");
 
         const QString screenshotName =
             QString("dialoglogin-initial-state-%1-%2.png")
                 .arg(kPlatformTag, m_timestamp);
+        dialog.show();
+        QTest::qWaitForWindowExposed(&dialog);
         dialog.resize(1280, 720);
-        QCoreApplication::processEvents();
+        QTest::qWait(50);
         saveScreenshot(dialog, screenshotName, m_outDir);
 
         qDebug().noquote() << "[DialogLoginInitialState] PASS";
@@ -798,7 +803,9 @@ private slots:
     {
         DialogLogin dialog(nullptr, /*testMode=*/true);
         dialog.show();
-        QCoreApplication::processEvents();
+        // qWaitForWindowExposed guarantees the window is fully shown on all
+        // platforms before any isVisible() or mouseClick() calls.
+        QTest::qWaitForWindowExposed(&dialog);
 
         auto *checkBox   = dialog.findChild<QCheckBox  *>("checkBox_workOffline");
         auto *btnOffline = dialog.findChild<QPushButton *>("pushButton_startOffline");
@@ -840,7 +847,7 @@ private slots:
             QString("dialoglogin-offline-flow-%1-%2.png")
                 .arg(kPlatformTag, m_timestamp);
         dialog.resize(1280, 720);
-        QCoreApplication::processEvents();
+        QTest::qWait(50);
         saveScreenshot(dialog, screenshotName, m_outDir);
 
         qDebug().noquote()
@@ -868,7 +875,7 @@ private slots:
     {
         DialogLogin dialog(nullptr, /*testMode=*/true);
         dialog.show();
-        QCoreApplication::processEvents();
+        QTest::qWaitForWindowExposed(&dialog);
 
         auto *btn = dialog.findChild<QPushButton *>("pushButton_loginIntervalsIcu");
 
@@ -883,7 +890,7 @@ private slots:
             QString("dialoglogin-intervals-button-%1-%2.png")
                 .arg(kPlatformTag, m_timestamp);
         dialog.resize(1280, 720);
-        QCoreApplication::processEvents();
+        QTest::qWait(50);
         saveScreenshot(dialog, screenshotName, m_outDir);
 
         qDebug().noquote() << "[DialogLoginIntervalsIcuButton] PASS"
@@ -908,7 +915,7 @@ private slots:
     {
         DialogLogin dialog(nullptr, /*testMode=*/true);
         dialog.show();
-        QCoreApplication::processEvents();
+        QTest::qWaitForWindowExposed(&dialog);
 
         auto *btn = dialog.findChild<QPushButton *>("pushButton_loginIntervalsIcu");
         QVERIFY2(btn != nullptr,
@@ -938,7 +945,7 @@ private slots:
             QString("dialoglogin-intervals-oauth-dialog-%1-%2.png")
                 .arg(kPlatformTag, m_timestamp);
         dialog.resize(1280, 720);
-        QCoreApplication::processEvents();
+        QTest::qWait(50);
         saveScreenshot(dialog, screenshotName, m_outDir);
 
         qDebug().noquote() << "[DialogLoginIntervalsIcuOAuthDialog] PASS";

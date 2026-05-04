@@ -645,7 +645,9 @@ jobs:
         path: build
 
     - name: Run login screen test
-      run: .\build\tests\login_screen_tests.exe -v2
+      run: |
+        .\build\tests\login_screen_tests.exe -v2 2>&1 | Tee-Object -FilePath build\tests\login-screen-test-output.txt
+        exit $LASTEXITCODE
       shell: powershell
 
     - name: Upload login screen screenshot
@@ -653,4 +655,7 @@ jobs:
       if: always()
       with:
         name: login-screen-screenshot-windows
-        path: build\tests\*-windows-*.png
+        path: |
+          build\tests\*-windows-*.png
+          build\tests\*dialoglogin*-windows-*.png
+          build\tests\login-screen-test-output.txt
