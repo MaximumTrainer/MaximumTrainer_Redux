@@ -139,7 +139,7 @@ jobs:
       run: |
         mkdir -p build/tests
         cd tests/integration
-        qmake login_screen_tests.pro
+        qmake login_screen_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0"
         make -j$(sysctl -n hw.logicalcpu)
 
     - name: Bind rpath for Qt frameworks and OpenSSL
@@ -429,6 +429,12 @@ jobs:
         modules: 'qtwebengine qtconnectivity'
         cache: true
         cache-key-prefix: qt-mac
+
+    - name: Restore QWT cache
+      uses: actions/cache@v4
+      with:
+        path: /usr/local/qwt-6.2.0
+        key: qwt-6.2.0-qt-6.7.3-macos
 
     - name: Download build artifact
       uses: actions/download-artifact@v4

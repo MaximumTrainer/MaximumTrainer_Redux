@@ -341,7 +341,8 @@ jobs:
       run: |
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\integration
-        qmake login_screen_tests.pro
+        $qwtDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
+        qmake login_screen_tests.pro "QWT_INSTALL=$qwtDirFwd"
         jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
@@ -644,7 +645,11 @@ jobs:
         path: build
 
     - name: Run login screen test
-      run: .\build\tests\login_screen_tests.exe -v2
+      run: |
+        # Use QTest's -o flag to capture output to file — Tee-Object does not
+        # work for Win32 GUI subsystem apps (no console stdout).
+        .\build\tests\login_screen_tests.exe -v2 -o build\tests\login-screen-test-output.txt,txt
+        exit $LASTEXITCODE
       shell: powershell
 
     - name: Upload login screen screenshot
@@ -652,4 +657,7 @@ jobs:
       if: always()
       with:
         name: login-screen-screenshot-windows
-        path: build\tests\*-windows-*.png
+        path: |
+          build\tests\*-windows-*.png
+          build\tests\*dialoglogin*-windows-*.png
+          build\tests\login-screen-test-output.txt
