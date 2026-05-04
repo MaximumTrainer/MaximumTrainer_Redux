@@ -444,7 +444,7 @@ jobs:
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
-        modules: 'qtwebengine qtconnectivity'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning'
         cache: true
         cache-key-prefix: qt-mac
 
