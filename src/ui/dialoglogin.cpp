@@ -554,6 +554,10 @@ void DialogLogin::onLoginWithIntervalsIcuClicked()
         oauthDialog->setUrlWebView(oauthUrl);
     });
 
+    // Notify test observers before entering exec() — the signal fires
+    // synchronously so tests can reject the dialog before exec() blocks.
+    emit intervalsIcuOAuthDialogCreated(oauthDialog);
+
     oauthDialog->exec();
 }
 

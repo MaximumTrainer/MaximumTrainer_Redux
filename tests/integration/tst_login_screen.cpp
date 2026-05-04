@@ -373,8 +373,20 @@ static void saveScreenshot(QWidget &window,
     const QString path = outDir + "/" + baseName;
     QPixmap shot = window.grab();
     QVERIFY2(!shot.isNull(), "Screenshot grab() returned a null pixmap");
-    QVERIFY2(shot.width()  >= 1280, "Screenshot width must be >= 1280 px");
-    QVERIFY2(shot.height() >= 720,  "Screenshot height must be >= 720 px");
+    // On CI runners the OS may clip the window to less than 1280 px
+    // (e.g. a Windows virtual display narrower than 1296 px including frame).
+    // Verify the grab matches the window's actual current width instead of
+    // hard-coding 1280 — this still catches a broken / empty grab.
+    QVERIFY2(window.width() > 0 && window.height() > 0,
+             "Window must have non-zero dimensions before taking screenshot");
+    const int expectedW = qMin(1280, window.width());
+    const int expectedH = qMin(720,  window.height());
+    QVERIFY2(shot.width()  >= expectedW,
+             qPrintable(QString("Screenshot width %1 must be >= window width %2")
+                            .arg(shot.width()).arg(expectedW)));
+    QVERIFY2(shot.height() >= expectedH,
+             qPrintable(QString("Screenshot height %1 must be >= window height %2")
+                            .arg(shot.height()).arg(expectedH)));
     QVERIFY2(shot.save(path, "PNG"),
              qPrintable(QString("Failed to save screenshot to: %1").arg(path)));
     qDebug().noquote() << "[Screenshot] Saved to:" << path;
@@ -927,25 +939,37 @@ private slots:
         QVERIFY2(btn != nullptr,
                  "pushButton_loginIntervalsIcu must exist in DialogLogin");
 
-        // Use a single-shot timer to close the child dialog as soon as it opens,
-        // so it doesn't block this test thread via exec().
+        // Connect to the synchronous signal emitted by DialogLogin just before
+        // calling exec() on the OAuth child dialog.  This fires synchronously
+        // before exec() enters its nested event loop — so childFound is set
+        // even if exec() returns immediately (e.g. WebEngine init failure in CI).
+        // Rejection is deferred with singleShot(0) + QPointer so it fires in
+        // the first iteration of exec()'s nested event loop (not before it).
+        // QPointer guards against the dialog being deleted before the timer fires.
         bool childFound = false;
-        QTimer::singleShot(0, &dialog, [&dialog, &childFound]() {
-            auto *oauthDlg = dialog.findChild<DialogInfoWebView *>();
-            if (oauthDlg) {
-                childFound = true;
-                oauthDlg->reject();
-            }
-        });
+        bool childParentOk = false;
+        QObject::connect(&dialog, &DialogLogin::intervalsIcuOAuthDialogCreated,
+                         [&dialog, &childFound, &childParentOk](DialogInfoWebView *oauthDlg) {
+                             if (!oauthDlg) return;
+                             childFound    = true;
+                             childParentOk = (oauthDlg->parent() == &dialog);
+                             QPointer<DialogInfoWebView> guard(oauthDlg);
+                             QTimer::singleShot(0, &dialog, [guard]() {
+                                 if (guard) guard->reject();
+                             });
+                         });
 
-        // Click the button — this calls exec() on the child dialog.
-        // The timer above will fire in the nested event loop and reject it.
+        // Click the button — triggers onLoginWithIntervalsIcuClicked() which
+        // emits intervalsIcuOAuthDialogCreated (setting childFound) and then
+        // calls exec().  The rejected() signal causes exec() to return.
         QTest::mouseClick(btn, Qt::LeftButton);
         QCoreApplication::processEvents();
 
         QVERIFY2(childFound,
                  "Clicking 'Login with Intervals.icu' must create a "
                  "DialogInfoWebView child dialog");
+        QVERIFY2(childParentOk,
+                 "DialogInfoWebView parent must be the DialogLogin instance");
 
         const QString screenshotName =
             QString("dialoglogin-intervals-oauth-dialog-%1-%2.png")
