@@ -28,10 +28,6 @@ const {
 const BASE_ORIGIN = process.env.PLAYWRIGHT_BASE_URL || 'https://maximumtrainer.github.io/MaximumTrainer_Redux';
 const APP_URL = `${BASE_ORIGIN}/app/`;
 
-// Qt WASM QSettings key format (Qt 6.5+ WebLocalStorageFormat):
-// <org>/<app>/<group>/<key>
-const QSETTINGS_PREFIX = 'Max++ inc./MaximumTrainer';
-
 // Fake credentials used only for Playwright route mocking — not real secrets.
 const TEST_ATHLETE_ID = 'i00000';
 const TEST_API_KEY    = 'playwright-test-key';
@@ -111,30 +107,37 @@ test.describe('Intervals.icu WASM functional', () => {
       await mockBackendApis(page);
       intervalsRequests = await mockIntervalsIcuApi(page);
 
-      // Inject mock credentials before navigation so the app reads them on startup.
-      await page.addInitScript(({ prefix, athleteId, apiKey }) => {
-        try {
-          localStorage.setItem(`${prefix}/account/intervals_icu_api_key`,     apiKey);
-          localStorage.setItem(`${prefix}/account/intervals_icu_athlete_id`,  athleteId);
-          localStorage.setItem(`${prefix}/account/intervals_icu_auto_upload`, 'false');
-        } catch (e) {
-          console.warn('localStorage injection failed:', e);
-        }
-      }, { prefix: QSETTINGS_PREFIX, athleteId: TEST_ATHLETE_ID, apiKey: TEST_API_KEY });
-
       await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
       await waitForAppReady(page, 300_000);
 
-      // Wait for the test hook to be registered by the C++ WASM code.
+      // Wait for BOTH test hooks to be registered by the C++ WASM code.
       await page.waitForFunction(
-        () => typeof window.mt_intervalsRefresh === 'function',
+        () => typeof window.mt_setIntervalsCredentials === 'function' &&
+              typeof window.mt_intervalsRefresh === 'function',
         null,
         { timeout: 120_000 },
       );
 
-      // Trigger calendar refresh and wait for the network request.
+      // Inject credentials directly into the Account object (bypasses QSettings
+      // localStorage format differences across Qt versions / browsers).
+      await page.evaluate(
+        ({ apiKey, athleteId }) => window.mt_setIntervalsCredentials(apiKey, athleteId),
+        { apiKey: TEST_API_KEY, athleteId: TEST_ATHLETE_ID },
+      );
+
+      // Set up request listener BEFORE triggering the refresh so we don't miss
+      // a fast response.  Signal-based wait is more reliable than a fixed sleep.
+      const calendarRequestPromise = page.waitForRequest(
+        req => req.url().includes('intervals.icu') && req.url().includes('/events'),
+        { timeout: 30_000 },
+      );
+
+      // Trigger calendar refresh.
       await page.evaluate(() => window.mt_intervalsRefresh());
-      await page.waitForTimeout(5_000);
+
+      // Wait for the actual network request (Qt::QueuedConnection fires on the
+      // next event-loop tick, so this should resolve almost immediately).
+      await calendarRequestPromise;
     });
 
     test.afterAll(async () => { await ctx.close(); });

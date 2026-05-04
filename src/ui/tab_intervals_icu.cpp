@@ -17,8 +17,17 @@
 #include "xmlutil.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WASM test hook: exposes window.mt_intervalsRefresh() so Playwright tests can
-// trigger a calendar refresh without a real user click.
+// WASM test hooks: allow Playwright to inject credentials and trigger a
+// calendar refresh without touching the real UI or QSettings.
+//
+// mt_setIntervalsCredentials(apiKey, athleteId) — writes the credentials
+//   directly into the Account object on qApp and calls refreshCredentials()
+//   so the service also picks them up.  This bypasses QSettings/localStorage
+//   format concerns and works regardless of browser-storage backend.
+//
+// mt_intervalsRefresh() — queues an onRefreshClicked() call on the Qt event
+//   loop.  The test must wait for the next event-loop tick (e.g., 5 s) for
+//   the request to be dispatched.
 // ─────────────────────────────────────────────────────────────────────────────
 #ifdef GC_WASM_BUILD
 #include <emscripten.h>
@@ -27,6 +36,7 @@
 static QPointer<TabIntervalsIcu> g_intervalsTab;
 
 extern "C" {
+
 EMSCRIPTEN_KEEPALIVE
 void mt_intervals_icu_do_refresh()
 {
@@ -34,11 +44,57 @@ void mt_intervals_icu_do_refresh()
         QMetaObject::invokeMethod(g_intervalsTab.data(), "onRefreshClicked",
                                   Qt::QueuedConnection);
 }
+
+// Reads pending credentials stored in window._mt_pending_api_key /
+// window._mt_pending_athlete_id by the JS shim below.
+EMSCRIPTEN_KEEPALIVE
+void mt_intervals_icu_apply_pending_credentials()
+{
+    // Read the JS globals into C strings on the WASM heap.
+    char *apiKey = reinterpret_cast<char *>(EM_ASM_PTR({
+        const k = window._mt_pending_api_key || '';
+        const len = lengthBytesUTF8(k) + 1;
+        const heap = _malloc(len);
+        stringToUTF8(k, heap, len);
+        return heap;
+    }));
+    char *athleteId = reinterpret_cast<char *>(EM_ASM_PTR({
+        const k = window._mt_pending_athlete_id || '';
+        const len = lengthBytesUTF8(k) + 1;
+        const heap = _malloc(len);
+        stringToUTF8(k, heap, len);
+        return heap;
+    }));
+
+    auto *account = qApp->property("Account").value<Account *>();
+    if (account) {
+        account->intervals_icu_api_key    = QString::fromUtf8(apiKey);
+        account->intervals_icu_athlete_id = QString::fromUtf8(athleteId);
+    }
+    // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
+    free(apiKey);
+    // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
+    free(athleteId);
+
+    if (g_intervalsTab)
+        g_intervalsTab->refreshCredentials();
+}
+
 } // extern "C"
 
 EM_JS(void, js_exposeIntervalsTestApi, (), {
     window.mt_intervalsRefresh = function() {
         Module._mt_intervals_icu_do_refresh();
+    };
+    // Inject credentials directly into the running Account object, bypassing
+    // QSettings so Playwright tests don't depend on the localStorage key format.
+    window.mt_setIntervalsCredentials = function(apiKey, athleteId) {
+        window._mt_pending_api_key     = String(apiKey  || '');
+        window._mt_pending_athlete_id  = String(athleteId || '');
+        Module._mt_intervals_icu_apply_pending_credentials();
+        // Clear after C++ has consumed the values.
+        delete window._mt_pending_api_key;
+        delete window._mt_pending_athlete_id;
     };
 });
 #endif
@@ -209,6 +265,13 @@ void TabIntervalsIcu::onRefreshClicked()
 
     const QDate newest = m_weekStart.addDays(6);
     m_calendarReply = m_service->fetchCalendar(m_weekStart, newest);
+    if (!m_calendarReply) {
+        setBusy(false);
+        setStatus(tr("Network error: could not initiate calendar request."));
+        LOG_WARN("TabIntervalsIcu",
+                 QStringLiteral("onRefreshClicked: fetchCalendar returned null reply"));
+        return;
+    }
     connect(m_calendarReply, &QNetworkReply::finished,
             this, &TabIntervalsIcu::onCalendarFetchFinished);
 }
