@@ -125,19 +125,22 @@ test.describe('Intervals.icu WASM functional', () => {
         { apiKey: TEST_API_KEY, athleteId: TEST_ATHLETE_ID },
       );
 
-      // Set up request listener BEFORE triggering the refresh so we don't miss
-      // a fast response.  Signal-based wait is more reliable than a fixed sleep.
-      const calendarRequestPromise = page.waitForRequest(
-        req => req.url().includes('intervals.icu') && req.url().includes('/events'),
+      // Set up response listener BEFORE triggering the refresh so we don't miss
+      // a fast response.  We wait for the RESPONSE (not just the request) so
+      // the page.route handler has already pushed the URL to intervalsRequests
+      // by the time beforeAll exits — page.waitForRequest fires before the
+      // route handler runs, causing a race condition.
+      const calendarResponsePromise = page.waitForResponse(
+        resp => resp.url().includes('intervals.icu') && resp.url().includes('/events'),
         { timeout: 30_000 },
       );
 
       // Trigger calendar refresh.
       await page.evaluate(() => window.mt_intervalsRefresh());
 
-      // Wait for the actual network request (Qt::QueuedConnection fires on the
+      // Wait for the mocked response (Qt::QueuedConnection fires on the
       // next event-loop tick, so this should resolve almost immediately).
-      await calendarRequestPromise;
+      await calendarResponsePromise;
     });
 
     test.afterAll(async () => { await ctx.close(); });

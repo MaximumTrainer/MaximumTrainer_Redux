@@ -75,13 +75,13 @@ EM_JS(void, js_exposeIntervalsTestApi, (), {
         var enc    = new TextEncoder();
         var keyBuf = enc.encode(String(apiKey   || '') + '\0');
         var idBuf  = enc.encode(String(athleteId || '') + '\0');
-        var keyPtr = Module._malloc(keyBuf.length);
-        var idPtr  = Module._malloc(idBuf.length);
-        Module.HEAPU8.set(keyBuf, keyPtr);
-        Module.HEAPU8.set(idBuf,  idPtr);
+        var keyPtr = _malloc(keyBuf.length);
+        var idPtr  = _malloc(idBuf.length);
+        HEAPU8.set(keyBuf, keyPtr);
+        HEAPU8.set(idBuf,  idPtr);
         Module._mt_intervals_icu_set_credentials(keyPtr, idPtr);
-        Module._free(keyPtr);
-        Module._free(idPtr);
+        _free(keyPtr);
+        _free(idPtr);
     };
 });
 #endif
