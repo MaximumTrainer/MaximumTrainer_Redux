@@ -103,25 +103,19 @@ test.describe('WASM webapp page', () => {
 
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
 
-    // Wait for the overlay to appear in the DOM (injected by logger.js on DOMContentLoaded)
-    await page.waitForSelector('#wasm-log-overlay', { timeout: 10000 });
+    // Wait for the overlay AND the copy button to appear in the DOM.
+    // Both are added synchronously by logger.js, but we use Playwright's
+    // auto-retrying assertions to avoid one-shot count checks that can flake
+    // on slow CI runners.
+    const overlay  = page.locator('#wasm-log-overlay');
+    const copyBtn  = page.locator('#wasm-log-copy-btn');
 
-    // The log overlay must exist in the DOM
-    const overlay = page.locator('#wasm-log-overlay');
-    expect(await overlay.count(), '#wasm-log-overlay should be present in the DOM').toBe(1);
+    await expect(overlay,  '#wasm-log-overlay should be present in the DOM').toHaveCount(1, { timeout: 15_000 });
+    await expect(copyBtn, '#wasm-log-copy-btn should be present inside the overlay').toHaveCount(1, { timeout: 5_000 });
 
-    // The copy button must exist inside the overlay
-    const copyBtn = page.locator('#wasm-log-copy-btn');
-    expect(await copyBtn.count(), '#wasm-log-copy-btn should be present inside the overlay').toBe(1);
-
-    // Wait for at least one log line to be written, then verify
-    await page.waitForFunction(() => {
-      const overlay = document.querySelector('#wasm-log-overlay');
-      return overlay && overlay.querySelectorAll('div > div').length > 0;
-    }, { timeout: 10000 });
+    // Wait for at least one log line to be written, then verify.
     const logLines = overlay.locator('div > div');
-    const lineCount = await logLines.count();
-    expect(lineCount, 'The log overlay should contain at least one log entry').toBeGreaterThan(0);
+    await expect(logLines.first(), 'At least one log entry should appear').toBeVisible({ timeout: 10_000 });
 
     const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
     await page.screenshot({ path: `test-results/wasm-screenshots/wasm-log-overlay-present${retrySuffix}.png` });
