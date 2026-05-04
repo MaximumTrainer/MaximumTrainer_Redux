@@ -1,12 +1,18 @@
 /**
  * Shared helpers for WASM Playwright test suites — TypeScript edition.
  *
- * These functions are thin wrappers around `WasmAppPage` methods, kept for
- * backward compatibility with any test that has not yet been refactored to
- * instantiate page objects directly.
+ * **Backward compatibility shim only.**  This module re-exports the same
+ * function signatures as the original `wasm-test-helpers.js`, but now
+ * delegates internally to `WasmAppPage` / `LandingPage` page objects.
  *
- * In new test files, prefer constructing a `WasmAppPage` (or `LandingPage`)
- * and calling its methods directly rather than importing from this module.
+ * **New test files should NOT import from this module.**  Instead, import
+ * page objects directly:
+ * ```typescript
+ * import { WasmAppPage } from './pages/WasmAppPage';
+ * import { LandingPage } from './pages/LandingPage';
+ * ```
+ * and call their methods (`wasmApp.stubBluetooth()`, `wasmApp.mockBackendApis()`,
+ * `wasmApp.logOverlay.getFatalErrorLines()`, etc.).
  */
 
 import { type Page } from '@playwright/test';
@@ -16,7 +22,11 @@ import { WasmAppPage } from './pages/WasmAppPage';
  * Stub `navigator.bluetooth` so the WASM app does not abort on browsers
  * without Web Bluetooth support (e.g. headless Chromium in CI).
  *
- * @deprecated Prefer `new WasmAppPage(page).stubBluetooth()` in new tests.
+ * @deprecated **Backward-compat shim.** New tests should use:
+ * ```typescript
+ * const wasmApp = new WasmAppPage(page);
+ * await wasmApp.stubBluetooth();
+ * ```
  */
 export async function stubBluetooth(page: Page): Promise<void> {
   return new WasmAppPage(page).stubBluetooth();

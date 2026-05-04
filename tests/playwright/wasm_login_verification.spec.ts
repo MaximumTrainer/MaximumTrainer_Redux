@@ -231,7 +231,8 @@ test.describe('Login verification – Layer B: real credentials', () => {
     expect(
       realApiStatus,
       `Intervals.icu API returned HTTP ${realApiStatus} for athlete ${athleteId}. ` +
-      `Expected 200 — check credentials and API access.`,
+      `Expected 200 — verify that INTERVALS_ICU_API_KEY and INTERVALS_ICU_ATHLETE_ID ` +
+      `are correctly set as GitHub Actions secrets / environment variables.`,
     ).toBe(200);
   });
 
