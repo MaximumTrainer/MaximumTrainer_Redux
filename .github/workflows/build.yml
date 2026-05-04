@@ -8,10 +8,59 @@ on:
 jobs:
 
   # ──────────────────────────────────────────────────────────────────────────
+  # Compute the next semantic version on master BEFORE the builds so that the
+  # compiled binaries embed the correct release tag rather than the previous
+  # one.  On non-master branches this job is skipped and the build jobs fall
+  # back to `git describe` for a best-effort informational version string.
+  # Serialised so that concurrent master pushes don't race on the same version.
+  # ──────────────────────────────────────────────────────────────────────────
+  compute_version:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+    outputs:
+      new_tag: ${{ steps.semver.outputs.new_tag }}
+    concurrency:
+      group: tag_release
+      cancel-in-progress: false
+
+    steps:
+    - name: Checkout with full tag history
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Compute next semantic version
+      id: semver
+      run: |
+        # Find the latest tag that looks like vMAJOR.MINOR.PATCH; default to v0.0.0
+        latest=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname | head -n1)
+        if [ -z "$latest" ]; then
+          latest="v0.0.0"
+        fi
+        echo "Latest tag: $latest"
+        version="${latest#v}"
+        major=$(echo "$version" | cut -d. -f1)
+        minor=$(echo "$version" | cut -d. -f2)
+        patch=$(echo "$version" | cut -d. -f3)
+        patch=$((patch + 1))
+        new_tag="v${major}.${minor}.${patch}"
+        echo "New tag: $new_tag"
+        echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
+
+  # ──────────────────────────────────────────────────────────────────────────
   # Linux build + BTLE integration test (defined in build-linux.yml)
+  # Runs after compute_version so the correct release tag can be passed as
+  # an input and embedded in the binary.  `if: always()` ensures the build
+  # also runs on non-master branches where compute_version is skipped.
   # ──────────────────────────────────────────────────────────────────────────
   build_linux:
+    needs: [compute_version]
+    if: always()
     uses: ./.github/workflows/build-linux.yml
+    with:
+      tag_name: ${{ needs.compute_version.outputs.new_tag }}
     permissions:
       contents: read
     secrets: inherit
@@ -20,7 +69,11 @@ jobs:
   # Windows build (defined in build-windows.yml)
   # ──────────────────────────────────────────────────────────────────────────
   build_windows:
+    needs: [compute_version]
+    if: always()
     uses: ./.github/workflows/build-windows.yml
+    with:
+      tag_name: ${{ needs.compute_version.outputs.new_tag }}
     permissions:
       contents: read
     secrets: inherit
@@ -29,7 +82,11 @@ jobs:
   # macOS build (defined in build-mac.yml)
   # ──────────────────────────────────────────────────────────────────────────
   build_mac:
+    needs: [compute_version]
+    if: always()
     uses: ./.github/workflows/build-mac.yml
+    with:
+      tag_name: ${{ needs.compute_version.outputs.new_tag }}
     permissions:
       contents: read
     secrets: inherit
@@ -40,8 +97,12 @@ jobs:
   # Steps are kept in sync with the build_wasm job in release.yml.
   # ──────────────────────────────────────────────────────────────────────────
   build_wasm:
+    needs: [compute_version]
+    if: always()
     runs-on: ubuntu-22.04
     continue-on-error: true
+    permissions:
+      contents: read
 
     steps:
     - name: Checkout
@@ -122,8 +183,15 @@ jobs:
 
     - name: Determine build version
       run: |
-        GIT_TAG=$(git describe --tags --match 'v[0-9]*' --always | tr -d '\r' | sed 's/-[0-9]*-g[0-9a-f]*$//')
-        [[ "$GIT_TAG" =~ ^[vV][0-9] ]] || GIT_TAG="v0.0.0"
+        NEW_TAG="${{ needs.compute_version.outputs.new_tag }}"
+        if [ -n "$NEW_TAG" ]; then
+          GIT_TAG="$NEW_TAG"
+          echo "Using computed version: $GIT_TAG"
+        else
+          GIT_TAG=$(git describe --tags --match 'v[0-9]*' --always | tr -d '\r' | sed 's/-[0-9]*-g[0-9a-f]*$//')
+          [[ "$GIT_TAG" =~ ^[vV][0-9] ]] || GIT_TAG="v0.0.0"
+          echo "Using git describe: $GIT_TAG"
+        fi
         echo "Build version: $GIT_TAG"
         echo "GIT_TAG=$GIT_TAG" >> "$GITHUB_ENV"
 
@@ -230,54 +298,15 @@ jobs:
         if-no-files-found: warn
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Compute the next semantic version on master.
-  # Only runs when all three main platform builds succeed on master.
-  # Serialised so that concurrent master pushes don't race on the same version.
-  # ──────────────────────────────────────────────────────────────────────────
-  compute_version:
-    needs: [build_linux, build_windows, build_mac]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
-    permissions:
-      contents: read
-    outputs:
-      new_tag: ${{ steps.semver.outputs.new_tag }}
-    concurrency:
-      group: tag_release
-      cancel-in-progress: false
-
-    steps:
-    - name: Checkout with full tag history
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Compute next semantic version
-      id: semver
-      run: |
-        # Find the latest tag that looks like vMAJOR.MINOR.PATCH; default to v0.0.0
-        latest=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname | head -n1)
-        if [ -z "$latest" ]; then
-          latest="v0.0.0"
-        fi
-        echo "Latest tag: $latest"
-        version="${latest#v}"
-        major=$(echo "$version" | cut -d. -f1)
-        minor=$(echo "$version" | cut -d. -f2)
-        patch=$(echo "$version" | cut -d. -f3)
-        patch=$((patch + 1))
-        new_tag="v${major}.${minor}.${patch}"
-        echo "New tag: $new_tag"
-        echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
-
-  # ──────────────────────────────────────────────────────────────────────────
   # Package jobs — produce release-ready artifacts (AppImage, zip, MSI, dmg,
   # wasm zip) by calling the existing reusable release-*.yml workflows.
   # Each job passes github.run_id as build_run_id so artifact downloads stay
   # within this workflow run — no cross-run lookup needed.
+  # Package jobs depend on both compute_version (for the tag) and the
+  # respective build job (to ensure the artifact is available before download).
   # ──────────────────────────────────────────────────────────────────────────
   package_linux:
-    needs: [compute_version]
+    needs: [compute_version, build_linux]
     uses: ./.github/workflows/release-linux.yml
     if: github.ref == 'refs/heads/master'
     permissions:
@@ -287,7 +316,7 @@ jobs:
       build_run_id: ${{ github.run_id }}
 
   package_windows:
-    needs: [compute_version]
+    needs: [compute_version, build_windows]
     uses: ./.github/workflows/release-windows.yml
     if: github.ref == 'refs/heads/master'
     permissions:
@@ -298,7 +327,7 @@ jobs:
       build_run_id: ${{ github.run_id }}
 
   package_mac:
-    needs: [compute_version]
+    needs: [compute_version, build_mac]
     uses: ./.github/workflows/release-mac.yml
     if: github.ref == 'refs/heads/master'
     permissions:
@@ -308,7 +337,7 @@ jobs:
       build_run_id: ${{ github.run_id }}
 
   package_wasm:
-    needs: [compute_version]
+    needs: [compute_version, build_wasm]
     uses: ./.github/workflows/release-wasm.yml
     if: github.ref == 'refs/heads/master'
     permissions:
