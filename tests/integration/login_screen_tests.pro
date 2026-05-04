@@ -53,9 +53,11 @@ linux {
     LIBS        += -lqwt-qt5
 }
 win32 {
-    INCLUDEPATH += ../../qwt/include ../../qwt/include/qwt
-    CONFIG(release, debug|release): LIBS += -L$$PWD/../../qwt/lib -lqwt
-    CONFIG(debug,   debug|release): LIBS += -L$$PWD/../../qwt/lib -lqwtd
+    !isEmpty(QWT_INSTALL) {
+        INCLUDEPATH += $${QWT_INSTALL}/include
+        CONFIG(release, debug|release): LIBS += -L$${QWT_INSTALL}/lib -lqwt
+        CONFIG(debug,   debug|release): LIBS += -L$${QWT_INSTALL}/lib -lqwtd
+    }
 }
 macx {
     !isEmpty(QWT_INSTALL) {

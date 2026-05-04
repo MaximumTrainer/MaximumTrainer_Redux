@@ -341,7 +341,8 @@ jobs:
       run: |
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
         Set-Location tests\integration
-        qmake login_screen_tests.pro
+        $qwtDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
+        qmake login_screen_tests.pro "QWT_INSTALL=$qwtDirFwd"
         jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
