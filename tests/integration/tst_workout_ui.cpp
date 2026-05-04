@@ -856,11 +856,13 @@ private slots:
                  qPrintable(QString("Expected >= 3 power readings, got %1")
                                 .arg(collected.size())));
 
-        // First reading: 255 ± drift(0..5), clamped to [170, 260] → expect 250–260 W
+        // First reading: m_power starts at 255 W; drift applies ±delta(0..5 W) before
+        // the first emission, giving a theoretical range of [250, 260] W.  A ±3 W
+        // tolerance is added for any platform-timing differences, yielding [247, 263].
         const int first = collected.first();
-        QVERIFY2(first >= 240 && first <= 265,
+        QVERIFY2(first >= 247 && first <= 263,
                  qPrintable(
-                     QString("First power reading %1 W is outside expected 240–265 W range")
+                     QString("First power reading %1 W is outside expected 247–263 W range")
                          .arg(first)));
     }
 
@@ -889,11 +891,13 @@ private slots:
                  qPrintable(QString("Expected >= 3 power readings after setSlope, got %1")
                                 .arg(collected.size())));
 
-        // 275 W > hi(260), clamped → first emission ≈ 260 W ± drift
+        // setSlope(5.0): targetPower = 275 W > drift hi(260) → clamped to 260 W on the
+        // first tick regardless of delta or direction.  A ±3 W tolerance handles any
+        // edge-case in drift ordering, giving the accepted range [257, 263].
         const int first = collected.first();
-        QVERIFY2(first >= 250 && first <= 265,
+        QVERIFY2(first >= 257 && first <= 263,
                  qPrintable(
-                     QString("First power after setSlope(5.0) is %1 W, expected 250–265 W")
+                     QString("First power after setSlope(5.0) is %1 W, expected 257–263 W")
                          .arg(first)));
     }
 
@@ -1135,6 +1139,9 @@ private slots:
                  qPrintable(
                      QString("Failed to save screenshot to %1").arg(screenshotPath)));
         QVERIFY2(QFile::exists(screenshotPath), "Screenshot file not found after save");
+        // grab() captures the widget content at its natural size.  setFixedSize(1280, 720)
+        // guarantees exactly those pixel dimensions regardless of window-manager decorations,
+        // since decorations are rendered outside the widget rectangle.
         QVERIFY2(pix.width()  == 1280, "Screenshot width must be 1280 px");
         QVERIFY2(pix.height() == 720,  "Screenshot height must be 720 px");
 
