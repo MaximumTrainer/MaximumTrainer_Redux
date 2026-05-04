@@ -226,6 +226,14 @@ jobs:
   # Layer A tests verify UI structure (tabs, widgets) without credentials.
   # Layer B tests inject Intervals.icu credentials and verify the calendar/
   # workout list renders; they skip gracefully when secrets are absent.
+  #
+  # wasm_login_verification.spec.js additionally validates the complete
+  # Intervals.icu login flow:
+  #   • Node.js call to the real API proves the secrets are valid.
+  #   • WASM route interception confirms the app emits the correct
+  #     Authorization header from the injected credentials.
+  # Layer B login-verification tests skip gracefully on fork PRs; on master
+  # (secrets present) they MUST pass — a failed login fails the suite.
   # ──────────────────────────────────────────────────────────────────────────
   test_playwright:
     needs: [build_wasm]
