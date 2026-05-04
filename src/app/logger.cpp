@@ -135,7 +135,10 @@ bool Logger::openLogFile()
     }
 
     m_logFile.setFileName(m_filePath);
-    if (!m_logFile.open(QIODevice::Append | QIODevice::Text)) {
+    // WriteOnly ensures O_CREAT semantics on all platforms (Linux, macOS,
+    // Windows) so the file is created if it does not already exist.
+    // Append prevents truncation of existing content.
+    if (!m_logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
         fprintf(stderr, "[Logger] Cannot open log file: %s\n",
                 qPrintable(m_filePath));
         m_fileEnabled = false;

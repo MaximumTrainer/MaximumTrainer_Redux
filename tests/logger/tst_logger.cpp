@@ -97,6 +97,7 @@ private slots:
     void testFile_multipleEntries();
     void testFile_pathReturned();
     void testFile_createsDirectoryIfMissing();
+    void testFile_createsFileIfMissing();
 
     // ── Qt message handler ────────────────────────────────────────────────────
     void testQtHandler_warningRouted();
@@ -301,6 +302,39 @@ void TstLogger::testFile_createsDirectoryIfMissing()
     f.close();
 
     QVERIFY2(content.contains(QLatin1String("dir-creation-test")),
+             "Log entry should appear in the newly created log file");
+}
+
+void TstLogger::testFile_createsFileIfMissing()
+{
+    // Directory exists but file does not — Logger must create the file.
+    QTemporaryDir tmpDir;
+    QVERIFY(tmpDir.isValid());
+    const QString logPath = tmpDir.path() + QStringLiteral("/MaximumTrainer.log");
+
+    // Sanity-check: file must not pre-exist.
+    QVERIFY2(!QFile::exists(logPath), "Pre-condition: log file must not exist yet");
+
+    const bool    savedEnabled = Logger::instance().isFileLoggingEnabled();
+    const QString savedPath    = Logger::instance().logFilePath();
+    auto loggerGuard = qScopeGuard([&] {
+        Logger::instance().setFileLogging(savedEnabled, savedPath);
+    });
+
+    Logger::instance().setFileLogging(true, logPath);
+
+    QVERIFY2(QFile::exists(logPath),
+             "Logger must create the log file when the directory exists but the file does not");
+
+    Logger::instance().log(LogLevel::Info, QStringLiteral("test"),
+                           QStringLiteral("file-creation-test"));
+
+    QFile f(logPath);
+    QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString content = QString::fromUtf8(f.readAll());
+    f.close();
+
+    QVERIFY2(content.contains(QLatin1String("file-creation-test")),
              "Log entry should appear in the newly created log file");
 }
 
