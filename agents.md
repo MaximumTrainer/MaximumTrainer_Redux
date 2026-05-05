@@ -31,7 +31,7 @@ completed activities to the Garmin FIT format.
 |-----------|-------|
 | Language | C++17 |
 | UI Toolkit | Qt 6 (Widgets + WebEngineWidgets) |
-| Plotting | QWT 6.3 |
+| Plotting | QWT 6.2 |
 | Serialisation | Garmin FIT SDK, TCX, GPX, XML |
 | Hardware protocols | BLE (Qt Bluetooth) |
 | Audio/Video | VLC-Qt (desktop), SFML (audio), platform stubs for WASM |
@@ -246,24 +246,64 @@ divergence in training-engine logic between platforms.
 
 ## 4. Testing Approach & Quality Assurance
 
-### 4.1 Testing Pyramid
+### 4.1 Test-Driven Development (TDD) — Red · Green · Refactor
+
+**Every change to this codebase must begin with a failing test.**
+Follow the classic red-green-refactor cycle for all bug fixes and feature work:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  RED    Write a test that describes the desired behaviour.  │
+│         Run it — confirm it FAILS for the right reason.     │
+│         (A test that passes immediately proves nothing.)    │
+├─────────────────────────────────────────────────────────────┤
+│  GREEN  Write the minimum production code to make the test  │
+│         pass.  Do not gold-plate at this stage.             │
+├─────────────────────────────────────────────────────────────┤
+│  REFACTOR  Clean up — naming, duplication, structure.       │
+│            All tests must still be GREEN after refactoring. │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Practical rules for this codebase:**
+
+1. **Add the test first.** Before touching `src/`, add a test case (or extend
+   an existing one) in the appropriate `tests/` project.  The CI pipeline must
+   show it failing before the fix lands.
+2. **One failing test per change.** A single test failure pinpoints the
+   missing behaviour.  Large test additions added all at once are a red flag
+   that TDD was skipped.
+3. **Use `simulateNotification()` for BLE changes.** New BLE characteristic
+   parsers must have a `testXxx_*` case in `tests/btle/tst_btle_hub.cpp`
+   that demonstrates the failure mode first.
+4. **Use `SimulatorHub` for training-engine changes.** Integration tests in
+   `tests/integration/` drive `WorkoutDialog` via `SimulatorHub`; write the
+   interaction scenario in the test before implementing it.
+5. **Use Playwright for UI/WASM changes.** Any visible change to the WASM
+   app or landing page requires a Playwright spec addition (`.spec.ts`) that
+   fails against the current deployment before the change ships.
+6. **CI enforces the rule.** All test jobs run on every push.  A PR is not
+   mergeable if any job that was previously passing starts failing due to
+   unrelated test removals or skips.
+
+### 4.2 Testing Pyramid
 
 ```
               ╔══════════════════╗
-              ║  System / E2E    ║  (Playwright WASM, integration screenshots)
+              ║  System / E2E    ║  (Playwright — WASM, landing page, BLE API)
               ╚══════╤═══════════╝
            ╔═════════╧════════════════╗
-           ║  Integration Tests       ║  (BtleHub + WorkoutDialog + SimulatorHub)
-           ╚═══════╤══════════════════╝
+           ║  Integration Tests       ║  (WorkoutDialog + SimulatorHub, login,
+           ╚═══════╤══════════════════╝   offline/online mode, BLE adapter API)
         ╔══════════╧═══════════════════════╗
-        ║  Unit Tests                      ║  (BtleHub parsing, model, workout util)
-        ╚══════════════════════════════════╝
+        ║  Unit Tests                      ║  (BLE parsing, model, services,
+        ╚══════════════════════════════════╝   logger, credential store, …)
 ```
 
-### 4.2 Unit Tests — `tests/btle/`
+### 4.3 Unit Tests — `tests/btle/`
 
 **Project file:** `tests/btle/btle_tests.pro`  
-**Runner:** `tests/btle/tst_btle_hub.cpp` (28 test cases)  
+**Runner:** `tests/btle/tst_btle_hub.cpp` (51 test cases)  
 **Framework:** Qt Test (`QTest`, `QSignalSpy`)
 
 Tests exercise `BtleHub::simulateNotification()` — a dedicated test hook that
@@ -280,46 +320,87 @@ QCOMPARE(spy.takeFirst().at(1).toInt(), 96);
 
 | Group | Tests | What is verified |
 |-------|-------|-----------------|
-| HR parsing | 5 | 8-bit/16-bit flags, RR-interval presence, zero, max |
-| CSC parsing | 6 | Crank-only, wheel-only, combined, uint16 rollover, standstill, first-measurement discard |
-| Power parsing | 3 | Positive, zero, negative (track-stand) |
-| FTMS parsing | 5 | Speed-only, cadence-only, power-only, all-fields, zero values |
-| Trainer sims | 3 | Elite (FTMS), Wahoo KICKR (Power+CSC), Garmin Tacx (FTMS+CSC) |
-| SimulatorHub | 6 | Signal emission, drift-within-bounds, slot no-ops |
+| HR parsing | 6 | 8-bit/16-bit flags, RR-interval presence, zero, max, too-short guard |
+| CSC parsing | 7 | Crank-only, wheel-only, combined, uint16 rollover, standstill, first-measurement discard, too-short guard |
+| Power parsing | 4 | Positive, zero, negative (track-stand), too-short guard |
+| FTMS parsing | 8 | Speed-only, cadence-only, power-only, all-fields, zero values, negative power, optional-fields skip, too-short guard |
+| Trainer sims | 5 | Elite single packet, Elite sequence, Wahoo KICKR (power + CSC), Wahoo CSC rollover, Garmin Tacx (FTMS + CSC) |
+| SimulatorHub | 8 | Signal emission (hr/cadence/speed/power), drift-within-bounds, stop suppresses signals, no-op setLoad/setSlope |
+| Battery | 5 | Above/at/below threshold emission, too-short guard, clamping |
+| Interval summary | 8 | Met (exact/upper/lower boundary), near-miss (upper/lower), missed (above/below), zero-target |
 
-**Build & run:**
+**Build & run (from repository root):**
 
 ```bash
 cd tests/btle
 qmake btle_tests.pro && make -j$(nproc)
+cd ../..
 ./build/tests/btle_tests -v2
 ```
 
-### 4.3 Integration Tests — `tests/integration/`
+### 4.4 Service & Model Unit Tests
 
-**Project file:** `tests/integration/btle_integration_tests.pro`  
-**Runner:** `tests/integration/tst_btle_integration.cpp`  
-**Framework:** Qt Test + Xvfb (virtual X display in CI)
+Each service and domain component has its own standalone Qt Test project that
+requires no display or hardware:
 
-Integration tests launch the full `WorkoutDialog` against `SimulatorHub`,
-drive it through a workout session, and assert on the resulting `DataWorkout`
-object.  Screenshots are captured at key lifecycle points and uploaded as CI
-artifacts:
+| Test project | Location | What is tested |
+|-------------|----------|----------------|
+| `intervals_icu_tests.pro` | `tests/intervals_icu/` | `IntervalsIcuService` — auth headers, URL construction, query params, null-manager guard |
+| `importer_workout_zwo_tests.pro` | `tests/intervals_icu/` | ZWO XML parser — SteadyState, Ramp, IntervalsT, FreeRide, mixed, malformed input |
+| `intervals_icu_dao_bearer_tests.pro` | `tests/intervals_icu/` | OAuth2 Bearer-token DAO methods |
+| `strava_tests.pro` | `tests/strava/` | Strava upload/status/deauthorize headers, URLs, null-manager guard |
+| `trainingpeaks_tests.pro` | `tests/trainingpeaks/` | TrainingPeaks upload/refresh headers, URLs, no hardcoded secret |
+| `selfloops_tests.pro` | `tests/selfloops/` | Selfloops upload URL construction, POST method, null-manager guard |
+| `credential_store_tests.pro` | `tests/credential_store/` | Round-trip read/write, overwrite, remove, missing key, multi-service, WASM no-op |
+| `plan_adherence_tests.pro` | `tests/plan_adherence/` | Completed/skipped/substituted entries, adherence %, encode-decode round-trip, change signals |
+| `logger_tests.pro` | `tests/logger/` | Log level filtering, output format (timestamp/level/module/message), file write enable/disable |
+| `studio_tests.pro` | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling formula, settings persistence |
+
+**Build & run pattern (same for every service test):**
 
 ```bash
-# CI command (build.yml: test_btle_integration job)
-Xvfb :99 -screen 0 1920x1080x24 &
-DISPLAY=:99 ./build/tests/btle_integration_tests -v2
+cd tests/<suite>
+qmake <suite>_tests.pro && make -j$(nproc)
+cd ../..
+./build/tests/<suite>_tests -v2
 ```
 
-**What integration tests cover:**
+### 4.5 Integration Tests — `tests/integration/`
 
-- Full workout session lifecycle (start → pause → resume → stop)
-- `SimulatorHub` data flowing through `WorkoutDialog` into `DataWorkout`
-- ERG-mode load commands sent from `WorkoutDialog` back to the hub
-- Lap transitions and interval advancement logic
+All integration test projects in `tests/integration/` require Qt Widgets and
+run under a virtual display (`Xvfb`) in CI.  Each project produces a
+screenshot artifact that is uploaded to the CI run for visual inspection.
 
-### 4.4 Hardware Mocks & Stubs
+| Project | Test(s) | What is covered |
+|---------|---------|-----------------|
+| `btle_integration_tests.pro` | `testBtleActivityRunning` | Full workout session driven by `SimulatorHub` through `WorkoutDialog` into `DataWorkout`; ERG-mode load commands; lap transitions |
+| `btle_api_tests.pro` | `testBleAdapterQuery`, `testBtleHubSmokeTest` | BLE adapter presence query; `BtleHub` smoke test without physical hardware |
+| `runtime_validation_tests.pro` | `testRuntimeValidation` | Qt version, BLE availability, database connectivity, FIT SDK version |
+| `offline_mode_tests.pro` | `testLocalWorkoutAccess`, `testBtleSimulatorCyclingData`, `testOfflineModeScreenshot` | Local workout XML access; simulator cycling data; full offline-mode 1280×720 screenshot |
+| `login_screen_tests.pro` | `testOfflineLogin`, `testIntervalsIcuOAuthUrlGeneration`, `testIntervalsIcuApiLogin`, `testDialogLoginInitialState`, `testDialogLoginOfflineFlow`, `testDialogLoginIntervalsIcuButton`, `testDialogLoginIntervalsIcuOAuthDialog` | Login dialog state machine; offline login path; OAuth2 URL generation; Intervals.icu API login |
+| `online_mode_tests.pro` | `testOnlineModeAuthentication`, `testCalendar`, `testWorkoutPush`, `testWorkoutPull` | Live Intervals.icu API authentication, calendar fetch, workout push/pull (skipped when secrets absent) |
+| `workout_ui_tests.pro` | 15 test cases (XML create/retrieve, ERG load/slope, session lifecycle, interval advancement, data accumulation, screenshot, model construction, round-trip, average power, network connectivity/retrieval, power-on-target) | Complete workout session UI driven by `SimulatorHub`; screenshot at execution |
+
+**Run integration tests (from repository root, after build):**
+
+```bash
+Xvfb :99 -screen 0 1920x1080x24 &
+export DISPLAY=:99
+./build/tests/btle_integration_tests -v2
+./build/tests/workout_ui_tests -v2
+# … etc.
+```
+
+**Intervals.icu integration (live network):**
+
+```bash
+cd tests/intervals_icu_integration
+qmake intervals_icu_integration_tests.pro && make -j$(nproc)
+cd ../..
+./build/tests/intervals_icu_integration_tests -v2
+```
+
+### 4.6 Hardware Mocks & Stubs
 
 | Mechanism | File | Used in |
 |-----------|------|---------|
@@ -333,24 +414,28 @@ The design principle is: **no test should require physical hardware**.
 `BtleHub::simulateNotification()` covers byte-level parsing without a BLE
 adapter.
 
-### 4.5 WASM / Browser Tests — `tests/playwright/`
+### 4.7 WASM / Browser Tests — `tests/playwright/`
 
-**Config:** `playwright.config.js` (root)  
-**Spec:** `tests/playwright/wasm_webapp.spec.js`  
-**Framework:** Playwright (Chromium headless)
+**Config:** `playwright.config.ts` (root)  
+**Framework:** Playwright (TypeScript, Chromium-first)  
+**Page Object Model:** `tests/playwright/pages/` (`WasmAppPage`, `LandingPage`) and `tests/playwright/widgets/`
 
 Playwright tests run against the live GitHub Pages deployment
 (`https://maximumtrainer.github.io/MaximumTrainer_Redux/app/`).
-They validate:
 
-1. **Asset availability** — `qtloader.js`, `MaximumTrainer.js`,
-   `MaximumTrainer.wasm` all return HTTP 200.
-2. **Page load** — Loading screen or Qt canvas becomes visible within 4 s.
-3. **No "not deployed" sentinel** — Confirms the WASM artefact has been
-   published.
+| Spec file | What is tested |
+|-----------|----------------|
+| `wasm_webapp.spec.ts` | WASM asset availability (qtloader.js, MaximumTrainer.js/.wasm, logger.js); page load; log overlay; BLE mock GATT flow; browser-compatibility warnings; PWA manifest; reconnect overlay |
+| `landing_page.spec.ts` | Landing page assets, title, hero section, navigation links, features/download sections, console errors |
+| `wasm_btle_api.spec.ts` | Web Bluetooth API surface — scan, connect, GATT characteristic interactions via injected mock |
+| `wasm_login_verification.spec.ts` | Login screen display and Intervals.icu OAuth redirect from the WASM app |
+| `wasm_intervals_icu_functional.spec.ts` | Intervals.icu workout import flow end-to-end in the WASM app |
+| `intervals_icu.spec.ts` | Intervals.icu landing page integration |
 
 A `navigator.bluetooth` stub is injected via `addInitScript()` so the app
-does not abort immediately on browsers without real BLE.
+does not abort on browsers without real BLE.  The WASM binary is loaded once
+per `test.describe` block using `test.beforeAll` with a 300 s timeout to
+absorb JIT-compile time on cold CI runners.
 
 **Run locally (after WASM deployment):**
 
@@ -359,12 +444,24 @@ npx playwright install chromium
 npx playwright test
 ```
 
-### 4.6 CI/CD Pipeline
+### 4.8 CI/CD Pipeline
 
 ```
 Push to branch
       │
-      ├─► build_linux ──► test_btle_integration (Xvfb, screenshots)
+      ├─► build_linux ──► test_btle_unit              (51 unit tests)
+      │                ├─► test_btle_integration       (Xvfb, screenshot)
+      │                ├─► test_btle_api               (BLE adapter smoke)
+      │                ├─► test_runtime_validation     (Qt/BLE/DB/FIT checks)
+      │                ├─► test_offline_mode           (Xvfb, screenshot)
+      │                ├─► test_login_screen           (Xvfb, screenshot)
+      │                ├─► test_workout_ui             (Xvfb, screenshot)
+      │                ├─► test_intervals_icu          (service + ZWO parser)
+      │                ├─► test_intervals_icu_integration (live network, skipped without secrets)
+      │                ├─► test_online_mode            (live network, skipped without secrets)
+      │                ├─► test_credential_store
+      │                ├─► test_plan_adherence
+      │                └─► test_logger
       ├─► build_windows
       ├─► build_mac
       └─► build_wasm (continue-on-error)
@@ -381,11 +478,14 @@ Push to branch
         pages.yml: deploy docs/ + WASM to GitHub Pages
               │
               ▼
-        Playwright tests run against deployed WASM
+        test_playwright (Chromium headless, 6 spec files)
 ```
 
-All jobs run in parallel.  WASM failure does not block release publication
-(`continue-on-error: true` + `always()` guard on publish job).
+All build jobs run in parallel.  WASM failure does not block release
+publication (`continue-on-error: true` + `always()` guard on publish job).
+Test jobs that require live network credentials (`test_online_mode`,
+`test_intervals_icu_integration`) call `QSKIP` when secrets are absent, so
+they degrade gracefully on fork PRs.
 
 ---
 
@@ -436,13 +536,15 @@ responsibility:
 | `src/ui/ui.pri` | All UI: MainWindow, WorkoutDialog, plots, editors | All above |
 | `src/app/app.pri` | Entry point + global state (VLC, audio, utils) | `ui`, `btle`, `model` |
 
-**Adding a new feature:**
+**Adding a new feature (TDD order):**
 
-1. Define domain types in `model/`.
-2. Add persistence in `persistence/`.
-3. Add business logic in `workout/` or `fitness/`.
-4. Wire UI in `ui/`.
-5. Never skip layers.
+1. Write a failing test in the appropriate `tests/` project (red).
+2. Define domain types in `model/`.
+3. Add persistence in `persistence/`.
+4. Add business logic in `workout/` or `fitness/`.
+5. Wire UI in `ui/`.
+6. All tests must be green at each layer before proceeding to the next.
+7. Never skip layers.
 
 ### 5.4 Coding Conventions
 
