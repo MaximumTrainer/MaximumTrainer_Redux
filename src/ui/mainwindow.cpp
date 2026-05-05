@@ -2319,6 +2319,16 @@ void MainWindow::startScreenshotMode(const QString &outputDir)
     m_ssOutputDir = outputDir;
     m_ssStep      = 0;
 
+    // Force offline so WorkoutDialog skips the online session check.
+    // There is no server to reach in screenshot/CI mode, and the blocking
+    // "could not retrieve session" message-box that appears after 3 failed
+    // putAccount retries would otherwise cause the child process to hang.
+    // Note: MainWindow already obtains the Account singleton via
+    // qApp->property("Account") in many other methods; this is consistent
+    // with that established pattern for an inherently offline code-path.
+    if (auto *acct = qApp->property("Account").value<Account*>())
+        acct->isOffline = true;
+
     resize(1280, 720);
     move(100, 50);
     QCoreApplication::processEvents();
@@ -2409,7 +2419,10 @@ void MainWindow::screenshotNextStep()
     // ── Step 7: close WorkoutDialog ───────────────────────────────────────
     case 7:
         if (m_ssWorkoutDlg) {
-            m_ssWorkoutDlg->close();
+            // Use hide() rather than close() to avoid triggering reject() →
+            // sureYouWantToQuit() → start_or_pause_workout(), which would
+            // show a blocking "save progress?" message-box in screenshot mode.
+            m_ssWorkoutDlg->hide();
             delete m_ssWorkoutDlg;
             m_ssWorkoutDlg = nullptr;
         }

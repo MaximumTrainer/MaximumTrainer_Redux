@@ -1,5 +1,6 @@
 #include "soundplayer.h"
 #include <QDebug>
+#include <sstream>
 
 
 SoundPlayer::~SoundPlayer() {
@@ -7,7 +8,8 @@ SoundPlayer::~SoundPlayer() {
 }
 
 
-SoundPlayer::SoundPlayer(QObject *parent) : QObject(parent)  {
+SoundPlayer::SoundPlayer(QObject *parent) : QObject(parent)
+{
 
 
     QResource qrcAchievement(":/sound/fireTorch");
@@ -20,18 +22,29 @@ SoundPlayer::SoundPlayer(QObject *parent) : QObject(parent)  {
     QResource qrcPowerTooLow(":/sound/powerTooLow");
     QResource qrcPowerTooHigh(":/sound/powerTooHigh");
 
-    //    qrcAchievement = new QResource(":/sound/fireTorch");
-    //    qrcLastBeepInterval = new QResource(":/sound/secondBeep");
-    //    qrcFirstBeepInterval = new QResource(":/sound/firstBeep");
-    //    qrcEndWorkout = new QResource(":/sound/end_workout");
-    //    qrcStartWorkout = new QResource(":/sound/resume");
-    //    qrcCadenceTooLow = new QResource(":/sound/cadenceTooLow");
-    //    qrcCadenceTooHigh = new QResource(":/sound/cadenceTooHigh");
-    //    qrcPowerTooLow = new QResource(":/sound/powerTooLow");
-    //    qrcPowerTooHigh = new QResource(":/sound/powerTooHigh");
+    // Probe SFML audio availability by redirecting sf::err() to a capture
+    // buffer while loading the first sound buffer.  On headless CI runners
+    // (no audio device / no OpenAL context) SFML writes an error to sf::err()
+    // and alGenSources() returns an invalid source, which later causes
+    // alSourcePlay() to crash.  Detecting the failure here lets us disable
+    // all sound operations gracefully instead of crashing.
+    {
+        std::ostringstream probe;
+        std::streambuf *const prev = sf::err().rdbuf(probe.rdbuf());
+        const bool loaded = bufferSoundAchievement.loadFromMemory(
+            qrcAchievement.data(), qrcAchievement.size());
+        sf::err().rdbuf(prev);
 
+        if (!loaded || !probe.str().empty()) {
+            qWarning() << "SoundPlayer: SFML audio unavailable"
+                       << (probe.str().empty()
+                               ? QString()
+                               : QStringLiteral(" — ") + QString::fromStdString(probe.str()).trimmed())
+                       << "; all sound operations disabled.";
+            return; // m_initialized stays false
+        }
+    }
 
-    bufferSoundAchievement.loadFromMemory(qrcAchievement.data(), qrcAchievement.size());
     bufferSoundLastBeepInterval.loadFromMemory(qrcLastBeepInterval.data(), qrcLastBeepInterval.size());
     bufferSoundFirstBeepInterval.loadFromMemory(qrcFirstBeepInterval.data(), qrcFirstBeepInterval.size());
     bufferSoundEndWorkout.loadFromMemory(qrcEndWorkout.data(), qrcEndWorkout.size());
@@ -40,7 +53,6 @@ SoundPlayer::SoundPlayer(QObject *parent) : QObject(parent)  {
     bufferSoundCadenceTooHigh.loadFromMemory(qrcCadenceTooHigh.data(), qrcCadenceTooHigh.size());
     bufferSoundPowerTooLow.loadFromMemory(qrcPowerTooLow.data(), qrcPowerTooLow.size());
     bufferSoundPowerTooHigh.loadFromMemory(qrcPowerTooHigh.data(), qrcPowerTooHigh.size());
-
 
     soundAchievement.emplace(bufferSoundAchievement);
     soundLastBeepInterval.emplace(bufferSoundLastBeepInterval);
@@ -52,7 +64,7 @@ SoundPlayer::SoundPlayer(QObject *parent) : QObject(parent)  {
     soundPowerTooLow.emplace(bufferSoundPowerTooLow);
     soundPowerTooHigh.emplace(bufferSoundPowerTooHigh);
 
-
+    m_initialized = true;
 
     setVolume(100);
 }
@@ -63,6 +75,7 @@ void SoundPlayer::setVolume(double volume) {
 
     qDebug() << "setVolume soundPlayer";
 
+    if (!m_initialized) return;
     soundAchievement->setVolume(volume);
     soundLastBeepInterval->setVolume(volume);
     soundFirstBeepInterval->setVolume(volume);
@@ -76,37 +89,48 @@ void SoundPlayer::setVolume(double volume) {
 
 
 void SoundPlayer::playSoundEffectTest() {
-        soundFirstBeepInterval->play();
+    if (!m_initialized) return;
+    soundFirstBeepInterval->play();
 }
 void SoundPlayer::playSoundAchievement() {
-        soundAchievement->play();
+    if (!m_initialized) return;
+    soundAchievement->play();
 }
 
 
 void SoundPlayer::playSoundLastBeepInterval() {
-        soundLastBeepInterval->play();
+    if (!m_initialized) return;
+    soundLastBeepInterval->play();
 }
 void SoundPlayer::playSoundFirstBeepInterval() {
-        soundFirstBeepInterval->play();
+    if (!m_initialized) return;
+    soundFirstBeepInterval->play();
 }
 void SoundPlayer::playSoundEndWorkout() {
-        soundEndWorkout->play();
+    if (!m_initialized) return;
+    soundEndWorkout->play();
 }
 void SoundPlayer::playSoundStartWorkout() {
-        soundStartWorkout->play();
+    if (!m_initialized) return;
+    soundStartWorkout->play();
 }
 void SoundPlayer::playSoundPauseWorkout() {
-        soundStartWorkout->play();
+    if (!m_initialized) return;
+    soundStartWorkout->play();
 }
 void SoundPlayer::playSoundCadenceTooLow() {
-        soundCadenceTooLow->play();
+    if (!m_initialized) return;
+    soundCadenceTooLow->play();
 }
 void SoundPlayer::playSoundCadenceTooHigh() {
-        soundCadenceTooHigh->play();
+    if (!m_initialized) return;
+    soundCadenceTooHigh->play();
 }
 void SoundPlayer::playSoundPowerTooLow() {
-        soundPowerTooLow->play();
+    if (!m_initialized) return;
+    soundPowerTooLow->play();
 }
 void SoundPlayer::playSoundPowerTooHigh() {
-        soundPowerTooHigh->play();
+    if (!m_initialized) return;
+    soundPowerTooHigh->play();
 }
