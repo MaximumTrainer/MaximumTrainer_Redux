@@ -857,13 +857,23 @@ jobs:
         exit $LASTEXITCODE
       shell: powershell
 
+    - name: Print test output
+      if: always()
+      shell: powershell
+      run: |
+        $logPath = "build\tests\ui-navigation-test-output.txt"
+        if (Test-Path $logPath) {
+          Write-Host "=== ui_navigation_tests output ==="
+          Get-Content $logPath
+        }
+
     - name: Upload UI navigation screenshots and log
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: ui-navigation-screenshots-windows
         path: |
-          build\tests\app-journey-*.png
+          build\tests\app-journey-*\
           build\tests\ui-navigation-test-output.txt
 
   # ──────────────────────────────────────────────────────────────────────────

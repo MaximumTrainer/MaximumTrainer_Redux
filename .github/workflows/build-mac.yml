@@ -694,7 +694,7 @@ jobs:
       with:
         name: ui-navigation-screenshots-macos
         path: |
-          build/tests/app-journey-*.png
+          build/tests/app-journey-*/
 
   # ──────────────────────────────────────────────────────────────────────────
   # UI Screens Tests – macOS

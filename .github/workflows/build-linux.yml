@@ -835,7 +835,7 @@ jobs:
       with:
         name: ui-navigation-screenshots-linux
         path: |
-          build/tests/app-journey-*.png
+          build/tests/app-journey-*/
 
   # ──────────────────────────────────────────────────────────────────────────
   # UI Screens Tests – Linux
