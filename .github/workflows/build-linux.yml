@@ -113,6 +113,12 @@ jobs:
         make -j$(nproc)
         qmake workout_ui_tests.pro
         make -j$(nproc)
+        qmake ui_screens_tests.pro
+        make -j$(nproc)
+        qmake workout_io_tests.pro
+        make -j$(nproc)
+        qmake workout_creator_tests.pro
+        make -j$(nproc)
 
     - name: Build BTLE unit tests
       run: |
@@ -689,6 +695,147 @@ jobs:
       with:
         name: workout-ui-screenshot-linux
         path: build/tests/workout-ui-linux-*.png
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # UI Screens Tests – Linux
+  #
+  # Runs the UI screen navigation test suite (tst_ui_screens.cpp):
+  #   • DialogConnectionMethod — "BTLE Device" and "Simulation" button clicks
+  #     verified with QTest::mouseClick and QSignalSpy.
+  #   • PostWorkoutSummary widget — metric labels verified as visible and
+  #     non-empty.
+  #   • ZWO inline-string parsing — ImporterWorkoutZwo exercised with XML
+  #     strings embedded in the source (no external files); covers Warmup,
+  #     SteadyState, Cooldown, IntervalsT expansion, FreeRide, edge cases.
+  #   • Labelled 1280×720 screenshots uploaded as build evidence.
+  # ──────────────────────────────────────────────────────────────────────────
+  test_ui_screens:
+    runs-on: ubuntu-22.04
+    needs: build_linux
+    permissions:
+      contents: read
+
+    steps:
+    - name: Install runtime dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          libqt5core5a \
+          libqt5gui5 \
+          libqt5widgets5 \
+          libqt5network5 \
+          libqt5sql5 \
+          libqt5test5 \
+          libqwt-qt5-6 \
+          xvfb \
+          libfontconfig1 \
+          libxrender1 \
+          libxext6 \
+          libgl1-mesa-dev
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: linux
+        path: build
+
+    - name: Make test binary executable
+      run: chmod +x build/tests/ui_screens_tests
+
+    - name: Run UI screens test with Xvfb
+      run: |
+        Xvfb :99 -screen 0 1280x800x24 &
+        sleep 1
+        export DISPLAY=:99
+        ./build/tests/ui_screens_tests -v2
+
+    - name: Upload UI screens screenshots
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ui-screens-screenshots-linux
+        path: build/tests/ui-screens-*.png
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout I/O Tests – Linux
+  #
+  # Runs the workout I/O test suite (tst_workout_io.cpp):
+  #   • ZWO import from inline XML strings (SteadyState, Ramp, IntervalsT,
+  #     FreeRide, mixed, name extraction, edge cases).
+  #   • Intervals.icu mock JSON → ZWO → Workout model workflow.
+  #   • XmlUtil round-trip (createWorkoutXml + parseSingleWorkoutXml) for
+  #     interval count, power, duration, and plan fields.
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_io:
+    runs-on: ubuntu-22.04
+    needs: build_linux
+    permissions:
+      contents: read
+
+    steps:
+    - name: Install runtime dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          libqt5core5a \
+          libqt5gui5 \
+          libqt5widgets5 \
+          libqt5network5 \
+          libqt5sql5 \
+          libqt5test5 \
+          libqwt-qt5-6 \
+          libfontconfig1 \
+          libxrender1 \
+          libxext6
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: linux
+        path: build
+
+    - name: Make test binary executable
+      run: chmod +x build/tests/workout_io_tests
+
+    - name: Run workout I/O tests
+      run: QT_QPA_PLATFORM=offscreen ./build/tests/workout_io_tests -v2
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout Creator Tests – Linux
+  #
+  # Runs the workout creator test suite (tst_workout_creator.cpp):
+  #   • Constructs Workout objects from Interval domain objects (Warmup,
+  #     SteadyState/FLAT, Cooldown) and verifies count, step types, power
+  #     values, durations, cadence, metadata, and total duration.
+  #   • Computed metrics (averagePower) verified for flat and mixed workouts.
+  #   • Edge cases: FTP=0, empty list, single interval, 10×on/off, cadence
+  #     range, testInterval flag.
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_creator:
+    runs-on: ubuntu-22.04
+    needs: build_linux
+    permissions:
+      contents: read
+
+    steps:
+    - name: Install runtime dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          libqt5core5a \
+          libqt5test5
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: linux
+        path: build
+
+    - name: Make test binary executable
+      run: chmod +x build/tests/workout_creator_tests
+
+    - name: Run workout creator tests
+      run: ./build/tests/workout_creator_tests -v2
 
   # ──────────────────────────────────────────────────────────────────────────
   # Strava / TrainingPeaks / Selfloops Service Unit Tests – Linux

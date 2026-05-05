@@ -158,20 +158,41 @@ jobs:
           QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
         make -j$(sysctl -n hw.logicalcpu)
 
+    - name: Build UI screens test
+      run: |
+        mkdir -p build/tests
+        cd tests/integration
+        qmake ui_screens_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0"
+        make -j$(sysctl -n hw.logicalcpu)
+
+    - name: Build workout I/O test
+      run: |
+        mkdir -p build/tests
+        cd tests/integration
+        qmake workout_io_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0"
+        make -j$(sysctl -n hw.logicalcpu)
+
+    - name: Build workout creator test
+      run: |
+        mkdir -p build/tests
+        cd tests/integration
+        qmake workout_creator_tests.pro
+        make -j$(sysctl -n hw.logicalcpu)
+
     - name: Bundle QWT dylib into test artifact
       # The test runner job has no QWT installation. Copy the dylib next to the
       # binary and rewrite its LC_LOAD_DYLIB to @loader_path so dyld finds it
       # from the artifact without needing the absolute /usr/local path.
       run: |
         cp /usr/local/qwt-6.2.0/lib/libqwt.6.dylib build/tests/
-        install_name_tool \
-          -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
-          @loader_path/libqwt.6.dylib \
-          build/tests/login_screen_tests
-        install_name_tool \
-          -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
-          @loader_path/libqwt.6.dylib \
-          build/tests/workout_ui_tests
+        for bin in login_screen_tests workout_ui_tests ui_screens_tests workout_io_tests; do
+          if [ -f "build/tests/$bin" ]; then
+            install_name_tool \
+              -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+              @loader_path/libqwt.6.dylib \
+              "build/tests/$bin"
+          fi
+        done
 
     - name: Bind rpath for Qt frameworks and OpenSSL
       run: |
@@ -544,3 +565,106 @@ jobs:
       with:
         name: workout-ui-screenshot-macos
         path: build/tests/workout-ui-macos-*.png
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # UI Screens Tests – macOS
+  # ──────────────────────────────────────────────────────────────────────────
+  test_ui_screens:
+    runs-on: macos-latest
+    needs: build_mac
+    permissions:
+      contents: read
+
+    steps:
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.7.3'
+        host: 'mac'
+        target: 'desktop'
+        arch: 'clang_64'
+        cache: true
+        cache-key-prefix: qt-mac
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: macos
+        path: build
+
+    - name: Make test binary executable
+      run: chmod +x build/tests/ui_screens_tests
+
+    - name: Run UI screens test
+      run: ./build/tests/ui_screens_tests -v2
+
+    - name: Upload UI screens screenshots
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ui-screens-screenshots-macos
+        path: build/tests/ui-screens-*.png
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout I/O Tests – macOS
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_io:
+    runs-on: macos-latest
+    needs: build_mac
+    permissions:
+      contents: read
+
+    steps:
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.7.3'
+        host: 'mac'
+        target: 'desktop'
+        arch: 'clang_64'
+        cache: true
+        cache-key-prefix: qt-mac
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: macos
+        path: build
+
+    - name: Make test binary executable
+      run: chmod +x build/tests/workout_io_tests
+
+    - name: Run workout I/O tests
+      run: ./build/tests/workout_io_tests -v2
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout Creator Tests – macOS
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_creator:
+    runs-on: macos-latest
+    needs: build_mac
+    permissions:
+      contents: read
+
+    steps:
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.7.3'
+        host: 'mac'
+        target: 'desktop'
+        arch: 'clang_64'
+        cache: true
+        cache-key-prefix: qt-mac
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: macos
+        path: build
+
+    - name: Make test binary executable
+      run: chmod +x build/tests/workout_creator_tests
+
+    - name: Run workout creator tests
+      run: ./build/tests/workout_creator_tests -v2
