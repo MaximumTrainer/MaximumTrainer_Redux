@@ -187,7 +187,13 @@ int main(int argc, char *argv[]) {
             flagIdx = cliArgs.indexOf(QLatin1String("/screenshots"));
         if (flagIdx >= 0 && flagIdx + 1 < cliArgs.size()) {
             const QString &next = cliArgs.at(flagIdx + 1);
-            if (!next.startsWith(QLatin1Char('-')) && !next.startsWith(QLatin1Char('/')))
+            // Accept any argument that does not begin with '-' (Unix/Windows flag)
+            // or '//' (Windows UNC path used as a flag form).  On Unix, absolute
+            // paths start with '/' and must be accepted as valid output directories.
+            const bool looksLikeFlag = next.startsWith(QLatin1Char('-'))
+                                    || next == QLatin1String("/screenshots")
+                                    || next == QLatin1String("/debug");
+            if (!looksLikeFlag)
                 outDir = next;
         }
         QMetaObject::invokeMethod(&w, "startScreenshotMode", Qt::QueuedConnection,
