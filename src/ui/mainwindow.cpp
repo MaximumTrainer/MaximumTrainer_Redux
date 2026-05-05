@@ -2235,17 +2235,25 @@ void MainWindow::updateTrainerCurve(int trainer_id, QString companyName, QString
 // Delays (ms) applied AFTER completing each step, before starting the next.
 // Indexed by the step index that just finished: ssDelays[step] → next step.
 static const int ssDelays[] = {
-    800,   // after step  0 (captured main window)   → switch to Settings
-    1000,  // after step  1 (switched to Settings)    → capture Settings
-    500,   // after step  2 (captured Settings)        → switch to WorkoutCreator
-    1000,  // after step  3 (loaded WorkoutCreator)    → capture WorkoutCreator
-    500,   // after step  4 (captured WorkoutCreator)  → launch WorkoutDialog
-    9000,  // after step  5 (launched WorkoutDialog)   → capture running workout
-    200,   // after step  6 (captured workout)         → close WorkoutDialog
-    600,   // after step  7 (closed WorkoutDialog)     → enable studio mode
-    2000,  // after step  8 (enabled studio mode)      → capture Studio
-    500,   // after step  9 (captured Studio)           → switch to Intervals.icu
-    1500,  // after step 10 (switched to Intervals.icu) → capture Intervals.icu
+    800,   // after step  0 (captured main window)      → switch to Settings
+    1000,  // after step  1 (switched to Settings)       → capture Settings
+    500,   // after step  2 (captured Settings)           → switch to WorkoutCreator
+    1000,  // after step  3 (loaded WorkoutCreator)       → capture WorkoutCreator
+    500,   // after step  4 (captured WorkoutCreator)     → launch WorkoutDialog
+    9000,  // after step  5 (launched WorkoutDialog)      → capture running workout
+    200,   // after step  6 (captured workout)            → close WorkoutDialog
+    600,   // after step  7 (closed WorkoutDialog)        → enable studio mode
+    2000,  // after step  8 (enabled studio mode)         → capture Studio
+    500,   // after step  9 (captured Studio)              → switch to Intervals.icu
+    1500,  // after step 10 (switched to Intervals.icu)    → capture Intervals.icu
+    500,   // after step 11 (captured Intervals.icu)       → switch to Plan
+    1500,  // after step 12 (switched to Plan)             → capture Plan
+    500,   // after step 13 (captured Plan)                → switch to Profile
+    1500,  // after step 14 (switched to Profile)          → capture Profile
+    500,   // after step 15 (captured Profile)             → switch to Achievements
+    1500,  // after step 16 (switched to Achievements)     → capture Achievements
+    500,   // after step 17 (captured Achievements)        → switch to History
+    1500,  // after step 18 (switched to History)          → capture History
 };
 
 Workout MainWindow::makeDemoWorkout() const
@@ -2438,10 +2446,66 @@ void MainWindow::screenshotNextStep()
         QCoreApplication::processEvents();
         break;
 
-    // ── Step 11: capture Intervals.icu (replaces removed History view) ────
+    // ── Step 11: capture Intervals.icu ────────────────────────────────────
     case 11:
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_activity_history.png"), "PNG");
         qDebug() << "Screenshot: activity_history (Intervals.icu tab)";
+        break;
+
+    // ── Step 12: switch to Plan tab (tab 2) ───────────────────────────────
+    case 12:
+        ftb->setCurrentIndex(2);
+        ui->tabWidget->setCurrentIndex(0);   // Plan sub-tab
+        raise();
+        activateWindow();
+        QCoreApplication::processEvents();
+        break;
+
+    // ── Step 13: capture Plan ─────────────────────────────────────────────
+    case 13:
+        grab().save(m_ssOutputDir + QLatin1String("/screenshot_plan.png"), "PNG");
+        qDebug() << "Screenshot: plan";
+        break;
+
+    // ── Step 14: switch to Profile tab (tab 4) ────────────────────────────
+    case 14:
+        ftb->setCurrentIndex(4);
+        ui->tabWidget_profile->setCurrentIndex(0);   // Profile sub-tab
+        raise();
+        activateWindow();
+        QCoreApplication::processEvents();
+        break;
+
+    // ── Step 15: capture Profile ──────────────────────────────────────────
+    case 15:
+        grab().save(m_ssOutputDir + QLatin1String("/screenshot_profile.png"), "PNG");
+        qDebug() << "Screenshot: profile";
+        break;
+
+    // ── Step 16: switch to Achievements sub-tab (still tab 4) ────────────
+    case 16:
+        ui->tabWidget_profile->setCurrentIndex(1);   // Achievements sub-tab
+        QCoreApplication::processEvents();
+        break;
+
+    // ── Step 17: capture Achievements ────────────────────────────────────
+    case 17:
+        grab().save(m_ssOutputDir + QLatin1String("/screenshot_achievements.png"), "PNG");
+        qDebug() << "Screenshot: achievements";
+        break;
+
+    // ── Step 18: switch to History tab (tab 6) ────────────────────────────
+    case 18:
+        ftb->setCurrentIndex(6);
+        raise();
+        activateWindow();
+        QCoreApplication::processEvents();
+        break;
+
+    // ── Step 19: capture History ─────────────────────────────────────────
+    case 19:
+        grab().save(m_ssOutputDir + QLatin1String("/screenshot_history.png"), "PNG");
+        qDebug() << "Screenshot: history";
         QTimer::singleShot(300, qApp, SLOT(quit()));
         return; // No further steps — quit is already scheduled.
 

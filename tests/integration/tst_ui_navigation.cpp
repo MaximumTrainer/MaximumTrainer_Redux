@@ -240,9 +240,9 @@ private slots:
                  qPrintable(QString("MaximumTrainer failed to start: %1")
                                 .arg(proc.errorString())));
 
-        // The --screenshots sequence runs for ~18 s (animation + paint delays).
-        // Allow 90 s to be safe on slow CI runners.
-        const bool finished = proc.waitForFinished(90'000);
+        // The --screenshots sequence runs for ~26 s (animation + paint delays).
+        // Allow 120 s to be safe on slow CI runners.
+        const bool finished = proc.waitForFinished(120'000);
 
         // Capture any output from the process for diagnostics.
         const QByteArray procOutput = proc.readAll();
@@ -252,13 +252,14 @@ private slots:
         }
 
         QVERIFY2(finished,
-                 "MaximumTrainer --screenshots did not complete within 90 s");
+                 "MaximumTrainer --screenshots did not complete within 120 s");
         QVERIFY2(proc.exitCode() == 0,
                  qPrintable(QString("MaximumTrainer exited with code %1")
                                 .arg(proc.exitCode())));
 
         // ── Verify expected screenshots ──────────────────────────────────────
         // These file names are hard-coded in MainWindow::screenshotNextStep().
+        // Covers all 7 main tabs of the application.
         const QStringList expectedFiles = {
             QStringLiteral("screenshot_main_window.png"),
             QStringLiteral("screenshot_settings.png"),
@@ -266,6 +267,10 @@ private slots:
             QStringLiteral("screenshot_workout_running.png"),
             QStringLiteral("screenshot_studio_mode.png"),
             QStringLiteral("screenshot_activity_history.png"),
+            QStringLiteral("screenshot_plan.png"),
+            QStringLiteral("screenshot_profile.png"),
+            QStringLiteral("screenshot_achievements.png"),
+            QStringLiteral("screenshot_history.png"),
         };
 
         for (const QString &fileName : expectedFiles) {
