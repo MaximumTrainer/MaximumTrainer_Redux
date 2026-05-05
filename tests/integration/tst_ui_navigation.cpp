@@ -11,7 +11,7 @@
  *   A. Full application journey (out-of-process)
  *      Launches the installed MaximumTrainer binary via QProcess with the
  *      existing --screenshots flag.  The application starts without login
- *      (offline mode), navigates through every major screen, and saves six
+ *      (offline mode), navigates through every major screen, and saves ten
  *      1280×720 PNGs to a temporary directory.  The test verifies each file
  *      exists and has valid dimensions.  This approach exercises the real,
  *      installed application on the host OS using its actual display
@@ -26,14 +26,18 @@
  * Test groups
  * ──────────────────────────────────────────────────────────────────────
  * 0. Full Application Journey  (out-of-process, real installed binary)
- *    Launches MaximumTrainer --screenshots <dir> and verifies all six
+ *    Launches MaximumTrainer --screenshots <dir> and verifies all ten
  *    expected screenshots are written by the running application:
  *      • screenshot_main_window.png
- *      • screenshot_settings.png
  *      • screenshot_workout_editor.png
  *      • screenshot_workout_running.png
+ *      • screenshot_settings.png
  *      • screenshot_studio_mode.png
  *      • screenshot_activity_history.png
+ *      • screenshot_plan.png
+ *      • screenshot_profile.png
+ *      • screenshot_achievements.png
+ *      • screenshot_history.png
  *    Binary is located via the MT_APP_BINARY env-var override or the
  *    canonical peer path  build/release/MaximumTrainer{.app|.exe}.
  *    The test is skipped gracefully when the binary is not found.
@@ -58,7 +62,7 @@
  *
  * Acceptance criteria
  * ──────────────────────────────────────────────────────────────────────
- * • Full-app journey: all 6 screenshots exist and are ≥ 1280×720 px.
+ * • Full-app journey: all 10 screenshots exist and are ≥ 1280×720 px.
  * • ConnectionDialog: accepted() signal fires exactly once per click;
  *   selectedMethod() returns the correct method.
  * • IntervalTableModel: rowCount() changes match expectation after each

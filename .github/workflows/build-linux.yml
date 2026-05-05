@@ -807,7 +807,6 @@ jobs:
       with:
         name: ui-navigation-screenshots-linux
         path: |
-          build/tests/ui-navigation-*.png
           build/tests/app-journey-*.png
 
   # ──────────────────────────────────────────────────────────────────────────

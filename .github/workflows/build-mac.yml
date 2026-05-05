@@ -627,13 +627,14 @@ jobs:
       contents: read
 
     steps:
-    - name: Install Qt
+    - name: Install Qt (core + widgets + bluetooth + webengine for app binary)
       uses: jurplel/install-qt-action@v3
       with:
         version: '6.7.3'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning'
         cache: true
         cache-key-prefix: qt-mac
 
@@ -657,5 +658,4 @@ jobs:
       with:
         name: ui-navigation-screenshots-macos
         path: |
-          build/tests/ui-navigation-*.png
           build/tests/app-journey-*.png
