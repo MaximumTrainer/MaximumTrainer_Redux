@@ -17,6 +17,9 @@ moc_*.cpp
 *.moc
 moc_predefs.h
 ui_*.h
+# Per-test intermediate object / MOC directories (set via OBJECTS_DIR / MOC_DIR in .pro)
+.obj_*/
+.moc_*/
 # CodeQL tool artifact
 _codeql_detected_source_root
 # Node / Playwright (test tooling — not part of the Qt build)
@@ -31,3 +34,4 @@ playwright-report/
 __pycache__/
 *.pyc
 MaximumTrainer_Archived/
+tests/integration/ui_repeatwidget.h

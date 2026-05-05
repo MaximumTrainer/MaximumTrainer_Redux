@@ -372,6 +372,32 @@ jobs:
         jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
+    - name: Build UI screens test
+      run: |
+        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
+        Set-Location tests\integration
+        $qwtDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
+        qmake ui_screens_tests.pro "QWT_INSTALL=$qwtDirFwd"
+        jom /J $env:NUMBER_OF_PROCESSORS
+      shell: powershell
+
+    - name: Build workout I/O test
+      run: |
+        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
+        Set-Location tests\integration
+        $qwtDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
+        qmake workout_io_tests.pro "QWT_INSTALL=$qwtDirFwd"
+        jom /J $env:NUMBER_OF_PROCESSORS
+      shell: powershell
+
+    - name: Build workout creator test
+      run: |
+        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
+        Set-Location tests\integration
+        qmake workout_creator_tests.pro
+        jom /J $env:NUMBER_OF_PROCESSORS
+      shell: powershell
+
     - name: Deploy Qt for test binaries
       run: |
         & "$env:QTDIR\bin\windeployqt.exe" --release `
@@ -406,6 +432,18 @@ jobs:
             --no-translations `
             --no-system-d3d-compiler `
             build\tests\ui_navigation_tests.exe
+        & "$env:QTDIR\bin\windeployqt.exe" --release `
+            --no-translations `
+            --no-system-d3d-compiler `
+            build\tests\ui_screens_tests.exe
+        & "$env:QTDIR\bin\windeployqt.exe" --release `
+            --no-translations `
+            --no-system-d3d-compiler `
+            build\tests\workout_io_tests.exe
+        & "$env:QTDIR\bin\windeployqt.exe" --release `
+            --no-translations `
+            --no-system-d3d-compiler `
+            build\tests\workout_creator_tests.exe
         foreach ($dll in @("libssl-1_1-x64.dll", "libcrypto-1_1-x64.dll")) {
           $src = "$env:OPENSSL_BIN\$dll"
           if (Test-Path $src) { Copy-Item $src "build\tests\" -Force }
@@ -827,3 +865,70 @@ jobs:
         path: |
           build\tests\app-journey-*.png
           build\tests\ui-navigation-test-output.txt
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # UI Screens Tests – Windows
+  # ──────────────────────────────────────────────────────────────────────────
+  test_ui_screens:
+    runs-on: windows-latest
+    needs: build_windows
+    permissions:
+      contents: read
+
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: windows
+        path: build
+
+    - name: Run UI screens test
+      run: .\build\tests\ui_screens_tests.exe -v2
+      shell: powershell
+
+    - name: Upload UI screens screenshots
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ui-screens-screenshots-windows
+        path: build\tests\ui-screens-*.png
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout I/O Tests – Windows
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_io:
+    runs-on: windows-latest
+    needs: build_windows
+    permissions:
+      contents: read
+
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: windows
+        path: build
+
+    - name: Run workout I/O tests
+      run: .\build\tests\workout_io_tests.exe -v2
+      shell: powershell
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout Creator Tests – Windows
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_creator:
+    runs-on: windows-latest
+    needs: build_windows
+    permissions:
+      contents: read
+
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: windows
+        path: build
+
+    - name: Run workout creator tests
+      run: .\build\tests\workout_creator_tests.exe -v2
+      shell: powershell
