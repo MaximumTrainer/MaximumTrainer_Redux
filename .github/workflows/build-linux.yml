@@ -772,6 +772,8 @@ jobs:
           libqt5webenginewidgets5 \
           libqt5webenginecore5 \
           libqwt-qt5-6 \
+          libsfml-audio2.5 \
+          libsfml-system2.5 \
           xvfb \
           libfontconfig1 \
           libxrender1 \
