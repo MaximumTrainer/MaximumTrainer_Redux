@@ -37,7 +37,7 @@
  *
  *   Interval ordering and edge cases
  *   ──────────────────────────────────
- *   13. testOrder_preseverd              — intervals returned in insertion order
+ *   13. testOrder_preserved              — intervals returned in insertion order
  *   14. testSingleInterval               — one-interval workout works
  *   15. testEmptyWorkout                 — empty interval list returns 0 count
  *   16. testHighRepeatIntervalsT         — 10 on/off pairs = 20 intervals
