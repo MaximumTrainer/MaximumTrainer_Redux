@@ -39,7 +39,9 @@ CONFIG   -= app_bundle
 TARGET   = workout_creator_tests
 TEMPLATE = app
 
-DESTDIR  = ../../build/tests
+DESTDIR     = ../../build/tests
+OBJECTS_DIR = .obj_workout_creator
+MOC_DIR     = .moc_workout_creator
 
 # ── INCLUDEPATH — local stub dir MUST come FIRST so that:
 #    • util.h        shadows the real util.h (which includes QWT)

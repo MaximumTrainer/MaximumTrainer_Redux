@@ -32,7 +32,9 @@ CONFIG   -= app_bundle
 TARGET   = ui_screens_tests
 TEMPLATE = app
 
-DESTDIR  = ../../build/tests
+DESTDIR     = ../../build/tests
+OBJECTS_DIR = .obj_ui_screens
+MOC_DIR     = .moc_ui_screens
 
 # ── QWT: platform-specific include / link ───────────────────────────────────
 linux {

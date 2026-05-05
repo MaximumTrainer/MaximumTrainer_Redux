@@ -32,7 +32,9 @@ CONFIG   -= app_bundle
 TARGET   = workout_io_tests
 TEMPLATE = app
 
-DESTDIR  = ../../build/tests
+DESTDIR     = ../../build/tests
+OBJECTS_DIR = .obj_workout_io
+MOC_DIR     = .moc_workout_io
 
 # ── QWT: platform-specific include / link ────────────────────────────────────
 linux {
