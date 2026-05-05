@@ -113,6 +113,10 @@ jobs:
         make -j$(nproc)
         qmake workout_ui_tests.pro
         make -j$(nproc)
+        qmake workout_parsing_tests.pro
+        make -j$(nproc)
+        qmake ui_navigation_tests.pro
+        make -j$(nproc)
 
     - name: Build BTLE unit tests
       run: |
@@ -689,6 +693,110 @@ jobs:
       with:
         name: workout-ui-screenshot-linux
         path: build/tests/workout-ui-linux-*.png
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout Parsing Tests – Linux
+  #
+  # Validates the ZWO (Zwift workout XML) parsing pipeline end-to-end:
+  #   • ZWO inline string parsing — SteadyState, Ramp, IntervalsT, FreeRide,
+  #     mixed Warmup/SteadyState/Cooldown embedded directly in test source
+  #   • Workout model from programmatic Interval objects — structural fields,
+  #     average-power metric, and total-duration round-trip via getDurationQTime()
+  #   • Edge cases — empty byte array and malformed XML return empty Workout
+  #   • Intervals.icu pull-and-load (QSKIP when credentials absent)
+  #
+  # No display required (QT -= gui); runs in a plain headless environment.
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_parsing:
+    runs-on: ubuntu-22.04
+    needs: build_linux
+    permissions:
+      contents: read
+    env:
+      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
+      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
+
+    steps:
+    - name: Install runtime dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          libqt5core5a \
+          libqt5network5 \
+          libqt5xml5 \
+          libqt5test5
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: linux
+        path: build
+
+    - name: Make test binary executable
+      run: chmod +x build/tests/workout_parsing_tests
+
+    - name: Run workout parsing tests
+      run: ./build/tests/workout_parsing_tests -v2
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # UI Navigation Tests – Linux
+  #
+  # Validates the primary UI screens and user interaction flows:
+  #   • ConnectionDialog — QTest::mouseClick() on "Simulation" and "BTLE Device";
+  #     QSignalSpy verifies accepted() fires and selectedMethod() is correct
+  #   • WorkoutCreator IntervalTableModel — insertRows / removeRows / copyRows /
+  #     setListInterval; dataChanged signal verified
+  #   • Post-workout summary screen — WorkoutHistorySummary field verification
+  #   • Visual evidence screenshots (1280×720, platform-tagged, PNG)
+  #
+  # Uses Xvfb for the headless X11 display required by Qt Widgets.
+  # ──────────────────────────────────────────────────────────────────────────
+  test_ui_navigation:
+    runs-on: ubuntu-22.04
+    needs: build_linux
+    permissions:
+      contents: read
+
+    steps:
+    - name: Install runtime dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          libqt5core5a \
+          libqt5gui5 \
+          libqt5widgets5 \
+          libqt5network5 \
+          libqt5sql5 \
+          libqt5test5 \
+          libqwt-qt5-6 \
+          xvfb \
+          libfontconfig1 \
+          libxrender1 \
+          libxext6 \
+          libgl1-mesa-dev
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: linux
+        path: build
+
+    - name: Make test binary executable
+      run: chmod +x build/tests/ui_navigation_tests
+
+    - name: Run UI navigation tests with Xvfb
+      run: |
+        Xvfb :99 -screen 0 1280x800x24 &
+        sleep 1
+        export DISPLAY=:99
+        ./build/tests/ui_navigation_tests -v2
+
+    - name: Upload UI navigation screenshots
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ui-navigation-screenshots-linux
+        path: build/tests/ui-navigation-*.png
 
   # ──────────────────────────────────────────────────────────────────────────
   # Strava / TrainingPeaks / Selfloops Service Unit Tests – Linux
