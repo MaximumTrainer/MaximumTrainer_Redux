@@ -224,7 +224,10 @@ void Main_WorkoutPage::fillWorkoutPage() {
 
 
     qDebug() << "JSTOEXECUTE IS:" << jsCode;
-    ui->webView_workouts->page()->runJavaScript(jsCode);
+    // Guard against pages where jQuery is not yet loaded (e.g. screenshot/CI
+    // mode where the external URL was replaced with blank HTML).
+    ui->webView_workouts->page()->runJavaScript(
+        QStringLiteral("if(typeof window.$==='function'){") + jsCode + QStringLiteral("}"));
 
     filterChanged("name", nameFilter);
     filterChanged("plan", planFilter);

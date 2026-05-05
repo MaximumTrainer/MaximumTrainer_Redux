@@ -46,6 +46,7 @@
 #include <QDir>
 #include <QMenu>
 #include <QRegularExpression>
+#include <QWebEngineView>
 #include <QWebEngineProfile>
 #include <QWebEngineScript>
 #include <QWebEnginePage>
@@ -2362,23 +2363,18 @@ void MainWindow::startScreenshotMode(const QString &outputDir)
         replyRadio->abort();
     }
 
-    // Navigate all WebEngine views that load external pages (maximumtrainer.com)
-    // to blank HTML.  Those pages depend on jQuery / RxJS loaded from CDN, and
-    // in a CI environment without internet access the CDN requests fail,
-    // producing console errors and, in some WebEngine configurations on macOS,
-    // leading to crashes.  Replacing them with a trivial local page prevents
-    // any external network traffic and keeps the screenshot session stable.
-    // webView_plan is already handled: in screenshot mode the Account has no
-    // intervals_icu_athlete_id, so the constructor's else-branch already loaded
-    // local fallback HTML instead of the external calendar URL.
+    // Navigate ALL WebEngine views (including nested ones in child widgets) to
+    // blank HTML.  External pages depend on jQuery / RxJS loaded from CDN; in
+    // a CI environment without internet access the CDN requests fail, producing
+    // console errors and, in some configurations (macOS, Windows), crashes.
+    // Using findChildren covers webView_workouts (Main_WorkoutPage) and
+    // webView_createWorkout (WorkoutCreator) in addition to the direct children
+    // of MainWindow's UI — all would otherwise try to run jQuery code against
+    // a page that never loaded jQuery.
     static const QString kBlankHtml =
         QStringLiteral("<html><body></body></html>");
-    ui->webView_zones->setHtml(kBlankHtml);
-    ui->webView_achiev->setHtml(kBlankHtml);
-    ui->webView_settings->setHtml(kBlankHtml);
-    ui->webView_studio->setHtml(kBlankHtml);
-    ui->webView_trainerweb_plans->setHtml(kBlankHtml);
-    ui->webView_trainerweb_creator->setHtml(kBlankHtml);
+    for (auto *wv : findChildren<QWebEngineView*>())
+        wv->setHtml(kBlankHtml);
 
     resize(1280, 720);
     move(100, 50);

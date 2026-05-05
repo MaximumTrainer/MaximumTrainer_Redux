@@ -354,7 +354,10 @@ void WorkoutCreator::fillWorkoutCreatorPageWeb(QString name, QString plan, QStri
     jsToExecute += "$('#select-type-workout').selectpicker('refresh');";
     //    ui->webView_createWorkout->page()->mainFrame()->documentElement().evaluateJavaScript(jsToExecute + "; null");
 
-    ui->webView_createWorkout->page()->runJavaScript(jsToExecute);
+    // Guard against pages where jQuery is not yet loaded (e.g. screenshot/CI
+    // mode where the external URL was replaced with blank HTML).
+    ui->webView_createWorkout->page()->runJavaScript(
+        QStringLiteral("if(typeof window.$==='function'){") + jsToExecute + QStringLiteral("}"));
 
 
 }
@@ -385,8 +388,9 @@ void WorkoutCreator::checkToEnableButtonSave() {
 
 //    qDebug() << "ok button check JS is " << jsToRun;
 
-
-    ui->webView_createWorkout->page()->runJavaScript(jsToRun);
+    // Guard against pages where jQuery is not yet loaded.
+    ui->webView_createWorkout->page()->runJavaScript(
+        QStringLiteral("if(typeof window.$==='function'){") + jsToRun + QStringLiteral("}"));
 
 }
 
