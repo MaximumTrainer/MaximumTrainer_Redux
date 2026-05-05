@@ -1089,8 +1089,7 @@ void MainWindow::fillStudioPage() {
 
     qDebug() << "JSTOEXECUTE IS:" << jsToExecute;
     ui->webView_studio->page()->runJavaScript(
-        jsToExecute.isEmpty() ? QString()
-                              : "if(typeof window.$==='function'){" + jsToExecute + "}");
+        "if(typeof window.$==='function'){" + jsToExecute + "}");
 }
 
 
