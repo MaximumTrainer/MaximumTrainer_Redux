@@ -781,10 +781,17 @@ jobs:
         name: linux
         path: build
 
-    - name: Make test binary executable
-      run: chmod +x build/tests/ui_navigation_tests
+    - name: Make binaries executable
+      run: |
+        chmod +x build/tests/ui_navigation_tests
+        chmod +x build/release/MaximumTrainer
 
     - name: Run UI navigation tests with Xvfb
+      # Xvfb provides a real X11 display server so the installed MaximumTrainer
+      # binary launched by testFullApplicationJourney() can render its windows
+      # and write screenshots, and the component-level dialog tests can show
+      # real Qt windows.  This is not "headless" — Xvfb is a fully functional
+      # X11 server; it just has no physical hardware attached.
       run: |
         Xvfb :99 -screen 0 1280x800x24 &
         sleep 1
@@ -796,7 +803,9 @@ jobs:
       if: always()
       with:
         name: ui-navigation-screenshots-linux
-        path: build/tests/ui-navigation-*.png
+        path: |
+          build/tests/ui-navigation-*.png
+          build/tests/app-journey-*.png
 
   # ──────────────────────────────────────────────────────────────────────────
   # Strava / TrainingPeaks / Selfloops Service Unit Tests – Linux

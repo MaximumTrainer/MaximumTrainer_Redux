@@ -807,4 +807,6 @@ jobs:
       if: always()
       with:
         name: ui-navigation-screenshots-windows
-        path: build\tests\ui-navigation-*.png
+        path: |
+          build\tests\ui-navigation-*.png
+          build\tests\app-journey-*.png

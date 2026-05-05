@@ -630,8 +630,10 @@ jobs:
         name: macos
         path: build
 
-    - name: Make test binary executable
-      run: chmod +x build/tests/ui_navigation_tests
+    - name: Make binaries executable
+      run: |
+        chmod +x build/tests/ui_navigation_tests
+        chmod +x build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
 
     - name: Run UI navigation tests
       run: ./build/tests/ui_navigation_tests -v2
@@ -641,4 +643,6 @@ jobs:
       if: always()
       with:
         name: ui-navigation-screenshots-macos
-        path: build/tests/ui-navigation-*.png
+        path: |
+          build/tests/ui-navigation-*.png
+          build/tests/app-journey-*.png

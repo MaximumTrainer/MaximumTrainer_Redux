@@ -6,13 +6,38 @@
  * Purpose
  * -----------------------------------------------------------------------
  * Validates the primary UI screens and user interaction flows of
- * MaximumTrainer using Qt Test's mouse/keyboard simulation facilities.
- * Tests run headlessly under Xvfb (Linux CI) or the native display
- * (Windows / macOS CI) and produce labelled 1280×720 screenshots as
- * build evidence.
+ * MaximumTrainer using two complementary approaches:
+ *
+ *   A. Full application journey (out-of-process)
+ *      Launches the installed MaximumTrainer binary via QProcess with the
+ *      existing --screenshots flag.  The application starts without login
+ *      (offline mode), navigates through every major screen, and saves six
+ *      1280×720 PNGs to a temporary directory.  The test verifies each file
+ *      exists and has valid dimensions.  This approach exercises the real,
+ *      installed application on the host OS using its actual display
+ *      (Xvfb on Linux CI, native display on macOS / Windows CI).
+ *
+ *   B. Component interaction (in-process, real display)
+ *      Uses QTest::mouseClick(), QSignalSpy, and QCOMPARE to drive
+ *      individual widgets and models that back the UI.  These tests
+ *      complement the full-app journey by verifying discrete signal/slot
+ *      contracts and model mutations that the screenshot run cannot assert.
  *
  * Test groups
  * ──────────────────────────────────────────────────────────────────────
+ * 0. Full Application Journey  (out-of-process, real installed binary)
+ *    Launches MaximumTrainer --screenshots <dir> and verifies all six
+ *    expected screenshots are written by the running application:
+ *      • screenshot_main_window.png
+ *      • screenshot_settings.png
+ *      • screenshot_workout_editor.png
+ *      • screenshot_workout_running.png
+ *      • screenshot_studio_mode.png
+ *      • screenshot_activity_history.png
+ *    Binary is located via the MT_APP_BINARY env-var override or the
+ *    canonical peer path  build/release/MaximumTrainer{.app|.exe}.
+ *    The test is skipped gracefully when the binary is not found.
+ *
  * 1. ConnectionDialog (DialogConnectionMethod)
  *    Verifies that clicking "Simulation" or "BTLE Device" accepts the
  *    dialog, emits QDialog::accepted(), and sets the correct
@@ -27,35 +52,32 @@
  *      • copyRows()    — duplicates an existing row with identical data
  *      • setListInterval() — dataChanged emitted, model row count matches
  *
- * 3. Post-workout summary screen
- *    Constructs a WorkoutHistorySummary struct with known values,
- *    renders a 1280×720 summary window that mirrors the post-workout
- *    screen layout, and verifies all data fields are accessible and
- *    visible.  A screenshot is saved as build evidence.
- *
- * 4. Visual evidence screenshots
- *    Each test group generates a platform-tagged screenshot that is
- *    uploaded as a CI artifact by the `ui_navigation` test job.
+ * 3. Post-workout summary data
+ *    Constructs a WorkoutHistorySummary struct with known values and
+ *    verifies all data fields are accessible and correct.
  *
  * Acceptance criteria
  * ──────────────────────────────────────────────────────────────────────
+ * • Full-app journey: all 6 screenshots exist and are ≥ 1280×720 px.
  * • ConnectionDialog: accepted() signal fires exactly once per click;
  *   selectedMethod() returns the correct method.
  * • IntervalTableModel: rowCount() changes match expectation after each
  *   mutating operation; dataChanged signal is emitted.
- * • WorkoutHistorySummary: all numeric and string fields are accessible.
- * • Screenshots: saved files are non-empty and ≥ 1280×720 pixels.
+ * • WorkoutHistorySummary: all numeric and string fields match the
+ *   values used to populate the struct.
  *
  * Build:
  *   cd tests/integration
  *   qmake ui_navigation_tests.pro [QWT_INSTALL=/path/to/qwt] && make -j$(nproc)
- * Run headless (Linux CI):
+ * Run (Linux CI — with Xvfb providing a real X11 display):
  *   Xvfb :99 -screen 0 1280x800x24 &
  *   sleep 1
  *   export DISPLAY=:99
  *   ../../build/tests/ui_navigation_tests -v2
- * Run directly (Windows / macOS CI):
+ * Run directly (Windows / macOS CI — native display):
  *   .\build\tests\ui_navigation_tests.exe -v2
+ * Override application binary path:
+ *   MT_APP_BINARY=/opt/MaximumTrainer/MaximumTrainer ./build/tests/ui_navigation_tests -v2
  */
 
 #include <QtTest/QtTest>
@@ -65,19 +87,15 @@
 #include <QWidget>
 #include <QDialog>
 #include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QGridLayout>
 #include <QLabel>
-#include <QFrame>
-#include <QScreen>
-#include <QPixmap>
 #include <QDir>
-#include <QSysInfo>
 #include <QDateTime>
-#include <QTimer>
 #include <QTableView>
 #include <QHeaderView>
 #include <QAbstractItemModel>
+#include <QProcess>
+#include <QImage>
+#include <QFileInfo>
 
 #include "../../src/model/account.h"
 #include "../../src/model/interval.h"
@@ -97,18 +115,38 @@
 #endif
 
 // ---------------------------------------------------------------------------
-// Helper: save a QPixmap screenshot and check the file was written.
+// findApplicationBinary()
+//
+// Locates the MaximumTrainer application binary.  Resolution order:
+//   1. MT_APP_BINARY environment variable (absolute path override).
+//   2. Canonical peer path: the test binary lives in build/tests/; the
+//      application lives in build/release/.
+// Returns an empty string if no candidate is found.
 // ---------------------------------------------------------------------------
-static void saveScreenshot(QWidget &widget, const QString &fileName, const QString &dir)
+static QString findApplicationBinary()
 {
-    const QString path = dir + QDir::separator() + fileName;
-    const QPixmap pix  = widget.grab();
-    if (!pix.save(path, "PNG")) {
-        qWarning() << "[screenshot] Failed to save:" << path;
-    } else {
-        qDebug().noquote() << "[screenshot] Saved:" << path
-                           << "(" << pix.width() << "x" << pix.height() << ")";
-    }
+    // 1. Explicit override
+    const QString envBin = qEnvironmentVariable("MT_APP_BINARY");
+    if (!envBin.isEmpty() && QFileInfo::exists(envBin))
+        return envBin;
+
+    // 2. Peer path relative to the test binary directory
+    QDir dir(QCoreApplication::applicationDirPath()); // build/tests/
+    dir.cd(QStringLiteral("../release"));             // build/release/
+
+#if defined(Q_OS_WIN)
+    const QString candidate = dir.absoluteFilePath(QStringLiteral("MaximumTrainer.exe"));
+#elif defined(Q_OS_MACOS)
+    const QString candidate = dir.absoluteFilePath(
+        QStringLiteral("MaximumTrainer.app/Contents/MacOS/MaximumTrainer"));
+#else
+    const QString candidate = dir.absoluteFilePath(QStringLiteral("MaximumTrainer"));
+#endif
+
+    if (QFileInfo::exists(candidate))
+        return candidate;
+
+    return QString();
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +160,7 @@ private:
     Account *m_account   = nullptr;
     QString  m_timestamp;
     QString  m_outputDir;
+    QString  m_appBinary;
 
 private slots:
 
@@ -132,6 +171,15 @@ private slots:
                           .toString(QStringLiteral("yyyy-MM-ddTHH-mm-ssZ"));
         m_outputDir = QCoreApplication::applicationDirPath();
         QDir().mkpath(m_outputDir);
+
+        m_appBinary = findApplicationBinary();
+        if (m_appBinary.isEmpty()) {
+            qWarning() << "[initTestCase] MaximumTrainer binary not found — "
+                          "testFullApplicationJourney will be skipped.";
+            qWarning() << "[initTestCase] Set MT_APP_BINARY or build the app into build/release/.";
+        } else {
+            qDebug() << "[initTestCase] Application binary:" << m_appBinary;
+        }
 
         // Register an Account so IntervalTableModel can resolve account->FTP
         m_account = new Account(this);
@@ -144,6 +192,111 @@ private slots:
     void cleanupTestCase()
     {
         qApp->setProperty("Account", QVariant());
+    }
+
+    // ========================================================================
+    // Group 0 — Full Application Journey (out-of-process, installed binary)
+    // ========================================================================
+
+    // ────────────────────────────────────────────────────────────────────────
+    // 0a. Launch the real MaximumTrainer binary via --screenshots mode.
+    //
+    //     The application bypasses the login dialog, shows the MainWindow,
+    //     navigates through every major tab (main, settings, workout editor,
+    //     workout running with SimulatorHub, studio mode, history/Intervals.icu)
+    //     and writes six 1280×720 PNG files to a temporary directory.
+    //
+    //     This test verifies:
+    //       • The installed binary starts and exits cleanly (exit code 0).
+    //       • All six expected screenshots are created.
+    //       • Each screenshot is a valid PNG with width ≥ 1280 and height ≥ 720.
+    //
+    //     The binary is located via:
+    //       1. MT_APP_BINARY environment variable (absolute override path).
+    //       2. Canonical peer path build/release/MaximumTrainer{.app|.exe}.
+    //     The test is skipped if neither location yields a binary.
+    // ────────────────────────────────────────────────────────────────────────
+    void testFullApplicationJourney()
+    {
+        if (m_appBinary.isEmpty()) {
+            QSKIP("MaximumTrainer binary not found — "
+                  "build the app into build/release/ or set MT_APP_BINARY.");
+        }
+
+        // Temporary directory for the application to write its screenshots into.
+        const QString ssDir = m_outputDir + QDir::separator()
+                              + QStringLiteral("app-journey-") + m_timestamp;
+        QVERIFY2(QDir().mkpath(ssDir),
+                 qPrintable("Failed to create screenshot directory: " + ssDir));
+
+        qDebug() << "[FullAppJourney] Launching:" << m_appBinary;
+        qDebug() << "[FullAppJourney] Screenshot output dir:" << ssDir;
+
+        QProcess proc;
+        proc.setProcessChannelMode(QProcess::MergedChannels);
+        proc.start(m_appBinary, { QStringLiteral("--screenshots"), ssDir });
+
+        QVERIFY2(proc.waitForStarted(15'000),
+                 qPrintable(QString("MaximumTrainer failed to start: %1")
+                                .arg(proc.errorString())));
+
+        // The --screenshots sequence runs for ~18 s (animation + paint delays).
+        // Allow 90 s to be safe on slow CI runners.
+        const bool finished = proc.waitForFinished(90'000);
+
+        // Capture any output from the process for diagnostics.
+        const QByteArray procOutput = proc.readAll();
+        if (!procOutput.isEmpty()) {
+            qDebug().noquote() << "[FullAppJourney] Application output:\n"
+                               << QString::fromLocal8Bit(procOutput);
+        }
+
+        QVERIFY2(finished,
+                 "MaximumTrainer --screenshots did not complete within 90 s");
+        QVERIFY2(proc.exitCode() == 0,
+                 qPrintable(QString("MaximumTrainer exited with code %1")
+                                .arg(proc.exitCode())));
+
+        // ── Verify expected screenshots ──────────────────────────────────────
+        // These file names are hard-coded in MainWindow::screenshotNextStep().
+        const QStringList expectedFiles = {
+            QStringLiteral("screenshot_main_window.png"),
+            QStringLiteral("screenshot_settings.png"),
+            QStringLiteral("screenshot_workout_editor.png"),
+            QStringLiteral("screenshot_workout_running.png"),
+            QStringLiteral("screenshot_studio_mode.png"),
+            QStringLiteral("screenshot_activity_history.png"),
+        };
+
+        for (const QString &fileName : expectedFiles) {
+            const QString path = ssDir + QDir::separator() + fileName;
+
+            QVERIFY2(QFileInfo::exists(path),
+                     qPrintable(QString("Missing screenshot: %1  (dir: %2)")
+                                    .arg(fileName, ssDir)));
+
+            QImage img(path);
+            QVERIFY2(!img.isNull(),
+                     qPrintable("Could not read screenshot: " + fileName));
+            QVERIFY2(img.width()  >= 1280,
+                     qPrintable(QString("%1: width %2 < 1280")
+                                    .arg(fileName).arg(img.width())));
+            QVERIFY2(img.height() >= 720,
+                     qPrintable(QString("%1: height %2 < 720")
+                                    .arg(fileName).arg(img.height())));
+
+            // Copy to the test output dir with platform + timestamp tag so
+            // CI artifact upload picks them up alongside the other test artifacts.
+            const QString stem = fileName.left(fileName.length() - 4); // strip .png
+            const QString dest = m_outputDir + QDir::separator()
+                                 + QStringLiteral("app-journey-") + stem
+                                 + QStringLiteral("-") + kPlatformTag
+                                 + QStringLiteral("-") + m_timestamp
+                                 + QStringLiteral(".png");
+            QFile::copy(path, dest);
+            qDebug().noquote() << "[FullAppJourney] ✓" << fileName
+                               << img.width() << "x" << img.height();
+        }
     }
 
     // ========================================================================
@@ -239,82 +392,6 @@ private slots:
         QVERIFY2(hasSim,  "ConnectionDialog must contain a 'Simulation' button");
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // 1d. Screenshot of the ConnectionDialog embedded in a 1280×720 window
-    // ────────────────────────────────────────────────────────────────────────
-    void testConnectionDialogScreenshot()
-    {
-        QWidget win;
-        win.setWindowTitle(
-            QStringLiteral("MaximumTrainer — Connection Dialog Test [")
-            + kPlatformTag.toUpper() + QStringLiteral("]"));
-        win.setFixedSize(1280, 720);
-        win.setStyleSheet(
-            "QWidget { background-color: #0d1117; } "
-            "QLabel  { color: #c9d1d9; }");
-
-        auto *layout = new QVBoxLayout(&win);
-        layout->setContentsMargins(48, 32, 48, 32);
-
-        auto *header = new QLabel(
-            QStringLiteral("Connection Method Dialog — ")
-            + kPlatformTag.toUpper() + QStringLiteral(" — ") + m_timestamp,
-            &win);
-        header->setStyleSheet(
-            "font-size: 20px; font-weight: bold; color: #58a6ff;");
-        layout->addWidget(header);
-
-        auto *info = new QLabel(
-            QStringLiteral("The dialog presents two choices: "
-                           "'BTLE Device' (real hardware) and 'Simulation' "
-                           "(synthetic data for testing).  "
-                           "Tests verify that clicking each button accepts "
-                           "the dialog and sets the correct ConnectionMethod."),
-            &win);
-        info->setWordWrap(true);
-        info->setStyleSheet("font-size: 13px; color: #8b949e;");
-        layout->addWidget(info);
-        layout->addSpacing(24);
-
-        // Embed the dialog as a child widget (Qt::Widget flag removes chrome)
-        auto *dlgPreview = new DialogConnectionMethod(&win);
-        dlgPreview->setWindowFlags(Qt::Widget);
-        dlgPreview->setStyleSheet(
-            "QDialog, QWidget { background-color: #161b22; border: 1px solid #30363d; "
-            "                   border-radius: 8px; }"
-            "QLabel  { color: #c9d1d9; font-size: 14px; }"
-            "QPushButton { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; "
-            "              border-radius: 4px; padding: 10px 24px; font-size: 14px; }"
-            "QPushButton:hover { background: #30363d; }");
-        layout->addWidget(dlgPreview, 0, Qt::AlignCenter);
-        layout->addStretch();
-
-        // Footer
-        auto *sep = new QFrame(&win);
-        sep->setFrameShape(QFrame::HLine);
-        sep->setStyleSheet("color: #21262d;");
-        layout->addWidget(sep);
-
-        auto *footer = new QLabel(
-            QStringLiteral("MaximumTrainer — UI Navigation Tests"), &win);
-        footer->setStyleSheet("font-size: 12px; color: #8b949e;");
-        layout->addWidget(footer);
-
-        win.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&win));
-
-        const QString screenshotName =
-            QStringLiteral("ui-navigation-connection-dialog-")
-            + kPlatformTag + QStringLiteral("-") + m_timestamp
-            + QStringLiteral(".png");
-
-        saveScreenshot(win, screenshotName, m_outputDir);
-
-        const QPixmap pix = win.grab();
-        QVERIFY2(!pix.isNull(), "ConnectionDialog screenshot is null");
-        QVERIFY2(pix.width()  >= 1280, "Screenshot width < 1280");
-        QVERIFY2(pix.height() >= 720,  "Screenshot height < 720");
-    }
 
     // ========================================================================
     // Group 2 — WorkoutCreator: IntervalTableModel interactions
@@ -454,117 +531,8 @@ private slots:
         }
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // 2e. WorkoutCreator visual: QTableView with IntervalTableModel
-    //     Renders a 1280×720 window showing the interval editor table as it
-    //     would appear in the WorkoutCreator and takes a screenshot.
-    // ────────────────────────────────────────────────────────────────────────
-    void testWorkoutCreatorIntervalTableScreenshot()
-    {
-        // ── Build the interval list ──────────────────────────────────────────
-        QList<Interval> intervals;
-        intervals
-            << Interval(QTime(0, 10, 0), QStringLiteral("Warm-Up"),
-                        Interval::PROGRESSIVE, 0.45, 0.65, 20, -1.0,
-                        Interval::FLAT, 85, 85, 5,
-                        Interval::NONE, 0.0, 0.0, 20,
-                        false, 0.0, 0, 0.0)
-            << Interval(QTime(0, 20, 0), QStringLiteral("Sweet Spot"),
-                        Interval::FLAT, 0.88, 0.88, 20, -1.0,
-                        Interval::FLAT, 90, 90, 5,
-                        Interval::NONE, 0.0, 0.0, 20,
-                        false, 0.0, 0, 0.0)
-            << Interval(QTime(0, 20, 0), QStringLiteral("Sweet Spot"),
-                        Interval::FLAT, 0.88, 0.88, 20, -1.0,
-                        Interval::FLAT, 90, 90, 5,
-                        Interval::NONE, 0.0, 0.0, 20,
-                        false, 0.0, 0, 0.0)
-            << Interval(QTime(0, 5, 0), QStringLiteral("Cool-Down"),
-                        Interval::PROGRESSIVE, 0.65, 0.45, 20, -1.0,
-                        Interval::FLAT, 85, 85, 5,
-                        Interval::NONE, 0.0, 0.0, 20,
-                        false, 0.0, 0, 0.0);
-
-        // ── Construct the model ──────────────────────────────────────────────
-        auto *intervalModel = new IntervalTableModel;
-        intervalModel->setListInterval(intervals);
-
-        // ── Build the evidence window ─────────────────────────────────────────
-        QWidget win;
-        win.setWindowTitle(
-            QStringLiteral("MaximumTrainer — WorkoutCreator Interval Table [")
-            + kPlatformTag.toUpper() + QStringLiteral("]"));
-        win.setFixedSize(1280, 720);
-        win.setStyleSheet("QWidget { background-color: #0d1117; }"
-                          "QLabel  { color: #c9d1d9; }"
-                          "QTableView { background: #161b22; color: #c9d1d9; "
-                          "             gridline-color: #30363d; }"
-                          "QHeaderView::section { background: #21262d; "
-                          "                       color: #8b949e; "
-                          "                       border: 1px solid #30363d; }");
-
-        auto *layout = new QVBoxLayout(&win);
-        layout->setContentsMargins(48, 32, 48, 32);
-
-        auto *header = new QLabel(
-            QStringLiteral("WorkoutCreator — Interval Table — ")
-            + kPlatformTag.toUpper() + QStringLiteral(" — ") + m_timestamp,
-            &win);
-        header->setStyleSheet(
-            "font-size: 18px; font-weight: bold; color: #58a6ff;");
-        layout->addWidget(header);
-
-        auto *subheader = new QLabel(
-            QStringLiteral("Tests: insertRows / removeRows / copyRows — "
-                           "IntervalTableModel row count and dataChanged signal"),
-            &win);
-        subheader->setStyleSheet("font-size: 12px; color: #8b949e;");
-        layout->addWidget(subheader);
-        layout->addSpacing(12);
-
-        auto *tableView = new QTableView(&win);
-        tableView->setModel(intervalModel);
-        tableView->horizontalHeader()->setStretchLastSection(true);
-        tableView->setAlternatingRowColors(true);
-        tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-        tableView->verticalHeader()->setDefaultSectionSize(42);
-        layout->addWidget(tableView);
-
-        // Summary bar
-        auto *sep = new QFrame(&win);
-        sep->setFrameShape(QFrame::HLine);
-        sep->setStyleSheet("color: #21262d;");
-        layout->addWidget(sep);
-
-        auto *summary = new QLabel(
-            QStringLiteral("[IntervalTableModel]  Rows: %1  | "
-                           "insertRows ✓  removeRows ✓  copyRows ✓  "
-                           "dataChanged signal ✓")
-                .arg(intervalModel->rowCount()),
-            &win);
-        summary->setStyleSheet("font-size: 13px; color: #3fb950;");
-        layout->addWidget(summary);
-
-        win.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&win));
-
-        const QString screenshotName =
-            QStringLiteral("ui-navigation-workout-creator-")
-            + kPlatformTag + QStringLiteral("-") + m_timestamp
-            + QStringLiteral(".png");
-
-        saveScreenshot(win, screenshotName, m_outputDir);
-
-        const QPixmap pix = win.grab();
-        QVERIFY2(!pix.isNull(), "WorkoutCreator screenshot is null");
-        QVERIFY2(pix.width()  >= 1280, "Screenshot width < 1280");
-        QVERIFY2(pix.height() >= 720,  "Screenshot height < 720");
-
-        delete intervalModel;
-    }
-
     // ========================================================================
-    // Group 3 — Post-workout summary screen
+    // Group 3 — Post-workout summary data
     // ========================================================================
 
     // ────────────────────────────────────────────────────────────────────────
@@ -602,176 +570,6 @@ private slots:
         QCOMPARE(summary.calories, 720);
         QVERIFY2(!summary.startTime.isNull(),
                  "startTime must not be null");
-    }
-
-    // ────────────────────────────────────────────────────────────────────────
-    // 3b. Post-workout summary screen screenshot
-    // ────────────────────────────────────────────────────────────────────────
-    void testPostWorkoutSummaryScreenshot()
-    {
-        // Build a known-good summary
-        WorkoutHistorySummary summary;
-        summary.workoutName     = QStringLiteral("Three-Interval CI Workout");
-        summary.durationSec     = 3600;
-        summary.avgPowerW       = 185;
-        summary.normalizedPower = 195;
-        summary.avgHrBpm        = 145;
-        summary.avgCadence      = 88;
-        summary.tss             = 65.0;
-        summary.totalDistanceKm = 42.5;
-        summary.calories        = 720;
-        summary.valid           = true;
-        summary.startTime       = QDateTime::currentDateTimeUtc();
-
-        // ── Build the post-workout summary window ─────────────────────────────
-        QWidget win;
-        win.setWindowTitle(
-            QStringLiteral("MaximumTrainer — Post-Workout Summary [")
-            + kPlatformTag.toUpper() + QStringLiteral("]"));
-        win.setFixedSize(1280, 720);
-        win.setStyleSheet(
-            "QWidget { background-color: #0d1117; } "
-            "QLabel  { color: #c9d1d9; }");
-
-        auto *root = new QVBoxLayout(&win);
-        root->setContentsMargins(48, 32, 48, 32);
-        root->setSpacing(0);
-
-        // ── Header ────────────────────────────────────────────────────────────
-        auto *headerRow = new QHBoxLayout;
-
-        auto *titleLabel = new QLabel(
-            QStringLiteral("Post-Workout Summary"), &win);
-        titleLabel->setStyleSheet(
-            "font-size: 28px; font-weight: bold; color: #58a6ff;");
-
-        auto *badgeLabel = new QLabel(
-            QStringLiteral("[ WORKOUT COMPLETE ]"), &win);
-        badgeLabel->setStyleSheet(
-            "font-size: 14px; color: #3fb950; background: #0d2010;"
-            "border: 1px solid #238636; border-radius: 4px; padding: 4px 12px;");
-
-        headerRow->addWidget(titleLabel, 1);
-        headerRow->addWidget(badgeLabel, 0, Qt::AlignRight | Qt::AlignVCenter);
-        root->addLayout(headerRow);
-        root->addSpacing(6);
-
-        auto *metaLabel = new QLabel(
-            QStringLiteral("Platform: %1  |  Qt %2  |  %3")
-                .arg(kPlatformTag.toUpper(), qVersion(), m_timestamp),
-            &win);
-        metaLabel->setStyleSheet("font-size: 12px; color: #8b949e;");
-        root->addWidget(metaLabel);
-        root->addSpacing(16);
-
-        auto *sep1 = new QFrame(&win);
-        sep1->setFrameShape(QFrame::HLine);
-        sep1->setStyleSheet("color: #21262d;");
-        root->addWidget(sep1);
-        root->addSpacing(16);
-
-        // ── Workout name + time ───────────────────────────────────────────────
-        auto *wkNameLabel = new QLabel(
-            QStringLiteral("Workout:  %1").arg(summary.workoutName), &win);
-        wkNameLabel->setStyleSheet("font-size: 18px; color: #e6edf3;");
-        root->addWidget(wkNameLabel);
-        root->addSpacing(4);
-
-        auto *wkTimeLabel = new QLabel(
-            QStringLiteral("Started:  %1")
-                .arg(summary.startTime.toString(Qt::RFC2822Date)),
-            &win);
-        wkTimeLabel->setStyleSheet("font-size: 13px; color: #8b949e;");
-        root->addWidget(wkTimeLabel);
-        root->addSpacing(20);
-
-        // ── Metrics panel ─────────────────────────────────────────────────────
-        auto *panel = new QFrame(&win);
-        panel->setStyleSheet(
-            "QFrame { background: #161b22; border: 1px solid #30363d;"
-            "         border-radius: 8px; }");
-        auto *panelLayout = new QGridLayout(panel);
-        panelLayout->setContentsMargins(32, 24, 32, 24);
-        panelLayout->setHorizontalSpacing(60);
-        panelLayout->setVerticalSpacing(20);
-
-        struct Metric { QString icon; QString name; QString value; QString unit; };
-        const QList<Metric> metrics = {
-            { "[DUR]",  "Duration",         QString("%1 min").arg(summary.durationSec / 60), "" },
-            { "[PWR]",  "Avg Power",         QString::number(summary.avgPowerW),              "W" },
-            { "[NP]",   "Normalized Power",  QString::number(summary.normalizedPower),        "W" },
-            { "[HR]",   "Avg Heart Rate",    QString::number(summary.avgHrBpm),               "bpm" },
-            { "[CAD]",  "Avg Cadence",       QString::number(summary.avgCadence),             "rpm" },
-            { "[TSS]",  "TSS",               QString::number(summary.tss, 'f', 1),            "" },
-            { "[DST]",  "Distance",          QString::number(summary.totalDistanceKm, 'f', 1),"km" },
-            { "[CAL]",  "Calories",          QString::number(summary.calories),               "kcal" },
-        };
-
-        for (int i = 0; i < metrics.size(); ++i) {
-            const int row = i / 2;
-            const int col = (i % 2) * 4;
-            const Metric &m = metrics[i];
-
-            auto *iconL = new QLabel(m.icon, panel);
-            iconL->setStyleSheet("font-size: 16px; color: #8b949e;");
-
-            auto *nameL = new QLabel(m.name, panel);
-            nameL->setStyleSheet("font-size: 13px; color: #8b949e;");
-
-            auto *valL = new QLabel(m.value, panel);
-            valL->setStyleSheet(
-                "font-size: 36px; font-weight: bold; color: #7ee787; "
-                "min-width: 80px;");
-            valL->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-
-            auto *unitL = new QLabel(m.unit, panel);
-            unitL->setStyleSheet("font-size: 13px; color: #8b949e; min-width: 40px;");
-
-            panelLayout->addWidget(iconL,  row, col + 0, Qt::AlignCenter);
-            panelLayout->addWidget(nameL,  row, col + 1);
-            panelLayout->addWidget(valL,   row, col + 2, Qt::AlignRight);
-            panelLayout->addWidget(unitL,  row, col + 3);
-        }
-
-        root->addWidget(panel);
-        root->addStretch();
-
-        // ── Footer ───────────────────────────────────────────────────────────
-        auto *sep2 = new QFrame(&win);
-        sep2->setFrameShape(QFrame::HLine);
-        sep2->setStyleSheet("color: #21262d;");
-        root->addWidget(sep2);
-        root->addSpacing(12);
-
-        auto *footerRow = new QHBoxLayout;
-        auto *footerLeft = new QLabel(
-            QStringLiteral("MaximumTrainer — Post-Workout Summary Screen Test"),
-            &win);
-        footerLeft->setStyleSheet("font-size: 12px; color: #8b949e;");
-
-        const QString artifactName =
-            QStringLiteral("ui-navigation-post-workout-")
-            + kPlatformTag + QStringLiteral("-") + m_timestamp
-            + QStringLiteral(".png");
-
-        auto *footerRight = new QLabel(
-            QStringLiteral("Artifact: ") + artifactName, &win);
-        footerRight->setStyleSheet("font-size: 12px; color: #8b949e;");
-        footerRight->setAlignment(Qt::AlignRight);
-
-        footerRow->addWidget(footerLeft,  1);
-        footerRow->addWidget(footerRight, 1, Qt::AlignRight);
-        root->addLayout(footerRow);
-
-        win.show();
-        QVERIFY(QTest::qWaitForWindowExposed(&win));
-
-        saveScreenshot(win, artifactName, m_outputDir);
-
-        const QPixmap pix = win.grab();
-        QVERIFY2(!pix.isNull(), "Post-workout summary screenshot is null");
-        QVERIFY2(pix.width()  >= 1280, "Screenshot width < 1280");
-        QVERIFY2(pix.height() >= 720,  "Screenshot height < 720");
     }
 };
 
