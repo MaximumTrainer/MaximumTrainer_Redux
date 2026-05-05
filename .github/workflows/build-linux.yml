@@ -768,6 +768,9 @@ jobs:
           libqt5network5 \
           libqt5sql5 \
           libqt5test5 \
+          libqt5bluetooth5 \
+          libqt5webenginewidgets5 \
+          libqt5webenginecore5 \
           libqwt-qt5-6 \
           xvfb \
           libfontconfig1 \

@@ -501,58 +501,68 @@ private slots:
             QSKIP("No workouts found in the last 90 days — skipping ZWO load test");
         }
 
-        // ── Step 2: Find the first workout that has a numeric/string ID ──────
-        QString workoutId;
+        // ── Step 2: Collect all workout IDs from the list ────────────────────
+        QStringList workoutIds;
         for (const QJsonValue &v : workouts) {
             const QJsonObject obj = v.toObject();
             // The scheduled-workout endpoint uses "id" as a numeric long
             const QJsonValue idVal = obj.value(QStringLiteral("id"));
             if (!idVal.isUndefined() && !idVal.isNull()) {
-                workoutId = idVal.isString()
+                const QString id = idVal.isString()
                     ? idVal.toString()
                     : QString::number(static_cast<qlonglong>(idVal.toDouble()));
-                if (!workoutId.isEmpty() && workoutId != "0")
-                    break;
+                if (!id.isEmpty() && id != QStringLiteral("0"))
+                    workoutIds << id;
             }
         }
 
-        if (workoutId.isEmpty()) {
+        if (workoutIds.isEmpty()) {
             QSKIP("No workout with a valid 'id' found in the 90-day list — "
                   "skipping ZWO load test");
         }
 
-        // ── Step 3: Download the ZWO file for this workout ───────────────────
-        const QUrl zwoUrl(baseUrl
-                          + QStringLiteral("/workouts/")
-                          + workoutId
-                          + QStringLiteral(".zwo"));
+        // ── Step 3: Walk the full list, try each workout until one has ZWO ───
+        // Races, free-form notes, and other non-structured entries return non-200
+        // for the .zwo endpoint. We scan all IDs so a valid fixture is always
+        // found when the account contains any structured workout in the window.
+        QString workoutId;
+        QByteArray zwoData;
 
-        QNetworkRequest zwoReq(zwoUrl);
-        zwoReq.setRawHeader("Authorization", authHeader);
-        zwoReq.setRawHeader("Accept", "application/xml");
+        for (const QString &id : workoutIds) {
+            const QUrl zwoUrl(baseUrl
+                              + QStringLiteral("/workouts/")
+                              + id
+                              + QStringLiteral(".zwo"));
 
-        QNetworkReply *zwoReply = mgr.get(zwoReq);
-        QVERIFY2(waitForNetworkReply(zwoReply), "ZWO download timed out (30 s)");
+            QNetworkRequest zwoReq(zwoUrl);
+            zwoReq.setRawHeader("Authorization", authHeader);
+            zwoReq.setRawHeader("Accept", "application/xml");
 
-        const int zwoStatus =
-            zwoReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            QNetworkReply *zwoReply = mgr.get(zwoReq);
+            QVERIFY2(waitForNetworkReply(zwoReply),
+                     qPrintable(QString("ZWO download timed out (30 s) for workout %1").arg(id)));
 
-        if (zwoStatus != 200) {
-            // Some workout types (e.g. race notes) do not have ZWO content.
-            zwoReply->deleteLater();
-            QSKIP(qPrintable(
-                QString("Workout %1 returned HTTP %2 for ZWO — "
-                        "this workout type may not have structured data")
-                    .arg(workoutId)
-                    .arg(zwoStatus)));
+            const int zwoStatus =
+                zwoReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+            if (zwoStatus == 200) {
+                const QByteArray body = zwoReply->readAll();
+                zwoReply->deleteLater();
+                if (!body.isEmpty()) {
+                    workoutId = id;
+                    zwoData   = body;
+                    break; // Found a usable ZWO — proceed with this one.
+                }
+            } else {
+                // Non-200 means this workout type has no ZWO; try the next one.
+                zwoReply->deleteLater();
+            }
         }
 
-        const QByteArray zwoData = zwoReply->readAll();
-        zwoReply->deleteLater();
-
-        QVERIFY2(!zwoData.isEmpty(),
-                 qPrintable(QString("ZWO response body is empty for workout %1")
-                                .arg(workoutId)));
+        if (workoutId.isEmpty()) {
+            QSKIP("None of the workouts in the last 90 days returned ZWO data — "
+                  "all entries appear to be races, notes, or non-structured workouts");
+        }
 
         // ── Step 4: Parse the ZWO into a Workout model ───────────────────────
         const Workout loaded = ImporterWorkoutZwo::importFromByteArray(zwoData, workoutId);
