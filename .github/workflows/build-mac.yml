@@ -635,7 +635,7 @@ jobs:
       run: chmod +x build/tests/workout_io_tests
 
     - name: Run workout I/O tests
-      run: QT_QPA_PLATFORM=offscreen ./build/tests/workout_io_tests -v2
+      run: ./build/tests/workout_io_tests -v2
 
   # ──────────────────────────────────────────────────────────────────────────
   # Workout Creator Tests – macOS
