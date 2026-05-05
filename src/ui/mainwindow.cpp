@@ -882,7 +882,8 @@ void MainWindow::createWebChannelZone() {
         channel->registerObject("zoneObject", zoneObject);
 
         // execute updateCdA() js function to init value
-        ui->webView_studio->page()->runJavaScript("updateCdA();");
+        ui->webView_studio->page()->runJavaScript(
+            "if(typeof updateCdA==='function'){updateCdA();}");
     }
 }
 
@@ -1021,8 +1022,8 @@ void MainWindow::fillSettingPage()  {
 
     qDebug() << "jsCodeISL:" << jsCode;
 
-
-    ui->webView_settings->page()->runJavaScript(jsCode);
+    ui->webView_settings->page()->runJavaScript(
+        "if(typeof window.$==='function'){" + jsCode + "}");
 }
 
 
@@ -1047,7 +1048,8 @@ void MainWindow::fillStudioPage() {
 
 
     qDebug() << "JSTOEXECUTE IS:" << jsCode;
-    ui->webView_studio->page()->runJavaScript(jsCode);
+    ui->webView_studio->page()->runJavaScript(
+        "if(typeof window.$==='function'){" + jsCode + "}");
 
 
     //-- Populate QwebView Studio
@@ -1086,7 +1088,9 @@ void MainWindow::fillStudioPage() {
 
 
     qDebug() << "JSTOEXECUTE IS:" << jsToExecute;
-    ui->webView_studio->page()->runJavaScript(jsToExecute);
+    ui->webView_studio->page()->runJavaScript(
+        jsToExecute.isEmpty() ? QString()
+                              : "if(typeof window.$==='function'){" + jsToExecute + "}");
 }
 
 
@@ -1109,8 +1113,8 @@ void MainWindow::companyLoadedForUser(int riderID) {
         jsToExecute += QString("$('#select-trainer_" +QString::number(riderID)+ "').val(%1);").arg(myUserStudio.getBrandID());
         jsToExecute += "$('#select-trainer_"  +QString::number(riderID)+ "').selectpicker('refresh');";
         jsToExecute += "$('#select-trainer_"  +QString::number(riderID)+ "').trigger('change');";
-        //        ui->webView_studio->page()->mainFrame()->documentElement().evaluateJavaScript(jsToExecute + "; null");
-        ui->webView_studio->page()->runJavaScript(jsToExecute);
+        ui->webView_studio->page()->runJavaScript(
+            "if(typeof window.$==='function'){" + jsToExecute + "}");
     }
 
 }
@@ -1326,7 +1330,8 @@ void MainWindow::updateZoneInterface() {
     QString jsToExecute = QString("$('#FTP').val( '%1' ); ").arg((QString::number(account->FTP)));
     jsToExecute += QString("$('#LTHR').val( '%1' ); ").arg((QString::number(account->LTHR)));
     //    ui->webView_zones->page()->mainFrame()->documentElement().evaluateJavaScript(jsToExecute + "; null");
-    ui->webView_zones->page()->runJavaScript(jsToExecute);
+    ui->webView_zones->page()->runJavaScript(
+        "if(typeof window.$==='function'){" + jsToExecute + "}");
 
 }
 
@@ -1421,11 +1426,13 @@ void MainWindow::sendDataToSettingsOrStudioPage(int deviceType, int numberDevice
 
     if (fromStudioPage) {
         qDebug() << "send the script to studio page";
-        ui->webView_studio->page()->runJavaScript(jsToRun);
+        ui->webView_studio->page()->runJavaScript(
+            "if(typeof foundSensor==='function'){" + jsToRun + "}");
     }
     else {
         qDebug() << "send the script to settings page";
-        ui->webView_settings->page()->runJavaScript(jsToRun);
+        ui->webView_settings->page()->runJavaScript(
+            "if(typeof foundSensor==='function'){" + jsToRun + "}");
     }
 
 }

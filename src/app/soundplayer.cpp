@@ -10,63 +10,73 @@ SoundPlayer::~SoundPlayer() {
 
 SoundPlayer::SoundPlayer(QObject *parent) : QObject(parent)
 {
+    // Wrap the entire SFML initialisation in a broad exception guard.
+    // On headless CI runners (no PulseAudio / no OpenAL device) SFML can
+    // throw std::bad_alloc when it tries to allocate internal audio buffers
+    // after failing to open a playback device.  Catching here keeps
+    // m_initialized = false so all play/setVolume calls become no-ops.
+    try {
+        QResource qrcAchievement(":/sound/fireTorch");
+        QResource qrcLastBeepInterval(":/sound/secondBeep");
+        QResource qrcFirstBeepInterval(":/sound/firstBeep");
+        QResource qrcEndWorkout(":/sound/end_workout");
+        QResource qrcStartWorkout(":/sound/resume");
+        QResource qrcCadenceTooLow(":/sound/cadenceTooLow");
+        QResource qrcCadenceTooHigh(":/sound/cadenceTooHigh");
+        QResource qrcPowerTooLow(":/sound/powerTooLow");
+        QResource qrcPowerTooHigh(":/sound/powerTooHigh");
 
+        // Probe SFML audio availability by redirecting sf::err() to a capture
+        // buffer while loading the first sound buffer.  On headless CI runners
+        // (no audio device / no OpenAL context) SFML writes an error to sf::err()
+        // and alGenSources() returns an invalid source, which later causes
+        // alSourcePlay() to crash.  Detecting the failure here lets us disable
+        // all sound operations gracefully instead of crashing.
+        {
+            std::ostringstream probe;
+            std::streambuf *const prev = sf::err().rdbuf(probe.rdbuf());
+            const bool loaded = bufferSoundAchievement.loadFromMemory(
+                qrcAchievement.data(), qrcAchievement.size());
+            sf::err().rdbuf(prev);
 
-    QResource qrcAchievement(":/sound/fireTorch");
-    QResource qrcLastBeepInterval(":/sound/secondBeep");
-    QResource qrcFirstBeepInterval(":/sound/firstBeep");
-    QResource qrcEndWorkout(":/sound/end_workout");
-    QResource qrcStartWorkout(":/sound/resume");
-    QResource qrcCadenceTooLow(":/sound/cadenceTooLow");
-    QResource qrcCadenceTooHigh(":/sound/cadenceTooHigh");
-    QResource qrcPowerTooLow(":/sound/powerTooLow");
-    QResource qrcPowerTooHigh(":/sound/powerTooHigh");
-
-    // Probe SFML audio availability by redirecting sf::err() to a capture
-    // buffer while loading the first sound buffer.  On headless CI runners
-    // (no audio device / no OpenAL context) SFML writes an error to sf::err()
-    // and alGenSources() returns an invalid source, which later causes
-    // alSourcePlay() to crash.  Detecting the failure here lets us disable
-    // all sound operations gracefully instead of crashing.
-    {
-        std::ostringstream probe;
-        std::streambuf *const prev = sf::err().rdbuf(probe.rdbuf());
-        const bool loaded = bufferSoundAchievement.loadFromMemory(
-            qrcAchievement.data(), qrcAchievement.size());
-        sf::err().rdbuf(prev);
-
-        if (!loaded || !probe.str().empty()) {
-            qWarning() << "SoundPlayer: SFML audio unavailable"
-                       << (probe.str().empty()
-                               ? QString()
-                               : QStringLiteral(" — ") + QString::fromStdString(probe.str()).trimmed())
-                       << "; all sound operations disabled.";
-            return; // m_initialized stays false
+            if (!loaded || !probe.str().empty()) {
+                qWarning() << "SoundPlayer: SFML audio unavailable"
+                           << (probe.str().empty()
+                                   ? QString()
+                                   : QStringLiteral(" — ") + QString::fromStdString(probe.str()).trimmed())
+                           << "; all sound operations disabled.";
+                return; // m_initialized stays false
+            }
         }
+
+        bufferSoundLastBeepInterval.loadFromMemory(qrcLastBeepInterval.data(), qrcLastBeepInterval.size());
+        bufferSoundFirstBeepInterval.loadFromMemory(qrcFirstBeepInterval.data(), qrcFirstBeepInterval.size());
+        bufferSoundEndWorkout.loadFromMemory(qrcEndWorkout.data(), qrcEndWorkout.size());
+        bufferSoundStartWorkout.loadFromMemory(qrcStartWorkout.data(), qrcStartWorkout.size());
+        bufferSoundCadenceTooLow.loadFromMemory(qrcCadenceTooLow.data(), qrcCadenceTooLow.size());
+        bufferSoundCadenceTooHigh.loadFromMemory(qrcCadenceTooHigh.data(), qrcCadenceTooHigh.size());
+        bufferSoundPowerTooLow.loadFromMemory(qrcPowerTooLow.data(), qrcPowerTooLow.size());
+        bufferSoundPowerTooHigh.loadFromMemory(qrcPowerTooHigh.data(), qrcPowerTooHigh.size());
+
+        soundAchievement.emplace(bufferSoundAchievement);
+        soundLastBeepInterval.emplace(bufferSoundLastBeepInterval);
+        soundFirstBeepInterval.emplace(bufferSoundFirstBeepInterval);
+        soundEndWorkout.emplace(bufferSoundEndWorkout);
+        soundStartWorkout.emplace(bufferSoundStartWorkout);
+        soundCadenceTooLow.emplace(bufferSoundCadenceTooLow);
+        soundCadenceTooHigh.emplace(bufferSoundCadenceTooHigh);
+        soundPowerTooLow.emplace(bufferSoundPowerTooLow);
+        soundPowerTooHigh.emplace(bufferSoundPowerTooHigh);
+
+        m_initialized = true;
+        setVolume(100);
+
+    } catch (const std::exception &e) {
+        qWarning() << "SoundPlayer: SFML threw exception during init:" << e.what()
+                   << "; all sound operations disabled.";
+    } catch (...) {
+        qWarning() << "SoundPlayer: Unknown exception during SFML init; all sound operations disabled.";
     }
-
-    bufferSoundLastBeepInterval.loadFromMemory(qrcLastBeepInterval.data(), qrcLastBeepInterval.size());
-    bufferSoundFirstBeepInterval.loadFromMemory(qrcFirstBeepInterval.data(), qrcFirstBeepInterval.size());
-    bufferSoundEndWorkout.loadFromMemory(qrcEndWorkout.data(), qrcEndWorkout.size());
-    bufferSoundStartWorkout.loadFromMemory(qrcStartWorkout.data(), qrcStartWorkout.size());
-    bufferSoundCadenceTooLow.loadFromMemory(qrcCadenceTooLow.data(), qrcCadenceTooLow.size());
-    bufferSoundCadenceTooHigh.loadFromMemory(qrcCadenceTooHigh.data(), qrcCadenceTooHigh.size());
-    bufferSoundPowerTooLow.loadFromMemory(qrcPowerTooLow.data(), qrcPowerTooLow.size());
-    bufferSoundPowerTooHigh.loadFromMemory(qrcPowerTooHigh.data(), qrcPowerTooHigh.size());
-
-    soundAchievement.emplace(bufferSoundAchievement);
-    soundLastBeepInterval.emplace(bufferSoundLastBeepInterval);
-    soundFirstBeepInterval.emplace(bufferSoundFirstBeepInterval);
-    soundEndWorkout.emplace(bufferSoundEndWorkout);
-    soundStartWorkout.emplace(bufferSoundStartWorkout);
-    soundCadenceTooLow.emplace(bufferSoundCadenceTooLow);
-    soundCadenceTooHigh.emplace(bufferSoundCadenceTooHigh);
-    soundPowerTooLow.emplace(bufferSoundPowerTooLow);
-    soundPowerTooHigh.emplace(bufferSoundPowerTooHigh);
-
-    m_initialized = true;
-
-    setVolume(100);
 }
 
 
