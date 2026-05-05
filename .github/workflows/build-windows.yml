@@ -799,13 +799,18 @@ jobs:
         path: build
 
     - name: Run UI navigation tests
-      run: .\build\tests\ui_navigation_tests.exe -v2
+      run: |
+        # Use QTest's -o flag to capture output to file — Tee-Object does not
+        # work for Win32 GUI subsystem apps (no console stdout).
+        .\build\tests\ui_navigation_tests.exe -v2 -o build\tests\ui-navigation-test-output.txt,txt
+        exit $LASTEXITCODE
       shell: powershell
 
-    - name: Upload UI navigation screenshots
+    - name: Upload UI navigation screenshots and log
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: ui-navigation-screenshots-windows
         path: |
           build\tests\app-journey-*.png
+          build\tests\ui-navigation-test-output.txt
