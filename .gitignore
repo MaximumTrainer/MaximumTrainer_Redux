@@ -16,6 +16,7 @@ obj
 moc_*.cpp
 *.moc
 moc_predefs.h
+ui_*.h
 # CodeQL tool artifact
 _codeql_detected_source_root
 # Node / Playwright (test tooling — not part of the Qt build)

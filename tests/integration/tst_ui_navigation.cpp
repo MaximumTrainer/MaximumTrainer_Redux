@@ -755,7 +755,7 @@ private slots:
             + QStringLiteral(".png");
 
         auto *footerRight = new QLabel(
-            QStringLiteral("Artefact: ") + artifactName, &win);
+            QStringLiteral("Artifact: ") + artifactName, &win);
         footerRight->setStyleSheet("font-size: 12px; color: #8b949e;");
         footerRight->setAlignment(Qt::AlignRight);
 
