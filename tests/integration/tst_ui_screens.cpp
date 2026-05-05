@@ -44,15 +44,17 @@
  *      Pass a ZWO string with IntervalsT Repeat="4" and verify that 8
  *      intervals are produced (4 on + 4 off).
  *
- *   8. ZWO inline-string parsing — empty / malformed input:
- *      Verify that empty or malformed XML returns an empty Workout without
- *      crashing.
+ *   8. ZWO inline-string parsing — empty input:
+ *      Verify that empty XML returns an empty Workout without crashing.
  *
- *   9. ZWO inline-string parsing — FreeRide power type:
+ *   9. ZWO inline-string parsing — malformed XML:
+ *      Verify that malformed XML returns an empty Workout without crashing.
+ *
+ *  10. ZWO inline-string parsing — FreeRide power type:
  *      Verify that a FreeRide element yields an interval with NONE power
  *      step type.
  *
- *  10. ZWO inline-string parsing — workout name extraction:
+ *  11. ZWO inline-string parsing — workout name extraction:
  *      Verify that the <name> element inside the ZWO file is used as the
  *      workout name.
  *
@@ -108,6 +110,9 @@ static void saveScreenshot(QWidget &window,
                            const QString &outDir)
 {
     const QString path = outDir + "/" + baseName;
+    // Wait until the window compositor has fully exposed the widget before
+    // grabbing — prevents blank screenshots under Xvfb on slow CI runners.
+    QTest::qWaitForWindowExposed(&window);
     QPixmap shot = window.grab();
     QVERIFY2(!shot.isNull(), "Screenshot grab() returned a null pixmap");
     QVERIFY2(window.width() > 0 && window.height() > 0,
@@ -286,20 +291,13 @@ private slots:
     {
         DialogConnectionMethod dlg;
         dlg.show();
-        QCoreApplication::processEvents();
+        QTest::qWaitForWindowExposed(&dlg);
 
-        // Find the "Simulation" button among direct children
-        QPushButton *btnSim = nullptr;
-        const auto buttons = dlg.findChildren<QPushButton *>();
-        for (QPushButton *btn : buttons) {
-            if (btn->text().contains(QLatin1String("Simulation"), Qt::CaseInsensitive) ||
-                btn->text().contains(QLatin1String("Sim"),        Qt::CaseInsensitive)) {
-                btnSim = btn;
-                break;
-            }
-        }
+        // Find by the stable objectName set in DialogConnectionMethod's ctor.
+        QPushButton *btnSim =
+            dlg.findChild<QPushButton *>(QStringLiteral("btn_sim"));
         QVERIFY2(btnSim != nullptr,
-                 "DialogConnectionMethod must contain a 'Simulation' button");
+                 "DialogConnectionMethod must contain a button with objectName 'btn_sim'");
 
         QSignalSpy acceptedSpy(&dlg, &QDialog::accepted);
 
@@ -325,20 +323,13 @@ private slots:
     {
         DialogConnectionMethod dlg;
         dlg.show();
-        QCoreApplication::processEvents();
+        QTest::qWaitForWindowExposed(&dlg);
 
-        QPushButton *btnBtle = nullptr;
-        const auto buttons = dlg.findChildren<QPushButton *>();
-        for (QPushButton *btn : buttons) {
-            if (btn->text().contains(QLatin1String("BTLE"),     Qt::CaseInsensitive) ||
-                btn->text().contains(QLatin1String("Hardware"), Qt::CaseInsensitive) ||
-                btn->text().contains(QLatin1String("Device"),   Qt::CaseInsensitive)) {
-                btnBtle = btn;
-                break;
-            }
-        }
+        // Find by the stable objectName set in DialogConnectionMethod's ctor.
+        QPushButton *btnBtle =
+            dlg.findChild<QPushButton *>(QStringLiteral("btn_btle"));
         QVERIFY2(btnBtle != nullptr,
-                 "DialogConnectionMethod must contain a 'BTLE Device' button");
+                 "DialogConnectionMethod must contain a button with objectName 'btn_btle'");
 
         QSignalSpy acceptedSpy(&dlg, &QDialog::accepted);
         QTest::mouseClick(btnBtle, Qt::LeftButton);
@@ -403,7 +394,7 @@ private slots:
         layout->addStretch(1);
 
         container.show();
-        QCoreApplication::processEvents();
+        QTest::qWaitForWindowExposed(&container);
 
         const QString screenshotName =
             QString("ui-screens-connection-dialog-%1-%2.png")
@@ -423,7 +414,7 @@ private slots:
     {
         PostWorkoutSummaryWindow window;
         window.show();
-        QCoreApplication::processEvents();
+        QTest::qWaitForWindowExposed(&window);
 
         // Verify metric labels are present and non-empty
         const QStringList expectedMetrics = {

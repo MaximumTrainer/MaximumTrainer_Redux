@@ -29,8 +29,8 @@
  *    8. testBuildWorkout_metadata          — name, plan, author, type correct
  *    9. testBuildWorkout_totalDuration     — total workout time is correct
  *
- *   Computed metrics (after calculateWorkoutMetrics)
- *   ──────────────────────────────────────────────────
+ *   Computed metrics (computed by the Workout constructor)
+ *   ────────────────────────────────────────────────────────
  *   10. testMetrics_averagePower          — flat power → correct averagePower
  *   11. testMetrics_averagePowerMixed     — mixed powers → weighted average
  *   12. testMetrics_zeroFtp              — no crash when FTP = 0
@@ -309,9 +309,6 @@ private slots:
             Workout::T_ENDURANCE
         );
 
-        w.initializeArrayFTP();
-        w.calculateWorkoutMetrics();
-
         const double avg = w.getAveragePower();
         // Expect 0.80 * 200 = 160 W ± 5 W tolerance
         QVERIFY2(avg >= 155.0 && avg <= 165.0,
@@ -347,9 +344,6 @@ private slots:
             QStringLiteral("Build"),
             Workout::T_ENDURANCE
         );
-
-        w.initializeArrayFTP();
-        w.calculateWorkoutMetrics();
 
         const double avg = w.getAveragePower();
         // Warmup avg power = 0.55 * 200 = 110 W; Main = 0.85 * 200 = 170 W;
@@ -390,10 +384,9 @@ private slots:
             Workout::T_TEST
         );
 
-        // Must not crash even with FTP=0
-        w.initializeArrayFTP();
-        w.calculateWorkoutMetrics();
-
+        // The 8-parameter Workout constructor already calls
+        // calculateWorkoutMetrics() internally; constructing it with FTP=0
+        // must not crash.
         // Restore the original account for subsequent tests
         qApp->setProperty("Account", QVariant::fromValue<Account *>(m_account));
 

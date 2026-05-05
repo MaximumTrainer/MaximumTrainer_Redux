@@ -23,6 +23,8 @@ DialogConnectionMethod::DialogConnectionMethod(QWidget *parent)
     auto *btnBtle = new QPushButton(tr("BTLE Device"), this);
     auto *btnSim  = new QPushButton(tr("Simulation"),  this);
 
+    btnBtle->setObjectName(QStringLiteral("btn_btle"));
+    btnSim->setObjectName(QStringLiteral("btn_sim"));
     btnBtle->setDefault(true);
     btnLayout->addWidget(btnBtle);
     btnLayout->addWidget(btnSim);
