@@ -397,7 +397,7 @@ jobs:
           Copy-Item $qwtDll "build\tests\" -Force
           Write-Host "Copied qwt.dll to build\tests\"
         } else {
-          Write-Warning "qwt.dll not found at $qwtDll — workout_ui_tests may fail to load"
+          Write-Warning "qwt.dll not found at $qwtDll - workout_ui_tests may fail to load"
         }
       shell: powershell
 
