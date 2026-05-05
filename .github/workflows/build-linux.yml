@@ -774,11 +774,29 @@ jobs:
           libqwt-qt5-6 \
           libsfml-audio2.5 \
           libsfml-system2.5 \
+          libvlc5 \
+          libvlccore9 \
           xvfb \
           libfontconfig1 \
           libxrender1 \
           libxext6 \
           libgl1-mesa-dev
+
+    - name: Restore VLC-Qt cache
+      # The test runner needs libVLCQtCore.so.1.1 / libVLCQtWidgets.so.1.1 at
+      # runtime because MaximumTrainer (launched by testFullApplicationJourney)
+      # links against VLC-Qt unconditionally on Linux. Reuse the same pre-built
+      # cache that the build_linux job populated.
+      id: vlcqt-cache
+      uses: actions/cache@v4
+      with:
+        path: /tmp/vlcqt-install
+        key: vlcqt-1.1.1-qt5-ubuntu22.04
+
+    - name: Install VLC-Qt from cache
+      run: |
+        sudo cp -r /tmp/vlcqt-install/. /usr/local/
+        sudo ldconfig
 
     - name: Download build artifact
       uses: actions/download-artifact@v4

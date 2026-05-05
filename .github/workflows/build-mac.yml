@@ -638,6 +638,13 @@ jobs:
         cache: true
         cache-key-prefix: qt-mac
 
+    - name: Install SFML (required by MaximumTrainer.app at runtime)
+      # The app bundle links against /opt/homebrew/opt/sfml/lib/libsfml-audio.3.0.dylib.
+      # The build machine has SFML installed via brew, but the test runner does not.
+      # Installing SFML here ensures the dynamic loader finds the library when
+      # testFullApplicationJourney() launches the real app binary.
+      run: brew install sfml
+
     - name: Download build artifact
       uses: actions/download-artifact@v4
       with:

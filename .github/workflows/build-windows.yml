@@ -792,6 +792,19 @@ jobs:
       contents: read
 
     steps:
+    - name: Configure OpenAL null audio driver for headless CI
+      # On headless Windows Server runners there is no audio endpoint device.
+      # SFML's OpenAL-Soft layer (openal32.dll) crashes with
+      # STATUS_STACK_BUFFER_OVERRUN when it can't find any mmdevapi endpoint.
+      # Pointing ALSOFT_CONF at a config that selects the built-in null driver
+      # lets OpenAL initialise cleanly without any audio hardware — no driver
+      # install or reboot required.
+      run: |
+        $confPath = "$env:TEMP\alsoft.conf"
+        "[general]`ndrivers=null" | Set-Content -Path $confPath -Encoding ASCII
+        Add-Content -Path $env:GITHUB_ENV -Value "ALSOFT_CONF=$confPath"
+      shell: powershell
+
     - name: Download build artifact
       uses: actions/download-artifact@v4
       with:
