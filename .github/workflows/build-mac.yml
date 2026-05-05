@@ -686,6 +686,12 @@ jobs:
         chmod +x build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
 
     - name: Run UI navigation tests
+      # MT_NO_NETWORK=1 disables all outbound network calls in the launched
+      # MaximumTrainer binary (radio list, session check, Intervals.icu, etc.).
+      # The child process inherits this variable from QProcess automatically.
+      # Remove or set to 0 when running locally to keep network enabled.
+      env:
+        MT_NO_NETWORK: "1"
       run: ./build/tests/ui_navigation_tests -v2
 
     - name: Upload UI navigation screenshots

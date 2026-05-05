@@ -823,6 +823,12 @@ jobs:
       # and write screenshots, and the component-level dialog tests can show
       # real Qt windows.  This is not "headless" — Xvfb is a fully functional
       # X11 server; it just has no physical hardware attached.
+      # MT_NO_NETWORK=1 disables all outbound network calls in the launched
+      # MaximumTrainer binary (radio list, session check, Intervals.icu, etc.).
+      # The child process inherits this variable from QProcess automatically.
+      # Remove or set to 0 when running locally to keep network enabled.
+      env:
+        MT_NO_NETWORK: "1"
       run: |
         Xvfb :99 -screen 0 1280x800x24 &
         sleep 1

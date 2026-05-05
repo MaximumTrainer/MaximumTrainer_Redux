@@ -850,6 +850,12 @@ jobs:
         path: build
 
     - name: Run UI navigation tests
+      # MT_NO_NETWORK=1 disables all outbound network calls in the launched
+      # MaximumTrainer binary (radio list, session check, Intervals.icu, etc.).
+      # The child process inherits this variable from QProcess automatically.
+      # Remove or set to 0 when running locally to keep network enabled.
+      env:
+        MT_NO_NETWORK: "1"
       run: |
         # Use QTest's -o flag to capture output to file — Tee-Object does not
         # work for Win32 GUI subsystem apps (no console stdout).

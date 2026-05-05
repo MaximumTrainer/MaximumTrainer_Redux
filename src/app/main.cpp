@@ -82,6 +82,18 @@ int main(int argc, char *argv[]) {
 
     LOG_INFO("main", QStringLiteral("MaximumTrainer starting"));
 
+    // MT_NO_NETWORK=1 forces offline mode, disabling all network activity.
+    // Set this environment variable in CI / headless test environments to
+    // prevent the app from attempting to reach remote servers that are not
+    // available on the runner (radio list fetches, session checks, etc.).
+    // The variable is automatically inherited by any child QProcess, so
+    // setting it in the workflow step is sufficient.
+    if (qEnvironmentVariableIntValue("MT_NO_NETWORK") != 0) {
+        if (auto *acct = qApp->property("Account").value<Account*>())
+            acct->isOffline = true;
+        LOG_INFO("main", QStringLiteral("Network disabled (MT_NO_NETWORK=1)"));
+    }
+
 //    MyVlcPlayer player;
 //    player.setMinimumSize(QSize(500,300));
 //    player.show();
