@@ -776,6 +776,7 @@ jobs:
           libsfml-system2.5 \
           libvlc5 \
           libvlccore9 \
+          vlc-plugin-base \
           xvfb \
           libfontconfig1 \
           libxrender1 \

@@ -4,6 +4,7 @@
 #include <QFileDialog>
 #include <QSettings>
 #include <QInputDialog>
+#include <stdexcept>
 
 
 
@@ -51,6 +52,16 @@ MyVlcPlayer::MyVlcPlayer(QWidget *parent) : QWidget(parent), _media(0)
     _instance = new VlcInstance(VlcCommon::args(), this);
     _instance->setLogLevel(Vlc::ErrorLevel);
 //        _instance->setUserAgent(qApp->applicationName(), qApp->applicationVersion());
+
+    // Guard against libvlc_new() returning NULL (e.g. missing VLC plugin
+    // directory).  VlcMediaPlayer::setVideoWidget() passes its internal
+    // libvlc_media_player_t* directly to libvlc without a NULL check, so
+    // proceeding with a failed instance causes a SIGSEGV.  Throwing here
+    // lets WorkoutDialog's try-catch disable the radio player gracefully.
+    // _instance is a Qt child of `this`; QObject's destructor cleans it up.
+    if (!_instance->core())
+        throw std::runtime_error("VLC: libvlc_new() failed - VLC plugins unavailable");
+
     _player = new VlcMediaPlayer(_instance);
     _player->setVideoWidget(video);
     _video= new VlcVideo(_player);
