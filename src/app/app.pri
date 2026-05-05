@@ -44,7 +44,8 @@ HEADERS += $$PWD/util.h \
     $$PWD/reportutil.h \
     $$PWD/myconstants.h \
     $$PWD/networkmonitor.h \
-    $$PWD/credential_store.h
+    $$PWD/credential_store.h \
+    $$PWD/env_config.h
 
 
 
