@@ -2437,6 +2437,7 @@ void MainWindow::screenshotNextStep()
         ui->tabWidget_workout->setCurrentIndex(0);
 
         m_ssSimHub = new SimulatorHub(this);
+        m_ssSimHub->setUserID(1); // userID must be 1-based; default 0 causes arrUserStudioWidget[-1] OOB crash
         m_ssWorkoutDlg = new WorkoutDialog(makeDemoWorkout(), lstRadio, vecUserStudio, this);
 
         connect(m_ssSimHub, SIGNAL(signal_hr(int,int)),
