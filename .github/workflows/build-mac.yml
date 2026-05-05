@@ -576,10 +576,15 @@ jobs:
       contents: read
 
     steps:
-    - name: Install runtime dependencies
-      run: |
-        brew install qt@5 qwt
-        echo "/usr/local/opt/qt@5/bin" >> $GITHUB_PATH
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.7.3'
+        host: 'mac'
+        target: 'desktop'
+        arch: 'clang_64'
+        cache: true
+        cache-key-prefix: qt-mac
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -610,10 +615,15 @@ jobs:
       contents: read
 
     steps:
-    - name: Install runtime dependencies
-      run: |
-        brew install qt@5 qwt
-        echo "/usr/local/opt/qt@5/bin" >> $GITHUB_PATH
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.7.3'
+        host: 'mac'
+        target: 'desktop'
+        arch: 'clang_64'
+        cache: true
+        cache-key-prefix: qt-mac
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -637,10 +647,15 @@ jobs:
       contents: read
 
     steps:
-    - name: Install runtime dependencies
-      run: |
-        brew install qt@5
-        echo "/usr/local/opt/qt@5/bin" >> $GITHUB_PATH
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.7.3'
+        host: 'mac'
+        target: 'desktop'
+        arch: 'clang_64'
+        cache: true
+        cache-key-prefix: qt-mac
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
