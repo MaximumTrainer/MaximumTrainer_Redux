@@ -816,9 +816,7 @@ jobs:
         path: build
 
     - name: Run workout I/O tests
-      run: |
-        $env:QT_QPA_PLATFORM = "offscreen"
-        .\build\tests\workout_io_tests.exe -v2
+      run: .\build\tests\workout_io_tests.exe -v2
       shell: powershell
 
   # ──────────────────────────────────────────────────────────────────────────
