@@ -158,6 +158,24 @@ jobs:
           QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
         make -j$(sysctl -n hw.logicalcpu)
 
+    - name: Build workout parsing test
+      run: |
+        mkdir -p build/tests
+        cd tests/integration
+        qmake workout_parsing_tests.pro \
+          QMAKE_LFLAGS+="-L$(brew --prefix openssl@3)/lib" \
+          QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
+        make -j$(sysctl -n hw.logicalcpu)
+
+    - name: Build UI navigation test
+      run: |
+        mkdir -p build/tests
+        cd tests/integration
+        qmake ui_navigation_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0" \
+          QMAKE_LFLAGS+="-L$(brew --prefix openssl@3)/lib" \
+          QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
+        make -j$(sysctl -n hw.logicalcpu)
+
     - name: Build UI screens test
       run: |
         mkdir -p build/tests
@@ -183,9 +201,23 @@ jobs:
       # The test runner job has no QWT installation. Copy the dylib next to the
       # binary and rewrite its LC_LOAD_DYLIB to @loader_path so dyld finds it
       # from the artifact without needing the absolute /usr/local path.
+      # MaximumTrainer.app is also bundled so that testFullApplicationJourney()
+      # can launch the real application without needing QWT installed on the runner.
       run: |
         cp /usr/local/qwt-6.2.0/lib/libqwt.6.dylib build/tests/
-        for bin in login_screen_tests workout_ui_tests ui_screens_tests workout_io_tests; do
+        install_name_tool \
+          -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+          @loader_path/libqwt.6.dylib \
+          build/tests/login_screen_tests
+        install_name_tool \
+          -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+          @loader_path/libqwt.6.dylib \
+          build/tests/workout_ui_tests
+        install_name_tool \
+          -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+          @loader_path/libqwt.6.dylib \
+          build/tests/ui_navigation_tests
+        for bin in ui_screens_tests workout_io_tests; do
           if [ -f "build/tests/$bin" ]; then
             install_name_tool \
               -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
@@ -193,6 +225,17 @@ jobs:
               "build/tests/$bin"
           fi
         done
+        # Bundle the dylib into the app bundle so the test runner does not
+        # need a QWT installation to launch MaximumTrainer.app.
+        # Guard: verify the app binary exists before attempting to patch it.
+        test -f build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
+        mkdir -p build/release/MaximumTrainer.app/Contents/MacOS
+        cp /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+           build/release/MaximumTrainer.app/Contents/MacOS/
+        install_name_tool \
+          -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+          @loader_path/libqwt.6.dylib \
+          build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
 
     - name: Bind rpath for Qt frameworks and OpenSSL
       run: |
@@ -200,6 +243,8 @@ jobs:
         install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
         install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/tests/online_mode_tests
         install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/tests/workout_ui_tests
+        install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/tests/workout_parsing_tests
+        install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/tests/ui_navigation_tests
 
     - name: upload artifact
       uses: actions/upload-artifact@v4
@@ -565,6 +610,97 @@ jobs:
       with:
         name: workout-ui-screenshot-macos
         path: build/tests/workout-ui-macos-*.png
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout Parsing Tests – macOS
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_parsing:
+    runs-on: macos-latest
+    needs: build_mac
+    permissions:
+      contents: read
+    env:
+      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
+      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
+
+    steps:
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.7.3'
+        host: 'mac'
+        target: 'desktop'
+        arch: 'clang_64'
+        cache: true
+        cache-key-prefix: qt-mac
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: macos
+        path: build
+
+    - name: Make test binary executable
+      run: chmod +x build/tests/workout_parsing_tests
+
+    - name: Run workout parsing tests
+      run: ./build/tests/workout_parsing_tests -v2
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # UI Navigation Tests – macOS
+  # ──────────────────────────────────────────────────────────────────────────
+  test_ui_navigation:
+    runs-on: macos-latest
+    needs: build_mac
+    permissions:
+      contents: read
+
+    steps:
+    - name: Install Qt (core + widgets + bluetooth + webengine for app binary)
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.7.3'
+        host: 'mac'
+        target: 'desktop'
+        arch: 'clang_64'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning'
+        cache: true
+        cache-key-prefix: qt-mac
+
+    - name: Install SFML (required by MaximumTrainer.app at runtime)
+      # The app bundle links against /opt/homebrew/opt/sfml/lib/libsfml-audio.3.0.dylib.
+      # The build machine has SFML installed via brew, but the test runner does not.
+      # Installing SFML here ensures the dynamic loader finds the library when
+      # testFullApplicationJourney() launches the real app binary.
+      run: brew install sfml
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: macos
+        path: build
+
+    - name: Make binaries executable
+      run: |
+        chmod +x build/tests/ui_navigation_tests
+        chmod +x build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
+
+    - name: Run UI navigation tests
+      # MT_NO_NETWORK=1 disables all outbound network calls in the launched
+      # MaximumTrainer binary (radio list, session check, Intervals.icu, etc.).
+      # The child process inherits this variable from QProcess automatically.
+      # Remove or set to 0 when running locally to keep network enabled.
+      env:
+        MT_NO_NETWORK: "1"
+      run: ./build/tests/ui_navigation_tests -v2
+
+    - name: Upload UI navigation screenshots
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ui-navigation-screenshots-macos
+        path: |
+          build/tests/app-journey-*/
 
   # ──────────────────────────────────────────────────────────────────────────
   # UI Screens Tests – macOS

@@ -30,9 +30,9 @@ public:
     void start();
     void stop();
 
-    /// Set the userID emitted in every signal (default: 0).
-    /// In Studio Mode each rider's hub must use a distinct ID so that
-    /// WorkoutDialog can route signals to the correct per-rider widget.
+    /// Set the userID emitted in every signal (default: 1).
+    /// WorkoutDialog expects 1-based userIDs; in Studio Mode each rider's hub
+    /// must use a distinct ID (1…N) so signals route to the correct widget.
     void setUserID(int id) { m_userID = id; }
 
 signals:
@@ -71,7 +71,7 @@ private:
     int m_smo2Dir    = 1;
     int m_thbDir     = 1;
 
-    int m_userID     = 0;    ///< userID used in all emitted signals
+    int m_userID     = 1;    ///< userID used in all emitted signals (1-based; matches WorkoutDialog's 1-based arrays)
 };
 
 #endif // SIMULATOR_HUB_H

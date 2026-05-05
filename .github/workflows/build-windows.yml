@@ -355,6 +355,23 @@ jobs:
         jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
+    - name: Build workout parsing test
+      run: |
+        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
+        Set-Location tests\integration
+        qmake workout_parsing_tests.pro
+        jom /J $env:NUMBER_OF_PROCESSORS
+      shell: powershell
+
+    - name: Build UI navigation test
+      run: |
+        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
+        Set-Location tests\integration
+        $qwtDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
+        qmake ui_navigation_tests.pro "QWT_INSTALL=$qwtDirFwd"
+        jom /J $env:NUMBER_OF_PROCESSORS
+      shell: powershell
+
     - name: Build UI screens test
       run: |
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
@@ -407,6 +424,14 @@ jobs:
             --no-translations `
             --no-system-d3d-compiler `
             build\tests\workout_ui_tests.exe
+        & "$env:QTDIR\bin\windeployqt.exe" --release `
+            --no-translations `
+            --no-system-d3d-compiler `
+            build\tests\workout_parsing_tests.exe
+        & "$env:QTDIR\bin\windeployqt.exe" --release `
+            --no-translations `
+            --no-system-d3d-compiler `
+            build\tests\ui_navigation_tests.exe
         & "$env:QTDIR\bin\windeployqt.exe" --release `
             --no-translations `
             --no-system-d3d-compiler `
@@ -771,6 +796,91 @@ jobs:
       with:
         name: workout-ui-screenshot-windows
         path: build\tests\workout-ui-windows-*.png
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Workout Parsing Tests – Windows
+  # ──────────────────────────────────────────────────────────────────────────
+  test_workout_parsing:
+    runs-on: windows-latest
+    needs: build_windows
+    permissions:
+      contents: read
+    env:
+      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
+      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
+
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: windows
+        path: build
+
+    - name: Run workout parsing tests
+      run: .\build\tests\workout_parsing_tests.exe -v2
+      shell: powershell
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # UI Navigation Tests – Windows
+  # ──────────────────────────────────────────────────────────────────────────
+  test_ui_navigation:
+    runs-on: windows-latest
+    needs: build_windows
+    permissions:
+      contents: read
+
+    steps:
+    - name: Configure OpenAL null audio driver for headless CI
+      # On headless Windows Server runners there is no audio endpoint device.
+      # SFML's OpenAL-Soft layer (openal32.dll) crashes with
+      # STATUS_STACK_BUFFER_OVERRUN when it can't find any mmdevapi endpoint.
+      # Pointing ALSOFT_CONF at a config that selects the built-in null driver
+      # lets OpenAL initialise cleanly without any audio hardware — no driver
+      # install or reboot required.
+      run: |
+        $confPath = "$env:TEMP\alsoft.conf"
+        "[general]`ndrivers=null" | Set-Content -Path $confPath -Encoding ASCII
+        Add-Content -Path $env:GITHUB_ENV -Value "ALSOFT_CONF=$confPath"
+      shell: powershell
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: windows
+        path: build
+
+    - name: Run UI navigation tests
+      # MT_NO_NETWORK=1 disables all outbound network calls in the launched
+      # MaximumTrainer binary (radio list, session check, Intervals.icu, etc.).
+      # The child process inherits this variable from QProcess automatically.
+      # Remove or set to 0 when running locally to keep network enabled.
+      env:
+        MT_NO_NETWORK: "1"
+      run: |
+        # Use QTest's -o flag to capture output to file — Tee-Object does not
+        # work for Win32 GUI subsystem apps (no console stdout).
+        .\build\tests\ui_navigation_tests.exe -v2 -o build\tests\ui-navigation-test-output.txt,txt
+        exit $LASTEXITCODE
+      shell: powershell
+
+    - name: Print test output
+      if: always()
+      shell: powershell
+      run: |
+        $logPath = "build\tests\ui-navigation-test-output.txt"
+        if (Test-Path $logPath) {
+          Write-Host "=== ui_navigation_tests output ==="
+          Get-Content $logPath
+        }
+
+    - name: Upload UI navigation screenshots and log
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ui-navigation-screenshots-windows
+        path: |
+          build\tests\app-journey-*\
+          build\tests\ui-navigation-test-output.txt
 
   # ──────────────────────────────────────────────────────────────────────────
   # UI Screens Tests – Windows

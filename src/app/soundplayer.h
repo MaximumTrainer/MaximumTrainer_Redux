@@ -74,6 +74,10 @@ private :
     double m_volume = 0.7; // 0.0 – 1.0, set by setVolume(0–100)
 #endif
 
+    /// false when SFML audio is unavailable (no OpenAL device, headless CI).
+    /// All play/setVolume calls are no-ops in that case.
+    bool m_initialized = false;
+
 };
 Q_DECLARE_METATYPE(SoundPlayer*)
 

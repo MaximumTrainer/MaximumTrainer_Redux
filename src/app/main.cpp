@@ -14,6 +14,7 @@
 #include "account.h"
 #include "xmlutil.h"
 #include "apptheme.h"
+#include "env_config.h"
 
 #ifdef GC_HAVE_VLCQT
 #include "myvlcplayer.h"
@@ -81,6 +82,14 @@ int main(int argc, char *argv[]) {
     }
 
     LOG_INFO("main", QStringLiteral("MaximumTrainer starting"));
+
+    // MT_NO_NETWORK=1 forces offline mode, disabling all network activity.
+    // See env_config.h for the full list of supported environment variables.
+    if (qEnvironmentVariableIntValue(EnvConfig::NoNetwork) != 0) {
+        if (auto *acct = qApp->property("Account").value<Account*>())
+            acct->isOffline = true;
+        LOG_INFO("main", QStringLiteral("Network disabled (MT_NO_NETWORK=1)"));
+    }
 
 //    MyVlcPlayer player;
 //    player.setMinimumSize(QSize(500,300));
@@ -178,7 +187,13 @@ int main(int argc, char *argv[]) {
             flagIdx = cliArgs.indexOf(QLatin1String("/screenshots"));
         if (flagIdx >= 0 && flagIdx + 1 < cliArgs.size()) {
             const QString &next = cliArgs.at(flagIdx + 1);
-            if (!next.startsWith(QLatin1Char('-')) && !next.startsWith(QLatin1Char('/')))
+            // Accept any argument that does not begin with '-' (Unix/Windows flag)
+            // or '//' (Windows UNC path used as a flag form).  On Unix, absolute
+            // paths start with '/' and must be accepted as valid output directories.
+            const bool looksLikeFlag = next.startsWith(QLatin1Char('-'))
+                                    || next == QLatin1String("/screenshots")
+                                    || next == QLatin1String("/debug");
+            if (!looksLikeFlag)
                 outDir = next;
         }
         QMetaObject::invokeMethod(&w, "startScreenshotMode", Qt::QueuedConnection,

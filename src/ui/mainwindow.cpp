@@ -46,6 +46,7 @@
 #include <QDir>
 #include <QMenu>
 #include <QRegularExpression>
+#include <QWebEngineView>
 #include <QWebEngineProfile>
 #include <QWebEngineScript>
 #include <QWebEnginePage>
@@ -374,6 +375,7 @@ void MainWindow::slotFinishedGetRadio() {
         ui->widget_bottomMenu->removeGeneralMessage();
 
         replyRadioDone = true;
+        m_radioRetryCount = 0;
         checkToEnableWindow();
 
 
@@ -383,8 +385,33 @@ void MainWindow::slotFinishedGetRadio() {
         LOG_WARN("MainWindow",
                  QStringLiteral("Radio list fetch failed: ") + replyRadio->errorString());
         ui->widget_bottomMenu->setGeneralMessage("Error retrieving data from Server..." + replyRadio->errorString(), 7000);
+
+        // In screenshot / offline mode, give up immediately so we don't produce
+        // a tight infinite loop when the server is unreachable (e.g. on CI).
+        // Also give up after 3 consecutive failures as a general safety net.
+        const auto *acct = qApp->property("Account").value<Account*>();
+        const bool inOfflineMode = !m_ssOutputDir.isEmpty()
+                                   || (acct && acct->isOffline);
+        if (inOfflineMode) {
+            LOG_WARN("MainWindow", "Radio list fetch: not retrying (offline/screenshot mode)");
+            replyRadio->deleteLater();
+            replyRadioDone = true;
+            checkToEnableWindow();
+            return;
+        }
+        if (++m_radioRetryCount >= 3) {
+            LOG_WARN("MainWindow", QStringLiteral("Radio list fetch: giving up after %1 attempt(s)").arg(m_radioRetryCount));
+            replyRadio->deleteLater();
+            replyRadioDone = true;
+            checkToEnableWindow();
+            return;
+        }
+
+        // Retry: start a fresh request and hand off the old reply for deletion.
+        QNetworkReply *old = replyRadio;
         replyRadio = RadioDAO::getAllRadios();
         connect(replyRadio, SIGNAL(finished()), this, SLOT(slotFinishedGetRadio()));
+        old->deleteLater();
     }
 
 }
@@ -855,7 +882,8 @@ void MainWindow::createWebChannelZone() {
         channel->registerObject("zoneObject", zoneObject);
 
         // execute updateCdA() js function to init value
-        ui->webView_studio->page()->runJavaScript("updateCdA();");
+        ui->webView_studio->page()->runJavaScript(
+            "if(typeof updateCdA==='function'){updateCdA();}");
     }
 }
 
@@ -994,8 +1022,8 @@ void MainWindow::fillSettingPage()  {
 
     qDebug() << "jsCodeISL:" << jsCode;
 
-
-    ui->webView_settings->page()->runJavaScript(jsCode);
+    ui->webView_settings->page()->runJavaScript(
+        "if(typeof window.$==='function'){" + jsCode + "}");
 }
 
 
@@ -1020,7 +1048,8 @@ void MainWindow::fillStudioPage() {
 
 
     qDebug() << "JSTOEXECUTE IS:" << jsCode;
-    ui->webView_studio->page()->runJavaScript(jsCode);
+    ui->webView_studio->page()->runJavaScript(
+        "if(typeof window.$==='function'){" + jsCode + "}");
 
 
     //-- Populate QwebView Studio
@@ -1059,7 +1088,8 @@ void MainWindow::fillStudioPage() {
 
 
     qDebug() << "JSTOEXECUTE IS:" << jsToExecute;
-    ui->webView_studio->page()->runJavaScript(jsToExecute);
+    ui->webView_studio->page()->runJavaScript(
+        "if(typeof window.$==='function'){" + jsToExecute + "}");
 }
 
 
@@ -1082,8 +1112,8 @@ void MainWindow::companyLoadedForUser(int riderID) {
         jsToExecute += QString("$('#select-trainer_" +QString::number(riderID)+ "').val(%1);").arg(myUserStudio.getBrandID());
         jsToExecute += "$('#select-trainer_"  +QString::number(riderID)+ "').selectpicker('refresh');";
         jsToExecute += "$('#select-trainer_"  +QString::number(riderID)+ "').trigger('change');";
-        //        ui->webView_studio->page()->mainFrame()->documentElement().evaluateJavaScript(jsToExecute + "; null");
-        ui->webView_studio->page()->runJavaScript(jsToExecute);
+        ui->webView_studio->page()->runJavaScript(
+            "if(typeof window.$==='function'){" + jsToExecute + "}");
     }
 
 }
@@ -1299,7 +1329,8 @@ void MainWindow::updateZoneInterface() {
     QString jsToExecute = QString("$('#FTP').val( '%1' ); ").arg((QString::number(account->FTP)));
     jsToExecute += QString("$('#LTHR').val( '%1' ); ").arg((QString::number(account->LTHR)));
     //    ui->webView_zones->page()->mainFrame()->documentElement().evaluateJavaScript(jsToExecute + "; null");
-    ui->webView_zones->page()->runJavaScript(jsToExecute);
+    ui->webView_zones->page()->runJavaScript(
+        "if(typeof window.$==='function'){" + jsToExecute + "}");
 
 }
 
@@ -1394,11 +1425,13 @@ void MainWindow::sendDataToSettingsOrStudioPage(int deviceType, int numberDevice
 
     if (fromStudioPage) {
         qDebug() << "send the script to studio page";
-        ui->webView_studio->page()->runJavaScript(jsToRun);
+        ui->webView_studio->page()->runJavaScript(
+            "if(typeof foundSensor==='function'){" + jsToRun + "}");
     }
     else {
         qDebug() << "send the script to settings page";
-        ui->webView_settings->page()->runJavaScript(jsToRun);
+        ui->webView_settings->page()->runJavaScript(
+            "if(typeof foundSensor==='function'){" + jsToRun + "}");
     }
 
 }
@@ -2235,17 +2268,25 @@ void MainWindow::updateTrainerCurve(int trainer_id, QString companyName, QString
 // Delays (ms) applied AFTER completing each step, before starting the next.
 // Indexed by the step index that just finished: ssDelays[step] → next step.
 static const int ssDelays[] = {
-    800,   // after step  0 (captured main window)   → switch to Settings
-    1000,  // after step  1 (switched to Settings)    → capture Settings
-    500,   // after step  2 (captured Settings)        → switch to WorkoutCreator
-    1000,  // after step  3 (loaded WorkoutCreator)    → capture WorkoutCreator
-    500,   // after step  4 (captured WorkoutCreator)  → launch WorkoutDialog
-    9000,  // after step  5 (launched WorkoutDialog)   → capture running workout
-    200,   // after step  6 (captured workout)         → close WorkoutDialog
-    600,   // after step  7 (closed WorkoutDialog)     → enable studio mode
-    2000,  // after step  8 (enabled studio mode)      → capture Studio
-    500,   // after step  9 (captured Studio)           → switch to Intervals.icu
-    1500,  // after step 10 (switched to Intervals.icu) → capture Intervals.icu
+    800,   // after step  0 (captured main window)      → switch to Settings
+    1000,  // after step  1 (switched to Settings)       → capture Settings
+    500,   // after step  2 (captured Settings)           → switch to WorkoutCreator
+    1000,  // after step  3 (loaded WorkoutCreator)       → capture WorkoutCreator
+    500,   // after step  4 (captured WorkoutCreator)     → launch WorkoutDialog
+    9000,  // after step  5 (launched WorkoutDialog)      → capture running workout
+    200,   // after step  6 (captured workout)            → close WorkoutDialog
+    600,   // after step  7 (closed WorkoutDialog)        → enable studio mode
+    2000,  // after step  8 (enabled studio mode)         → capture Studio
+    500,   // after step  9 (captured Studio)              → switch to Intervals.icu
+    1500,  // after step 10 (switched to Intervals.icu)    → capture Intervals.icu
+    500,   // after step 11 (captured Intervals.icu)       → switch to Plan
+    1500,  // after step 12 (switched to Plan)             → capture Plan
+    500,   // after step 13 (captured Plan)                → switch to Profile
+    1500,  // after step 14 (switched to Profile)          → capture Profile
+    500,   // after step 15 (captured Profile)             → switch to Achievements
+    1500,  // after step 16 (switched to Achievements)     → capture Achievements
+    500,   // after step 17 (captured Achievements)        → switch to History
+    1500,  // after step 18 (switched to History)          → capture History
 };
 
 Workout MainWindow::makeDemoWorkout() const
@@ -2311,6 +2352,36 @@ void MainWindow::startScreenshotMode(const QString &outputDir)
     m_ssOutputDir = outputDir;
     m_ssStep      = 0;
 
+    // Force offline so WorkoutDialog skips the online session check.
+    // There is no server to reach in screenshot/CI mode, and the blocking
+    // "could not retrieve session" message-box that appears after 3 failed
+    // putAccount retries would otherwise cause the child process to hang.
+    // Note: MainWindow already obtains the Account singleton via
+    // qApp->property("Account") in many other methods; this is consistent
+    // with that established pattern for an inherently offline code-path.
+    if (auto *acct = qApp->property("Account").value<Account*>())
+        acct->isOffline = true;
+
+    // Abort any in-flight radio fetch so the tight retry loop stops immediately.
+    // slotFinishedGetRadio() will be called with OperationCanceledError; the
+    // offline/screenshot-mode check there will mark replyRadioDone and return.
+    if (!replyRadioDone && replyRadio) {
+        replyRadio->abort();
+    }
+
+    // Navigate ALL WebEngine views (including nested ones in child widgets) to
+    // blank HTML.  External pages depend on jQuery / RxJS loaded from CDN; in
+    // a CI environment without internet access the CDN requests fail, producing
+    // console errors and, in some configurations (macOS, Windows), crashes.
+    // Using findChildren covers webView_workouts (Main_WorkoutPage) and
+    // webView_createWorkout (WorkoutCreator) in addition to the direct children
+    // of MainWindow's UI — all would otherwise try to run jQuery code against
+    // a page that never loaded jQuery.
+    static const QString kBlankHtml =
+        QStringLiteral("<html><body></body></html>");
+    for (auto *wv : findChildren<QWebEngineView*>())
+        wv->setHtml(kBlankHtml);
+
     resize(1280, 720);
     move(100, 50);
     QCoreApplication::processEvents();
@@ -2366,6 +2437,7 @@ void MainWindow::screenshotNextStep()
         ui->tabWidget_workout->setCurrentIndex(0);
 
         m_ssSimHub = new SimulatorHub(this);
+        m_ssSimHub->setUserID(1); // userID must be 1-based; default 0 causes arrUserStudioWidget[-1] OOB crash
         m_ssWorkoutDlg = new WorkoutDialog(makeDemoWorkout(), lstRadio, vecUserStudio, this);
 
         connect(m_ssSimHub, SIGNAL(signal_hr(int,int)),
@@ -2401,7 +2473,10 @@ void MainWindow::screenshotNextStep()
     // ── Step 7: close WorkoutDialog ───────────────────────────────────────
     case 7:
         if (m_ssWorkoutDlg) {
-            m_ssWorkoutDlg->close();
+            // Use hide() rather than close() to avoid triggering reject() →
+            // sureYouWantToQuit() → start_or_pause_workout(), which would
+            // show a blocking "save progress?" message-box in screenshot mode.
+            m_ssWorkoutDlg->hide();
             delete m_ssWorkoutDlg;
             m_ssWorkoutDlg = nullptr;
         }
@@ -2438,10 +2513,66 @@ void MainWindow::screenshotNextStep()
         QCoreApplication::processEvents();
         break;
 
-    // ── Step 11: capture Intervals.icu (replaces removed History view) ────
+    // ── Step 11: capture Intervals.icu ────────────────────────────────────
     case 11:
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_activity_history.png"), "PNG");
         qDebug() << "Screenshot: activity_history (Intervals.icu tab)";
+        break;
+
+    // ── Step 12: switch to Plan tab (tab 2) ───────────────────────────────
+    case 12:
+        ftb->setCurrentIndex(2);
+        ui->tabWidget->setCurrentIndex(0);   // Plan sub-tab
+        raise();
+        activateWindow();
+        QCoreApplication::processEvents();
+        break;
+
+    // ── Step 13: capture Plan ─────────────────────────────────────────────
+    case 13:
+        grab().save(m_ssOutputDir + QLatin1String("/screenshot_plan.png"), "PNG");
+        qDebug() << "Screenshot: plan";
+        break;
+
+    // ── Step 14: switch to Profile tab (tab 4) ────────────────────────────
+    case 14:
+        ftb->setCurrentIndex(4);
+        ui->tabWidget_profile->setCurrentIndex(0);   // Profile sub-tab
+        raise();
+        activateWindow();
+        QCoreApplication::processEvents();
+        break;
+
+    // ── Step 15: capture Profile ──────────────────────────────────────────
+    case 15:
+        grab().save(m_ssOutputDir + QLatin1String("/screenshot_profile.png"), "PNG");
+        qDebug() << "Screenshot: profile";
+        break;
+
+    // ── Step 16: switch to Achievements sub-tab (still tab 4) ────────────
+    case 16:
+        ui->tabWidget_profile->setCurrentIndex(1);   // Achievements sub-tab
+        QCoreApplication::processEvents();
+        break;
+
+    // ── Step 17: capture Achievements ────────────────────────────────────
+    case 17:
+        grab().save(m_ssOutputDir + QLatin1String("/screenshot_achievements.png"), "PNG");
+        qDebug() << "Screenshot: achievements";
+        break;
+
+    // ── Step 18: switch to History tab (tab 6) ────────────────────────────
+    case 18:
+        ftb->setCurrentIndex(6);
+        raise();
+        activateWindow();
+        QCoreApplication::processEvents();
+        break;
+
+    // ── Step 19: capture History ─────────────────────────────────────────
+    case 19:
+        grab().save(m_ssOutputDir + QLatin1String("/screenshot_history.png"), "PNG");
+        qDebug() << "Screenshot: history";
         QTimer::singleShot(300, qApp, SLOT(quit()));
         return; // No further steps — quit is already scheduled.
 
