@@ -264,6 +264,10 @@ private:
     WorkoutDialog *m_ssWorkoutDlg = nullptr;
     SimulatorHub  *m_ssSimHub     = nullptr;
 
+    // Radio fetch retry guard – limits retries to avoid a tight loop when the
+    // server is unreachable (e.g. in screenshot/CI mode).
+    int            m_radioRetryCount = 0;
+
     // Plan Adherence (#157)
     PlanAdherenceStore *m_adherenceStore = nullptr;
 

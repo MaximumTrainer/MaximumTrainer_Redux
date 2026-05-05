@@ -374,6 +374,7 @@ void MainWindow::slotFinishedGetRadio() {
         ui->widget_bottomMenu->removeGeneralMessage();
 
         replyRadioDone = true;
+        m_radioRetryCount = 0;
         checkToEnableWindow();
 
 
@@ -383,8 +384,33 @@ void MainWindow::slotFinishedGetRadio() {
         LOG_WARN("MainWindow",
                  QStringLiteral("Radio list fetch failed: ") + replyRadio->errorString());
         ui->widget_bottomMenu->setGeneralMessage("Error retrieving data from Server..." + replyRadio->errorString(), 7000);
+
+        // In screenshot / offline mode, give up immediately so we don't produce
+        // a tight infinite loop when the server is unreachable (e.g. on CI).
+        // Also give up after 3 consecutive failures as a general safety net.
+        const auto *acct = qApp->property("Account").value<Account*>();
+        const bool inOfflineMode = !m_ssOutputDir.isEmpty()
+                                   || (acct && acct->isOffline);
+        if (inOfflineMode) {
+            LOG_WARN("MainWindow", "Radio list fetch: not retrying (offline/screenshot mode)");
+            replyRadio->deleteLater();
+            replyRadioDone = true;
+            checkToEnableWindow();
+            return;
+        }
+        if (++m_radioRetryCount >= 3) {
+            LOG_WARN("MainWindow", QStringLiteral("Radio list fetch: giving up after %1 attempt(s)").arg(m_radioRetryCount));
+            replyRadio->deleteLater();
+            replyRadioDone = true;
+            checkToEnableWindow();
+            return;
+        }
+
+        // Retry: start a fresh request and hand off the old reply for deletion.
+        QNetworkReply *old = replyRadio;
         replyRadio = RadioDAO::getAllRadios();
         connect(replyRadio, SIGNAL(finished()), this, SLOT(slotFinishedGetRadio()));
+        old->deleteLater();
     }
 
 }
@@ -2328,6 +2354,13 @@ void MainWindow::startScreenshotMode(const QString &outputDir)
     // with that established pattern for an inherently offline code-path.
     if (auto *acct = qApp->property("Account").value<Account*>())
         acct->isOffline = true;
+
+    // Abort any in-flight radio fetch so the tight retry loop stops immediately.
+    // slotFinishedGetRadio() will be called with OperationCanceledError; the
+    // offline/screenshot-mode check there will mark replyRadioDone and return.
+    if (!replyRadioDone && replyRadio) {
+        replyRadio->abort();
+    }
 
     resize(1280, 720);
     move(100, 50);
