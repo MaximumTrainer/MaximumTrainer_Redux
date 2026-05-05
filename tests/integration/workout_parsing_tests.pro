@@ -49,7 +49,13 @@ CONFIG   -= app_bundle
 TARGET   = workout_parsing_tests
 TEMPLATE = app
 
-DESTDIR  = ../../build/tests
+DESTDIR     = ../../build/tests
+
+# Use a private object directory so that workout.o compiled here (with the
+# stub util.h, where convertQTimeToSecD is inline) is never reused by
+# workout_ui_tests.pro (which uses the real util.h and leaves an external
+# symbol reference in workout.o that would require util.cpp at link time).
+OBJECTS_DIR = ../../build/tests/obj_workout_parsing
 
 # ── Local stub headers MUST come FIRST so that util.h / QApplication are
 #    shadowed without pulling in QWT or QtWidgets. ──────────────────────────
