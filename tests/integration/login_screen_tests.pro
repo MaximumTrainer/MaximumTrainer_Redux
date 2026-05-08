@@ -100,6 +100,7 @@ SOURCES += \
     ../../src/persistence/db/userdao.cpp \
     ../../src/persistence/db/versiondao.cpp \
     ../../src/persistence/db/intervalsicudao.cpp \
+    ../../src/persistence/db/intervals_icu_service.cpp \
     ../../src/persistence/file/xmlutil.cpp \
     ../../src/persistence/file/gpxparser.cpp \
     ../../src/ui/dialoglogin.cpp \

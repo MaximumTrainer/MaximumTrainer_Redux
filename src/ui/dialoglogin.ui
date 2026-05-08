@@ -309,6 +309,98 @@ QLabel#label_logo, #label_logo2 {
        </widget>
       </item>
       <item>
+       <widget class="QLabel" name="label_athleteId">
+        <property name="text">
+         <string>Athlete ID:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="editUsername">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>70</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="placeholderText">
+         <string>i12345</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_apiKey">
+        <property name="text">
+         <string>API Key:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="editPassword">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>90</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>130</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="echoMode">
+         <enum>QLineEdit::Password</enum>
+        </property>
+        <property name="placeholderText">
+         <string>API key</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButton_loginApiKey">
+        <property name="toolTip">
+         <string>Log in directly using your Intervals.icu athlete ID and API key</string>
+        </property>
+        <property name="text">
+         <string>Login with API Key</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">QPushButton#pushButton_loginApiKey {
+    background-color: #2d6a9f;
+    color: white;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-weight: bold;
+}
+QPushButton#pushButton_loginApiKey:hover {
+    background-color: #1f5480;
+}
+QPushButton#pushButton_loginApiKey:pressed {
+    background-color: #163f61;
+}</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>

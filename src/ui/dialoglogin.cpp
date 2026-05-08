@@ -7,6 +7,8 @@
 #include <QDesktopServices>
 #include <QRegularExpression>
 #include <QUuid>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include "logger.h"
 
@@ -22,6 +24,7 @@
 #include "xmlutil.h"
 #include "userdao.h"
 #include "intervalsicudao.h"
+#include "intervals_icu_service.h"
 #include "dialoginfowebview.h"
 #include "myqwebenginepage.h"
 
@@ -55,11 +58,13 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     firstLogin = true;
     replyIntervalsIcuAthlete  = nullptr;
     replyIntervalsIcuSettings = nullptr;
+    replyApiKeyLogin          = nullptr;
     replyGoogle               = nullptr;
     replyVersion              = nullptr;
     m_intervalsIcuTimeout     = nullptr;
     m_googleTimeout           = nullptr;
     m_versionTimeout          = nullptr;
+    m_apiKeyLoginTimeout      = nullptr;
     m_pendingIntervalsIcuReplies = 0;
 
 
@@ -88,6 +93,16 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
             this, &DialogLogin::onLoginWithIntervalsIcuClicked);
     // label_registerIntervalsIcu uses openExternalLinks=true in the .ui, so
     // no extra linkActivated connection is needed here.
+
+    // "Login with API Key" button — direct athlete-ID + API-key authentication.
+    connect(ui->pushButton_loginApiKey, &QPushButton::clicked,
+            this, &DialogLogin::onLoginWithApiKeyClicked);
+
+    // Pre-fill the athlete-ID and API-key fields from previously stored credentials.
+    if (!account->intervals_icu_athlete_id.isEmpty())
+        ui->editUsername->setText(account->intervals_icu_athlete_id);
+    if (!account->intervals_icu_api_key.isEmpty())
+        ui->editPassword->setText(account->intervals_icu_api_key);
 
     if (testMode) {
         // In test mode: skip all network requests and immediately reveal the
@@ -585,6 +600,153 @@ void DialogLogin::onIntervalsIcuOAuthDialogRejected()
         LOG_INFO("DialogLogin", QStringLiteral("Intervals.icu OAuth dialog closed by user"));
     }
 }
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Direct API Key authentication
+// ─────────────────────────────────────────────────────────────────────────────
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Called when the user clicks "Login with API Key".
+/// Validates the editUsername (athlete ID) and editPassword (API key) fields,
+/// then fires a GET /athlete/{id} request to verify the credentials.
+void DialogLogin::onLoginWithApiKeyClicked()
+{
+    const QString athleteId = ui->editUsername->text().trimmed();
+    const QString apiKey    = ui->editPassword->text().trimmed();
+
+    if (athleteId.isEmpty() || apiKey.isEmpty()) {
+        QMessageBox::warning(this,
+                             tr("Missing Credentials"),
+                             tr("Please enter your Intervals.icu Athlete ID and API Key."));
+        return;
+    }
+
+    LOG_INFO("DialogLogin",
+             QStringLiteral("Attempting direct API key login for athlete: ") + athleteId);
+
+    ui->label_process->setText(tr("Verifying Intervals.icu credentials..."));
+    ui->pushButton_loginApiKey->setEnabled(false);
+
+    // Abort any in-progress request from a previous attempt.
+    if (replyApiKeyLogin) {
+        replyApiKeyLogin->abort();
+        replyApiKeyLogin->deleteLater();
+        replyApiKeyLogin = nullptr;
+    }
+
+    replyApiKeyLogin = IntervalsIcuService::getAthlete(athleteId, apiKey);
+    if (!replyApiKeyLogin) {
+        ui->label_process->setText(tr("Network error – no network manager available."));
+        ui->pushButton_loginApiKey->setEnabled(true);
+        return;
+    }
+
+    connect(replyApiKeyLogin, &QNetworkReply::finished,
+            this, &DialogLogin::slotFinishedApiKeyLogin);
+
+    // Safety-net: abort and report failure if the server is unreachable.
+    if (m_apiKeyLoginTimeout) {
+        m_apiKeyLoginTimeout->stop();
+        m_apiKeyLoginTimeout->deleteLater();
+    }
+    m_apiKeyLoginTimeout = new QTimer(this);
+    m_apiKeyLoginTimeout->setSingleShot(true);
+    connect(m_apiKeyLoginTimeout, &QTimer::timeout,
+            this, &DialogLogin::onApiKeyLoginTimeout);
+    m_apiKeyLoginTimeout->start(15000);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Handles the reply from the direct API key authentication request.
+void DialogLogin::slotFinishedApiKeyLogin()
+{
+    if (!replyApiKeyLogin) return;
+
+    if (m_apiKeyLoginTimeout) {
+        m_apiKeyLoginTimeout->stop();
+        m_apiKeyLoginTimeout->deleteLater();
+        m_apiKeyLoginTimeout = nullptr;
+    }
+
+    ui->pushButton_loginApiKey->setEnabled(true);
+
+    const int httpStatus =
+        replyApiKeyLogin->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+    if (replyApiKeyLogin->error() == QNetworkReply::NoError && httpStatus == 200) {
+        // Credentials verified — persist them and continue with the login flow.
+        const QString athleteId = ui->editUsername->text().trimmed();
+        const QString apiKey    = ui->editPassword->text().trimmed();
+
+        account->intervals_icu_api_key    = apiKey;
+        account->intervals_icu_athlete_id = athleteId;
+        account->saveIntervalsIcuCredentials();
+
+        // Parse athlete name from the response for the display_name.
+        const QByteArray data = replyApiKeyLogin->readAll();
+        replyApiKeyLogin->deleteLater();
+        replyApiKeyLogin = nullptr;
+
+        const QJsonDocument doc = QJsonDocument::fromJson(data);
+        if (doc.isObject()) {
+            const QJsonObject obj = doc.object();
+            const QString firstName = obj.value(QStringLiteral("firstname")).toString();
+            const QString lastName  = obj.value(QStringLiteral("lastname")).toString();
+            if (!firstName.isEmpty() || !lastName.isEmpty())
+                account->display_name = (firstName + QStringLiteral(" ") + lastName).trimmed();
+        }
+
+        LOG_INFO("DialogLogin",
+                 QStringLiteral("Direct API key login successful for athlete: ") + athleteId);
+        m_loggingInViaIntervalsIcu = true;
+
+        // Reuse the OAuth identity provisioning path which sets up email,
+        // email_clean, subscription_type_id, and calls completeLogin().
+        loginWithIntervalsIcuIdentity();
+
+    } else {
+        const int status = httpStatus;
+        const QString errMsg = replyApiKeyLogin->errorString();
+        replyApiKeyLogin->deleteLater();
+        replyApiKeyLogin = nullptr;
+
+        LOG_WARN("DialogLogin",
+                 QStringLiteral("Direct API key login failed: HTTP ")
+                 + QString::number(status) + QStringLiteral(" – ") + errMsg);
+
+        ui->label_process->setText(tr("Login failed. Check your Athlete ID and API Key."));
+
+        const QString detail = (status == 401)
+            ? tr("Invalid Athlete ID or API Key (HTTP 401).")
+            : tr("Could not connect to Intervals.icu (%1).").arg(errMsg);
+        QMessageBox::critical(this,
+                              tr("Authentication Failed"),
+                              tr("Intervals.icu login failed.\n\n%1").arg(detail));
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Called when the API key authentication request times out (15 s).
+void DialogLogin::onApiKeyLoginTimeout()
+{
+    LOG_WARN("DialogLogin", QStringLiteral("Direct API key login timed out"));
+
+    if (replyApiKeyLogin) {
+        replyApiKeyLogin->abort();
+        replyApiKeyLogin->deleteLater();
+        replyApiKeyLogin = nullptr;
+    }
+
+    ui->pushButton_loginApiKey->setEnabled(true);
+    ui->label_process->setText(tr("Login timed out. Please check your connection and try again."));
+
+    QMessageBox::warning(this,
+                         tr("Connection Timeout"),
+                         tr("The request to Intervals.icu timed out.\n"
+                            "Please check your internet connection and try again."));
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Fetch the athlete profile and training zones using the OAuth2 Bearer token.
