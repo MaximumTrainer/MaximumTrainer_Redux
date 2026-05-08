@@ -87,6 +87,7 @@
 #include <QJsonObject>
 #include <QEventLoop>
 #include <QCheckBox>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QSignalSpy>
 
@@ -746,41 +747,50 @@ private slots:
     // testDialogLoginInitialState
     //
     // Verifies that the real DialogLogin widget in test mode immediately
-    // reveals the bottom interaction area (widget_bottom visible) and hides
-    // the loading spinner (widget_loading hidden) — exactly the state that
-    // loginLoaded(false) would produce without network activity.
+    // reveals the native login form (widget_center visible, lineEdit_athleteEmail
+    // present) and the bottom interaction area (widget_bottom visible), and
+    // hides the loading spinner (widget_loading hidden).
     //
     // NOTE: Production mode (testMode=false) is intentionally NOT used here
-    // because it fires real network requests (Google connectivity check,
-    // version check) that can show blocking modal dialogs (QMessageBox,
-    // UpdateDialog) in CI environments, causing the test to hang
-    // indefinitely.  The constructor-time widget states are verified via
-    // isVisibleTo() before show() to confirm the synchronous initialisation
-    // path runs correctly.
+    // because it fires real network requests (version check) that can show
+    // blocking modal dialogs (UpdateDialog) in CI environments, causing the
+    // test to hang indefinitely.  The constructor-time widget states are
+    // verified via isVisibleTo() before show() to confirm the synchronous
+    // initialisation path runs correctly.
     //
     // Acceptance criteria:
     //   • widget_loading is logically hidden in test mode (no spinner shown).
+    //   • widget_center is logically visible in test mode (login form shown).
     //   • widget_bottom is logically visible in test mode (buttons accessible).
+    //   • lineEdit_athleteEmail exists in the dialog.
     //   • Screenshot saved and non-empty.
     // -----------------------------------------------------------------------
     void testDialogLoginInitialState()
     {
-        // Test mode: skip network requests; widget_bottom is immediately
-        // visible and widget_loading is hidden.
+        // Test mode: skip network requests; widget_center and widget_bottom are
+        // immediately visible and widget_loading is hidden.
         DialogLogin dialog(nullptr, /*testMode=*/true);
 
         const auto *widgetLoading = dialog.findChild<QWidget *>("widget_loading");
+        const auto *widgetCenter  = dialog.findChild<QWidget *>("widget_center");
         const auto *widgetBottom  = dialog.findChild<QWidget *>("widget_bottom");
+        const auto *editEmail     = dialog.findChild<QLineEdit *>("lineEdit_athleteEmail");
 
         QVERIFY2(widgetLoading != nullptr,
                  "widget_loading must exist in DialogLogin");
+        QVERIFY2(widgetCenter  != nullptr,
+                 "widget_center must exist in DialogLogin");
         QVERIFY2(widgetBottom  != nullptr,
                  "widget_bottom must exist in DialogLogin");
+        QVERIFY2(editEmail != nullptr,
+                 "lineEdit_athleteEmail must exist in DialogLogin");
 
         // isVisibleTo() checks logical visibility relative to the ancestor
         // without requiring the top-level window to be shown yet.
         QVERIFY2(!widgetLoading->isVisibleTo(&dialog),
                  "widget_loading must be logically hidden in test mode");
+        QVERIFY2(widgetCenter->isVisibleTo(&dialog),
+                 "widget_center must be logically visible in test mode");
         QVERIFY2(widgetBottom->isVisibleTo(&dialog),
                  "widget_bottom must be logically visible in test mode");
 
