@@ -7,9 +7,6 @@
 #include <QNetworkReply>
 #include <QTimer>
 
-
-#include <QtWebEngineWidgets/QWebEngineView>
-
 #include "account.h"
 #include "settings.h"
 
@@ -26,46 +23,25 @@ class DialogLogin : public QDialog
 
 public:
     /// @param testMode  When true the constructor skips all network requests
-    ///                  and immediately shows widget_bottom in an "offline
+    ///                  and immediately shows the form in an "offline
     ///                  ready" state.  Only use this in unit/integration tests.
     explicit DialogLogin(QWidget *parent = nullptr, bool testMode = false);
-    //    ~DialogLogin();
-
 
     void changeEvent(QEvent *event);
-
 
     bool getGotUpdate() {
         return this->gotUpdateDialog;
     }
 
-
-
-
-public slots:
-    //void provideAuthentication(QNetworkReply*,QAuthenticator*);
-
-    void clearLstUsername();
-
-
-
-
 private slots:
-    void showLoadingProgress(int prog);
-
-
-    void loginLoaded(bool ok);
-
-    void slotFinishedGoogle();
     void slotFinishedGetVersion();
     void onVersionTimeout();
-    void onGoogleTimeout();
 
     void slotFinishedIntervalsIcuAthlete();
     void slotFinishedIntervalsIcuSettings();
-    void onIntervalsIcuTimeout();
 
-    /// Called when the user clicks "Login with Intervals.icu".
+    /// Called when the user clicks "Login with Intervals.icu" or presses
+    /// Return in one of the form fields.
     void onLoginWithIntervalsIcuClicked();
     /// Called when the Intervals.icu OAuth2 dialog reports success or failure.
     void onIntervalsIcuOAuthLinked(bool linked);
@@ -86,12 +62,6 @@ signals:
 private:
     void loginOffline();
 
-    /// Trigger an Intervals.icu athlete-profile fetch immediately after a
-    /// successful maximumtrainer.com authentication, if the user has stored
-    /// their Intervals.icu credentials.  Falls through to completeLogin() if
-    /// no credentials are configured.
-    void fetchIntervalsIcuData();
-
     /// Fetch the athlete profile and training zones from Intervals.icu using
     /// the OAuth2 Bearer token obtained during the OAuth login flow.
     /// Called after a successful Intervals.icu OAuth2 authorization.
@@ -109,29 +79,22 @@ private:
     QTranslator     m_translator;   /**< contains the translations for this application */
     QString         m_currLang;     /**< contains the currently loaded language */
 
-
     Account *account;
     Settings *settings;
-    QString last_ip_tmp;
-    bool firstLogin;
-
 
     QMovie* movie;  //loading gif
 
-    QNetworkReply *replyGoogle;
     QNetworkReply *replyVersion;
-    QNetworkReply *replyGetAccount;
     QNetworkReply *replyIntervalsIcuAthlete;
     QNetworkReply *replyIntervalsIcuSettings;
     QTimer        *m_versionTimeout;
-    QTimer        *m_googleTimeout;
     QTimer        *m_intervalsIcuTimeout;
 
     bool gotUpdateDialog;
     int  m_pendingIntervalsIcuReplies;  ///< how many Intervals.icu replies we are still waiting for
 
     /// Keeps track of whether the current in-progress login is from the
-    /// Intervals.icu OAuth2 flow (as opposed to the MaximumTrainer.com flow).
+    /// Intervals.icu OAuth2 flow.
     bool m_loggingInViaIntervalsIcu = false;
 
 };
