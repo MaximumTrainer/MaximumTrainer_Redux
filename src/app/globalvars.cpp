@@ -46,13 +46,11 @@ GlobalVars::GlobalVars(QObject *parent) :
     {
         QSettings oldSettings(QStringLiteral("Max++ inc."), QStringLiteral("MaximumTrainer"));
         QSettings newSettings; // uses the newly registered org / app name
-        if (!oldSettings.allKeys().isEmpty()
-                && !newSettings.contains(QStringLiteral("migrated_from_max_inc"))) {
+        if (!newSettings.contains(QStringLiteral("migrated_from_max_inc"))) {
             const QStringList keys = oldSettings.allKeys();
             for (const QString &key : keys)
                 newSettings.setValue(key, oldSettings.value(key));
             newSettings.setValue(QStringLiteral("migrated_from_max_inc"), true);
-            oldSettings.clear();
         }
     }
 
