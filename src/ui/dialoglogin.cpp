@@ -567,7 +567,12 @@ void DialogLogin::onIntervalsIcuOAuthLinked(bool linked)
 {
     if (!linked) {
         LOG_WARN("DialogLogin", QStringLiteral("Intervals.icu OAuth2 authorization denied or failed"));
-        ui->label_process->setText(tr("Intervals.icu authorization failed. Please try again."));
+        QMessageBox::warning(
+            this,
+            tr("Intervals.icu Login Failed"),
+            tr("Intervals.icu authorization was denied or did not complete.\n\n"
+               "Please click \"Login with Intervals.icu\" to try again, or check the "
+               "\"Work Offline\" box to continue without an Intervals.icu account."));
         return;
     }
 
