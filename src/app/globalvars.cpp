@@ -34,7 +34,7 @@ GlobalVars::GlobalVars(QObject *parent) :
 #endif
     ;
 
-    QCoreApplication::setOrganizationName("Max++ inc.");
+    QCoreApplication::setOrganizationName("MaximumTrainer");
     QCoreApplication::setOrganizationDomain("maximumtrainer.com");
     QCoreApplication::setApplicationName("MaximumTrainer");
     QCoreApplication::setApplicationVersion(Environnement::getVersion());

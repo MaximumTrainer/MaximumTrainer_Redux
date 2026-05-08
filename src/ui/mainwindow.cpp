@@ -1570,7 +1570,7 @@ void MainWindow::on_actionLog_off_Exit_triggered()
 void MainWindow::on_actionAbout_MT_triggered()
 {
     QString nameWithVersion = "MaximumTrainer " + Environnement::getVersion();
-    QString copyright = tr("Copyright 2013-2019 Max++ inc. All rights reserved");
+    QString copyright = tr("Copyright 2013-2019 MaximumTrainer. All rights reserved");
     this->setStyleSheet("QMessageBox { messagebox-text-interaction-flags: 5; }");
     QMessageBox::about(this,
                        tr("About MaximumTrainer"),
