@@ -87,6 +87,7 @@
 #include <QJsonObject>
 #include <QEventLoop>
 #include <QCheckBox>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QSignalSpy>
 
@@ -979,6 +980,168 @@ private slots:
         saveScreenshot(dialog, screenshotName, m_outDir);
 
         qDebug().noquote() << "[DialogLoginIntervalsIcuOAuthDialog] PASS";
+    }
+
+
+    // -----------------------------------------------------------------------
+    // testDialogLoginIntervalsIcuCredentialFields
+    //
+    // Verifies that the real DialogLogin widget (test mode) contains the
+    // editUsername and editPassword QLineEdit widgets required for the
+    // Intervals.icu API-key authentication flow.
+    //
+    // Acceptance criteria:
+    //   • editUsername QLineEdit exists in DialogLogin.
+    //   • editPassword QLineEdit exists in DialogLogin.
+    //   • editPassword has echoMode == QLineEdit::Password.
+    //   • pushButton_connectIntervalsIcuApi QPushButton exists.
+    //   • pushButton_connectIntervalsIcuApi is visible and enabled.
+    //   • Screenshot saved and non-empty.
+    // -----------------------------------------------------------------------
+    void testDialogLoginIntervalsIcuCredentialFields()
+    {
+        DialogLogin dialog(nullptr, /*testMode=*/true);
+        dialog.show();
+        QTest::qWaitForWindowExposed(&dialog);
+
+        auto *editUser = dialog.findChild<QLineEdit *>("editUsername");
+        auto *editPass = dialog.findChild<QLineEdit *>("editPassword");
+        auto *connectBtn = dialog.findChild<QPushButton *>("pushButton_connectIntervalsIcuApi");
+
+        QVERIFY2(editUser != nullptr,
+                 "editUsername QLineEdit must exist in DialogLogin");
+        QVERIFY2(editPass != nullptr,
+                 "editPassword QLineEdit must exist in DialogLogin");
+        QVERIFY2(editPass->echoMode() == QLineEdit::Password,
+                 "editPassword must have echoMode=Password");
+        QVERIFY2(connectBtn != nullptr,
+                 "pushButton_connectIntervalsIcuApi must exist in DialogLogin");
+        QVERIFY2(connectBtn->isVisible(),
+                 "pushButton_connectIntervalsIcuApi must be visible in test mode");
+        QVERIFY2(connectBtn->isEnabled(),
+                 "pushButton_connectIntervalsIcuApi must be enabled");
+
+        const QString screenshotName =
+            QString("dialoglogin-icu-credential-fields-%1-%2.png")
+                .arg(kPlatformTag, m_timestamp);
+        dialog.resize(1280, 720);
+        QTest::qWait(50);
+        saveScreenshot(dialog, screenshotName, m_outDir);
+
+        qDebug().noquote() << "[DialogLoginIntervalsIcuCredentialFields] PASS"
+            << "| editUsername found, editPassword echoMode=Password, Connect button visible";
+    }
+
+
+    // -----------------------------------------------------------------------
+    // testDialogLoginIntervalsIcuCredentialPrefill
+    //
+    // Verifies that editUsername and editPassword are pre-filled with the
+    // stored Intervals.icu credentials when the dialog is constructed with
+    // an Account that already has intervals_icu_athlete_id and
+    // intervals_icu_api_key populated.
+    //
+    // Acceptance criteria:
+    //   • editUsername.text() == account->intervals_icu_athlete_id.
+    //   • editPassword.text() == account->intervals_icu_api_key.
+    //   • Screenshot saved and non-empty.
+    // -----------------------------------------------------------------------
+    void testDialogLoginIntervalsIcuCredentialPrefill()
+    {
+        // Store test credentials in the shared account object.
+        const QString testAthleteId = QStringLiteral("i99999");
+        const QString testApiKey    = QStringLiteral("testapikey12345");
+        m_account->intervals_icu_athlete_id = testAthleteId;
+        m_account->intervals_icu_api_key    = testApiKey;
+
+        DialogLogin dialog(nullptr, /*testMode=*/true);
+        dialog.show();
+        QTest::qWaitForWindowExposed(&dialog);
+
+        auto *editUser = dialog.findChild<QLineEdit *>("editUsername");
+        auto *editPass = dialog.findChild<QLineEdit *>("editPassword");
+
+        QVERIFY2(editUser != nullptr, "editUsername must exist");
+        QVERIFY2(editPass != nullptr, "editPassword must exist");
+
+        QCOMPARE(editUser->text(), testAthleteId);
+        QCOMPARE(editPass->text(), testApiKey);
+
+        // Clean up — reset credentials so they don't affect other tests.
+        m_account->intervals_icu_athlete_id.clear();
+        m_account->intervals_icu_api_key.clear();
+
+        const QString screenshotName =
+            QString("dialoglogin-icu-credential-prefill-%1-%2.png")
+                .arg(kPlatformTag, m_timestamp);
+        dialog.resize(1280, 720);
+        QTest::qWait(50);
+        saveScreenshot(dialog, screenshotName, m_outDir);
+
+        qDebug().noquote() << "[DialogLoginIntervalsIcuCredentialPrefill] PASS"
+            << "| athleteId=" << testAthleteId
+            << "| apiKey=" << testApiKey;
+    }
+
+
+    // -----------------------------------------------------------------------
+    // testDialogLoginIntervalsIcuApiButtonValidation
+    //
+    // Verifies that clicking the "Connect" button when both credential fields
+    // are empty shows a warning (via intervalsIcuApiLoginFinished not being
+    // emitted, since validation happens before any network call).
+    //
+    // Acceptance criteria:
+    //   • intervalsIcuApiLoginFinished is NOT emitted when fields are empty.
+    //   • The dialog remains open (not accepted / not rejected).
+    //   • Screenshot saved and non-empty.
+    // -----------------------------------------------------------------------
+    void testDialogLoginIntervalsIcuApiButtonValidation()
+    {
+        DialogLogin dialog(nullptr, /*testMode=*/true);
+        dialog.show();
+        QTest::qWaitForWindowExposed(&dialog);
+
+        auto *editUser   = dialog.findChild<QLineEdit *>("editUsername");
+        auto *editPass   = dialog.findChild<QLineEdit *>("editPassword");
+        auto *connectBtn = dialog.findChild<QPushButton *>("pushButton_connectIntervalsIcuApi");
+
+        QVERIFY2(editUser   != nullptr, "editUsername must exist");
+        QVERIFY2(editPass   != nullptr, "editPassword must exist");
+        QVERIFY2(connectBtn != nullptr, "pushButton_connectIntervalsIcuApi must exist");
+
+        // Ensure both fields are empty.
+        editUser->clear();
+        editPass->clear();
+
+        // Track whether intervalsIcuApiLoginFinished fires (it should NOT
+        // when fields are empty — a QMessageBox is shown instead).
+        QSignalSpy finishedSpy(&dialog, &DialogLogin::intervalsIcuApiLoginFinished);
+
+        // We need to dismiss the QMessageBox that the button will produce.
+        // Use a singleShot timer to close it after the click.
+        QTimer::singleShot(200, [&]() {
+            QWidget *msgBox = QApplication::activeModalWidget();
+            if (msgBox) QTest::keyClick(msgBox, Qt::Key_Return);
+        });
+
+        QTest::mouseClick(connectBtn, Qt::LeftButton);
+        QTest::qWait(300);
+        QCoreApplication::processEvents();
+
+        QVERIFY2(finishedSpy.count() == 0,
+                 "intervalsIcuApiLoginFinished must NOT be emitted for empty credentials");
+        QVERIFY2(dialog.isVisible(),
+                 "Dialog must remain open when credentials are empty");
+
+        const QString screenshotName =
+            QString("dialoglogin-icu-api-validation-%1-%2.png")
+                .arg(kPlatformTag, m_timestamp);
+        dialog.resize(1280, 720);
+        QTest::qWait(50);
+        saveScreenshot(dialog, screenshotName, m_outDir);
+
+        qDebug().noquote() << "[DialogLoginIntervalsIcuApiButtonValidation] PASS";
     }
 };
 

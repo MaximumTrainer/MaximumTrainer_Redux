@@ -72,6 +72,12 @@ private slots:
     /// Called when the Intervals.icu OAuth2 dialog is rejected (user closed it).
     void onIntervalsIcuOAuthDialogRejected();
 
+    /// Called when the user clicks the "Connect" button to authenticate using
+    /// the Intervals.icu athlete ID and API key entered in editUsername / editPassword.
+    void onLoginWithIntervalsIcuApiClicked();
+    /// Called when the API-key authentication reply finishes.
+    void onIntervalsIcuApiAuthFinished();
+
     void on_comboBox_language_currentIndexChanged(int index);
     void on_checkBox_autoLogin_clicked(bool checked);
     void on_checkBox_workOffline_clicked(bool checked);
@@ -82,6 +88,12 @@ signals:
     /// calls exec().  Integration tests connect to this to detect and
     /// dismiss the dialog without relying on post-exec() state.
     void intervalsIcuOAuthDialogCreated(DialogInfoWebView *dialog);
+
+    /// Emitted when the API-key authentication attempt finishes.
+    /// @param success  true if the credentials were accepted (HTTP 200).
+    /// @param message  Human-readable result (athlete name on success,
+    ///                 error description on failure).
+    void intervalsIcuApiLoginFinished(bool success, const QString &message);
 
 private:
     void loginOffline();
@@ -123,6 +135,7 @@ private:
     QNetworkReply *replyGetAccount;
     QNetworkReply *replyIntervalsIcuAthlete;
     QNetworkReply *replyIntervalsIcuSettings;
+    QNetworkReply *replyIntervalsIcuApiAuth;  ///< API-key authentication request
     QTimer        *m_versionTimeout;
     QTimer        *m_googleTimeout;
     QTimer        *m_intervalsIcuTimeout;

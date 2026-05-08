@@ -55,6 +55,7 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     firstLogin = true;
     replyIntervalsIcuAthlete  = nullptr;
     replyIntervalsIcuSettings = nullptr;
+    replyIntervalsIcuApiAuth  = nullptr;
     replyGoogle               = nullptr;
     replyVersion              = nullptr;
     m_intervalsIcuTimeout     = nullptr;
@@ -88,6 +89,17 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
             this, &DialogLogin::onLoginWithIntervalsIcuClicked);
     // label_registerIntervalsIcu uses openExternalLinks=true in the .ui, so
     // no extra linkActivated connection is needed here.
+
+    // "Connect" button for direct API-key authentication.
+    connect(ui->pushButton_connectIntervalsIcuApi, &QPushButton::clicked,
+            this, &DialogLogin::onLoginWithIntervalsIcuApiClicked);
+
+    // Pre-fill the credential fields if the user has previously saved their
+    // Intervals.icu athlete ID and API key.  The password field stays masked.
+    if (!account->intervals_icu_athlete_id.isEmpty())
+        ui->editUsername->setText(account->intervals_icu_athlete_id);
+    if (!account->intervals_icu_api_key.isEmpty())
+        ui->editPassword->setText(account->intervals_icu_api_key);
 
     if (testMode) {
         // In test mode: skip all network requests and immediately reveal the
@@ -583,6 +595,119 @@ void DialogLogin::onIntervalsIcuOAuthDialogRejected()
     if (!m_loggingInViaIntervalsIcu) {
         // User simply closed the window — no action needed, stay on login page.
         LOG_INFO("DialogLogin", QStringLiteral("Intervals.icu OAuth dialog closed by user"));
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Intervals.icu API-key ("direct") login
+// ─────────────────────────────────────────────────────────────────────────────
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Triggered when the user clicks the "Connect" button.
+/// Reads the athlete ID from editUsername and the API key from editPassword,
+/// validates that both are non-empty, then fires a GET /athlete/{id} request
+/// using HTTP Basic Auth (username="API_KEY", password=<apiKey>).
+/// On HTTP 200 the credentials are persisted to QSettings and the login
+/// flow continues via fetchIntervalsIcuData().  On any other status code
+/// (or network error) a QMessageBox describes the failure and the dialog
+/// remains open so the user can correct their credentials.
+void DialogLogin::onLoginWithIntervalsIcuApiClicked()
+{
+    const QString athleteId = ui->editUsername->text().trimmed();
+    const QString apiKey    = ui->editPassword->text().trimmed();
+
+    if (athleteId.isEmpty() || apiKey.isEmpty()) {
+        QMessageBox::warning(this,
+            tr("Missing credentials"),
+            tr("Please enter both your Intervals.icu Athlete ID and API Key."));
+        return;
+    }
+
+    LOG_INFO("DialogLogin",
+             QStringLiteral("Attempting Intervals.icu API-key login for athlete: ")
+             + athleteId);
+
+    ui->label_process->setText(tr("Verifying Intervals.icu credentials..."));
+    ui->pushButton_connectIntervalsIcuApi->setEnabled(false);
+
+    // Abort any previous in-flight auth request.
+    if (replyIntervalsIcuApiAuth) {
+        replyIntervalsIcuApiAuth->abort();
+        replyIntervalsIcuApiAuth->deleteLater();
+        replyIntervalsIcuApiAuth = nullptr;
+    }
+
+    replyIntervalsIcuApiAuth = IntervalsIcuDAO::getAthlete(athleteId, apiKey);
+    if (!replyIntervalsIcuApiAuth) {
+        LOG_WARN("DialogLogin", QStringLiteral("Intervals.icu API auth: no network manager available"));
+        ui->pushButton_connectIntervalsIcuApi->setEnabled(true);
+        ui->label_process->setText(tr("No network connection available."));
+        emit intervalsIcuApiLoginFinished(false, QStringLiteral("No network manager"));
+        return;
+    }
+
+    connect(replyIntervalsIcuApiAuth, &QNetworkReply::finished,
+            this, &DialogLogin::onIntervalsIcuApiAuthFinished);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Processes the reply from the API-key authentication request.
+void DialogLogin::onIntervalsIcuApiAuthFinished()
+{
+    if (!replyIntervalsIcuApiAuth) return;
+
+    ui->pushButton_connectIntervalsIcuApi->setEnabled(true);
+
+    const int httpStatus =
+        replyIntervalsIcuApiAuth->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const QNetworkReply::NetworkError netError = replyIntervalsIcuApiAuth->error();
+
+    if (netError == QNetworkReply::NoError && httpStatus == 200) {
+        const QByteArray data = replyIntervalsIcuApiAuth->readAll();
+        replyIntervalsIcuApiAuth->deleteLater();
+        replyIntervalsIcuApiAuth = nullptr;
+
+        // Parse and store the athlete profile.
+        Util::parseJsonIntervalsIcuAthlete(QString::fromUtf8(data));
+
+        // Persist the credentials so they auto-fill next time.
+        account->intervals_icu_athlete_id = ui->editUsername->text().trimmed();
+        account->intervals_icu_api_key    = ui->editPassword->text().trimmed();
+        account->saveIntervalsIcuCredentials();
+
+        LOG_INFO("DialogLogin",
+                 QStringLiteral("Intervals.icu API-key login succeeded for athlete: ")
+                 + account->intervals_icu_athlete_id);
+
+        emit intervalsIcuApiLoginFinished(true, account->display_name);
+
+        // Continue with the full login flow (loads training zones, then
+        // calls loginWithIntervalsIcuIdentity() / completeLogin()).
+        m_loggingInViaIntervalsIcu = true;
+        fetchIntervalsIcuData();
+
+    } else {
+        const QString errMsg = replyIntervalsIcuApiAuth->errorString();
+        replyIntervalsIcuApiAuth->deleteLater();
+        replyIntervalsIcuApiAuth = nullptr;
+
+        QString displayMsg;
+        if (httpStatus == 401) {
+            displayMsg = tr("Invalid credentials. Please check your Athlete ID and API Key.");
+        } else if (netError != QNetworkReply::NoError) {
+            displayMsg = tr("Network error: %1").arg(errMsg);
+        } else {
+            displayMsg = tr("Authentication failed (HTTP %1).").arg(httpStatus);
+        }
+
+        LOG_WARN("DialogLogin",
+                 QStringLiteral("Intervals.icu API-key login failed — HTTP ")
+                 + QString::number(httpStatus) + QStringLiteral(": ") + errMsg);
+
+        ui->label_process->setText(displayMsg);
+        QMessageBox::warning(this, tr("Intervals.icu Login Failed"), displayMsg);
+
+        emit intervalsIcuApiLoginFinished(false, displayMsg);
     }
 }
 
