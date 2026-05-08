@@ -88,7 +88,6 @@
 #include <QEventLoop>
 #include <QCheckBox>
 #include <QPushButton>
-#include <QLineEdit>
 #include <QSignalSpy>
 
 #include "../../src/btle/simulator_hub.h"
@@ -980,100 +979,6 @@ private slots:
         saveScreenshot(dialog, screenshotName, m_outDir);
 
         qDebug().noquote() << "[DialogLoginIntervalsIcuOAuthDialog] PASS";
-    }
-
-
-    // -----------------------------------------------------------------------
-    // testDialogLoginApiKeyFieldsExist
-    //
-    // Verifies that the direct API key login widgets are present in the
-    // DialogLogin widget when test mode is active (widget_bottom visible).
-    //
-    // Acceptance criteria:
-    //   • editUsername (athlete ID field) exists.
-    //   • editPassword (API key field) exists and uses Password echo mode.
-    //   • pushButton_loginApiKey exists, is visible, and is enabled.
-    //   • Screenshot saved and non-empty.
-    // -----------------------------------------------------------------------
-    void testDialogLoginApiKeyFieldsExist()
-    {
-        DialogLogin dialog(nullptr, /*testMode=*/true);
-        dialog.show();
-        QTest::qWaitForWindowExposed(&dialog);
-
-        auto *editUser = dialog.findChild<QLineEdit *>("editUsername");
-        auto *editPass = dialog.findChild<QLineEdit *>("editPassword");
-        auto *btnApiKey = dialog.findChild<QPushButton *>("pushButton_loginApiKey");
-
-        QVERIFY2(editUser  != nullptr,
-                 "editUsername must exist in DialogLogin");
-        QVERIFY2(editPass  != nullptr,
-                 "editPassword must exist in DialogLogin");
-        QVERIFY2(btnApiKey != nullptr,
-                 "pushButton_loginApiKey must exist in DialogLogin");
-
-        QCOMPARE(editPass->echoMode(), QLineEdit::Password);
-
-        QVERIFY2(btnApiKey->isVisible(),
-                 "pushButton_loginApiKey must be visible in test mode");
-        QVERIFY2(btnApiKey->isEnabled(),
-                 "pushButton_loginApiKey must be enabled in test mode");
-
-        const QString screenshotName =
-            QString("dialoglogin-apikey-fields-%1-%2.png")
-                .arg(kPlatformTag, m_timestamp);
-        dialog.resize(1280, 720);
-        QTest::qWait(50);
-        saveScreenshot(dialog, screenshotName, m_outDir);
-
-        qDebug().noquote() << "[DialogLoginApiKeyFieldsExist] PASS"
-            << "| echoMode:" << editPass->echoMode();
-    }
-
-
-    // -----------------------------------------------------------------------
-    // testDialogLoginApiKeyPrefill
-    //
-    // Verifies that the editUsername and editPassword fields are pre-filled
-    // from the Account object when stored credentials are present.
-    //
-    // Acceptance criteria:
-    //   • When account has intervals_icu_athlete_id and intervals_icu_api_key,
-    //     editUsername.text() == intervals_icu_athlete_id.
-    //   • editPassword.text() == intervals_icu_api_key.
-    //   • Screenshot saved and non-empty.
-    // -----------------------------------------------------------------------
-    void testDialogLoginApiKeyPrefill()
-    {
-        // Set stored credentials on the shared account object.
-        m_account->intervals_icu_athlete_id = QStringLiteral("i99999");
-        m_account->intervals_icu_api_key    = QStringLiteral("test_api_key_value");
-
-        DialogLogin dialog(nullptr, /*testMode=*/true);
-        dialog.show();
-        QTest::qWaitForWindowExposed(&dialog);
-
-        auto *editUser = dialog.findChild<QLineEdit *>("editUsername");
-        auto *editPass = dialog.findChild<QLineEdit *>("editPassword");
-
-        QVERIFY2(editUser != nullptr, "editUsername must exist in DialogLogin");
-        QVERIFY2(editPass != nullptr, "editPassword must exist in DialogLogin");
-
-        QCOMPARE(editUser->text(), QStringLiteral("i99999"));
-        QCOMPARE(editPass->text(), QStringLiteral("test_api_key_value"));
-
-        // Clean up — reset credentials so other tests are unaffected.
-        m_account->intervals_icu_athlete_id.clear();
-        m_account->intervals_icu_api_key.clear();
-
-        const QString screenshotName =
-            QString("dialoglogin-apikey-prefill-%1-%2.png")
-                .arg(kPlatformTag, m_timestamp);
-        dialog.resize(1280, 720);
-        QTest::qWait(50);
-        saveScreenshot(dialog, screenshotName, m_outDir);
-
-        qDebug().noquote() << "[DialogLoginApiKeyPrefill] PASS";
     }
 };
 

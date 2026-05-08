@@ -72,13 +72,6 @@ private slots:
     /// Called when the Intervals.icu OAuth2 dialog is rejected (user closed it).
     void onIntervalsIcuOAuthDialogRejected();
 
-    /// Called when the user clicks "Login with API Key".
-    void onLoginWithApiKeyClicked();
-    /// Called when the direct API key authentication reply finishes.
-    void slotFinishedApiKeyLogin();
-    /// Called when the API key authentication request times out.
-    void onApiKeyLoginTimeout();
-
     void on_comboBox_language_currentIndexChanged(int index);
     void on_checkBox_autoLogin_clicked(bool checked);
     void on_checkBox_workOffline_clicked(bool checked);
@@ -130,11 +123,9 @@ private:
     QNetworkReply *replyGetAccount;
     QNetworkReply *replyIntervalsIcuAthlete;
     QNetworkReply *replyIntervalsIcuSettings;
-    QNetworkReply *replyApiKeyLogin;        ///< direct API key authentication request
     QTimer        *m_versionTimeout;
     QTimer        *m_googleTimeout;
     QTimer        *m_intervalsIcuTimeout;
-    QTimer        *m_apiKeyLoginTimeout;    ///< timeout for direct API key login
 
     bool gotUpdateDialog;
     int  m_pendingIntervalsIcuReplies;  ///< how many Intervals.icu replies we are still waiting for
