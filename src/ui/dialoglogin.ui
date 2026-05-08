@@ -471,18 +471,35 @@ QPushButton#pushButton_loginIntervalsIcu:pressed {
       </item>
       <item>
        <widget class="QLabel" name="label_athleteEmailField">
-        <property name="text">
-         <string>Email or Athlete ID</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="lineEdit_athleteEmail">
-        <property name="placeholderText">
-         <string>e.g. john@example.com or i12345</string>
-        </property>
-       </widget>
-      </item>
+         <property name="text">
+          <string>Username</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="lineEdit_athleteEmail">
+         <property name="placeholderText">
+          <string>Enter your Intervals.icu username</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_passwordField">
+         <property name="text">
+          <string>Password</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="lineEdit_password">
+         <property name="echoMode">
+          <enum>QLineEdit::Password</enum>
+         </property>
+         <property name="placeholderText">
+          <string>Enter your Intervals.icu password</string>
+         </property>
+        </widget>
+       </item>
       <item>
        <widget class="QLabel" name="label_oauthNote">
         <property name="text">

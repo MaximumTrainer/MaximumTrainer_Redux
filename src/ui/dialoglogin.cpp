@@ -63,8 +63,10 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
             this, &DialogLogin::onLoginWithIntervalsIcuClicked);
     connect(ui->lineEdit_athleteEmail, &QLineEdit::returnPressed,
             this, &DialogLogin::onLoginWithIntervalsIcuClicked);
+    connect(ui->lineEdit_password, &QLineEdit::returnPressed,
+            this, &DialogLogin::onLoginWithIntervalsIcuClicked);
 
-    // Pre-populate the email/athlete-ID field from previously saved credentials.
+    // Pre-populate the username field from previously saved credentials.
     // Prefer the Intervals.icu athlete ID (persisted by saveIntervalsIcuCredentials),
     // falling back to the last remembered username from general settings.
     if (!account->intervals_icu_athlete_id.isEmpty()) {
