@@ -706,18 +706,17 @@ void DialogLogin::slotFinishedApiKeyLogin()
         loginWithIntervalsIcuIdentity();
 
     } else {
-        const int status = httpStatus;
         const QString errMsg = replyApiKeyLogin->errorString();
         replyApiKeyLogin->deleteLater();
         replyApiKeyLogin = nullptr;
 
         LOG_WARN("DialogLogin",
                  QStringLiteral("Direct API key login failed: HTTP ")
-                 + QString::number(status) + QStringLiteral(" – ") + errMsg);
+                 + QString::number(httpStatus) + QStringLiteral(" – ") + errMsg);
 
         ui->label_process->setText(tr("Login failed. Check your Athlete ID and API Key."));
 
-        const QString detail = (status == 401)
+        const QString detail = (httpStatus == 401)
             ? tr("Invalid Athlete ID or API Key (HTTP 401).")
             : tr("Could not connect to Intervals.icu (%1).").arg(errMsg);
         QMessageBox::critical(this,

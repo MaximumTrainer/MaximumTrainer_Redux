@@ -1003,7 +1003,7 @@ private slots:
 
         auto *editUser = dialog.findChild<QLineEdit *>("editUsername");
         auto *editPass = dialog.findChild<QLineEdit *>("editPassword");
-        auto *btnApiKey= dialog.findChild<QPushButton *>("pushButton_loginApiKey");
+        auto *btnApiKey = dialog.findChild<QPushButton *>("pushButton_loginApiKey");
 
         QVERIFY2(editUser  != nullptr,
                  "editUsername must exist in DialogLogin");
