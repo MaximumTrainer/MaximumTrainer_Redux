@@ -44,7 +44,7 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     m_pendingIntervalsIcuReplies = 0;
 
     ///Set loading icon
-    QMovie *movie = new QMovie(":/image/icon/loading", QByteArray(), this);
+    movie = new QMovie(":/image/icon/loading", QByteArray(), this);
     movie->setPaused(false);
     ui->label_loading->setMovie(movie);
     movie->setSpeed(150);
@@ -62,8 +62,6 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     connect(ui->pushButton_loginIntervalsIcu, &QPushButton::clicked,
             this, &DialogLogin::onLoginWithIntervalsIcuClicked);
     connect(ui->lineEdit_athleteEmail, &QLineEdit::returnPressed,
-            this, &DialogLogin::onLoginWithIntervalsIcuClicked);
-    connect(ui->lineEdit_password, &QLineEdit::returnPressed,
             this, &DialogLogin::onLoginWithIntervalsIcuClicked);
 
     // Pre-populate the email/athlete-ID field from previously saved credentials.
@@ -180,9 +178,9 @@ void DialogLogin::on_pushButton_startOffline_clicked()
 void DialogLogin::loginOffline()
 {
     account->isOffline        = true;
-    // ID 0 is used as the offline-user sentinel: 0 is not a valid database
-    // primary key (valid IDs start at 1) and differs from the uninitialized
-    // default of -1.
+    // id=0 is used here as a placeholder (no database record for offline users).
+    // Intervals.icu OAuth users also use id=0 with isOffline=false; distinguish
+    // the two cases using isOffline, not id alone.
     account->id               = 0;
     account->email            = QStringLiteral("local@offline");
     account->email_clean      = QStringLiteral("offline_user");
@@ -348,6 +346,8 @@ void DialogLogin::loginWithIntervalsIcuIdentity()
     if (!this->isVisible()) return;
 
     account->isOffline = false;
+    // id=0 is a placeholder — no database record exists for OAuth-only users.
+    // Offline users also have id=0; distinguish them via isOffline, not id alone.
     account->id        = 0;
 
     if (!account->intervals_icu_athlete_id.isEmpty()) {

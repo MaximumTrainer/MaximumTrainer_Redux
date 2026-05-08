@@ -484,26 +484,9 @@ QPushButton#pushButton_loginIntervalsIcu:pressed {
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="label_passwordField">
-        <property name="text">
-         <string>Password</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="lineEdit_password">
-        <property name="echoMode">
-         <enum>QLineEdit::Password</enum>
-        </property>
-        <property name="placeholderText">
-         <string>Authenticate securely via Intervals.icu</string>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QLabel" name="label_oauthNote">
         <property name="text">
-         <string>Your credentials are verified directly by Intervals.icu via OAuth2. Click "Login with Intervals.icu" below, or press Enter.</string>
+         <string>Your password is never stored here. Click "Login with Intervals.icu" or press Enter to authenticate securely via OAuth2 on the Intervals.icu website.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>

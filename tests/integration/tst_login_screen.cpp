@@ -763,7 +763,6 @@ private slots:
     //   • widget_center is logically visible in test mode (login form shown).
     //   • widget_bottom is logically visible in test mode (buttons accessible).
     //   • lineEdit_athleteEmail exists in the dialog.
-    //   • lineEdit_password exists in the dialog.
     //   • Screenshot saved and non-empty.
     // -----------------------------------------------------------------------
     void testDialogLoginInitialState()
@@ -776,7 +775,6 @@ private slots:
         const auto *widgetCenter  = dialog.findChild<QWidget *>("widget_center");
         const auto *widgetBottom  = dialog.findChild<QWidget *>("widget_bottom");
         const auto *editEmail     = dialog.findChild<QLineEdit *>("lineEdit_athleteEmail");
-        const auto *editPassword  = dialog.findChild<QLineEdit *>("lineEdit_password");
 
         QVERIFY2(widgetLoading != nullptr,
                  "widget_loading must exist in DialogLogin");
@@ -786,8 +784,6 @@ private slots:
                  "widget_bottom must exist in DialogLogin");
         QVERIFY2(editEmail != nullptr,
                  "lineEdit_athleteEmail must exist in DialogLogin");
-        QVERIFY2(editPassword != nullptr,
-                 "lineEdit_password must exist in DialogLogin");
 
         // isVisibleTo() checks logical visibility relative to the ancestor
         // without requiring the top-level window to be shown yet.
