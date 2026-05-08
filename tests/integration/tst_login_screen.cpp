@@ -1054,6 +1054,16 @@ private slots:
         m_account->intervals_icu_athlete_id = testAthleteId;
         m_account->intervals_icu_api_key    = testApiKey;
 
+        // Ensure credentials are cleared even if a QVERIFY/QCOMPARE assertion
+        // below fails — prevents polluting subsequent test cases.
+        struct CleanupGuard {
+            Account *acct;
+            ~CleanupGuard() {
+                acct->intervals_icu_athlete_id.clear();
+                acct->intervals_icu_api_key.clear();
+            }
+        } guard{m_account};
+
         DialogLogin dialog(nullptr, /*testMode=*/true);
         dialog.show();
         QTest::qWaitForWindowExposed(&dialog);
@@ -1067,9 +1077,7 @@ private slots:
         QCOMPARE(editUser->text(), testAthleteId);
         QCOMPARE(editPass->text(), testApiKey);
 
-        // Clean up — reset credentials so they don't affect other tests.
-        m_account->intervals_icu_athlete_id.clear();
-        m_account->intervals_icu_api_key.clear();
+        // (CleanupGuard destructor clears m_account credentials.)
 
         const QString screenshotName =
             QString("dialoglogin-icu-credential-prefill-%1-%2.png")
@@ -1116,7 +1124,7 @@ private slots:
 
         // Track whether intervalsIcuApiLoginFinished fires (it should NOT
         // when fields are empty — a QMessageBox is shown instead).
-        QSignalSpy finishedSpy(&dialog, &DialogLogin::intervalsIcuApiLoginFinished);
+        QSignalSpy apiLoginSignalSpy(&dialog, &DialogLogin::intervalsIcuApiLoginFinished);
 
         // We need to dismiss the QMessageBox that the button will produce.
         // Use a singleShot timer to close it after the click.
@@ -1129,7 +1137,7 @@ private slots:
         QTest::qWait(300);
         QCoreApplication::processEvents();
 
-        QVERIFY2(finishedSpy.count() == 0,
+        QVERIFY2(apiLoginSignalSpy.count() == 0,
                  "intervalsIcuApiLoginFinished must NOT be emitted for empty credentials");
         QVERIFY2(dialog.isVisible(),
                  "Dialog must remain open when credentials are empty");

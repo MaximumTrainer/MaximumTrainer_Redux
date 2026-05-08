@@ -641,7 +641,7 @@ void DialogLogin::onLoginWithIntervalsIcuApiClicked()
     if (!replyIntervalsIcuApiAuth) {
         LOG_WARN("DialogLogin", QStringLiteral("Intervals.icu API auth: no network manager available"));
         ui->pushButton_connectIntervalsIcuApi->setEnabled(true);
-        ui->label_process->setText(tr("No network connection available."));
+        ui->label_process->setText(tr("Network manager unavailable."));
         emit intervalsIcuApiLoginFinished(false, QStringLiteral("No network manager"));
         return;
     }
@@ -679,7 +679,12 @@ void DialogLogin::onIntervalsIcuApiAuthFinished()
                  QStringLiteral("Intervals.icu API-key login succeeded for athlete: ")
                  + account->intervals_icu_athlete_id);
 
-        emit intervalsIcuApiLoginFinished(true, account->display_name);
+        // Build a readable name for the signal: prefer display_name if set by
+        // parseJsonIntervalsIcuAthlete(), otherwise fall back to the athlete ID.
+        const QString successName = account->display_name.isEmpty()
+                                    ? account->intervals_icu_athlete_id
+                                    : account->display_name;
+        emit intervalsIcuApiLoginFinished(true, successName);
 
         // Continue with the full login flow (loads training zones, then
         // calls loginWithIntervalsIcuIdentity() / completeLogin()).
