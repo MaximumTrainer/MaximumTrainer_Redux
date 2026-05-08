@@ -13,6 +13,7 @@
 #include "networkmonitor.h"
 
 #include <QDir>
+#include <QSettings>
 #include <QWebEngineSettings>
 #include <QWebEngineProfile>
 #ifdef GC_HAVE_VLCQT
@@ -34,10 +35,24 @@ GlobalVars::GlobalVars(QObject *parent) :
 #endif
     ;
 
-    QCoreApplication::setOrganizationName("Max++ inc.");
+    QCoreApplication::setOrganizationName("MaximumTrainer");
     QCoreApplication::setOrganizationDomain("maximumtrainer.com");
-    QCoreApplication::setApplicationName("MaximumTrainer");
+    QCoreApplication::setApplicationName("MaximumTrainer_Redux");
     QCoreApplication::setApplicationVersion(Environnement::getVersion());
+
+    // One-time migration: copy QSettings from the old scope (org "Max++ inc.",
+    // app "MaximumTrainer") into the new scope so existing user preferences,
+    // logging config, account credentials, etc. are preserved across the rebrand.
+    {
+        QSettings oldSettings(QStringLiteral("Max++ inc."), QStringLiteral("MaximumTrainer"));
+        QSettings newSettings; // uses the newly registered org / app name
+        if (!newSettings.contains(QStringLiteral("migrated_from_max_inc"))) {
+            const QStringList keys = oldSettings.allKeys();
+            for (const QString &key : keys)
+                newSettings.setValue(key, oldSettings.value(key));
+            newSettings.setValue(QStringLiteral("migrated_from_max_inc"), true);
+        }
+    }
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
