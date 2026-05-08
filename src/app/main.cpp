@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
     GlobalVars myVars;
 
     // Now that the application identity has been established by GlobalVars
-    // (org "MaximumTrainer", app "MaximumTrainer"), load logging preferences from
+    // (org "MaximumTrainer", app "MaximumTrainer_Redux"), load logging preferences from
     // QSettings so the user's level / file-path choices take effect for the
     // rest of the session.
     Logger::instance().loadConfig();

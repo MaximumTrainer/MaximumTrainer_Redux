@@ -36,7 +36,7 @@ GlobalVars::GlobalVars(QObject *parent) :
 
     QCoreApplication::setOrganizationName("MaximumTrainer");
     QCoreApplication::setOrganizationDomain("maximumtrainer.com");
-    QCoreApplication::setApplicationName("MaximumTrainer");
+    QCoreApplication::setApplicationName("MaximumTrainer_Redux");
     QCoreApplication::setApplicationVersion(Environnement::getVersion());
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
