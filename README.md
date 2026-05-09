@@ -61,11 +61,12 @@ The simulator responds to ERG load commands from the workout player, making it a
 
 ### Selecting a workout
 
-**Option A — TrainerDay.com library (integrated)**
+**Option A — Intervals.icu calendar sync (integrated)**
 
-1. Click the **Find Workouts** tab in the left sidebar.
-2. Browse or search the TrainerDay.com catalogue directly inside the app.
-3. Double-click a workout to download it to your local library.
+1. On the login screen click **Connect with Intervals.icu** and authorise the app via OAuth (one-time setup).
+2. Click the **Intervals.icu** tab in the left sidebar.
+3. Click **Refresh** to load your planned workouts for the current week.
+4. Select a workout and click **Load Selected Workout** to download it to your local library.
 
 **Option B — Import a custom file**
 
@@ -104,7 +105,7 @@ Completed workout data is saved as a FIT activity file and can be uploaded to **
 | Platform | Description |
 |----------|-------------|
 | Windows | Main workout player with power graph and metrics |
-| macOS | Dashboard showing the TrainerDay.com workout browser |
+| macOS | Intervals.icu calendar tab — syncing planned workouts |
 | Linux | App running on Ubuntu — proof of cross-platform build |
 | Device Manager | BTLE scanner with multiple sensors connected |
 
@@ -290,7 +291,7 @@ make -j$(nproc)
 
 ### Test output (Ubuntu 22.04, Qt 5.15.2)
 
-![BTLE tests — 28 passed, 0 failed](https://github.com/user-attachments/assets/62d82bce-1dd0-40c4-91fe-159ee6aeb8b9)
+The BLE unit test suite currently has **51 test cases** across heart rate parsing, CSC, power, FTMS, trainer simulations (Elite, Wahoo KICKR, Garmin Tacx), SimulatorHub signal behaviour, battery level, and interval summary groups. See the [CI run status](https://github.com/MaximumTrainer/MaximumTrainer_Redux/actions) for the current pass/fail counts on Linux, Windows, and macOS.
 
 ## Language
 

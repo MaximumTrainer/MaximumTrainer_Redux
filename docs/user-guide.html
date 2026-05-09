@@ -465,21 +465,34 @@
       <section class="guide-section" id="first-launch">
         <h2>🚀 First Launch &amp; Login</h2>
         <p>
-          On first launch, Maximum Trainer displays a <strong>login screen</strong>. You can create
-          a local account or log in with an existing one. Your account stores your user profile (FTP,
-          weight, heart rate zones) and links to third-party services such as Strava.
+          On first launch, Maximum Trainer displays a <strong>login screen</strong>. You can
+          connect with your <strong>Intervals.icu</strong> account via OAuth, or choose
+          <strong>Offline Mode</strong> to train without an internet connection.
+          Your Intervals.icu credentials are stored securely in the platform keychain —
+          you will not need to log in again on the same machine.
         </p>
 
+        <h3>Option A — Sign in with Intervals.icu (recommended)</h3>
         <ol class="steps">
           <li>Launch <strong>MaximumTrainer</strong> from your Start Menu, Applications folder, or desktop shortcut.</li>
-          <li>On the login screen, enter your <strong>username</strong> and <strong>password</strong>, then click <strong>Login</strong>.</li>
-          <li>If this is your first time, click <strong>Create Account</strong> and follow the on-screen prompts to set up a new local profile.</li>
-          <li>After a successful login the <strong>Main Window</strong> opens, showing your workout library.</li>
+          <li>On the login screen, click <strong>Connect with Intervals.icu</strong>.</li>
+          <li>An embedded browser window opens showing the Intervals.icu authorisation page. Log in with your Intervals.icu credentials and click <strong>Authorise</strong>.</li>
+          <li>Maximum Trainer exchanges the authorisation code for an access token and stores your credentials securely. The <strong>Main Window</strong> opens immediately.</li>
+        </ol>
+
+        <h3>Option B — Offline Mode</h3>
+        <ol class="steps">
+          <li>Launch <strong>MaximumTrainer</strong>.</li>
+          <li>On the login screen, click <strong>Continue Offline</strong>.</li>
+          <li>The Main Window opens. All core features — ERG control, sensor recording, and workout playback from your local library — work without an internet connection. Intervals.icu calendar sync and cloud upload are not available in offline mode.</li>
         </ol>
 
         <div class="callout">
-          <strong>Tip:</strong> Your account data is stored locally on your computer. No internet
-          connection is required to log in or train.
+          <strong>Tip:</strong> You only need to authorise once. Maximum Trainer stores your
+          Intervals.icu credentials securely in your operating system's keychain (Windows
+          Credential Manager, macOS Keychain, or the Linux Secret Service). On subsequent
+          launches the app opens directly to the Main Window without requiring a second
+          authorisation.
         </div>
       </section>
 
