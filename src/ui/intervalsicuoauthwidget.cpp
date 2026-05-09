@@ -27,8 +27,12 @@ IntervalsIcuOAuthWidget::IntervalsIcuOAuthWidget(QWidget *parent)
     m_webView->setPage(page);
     layout->addWidget(m_webView);
 
+#ifndef GC_WASM_BUILD
+    // QWebEngineView on WASM opens URLs in a new browser tab and never emits
+    // loadFinished, so this connection is only meaningful on desktop builds.
     connect(m_webView, &QWebEngineView::loadFinished,
             this, &IntervalsIcuOAuthWidget::onPageLoaded);
+#endif
 }
 
 IntervalsIcuOAuthWidget::~IntervalsIcuOAuthWidget()

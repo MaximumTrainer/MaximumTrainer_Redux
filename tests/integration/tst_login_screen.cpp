@@ -847,6 +847,13 @@ private slots:
         QVERIFY2(btnOffline != nullptr,
                  "pushButton_startOffline must exist in DialogLogin");
 
+        // Ensure the dialog has a real geometry before simulating mouse events.
+        // Without an explicit resize on Xvfb / headless platforms the window may
+        // have a 0-size layout, causing QTest::mouseClick to hit at (0,0) of an
+        // uninitialized widget and the checkbox never toggles.
+        dialog.resize(1280, 720);
+        QTest::qWait(100);
+
         QVERIFY2(!checkBox->isChecked(),
                  "checkBox_workOffline must start unchecked");
         QVERIFY2(!btnOffline->isVisible(),
