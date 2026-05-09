@@ -70,9 +70,13 @@ WorkoutDialog::~WorkoutDialog() {
     emit finishClock();
 
 
-    // Wait for clock thread to stop
+    // Wait for clock thread to stop (5 s guard prevents hang if thread ignores quit())
     thread->quit();
-    thread->wait();
+    if (!thread->wait(5000)) {
+        qCritical() << "[WorkoutDialog] Clock thread did not finish in 5 s — terminating";
+        thread->terminate();
+        thread->wait(1000);
+    }
 
     DataCadence::instance().clearData();
     DataPower::instance().clearData();

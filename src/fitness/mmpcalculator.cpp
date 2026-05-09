@@ -84,7 +84,9 @@ QVector<int> MmpCalculator::readPowerSeries(const QString &fitFilePath)
         decoder.Read(stream, broadcaster, broadcaster);
     } catch (const fit::RuntimeException &) {
         // partial decode — return whatever we extracted
-    } catch (...) {}
+    } catch (...) {
+        qWarning() << "[MmpCalculator] Unexpected exception decoding" << fitFilePath;
+    }
 
     return reader.powers;
 }

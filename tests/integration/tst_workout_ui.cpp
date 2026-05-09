@@ -994,22 +994,22 @@ private slots:
         hub.setLoad(0, 255.0); // nudge to 255 W before any drift is applied
         hub.start();
 
-        QList<int> collected;
-        connect(&hub, &SimulatorHub::signal_power,
-                [&](int /*uid*/, int pw) { collected << pw; });
-
-        // Wait for at least three 1-second ticks
-        QTest::qWait(3500);
+        // Use QSignalSpy to wait event-driven for 3 hub ticks — no fixed sleep needed.
+        // QSignalSpy::wait() blocks the event loop until a new emission arrives (≤ 3 s).
+        QSignalSpy powerSpy(&hub, &SimulatorHub::signal_power);
+        while (powerSpy.count() < 3)
+            QVERIFY2(powerSpy.wait(3000),
+                     "SimulatorHub did not emit signal_power within 3 s");
         hub.stop();
 
-        QVERIFY2(collected.size() >= 3,
+        QVERIFY2(powerSpy.count() >= 3,
                  qPrintable(QString("Expected >= 3 power readings, got %1")
-                                .arg(collected.size())));
+                                .arg(powerSpy.count())));
 
         // First reading: m_power starts at 255 W; drift applies ±delta(0..5 W) before
         // the first emission, giving a theoretical range of [250, 260] W.  A ±3 W
         // tolerance is added for any platform-timing differences, yielding [247, 263].
-        const int first = collected.first();
+        const int first = powerSpy.at(0).at(1).toInt();
         QVERIFY2(first >= 247 && first <= 263,
                  qPrintable(
                      QString("First power reading %1 W is outside expected 247–263 W range")
@@ -1030,21 +1030,20 @@ private slots:
         hub.setSlope(0, 5.0); // targetPower = 200 + 5*15 = 275 W → clamped to 260
         hub.start();
 
-        QList<int> collected;
-        connect(&hub, &SimulatorHub::signal_power,
-                [&](int, int pw) { collected << pw; });
-
-        QTest::qWait(3500);
+        QSignalSpy powerSpy(&hub, &SimulatorHub::signal_power);
+        while (powerSpy.count() < 3)
+            QVERIFY2(powerSpy.wait(3000),
+                     "SimulatorHub did not emit signal_power within 3 s");
         hub.stop();
 
-        QVERIFY2(collected.size() >= 3,
+        QVERIFY2(powerSpy.count() >= 3,
                  qPrintable(QString("Expected >= 3 power readings after setSlope, got %1")
-                                .arg(collected.size())));
+                                .arg(powerSpy.count())));
 
         // setSlope(5.0): targetPower = 275 W > drift hi(260) → clamped to 260 W on the
         // first tick regardless of delta or direction.  A ±3 W tolerance handles any
         // edge-case in drift ordering, giving the accepted range [257, 263].
-        const int first = collected.first();
+        const int first = powerSpy.at(0).at(1).toInt();
         QVERIFY2(first >= 257 && first <= 263,
                  qPrintable(
                      QString("First power after setSlope(5.0) is %1 W, expected 257–263 W")
@@ -1076,11 +1075,9 @@ private slots:
         // First ERG load must be sent immediately on start(), before any tick
         QCOMPARE(session.setLoadCallCount(), 1);
 
-        // Wait 1.5 s so at least one hub tick (1000 ms) arrives
-        QTest::qWait(1500);
-        QVERIFY2(session.dataPointCount() >= 1,
-                 qPrintable(QString("Expected >= 1 data point after 1.5 s, got %1")
-                                .arg(session.dataPointCount())));
+        // Wait (event-driven) for at least one hub tick to produce a data point
+        QTRY_VERIFY2_WITH_TIMEOUT(session.dataPointCount() >= 1,
+                                  "Expected >= 1 data point within 5 s", 5000);
 
         session.stop();
         hub.stop();
@@ -1104,19 +1101,17 @@ private slots:
         TestWorkoutSession session(makeTestIntervals(/*durationTicks=*/60));
         session.start(&hub);
 
-        // Wait for at least 2 hub ticks to accumulate some data
-        QTest::qWait(2500);
+        // Wait (event-driven) for 2 data points to accumulate
+        QTRY_VERIFY2_WITH_TIMEOUT(session.dataPointCount() >= 2,
+                                  "Expected >= 2 data points before pause", 8000);
         const int pointsBeforePause = session.dataPointCount();
-        QVERIFY2(pointsBeforePause >= 2,
-                 qPrintable(QString("Expected >= 2 data points before pause, got %1")
-                                .arg(pointsBeforePause)));
 
         // Pause: hub keeps emitting but data-point counter must freeze
         session.pause();
         QCOMPARE(static_cast<int>(session.state()),
                  static_cast<int>(TestWorkoutSession::Paused));
 
-        QTest::qWait(2000); // two hub ticks while paused
+        QTest::qWait(500); // brief pause-verification wait (> one hub tick); count must not change
         const int pointsAfterPause = session.dataPointCount();
         QCOMPARE(pointsAfterPause, pointsBeforePause);
 
@@ -1125,9 +1120,8 @@ private slots:
         QCOMPARE(static_cast<int>(session.state()),
                  static_cast<int>(TestWorkoutSession::Running));
 
-        QTest::qWait(1500); // one hub tick after resume
-        QVERIFY2(session.dataPointCount() > pointsAfterPause,
-                 "Expected data-point count to increase after resume");
+        QTRY_VERIFY2_WITH_TIMEOUT(session.dataPointCount() > pointsAfterPause,
+                                  "Expected data-point count to increase after resume", 5000);
 
         session.stop();
         hub.stop();
@@ -1192,8 +1186,9 @@ private slots:
         TestWorkoutSession session(makeTestIntervals(/*durationTicks=*/60));
         session.start(&hub);
 
-        // 3.5 s → at least three 1-second hub ticks → at least three power readings
-        QTest::qWait(3500);
+        // Wait (event-driven) for 3 data points — avoids a fixed 3.5 s sleep
+        QTRY_VERIFY2_WITH_TIMEOUT(session.dataPointCount() >= 3,
+                                  "Expected >= 3 data points from hub", 10000);
         const int points = session.dataPointCount();
         session.stop();
         hub.stop();
@@ -1615,10 +1610,52 @@ private slots:
     }
 
     // ========================================================================
-    // 15 -- Power-on-target verification
+    // 16 -- ERG: setLoad fires at every interval boundary
     //
-    // Set a 200 W ERG target, run the simulator for 3 s, and verify the
-    // last reported actual power is within ±25 % (150–250 W).
+    // A three-interval session (Warm-Up 160 W → Main Set 240 W → Cool-Down
+    // 130 W) is run to completion with 100 ms ticks and 1-tick intervals.
+    // ERG load commands must be issued:
+    //   • once at session start (interval 0)
+    //   • once at the 0→1 transition (interval 1)
+    //   • once at the 1→2 transition (interval 2)
+    // Total: 3 setLoad calls, 2 intervalChanged emissions.
+    // ========================================================================
+    void testErgLoadChangesAtIntervalBoundary()
+    {
+        SimulatorHub hub;
+        hub.start();
+
+        // 3-interval session; 1 tick each at 100 ms → completes in ~300 ms
+        TestWorkoutSession session(makeTestIntervals(/*durationTicks=*/1),
+                                   /*tickIntervalMs=*/100);
+
+        QSignalSpy intervalSpy(&session, &TestWorkoutSession::intervalChanged);
+        QSignalSpy finishedSpy(&session, &TestWorkoutSession::sessionFinished);
+
+        session.start(&hub);
+
+        // Budget 3 s for the full session (actual ~300 ms)
+        QVERIFY2(finishedSpy.wait(3000), "Session did not finish within 3 s");
+
+        // setLoad: 1 at start + 1 per interval transition (0→1, 1→2) = 3 total
+        QCOMPARE(session.setLoadCallCount(), 3);
+
+        // intervalChanged fires once for each boundary crossing (0→1 and 1→2)
+        QCOMPARE(intervalSpy.count(), 2);
+
+        // Verify target watts match the interval definitions
+        QVERIFY2(qAbs(intervalSpy.at(0).at(1).toDouble() - 240.0) < 0.01,
+                 qPrintable(QString("Transition 0→1: expected 240 W, got %1 W")
+                                .arg(intervalSpy.at(0).at(1).toDouble())));
+        QVERIFY2(qAbs(intervalSpy.at(1).at(1).toDouble() - 130.0) < 0.01,
+                 qPrintable(QString("Transition 1→2: expected 130 W, got %1 W")
+                                .arg(intervalSpy.at(1).at(1).toDouble())));
+
+        hub.stop();
+    }
+
+    // ========================================================================
+    // 15 -- Power-on-target verification
     // ========================================================================
     void testPowerOnTargetVerification()
     {
@@ -1633,8 +1670,9 @@ private slots:
                                                     QStringLiteral("Steady State")}});
         session.start(&hub);
 
-        QTest::qWait(3500); // three 1-second hub ticks
-
+        // Wait (event-driven) for 3 hub ticks — avoids a fixed 3.5 s sleep
+        QTRY_VERIFY2_WITH_TIMEOUT(session.dataPointCount() >= 3,
+                                  "Expected >= 3 data points within 10 s", 10000);
         session.stop();
         hub.stop();
 

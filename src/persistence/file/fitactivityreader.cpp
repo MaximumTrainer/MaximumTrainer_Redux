@@ -37,7 +37,7 @@ WorkoutHistorySummary FitActivityReader::readFile(const QString &filePath)
     } catch (const fit::RuntimeException &) {
         // partial decode — return whatever we extracted
     } catch (...) {
-        // ignore unexpected errors
+        qWarning() << "[FitActivityReader] Unexpected exception decoding" << filePath;
     }
 
     // Derive workout name from filename if not populated from session data

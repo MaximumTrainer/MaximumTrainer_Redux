@@ -218,7 +218,13 @@ private slots:
 
         // ── Start simulation and let it run for 3 ticks ──────────────────────
         sim.start();
-        QTest::qWait(3200);   // 3+ full 1-second ticks
+        // Wait (event-driven) for 3+ hub ticks before asserting sensor values
+        {
+            QSignalSpy powerSpy(&sim, &SimulatorHub::signal_power);
+            while (powerSpy.count() < 3)
+                QVERIFY2(powerSpy.wait(3000),
+                         "SimulatorHub did not emit signal_power within 3 s of start");
+        }
 
         // ── Grab screenshot ──────────────────────────────────────────────────
         // Ensure all pending paint events are flushed
@@ -254,7 +260,36 @@ private slots:
                  << "Speed=" << window.speed()
                  << "Power=" << window.power();
     }
-};
+
+    // =========================================================================
+    // testSimulatorHubStopSuppressesSignals
+    //
+    // Verifies that calling stopDecodingMsg() causes SimulatorHub to cease
+    // emitting signals.  This models the sensor-disconnect flow used by
+    // WorkoutDialog when a BLE device is disconnected mid-activity.
+    // =========================================================================
+    void testSimulatorHubStopSuppressesSignals()
+    {
+        SimulatorHub hub;
+        hub.start();
+
+        // Confirm signals are flowing — wait for at least 1 emission
+        QSignalSpy startSpy(&hub, &SimulatorHub::signal_power);
+        QVERIFY2(startSpy.wait(3000), "SimulatorHub did not emit any signal_power within 3 s");
+
+        // Stop the hub
+        hub.stopDecodingMsg();
+
+        // Open a new spy AFTER stop.  QSignalSpy::wait() blocks the event loop
+        // for up to 1.5 s.  If the hub has truly stopped, wait() times out and
+        // returns false — which is the expected (passing) outcome.
+        QSignalSpy afterStopSpy(&hub, &SimulatorHub::signal_power);
+        const bool emittedAfterStop = afterStopSpy.wait(1500);
+        QVERIFY2(!emittedAfterStop,
+                 qPrintable(QString("signal_power emitted %1 time(s) after stopDecodingMsg() — "
+                                    "hub should be silent")
+                                .arg(afterStopSpy.count())));
+    }
 
 QTEST_MAIN(TstBtleIntegration)
 #include "tst_btle_integration.moc"
