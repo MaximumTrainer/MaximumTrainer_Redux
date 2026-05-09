@@ -2,6 +2,7 @@
 
 #include <fstream>
 
+#include <QDebug>
 #include <QFileInfo>
 
 #include "fit_decode.hpp"

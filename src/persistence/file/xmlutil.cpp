@@ -729,10 +729,10 @@ Trackpoint XmlUtil::parseTrackpoint(QXmlStreamReader &xml) {
 
 
     Trackpoint tp;
-    double lon;
-    double lat;
-    double elevation;
-    double slopePercentage;
+    double lon         = 0.0;
+    double lat         = 0.0;
+    double elevation   = 0.0;
+    double slopePercentage = 0.0;
     double distanceAtThisPoint = -1;
 
     while (xml.tokenType() != QXmlStreamReader::EndElement || xml.name() != QLatin1String("Trackpoint"))
@@ -781,7 +781,7 @@ Workout XmlUtil::parseSingleWorkoutXml(QString filePath) {
     QString description;
     QString creator;
     QString plan = "-";
-    Workout::Type type;
+    Workout::Type type = Workout::Type::T_INTERVAL;
     QString name = parseFileNameFromPath(filePath);
 
 
