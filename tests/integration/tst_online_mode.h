@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QNetworkAccessManager>
+#include <QByteArray>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OnlineModeWindow
@@ -74,7 +75,11 @@ class TstOnlineMode : public QObject
 
     QString                m_apiKey;
     QString                m_athleteId;
-    QString                m_pushedWorkoutId;   // set by testWorkoutPush; cleaned in cleanupTestCase
+    QString                m_pushedWorkoutId;    // set by testWorkoutPush; cleaned in cleanupTestCase
+    QString                m_uploadedActivityId; // set by testActivityUpload; cleaned in cleanupTestCase
+    QString                m_createdEventId;     // set by testCalendarPlan; cleaned in cleanupTestCase
+    QByteArray             m_generatedTcx;       // set by testRunWorkout; consumed by testActivityUpload
+    QDateTime              m_activityStartTime;  // set by testRunWorkout; used for date-window queries
     QNetworkAccessManager *m_manager = nullptr;
 
 private slots:
@@ -84,4 +89,8 @@ private slots:
     void testCalendar();
     void testWorkoutPush();
     void testWorkoutPull();
+    void testRunWorkout();
+    void testActivityUpload();
+    void testWorkoutHistory();
+    void testCalendarPlan();
 };

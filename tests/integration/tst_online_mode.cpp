@@ -68,6 +68,8 @@
 #include <QTimer>
 
 #include "intervals_icu_service.h"
+#include "simulator_hub.h"
+#include <QtTest/QSignalSpy>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Compile-time platform tag
@@ -429,20 +431,31 @@ void TstOnlineMode::initTestCase()
 
 void TstOnlineMode::cleanupTestCase()
 {
-        // Clean up any workout created by testWorkoutPush
+        // Delete test workout (library entry)
         if (!m_pushedWorkoutId.isEmpty()) {
             qDebug().noquote() << "[Cleanup] Deleting test workout:" << m_pushedWorkoutId;
             QNetworkReply *del =
                 IntervalsIcuService::deleteWorkout(m_athleteId, m_pushedWorkoutId, m_apiKey);
-            if (del) {
-                waitForReply(del, 15'000);
-                const int status =
-                    del->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-                qDebug().noquote()
-                    << "[Cleanup] Delete workout HTTP status:" << status;
-                del->deleteLater();
-            }
+            if (del) { waitForReply(del, 15'000); del->deleteLater(); }
             m_pushedWorkoutId.clear();
+        }
+
+        // Delete uploaded activity
+        if (!m_uploadedActivityId.isEmpty()) {
+            qDebug().noquote() << "[Cleanup] Deleting test activity:" << m_uploadedActivityId;
+            QNetworkReply *del =
+                IntervalsIcuService::deleteActivity(m_athleteId, m_uploadedActivityId, m_apiKey);
+            if (del) { waitForReply(del, 15'000); del->deleteLater(); }
+            m_uploadedActivityId.clear();
+        }
+
+        // Delete calendar test event
+        if (!m_createdEventId.isEmpty()) {
+            qDebug().noquote() << "[Cleanup] Deleting test event:" << m_createdEventId;
+            QNetworkReply *del =
+                IntervalsIcuService::deleteEvent(m_athleteId, m_createdEventId, m_apiKey);
+            if (del) { waitForReply(del, 15'000); del->deleteLater(); }
+            m_createdEventId.clear();
         }
 
         qApp->setProperty("NetworkManagerWS", QVariant());
@@ -924,4 +937,252 @@ void TstOnlineMode::testWorkoutPull()
     QVERIFY2(isXml, "ZWO response is not valid XML");
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// testRunWorkout
+//
+// Drives SimulatorHub for ~3 seconds, captures >=2 power readings, and builds
+// a synthetic TCX file with 60 trackpoints for the subsequent upload test.
+// ─────────────────────────────────────────────────────────────────────────────
+void TstOnlineMode::testRunWorkout()
+{
+    if (m_apiKey.isEmpty() || m_athleteId.isEmpty())
+        QSKIP("INTERVALS_ICU_API_KEY / INTERVALS_ICU_ATHLETE_ID not set");
+
+    SimulatorHub hub;
+    QSignalSpy powerSpy(&hub, &SimulatorHub::signal_power);
+    hub.start();
+
+    // SimulatorHub ticks at 1 Hz — wait 3.5 s to collect >= 3 samples
+    QTest::qWait(3500);
+    hub.stop();
+
+    QVERIFY2(powerSpy.count() >= 2,
+             qPrintable(QString("Expected >= 2 power readings, got %1").arg(powerSpy.count())));
+
+    // Build a 60-trackpoint TCX using the captured power values (cycle if needed)
+    m_activityStartTime = QDateTime::currentDateTimeUtc().addSecs(-60);
+    QString tcx;
+    tcx += R"(<?xml version="1.0" encoding="UTF-8"?>)"  "\r\n";
+    tcx += R"(<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">)"  "\r\n";
+    tcx += "  <Activities>\r\n";
+    tcx += "    <Activity Sport=\"Biking\">\r\n";
+    tcx += "      <Id>" + m_activityStartTime.toString(Qt::ISODate) + "</Id>\r\n";
+    tcx += "      <Lap StartTime=\"" + m_activityStartTime.toString(Qt::ISODate) + "\">\r\n";
+    tcx += "        <TotalTimeSeconds>60</TotalTimeSeconds>\r\n";
+    tcx += "        <DistanceMeters>467</DistanceMeters>\r\n";
+    tcx += "        <Track>\r\n";
+    const int count = powerSpy.count();
+    for (int i = 0; i < 60; ++i) {
+        int watts = powerSpy.at(i % count).at(1).toInt();
+        QDateTime tp = m_activityStartTime.addSecs(i);
+        tcx += "          <Trackpoint>\r\n";
+        tcx += "            <Time>" + tp.toString(Qt::ISODate) + "</Time>\r\n";
+        tcx += "            <Extensions><TPX xmlns=\"http://www.garmin.com/xmlschemas/ActivityExtension/v2\">"
+               "<Watts>" + QString::number(watts) + "</Watts></TPX></Extensions>\r\n";
+        tcx += "          </Trackpoint>\r\n";
+    }
+    tcx += "        </Track>\r\n";
+    tcx += "      </Lap>\r\n";
+    tcx += "    </Activity>\r\n";
+    tcx += "  </Activities>\r\n";
+    tcx += "</TrainingCenterDatabase>\r\n";
+
+    m_generatedTcx = tcx.toUtf8();
+    QVERIFY2(m_generatedTcx.size() > 500, "Generated TCX appears too small");
+
+    qDebug().noquote() << "[testRunWorkout] Captured" << count
+                       << "power samples; TCX size:" << m_generatedTcx.size() << "bytes";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// testActivityUpload
+//
+// Uploads the TCX generated by testRunWorkout to the athlete's activity history.
+// Stores the returned activity ID in m_uploadedActivityId for testWorkoutHistory
+// and for cleanup.
+// ─────────────────────────────────────────────────────────────────────────────
+void TstOnlineMode::testActivityUpload()
+{
+    if (m_apiKey.isEmpty() || m_athleteId.isEmpty())
+        QSKIP("INTERVALS_ICU_API_KEY / INTERVALS_ICU_ATHLETE_ID not set");
+
+    if (m_generatedTcx.isEmpty())
+        QSKIP("testRunWorkout did not produce TCX data — skipping upload");
+
+    const QString filename = QString("MaximumTrainer_CI_%1.tcx")
+        .arg(QDateTime::currentDateTimeUtc().toString("yyyyMMdd_HHmmss"));
+
+    QNetworkReply *reply = IntervalsIcuService::uploadActivity(
+        m_athleteId, m_apiKey, m_generatedTcx, filename);
+    QVERIFY2(reply, "uploadActivity returned null reply");
+
+    waitForReply(reply, 60'000);
+
+    const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const QByteArray body = reply->readAll();
+    reply->deleteLater();
+
+    qDebug().noquote() << "[testActivityUpload] HTTP" << status << body.left(300);
+    QVERIFY2(status == 200 || status == 201,
+             qPrintable(QString("Expected 200/201, got %1: %2").arg(status).arg(QString(body))));
+
+    const QJsonDocument doc = QJsonDocument::fromJson(body);
+    QVERIFY2(!doc.isNull() && doc.isObject(), "Upload response is not a JSON object");
+
+    // Intervals.icu may wrap in an array or return an object directly
+    QJsonObject obj;
+    if (doc.isArray() && !doc.array().isEmpty())
+        obj = doc.array().first().toObject();
+    else
+        obj = doc.object();
+
+    m_uploadedActivityId = obj.value("id").toVariant().toString();
+    QVERIFY2(!m_uploadedActivityId.isEmpty(),
+             qPrintable(QString("Could not extract activity id from: %1").arg(QString(body))));
+
+    qDebug().noquote() << "[testActivityUpload] Uploaded activity id:" << m_uploadedActivityId;
+    grabScreenshot();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// testWorkoutHistory
+//
+// Polls the athlete's activity list until the uploaded activity appears, or
+// gives up after 120 seconds (12 attempts x 10 s).  The poll is needed because
+// Intervals.icu processes uploads asynchronously.
+// ─────────────────────────────────────────────────────────────────────────────
+void TstOnlineMode::testWorkoutHistory()
+{
+    if (m_apiKey.isEmpty() || m_athleteId.isEmpty())
+        QSKIP("INTERVALS_ICU_API_KEY / INTERVALS_ICU_ATHLETE_ID not set");
+
+    if (m_uploadedActivityId.isEmpty())
+        QSKIP("testActivityUpload did not set an activity ID — skipping history check");
+
+    const QDate start = m_activityStartTime.date().addDays(-1);
+    const QDate end   = m_activityStartTime.date().addDays(1);
+
+    bool found = false;
+    for (int attempt = 1; attempt <= 12 && !found; ++attempt) {
+        qDebug().noquote() << "[testWorkoutHistory] Polling attempt" << attempt << "of 12...";
+
+        QNetworkReply *reply = IntervalsIcuService::getActivities(
+            m_athleteId, m_apiKey, start, end);
+        QVERIFY2(reply, "getActivities returned null reply");
+        waitForReply(reply, 30'000);
+
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QByteArray body = reply->readAll();
+        reply->deleteLater();
+
+        QVERIFY2(status == 200,
+                 qPrintable(QString("getActivities HTTP %1").arg(status)));
+
+        const QJsonDocument doc = QJsonDocument::fromJson(body);
+        if (doc.isArray()) {
+            const QJsonArray arr = doc.array();
+            for (const QJsonValue &v : arr) {
+                if (v.toObject().value("id").toVariant().toString() == m_uploadedActivityId) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if (!found && attempt < 12)
+            QTest::qWait(10'000);
+    }
+
+    QVERIFY2(found,
+             qPrintable(QString("Uploaded activity %1 not found in history after 120 s")
+                        .arg(m_uploadedActivityId)));
+
+    qDebug().noquote() << "[testWorkoutHistory] Activity" << m_uploadedActivityId
+                       << "confirmed in history";
+    grabScreenshot();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// testCalendarPlan
+//
+// Creates a workout event on tomorrow's calendar, then verifies it appears
+// in the event list for that date range.
+// ─────────────────────────────────────────────────────────────────────────────
+void TstOnlineMode::testCalendarPlan()
+{
+    if (m_apiKey.isEmpty() || m_athleteId.isEmpty())
+        QSKIP("INTERVALS_ICU_API_KEY / INTERVALS_ICU_ATHLETE_ID not set");
+
+    const QString timestamp = QDateTime::currentDateTimeUtc().toString("yyyyMMdd_HHmmss");
+    const QString eventName = QString("MaximumTrainer CI Plan [%1]").arg(timestamp);
+    const QDate   tomorrow  = QDate::currentDate().addDays(1);
+
+    const QJsonObject eventJson {
+        { "category",         "WORKOUT"                    },
+        { "name",             eventName                    },
+        { "start_date_local", tomorrow.toString(Qt::ISODate) }
+    };
+    const QByteArray eventBody = QJsonDocument(eventJson).toJson(QJsonDocument::Compact);
+
+    // Create the calendar event
+    QNetworkReply *createReply = IntervalsIcuService::createEvent(
+        m_athleteId, m_apiKey, eventBody);
+    QVERIFY2(createReply, "createEvent returned null reply");
+    waitForReply(createReply, 30'000);
+
+    const int createStatus = createReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const QByteArray createBody = createReply->readAll();
+    createReply->deleteLater();
+
+    qDebug().noquote() << "[testCalendarPlan] createEvent HTTP" << createStatus
+                       << createBody.left(300);
+    QVERIFY2(createStatus == 200 || createStatus == 201,
+             qPrintable(QString("Expected 200/201, got %1: %2")
+                        .arg(createStatus).arg(QString(createBody))));
+
+    const QJsonDocument createDoc = QJsonDocument::fromJson(createBody);
+    QJsonObject createdObj;
+    if (createDoc.isArray() && !createDoc.array().isEmpty())
+        createdObj = createDoc.array().first().toObject();
+    else
+        createdObj = createDoc.object();
+
+    m_createdEventId = createdObj.value("id").toVariant().toString();
+    QVERIFY2(!m_createdEventId.isEmpty(),
+             qPrintable(QString("Could not extract event id from: %1").arg(QString(createBody))));
+
+    // Verify the event appears in a getEvents query for tomorrow ± 1 day
+    QNetworkReply *listReply = IntervalsIcuService::getEvents(
+        m_athleteId, m_apiKey,
+        tomorrow.addDays(-1), tomorrow.addDays(1));
+    QVERIFY2(listReply, "getEvents returned null reply");
+    waitForReply(listReply, 30'000);
+
+    const int listStatus = listReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const QByteArray listBody = listReply->readAll();
+    listReply->deleteLater();
+
+    QVERIFY2(listStatus == 200,
+             qPrintable(QString("getEvents HTTP %1").arg(listStatus)));
+
+    const QJsonDocument listDoc = QJsonDocument::fromJson(listBody);
+    QVERIFY2(listDoc.isArray(), "getEvents response is not a JSON array");
+
+    bool found = false;
+    for (const QJsonValue &v : listDoc.array()) {
+        if (v.toObject().value("id").toVariant().toString() == m_createdEventId) {
+            found = true;
+            break;
+        }
+    }
+
+    QVERIFY2(found,
+             qPrintable(QString("Created event id %1 ('%2') not found in calendar for %3")
+                        .arg(m_createdEventId, eventName, tomorrow.toString())));
+
+    qDebug().noquote() << "[testCalendarPlan] Event" << m_createdEventId
+                       << "confirmed in calendar for" << tomorrow.toString();
+    grabScreenshot();
+}
 QTEST_MAIN(TstOnlineMode)

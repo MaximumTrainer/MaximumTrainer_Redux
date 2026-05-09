@@ -40,7 +40,8 @@ DESTDIR  = ../../build/tests
 INCLUDEPATH += \
     . \
     ../../src/persistence/db \
-    ../../src/app
+    ../../src/app \
+    ../../src/btle
 
 # ── Logger (required by intervals_icu_service.cpp) ───────────────────────────
 SOURCES += \
@@ -52,8 +53,10 @@ HEADERS += \
 # ── IntervalsIcuService (static helper used for live API calls) ───────────────
 SOURCES += \
     ../../src/persistence/db/intervals_icu_service.cpp \
+    ../../src/btle/simulator_hub.cpp \
     tst_online_mode.cpp
 
 HEADERS += \
     ../../src/persistence/db/intervals_icu_service.h \
+    ../../src/btle/simulator_hub.h \
     tst_online_mode.h
