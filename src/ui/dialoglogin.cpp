@@ -385,7 +385,6 @@ void DialogLogin::onOAuthFailed()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void DialogLogin::onOAuthCancelRequested()
 {
-    m_oauthWidget->reset();
     showLoginForm(false);
 }
 

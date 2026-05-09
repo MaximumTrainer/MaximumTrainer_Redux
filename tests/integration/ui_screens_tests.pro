@@ -1,4 +1,3 @@
-###############################################################################
 # tests/integration/ui_screens_tests.pro
 #
 # UI Screen Navigation Tests -- MaximumTrainer
@@ -8,10 +7,9 @@
 #     QTest::mouseClick on real QPushButton widgets, QSignalSpy on accepted().
 #   • PostWorkoutSummary — lightweight post-workout summary widget; verifies
 #     that metric labels are visible and non-empty.
-#   • ZWO inline-string parsing — ImporterWorkoutZwo::importFromByteArray
-#     called with XML strings embedded in source code (no file I/O), covering
-#     Warmup+SteadyState+Cooldown, IntervalsT expansion, empty/malformed
-#     input, FreeRide power type, and workout name extraction.
+#
+# ZWO inline-string parsing tests were removed; canonical coverage lives in
+# tst_workout_io.cpp (workout_io_tests.pro).
 #
 # Build (Linux / macOS):
 #   qmake ui_screens_tests.pro && make
@@ -83,7 +81,6 @@ SOURCES += \
     ../../src/model/trackpoint.cpp \
     ../../src/model/powercurve.cpp \
     ../../src/fitness/achievements/achievement.cpp \
-    ../../src/persistence/file/importerworkoutzwo.cpp \
     ../../src/ui/dialog_connection_method.cpp \
     ../../src/ui/workout_editor/repeatwidget.cpp \
     ../intervals_icu/credential_store_stub.cpp \
@@ -96,7 +93,6 @@ HEADERS += \
     ../../src/model/settings.h \
     ../../src/model/workout.h \
     ../../src/model/interval.h \
-    ../../src/persistence/file/importerworkoutzwo.h \
     ../../src/ui/dialog_connection_method.h \
     ../../src/ui/workout_editor/repeatwidget.h
 

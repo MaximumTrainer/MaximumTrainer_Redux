@@ -35,28 +35,8 @@
  *      key metrics (TSS, NP, IF, average power) are visible in child
  *      QLabel widgets.
  *
- *   6. ZWO inline-string parsing — Warmup + SteadyState + Cooldown:
- *      Pass a raw ZWO XML string (embedded in source, no file I/O) to
- *      ImporterWorkoutZwo::importFromByteArray and verify the resulting
- *      Workout has 3 intervals with the expected power types.
- *
- *   7. ZWO inline-string parsing — IntervalsT expansion:
- *      Pass a ZWO string with IntervalsT Repeat="4" and verify that 8
- *      intervals are produced (4 on + 4 off).
- *
- *   8. ZWO inline-string parsing — empty input:
- *      Verify that empty XML returns an empty Workout without crashing.
- *
- *   9. ZWO inline-string parsing — malformed XML:
- *      Verify that malformed XML returns an empty Workout without crashing.
- *
- *  10. ZWO inline-string parsing — FreeRide power type:
- *      Verify that a FreeRide element yields an interval with NONE power
- *      step type.
- *
- *  11. ZWO inline-string parsing — workout name extraction:
- *      Verify that the <name> element inside the ZWO file is used as the
- *      workout name.
+ * ZWO inline-string parsing tests were removed; canonical coverage lives in
+ * tst_workout_io.cpp (workout_io_tests.pro).
  *
  * Build:
  *   qmake ui_screens_tests.pro && make
@@ -85,7 +65,6 @@
 #include <QAbstractButton>
 
 #include "../../src/ui/dialog_connection_method.h"
-#include "../../src/persistence/file/importerworkoutzwo.h"
 #include "../../src/model/account.h"
 #include "../../src/model/workout.h"
 #include "../../src/model/interval.h"
@@ -449,157 +428,6 @@ private slots:
         saveScreenshot(window, screenshotName, m_outDir);
     }
 
-    // -----------------------------------------------------------------------
-    // testZwoInlineString_warmupSteadyCooldown
-    //
-    // Pass a raw ZWO XML string embedded in the source (no file I/O) to
-    // ImporterWorkoutZwo::importFromByteArray and verify the resulting
-    // Workout object:
-    //   • 3 intervals produced (Warmup + SteadyState + Cooldown)
-    //   • First interval is PROGRESSIVE (Warmup ramp)
-    //   • Second interval is FLAT (SteadyState)
-    //   • Third interval is PROGRESSIVE (Cooldown ramp)
-    // -----------------------------------------------------------------------
-    void testZwoInlineString_warmupSteadyCooldown()
-    {
-        static const QByteArray zwoXml = R"(
-<workout_file>
-  <name>Inline Test Workout</name>
-  <author>CI</author>
-  <description>Warmup, steady block, cooldown</description>
-  <workout>
-    <Warmup     Duration="600"  PowerLow="0.40" PowerHigh="0.75"/>
-    <SteadyState Duration="1800" Power="0.75"/>
-    <Cooldown   Duration="600"  PowerLow="0.75" PowerHigh="0.40"/>
-  </workout>
-</workout_file>)";
-
-        const Workout w = ImporterWorkoutZwo::importFromByteArray(zwoXml, "inline_test");
-
-        QCOMPARE(w.getLstInterval().size(), 3);
-
-        const Interval iv0 = w.getLstInterval().at(0);
-        QCOMPARE(iv0.getPowerStepType(), Interval::PROGRESSIVE);
-
-        const Interval iv1 = w.getLstInterval().at(1);
-        QCOMPARE(iv1.getPowerStepType(), Interval::FLAT);
-        QVERIFY(qAbs(iv1.getFTP_start() - 0.75) < 1e-6);
-        QVERIFY(qAbs(iv1.getFTP_end()   - 0.75) < 1e-6);
-
-        const Interval iv2 = w.getLstInterval().at(2);
-        QCOMPARE(iv2.getPowerStepType(), Interval::PROGRESSIVE);
-
-        qDebug().noquote()
-            << "[ZwoInline] Warmup+Steady+Cooldown → 3 intervals parsed correctly — PASS";
-    }
-
-    // -----------------------------------------------------------------------
-    // testZwoInlineString_intervalsTExpansion
-    //
-    // A ZWO string with IntervalsT Repeat="4" must produce 8 intervals
-    // (4 on-power + 4 off-power), all FLAT.
-    // -----------------------------------------------------------------------
-    void testZwoInlineString_intervalsTExpansion()
-    {
-        static const QByteArray zwoXml = R"(
-<workout_file>
-  <name>Intervals Test</name>
-  <workout>
-    <IntervalsT Repeat="4" OnDuration="60" OffDuration="30"
-                OnPower="1.10" OffPower="0.50"/>
-  </workout>
-</workout_file>)";
-
-        const Workout w = ImporterWorkoutZwo::importFromByteArray(zwoXml, "intervals_test");
-        QCOMPARE(w.getLstInterval().size(), 8);
-
-        // Even-indexed (0,2,4,6) → on-power 1.10
-        for (int i = 0; i < 8; i += 2) {
-            QCOMPARE(w.getLstInterval().at(i).getPowerStepType(), Interval::FLAT);
-            QVERIFY2(qAbs(w.getLstInterval().at(i).getFTP_start() - 1.10) < 1e-6,
-                     qPrintable(QString("on-interval %1 power wrong").arg(i)));
-        }
-        // Odd-indexed (1,3,5,7) → off-power 0.50
-        for (int i = 1; i < 8; i += 2) {
-            QCOMPARE(w.getLstInterval().at(i).getPowerStepType(), Interval::FLAT);
-            QVERIFY2(qAbs(w.getLstInterval().at(i).getFTP_start() - 0.50) < 1e-6,
-                     qPrintable(QString("off-interval %1 power wrong").arg(i)));
-        }
-
-        qDebug().noquote()
-            << "[ZwoInline] IntervalsT Repeat=4 → 8 intervals, correct on/off power — PASS";
-    }
-
-    // -----------------------------------------------------------------------
-    // testZwoInlineString_emptyInput
-    //
-    // Passing an empty QByteArray must return an empty Workout without crashing.
-    // -----------------------------------------------------------------------
-    void testZwoInlineString_emptyInput()
-    {
-        const Workout w = ImporterWorkoutZwo::importFromByteArray(QByteArray(), "empty");
-        QVERIFY(w.getLstInterval().isEmpty());
-        qDebug().noquote() << "[ZwoInline] Empty input → empty Workout — PASS";
-    }
-
-    // -----------------------------------------------------------------------
-    // testZwoInlineString_malformedXml
-    //
-    // Passing a malformed XML string must return an empty Workout without
-    // crashing.
-    // -----------------------------------------------------------------------
-    void testZwoInlineString_malformedXml()
-    {
-        const QByteArray badXml = "<not valid xml<<<<<";
-        const Workout w = ImporterWorkoutZwo::importFromByteArray(badXml, "malformed");
-        QVERIFY(w.getLstInterval().isEmpty());
-        qDebug().noquote() << "[ZwoInline] Malformed XML → empty Workout — PASS";
-    }
-
-    // -----------------------------------------------------------------------
-    // testZwoInlineString_freeRidePowerType
-    //
-    // A FreeRide element must produce an interval with NONE power step type.
-    // -----------------------------------------------------------------------
-    void testZwoInlineString_freeRidePowerType()
-    {
-        static const QByteArray zwoXml = R"(
-<workout_file>
-  <name>Free Ride</name>
-  <workout>
-    <FreeRide Duration="1200"/>
-  </workout>
-</workout_file>)";
-
-        const Workout w = ImporterWorkoutZwo::importFromByteArray(zwoXml, "free_ride");
-        QCOMPARE(w.getLstInterval().size(), 1);
-        QCOMPARE(w.getLstInterval().first().getPowerStepType(), Interval::NONE);
-        qDebug().noquote() << "[ZwoInline] FreeRide → NONE power type — PASS";
-    }
-
-    // -----------------------------------------------------------------------
-    // testZwoInlineString_nameExtraction
-    //
-    // The <name> element inside the ZWO file must be reflected in the
-    // resulting Workout's name.
-    // -----------------------------------------------------------------------
-    void testZwoInlineString_nameExtraction()
-    {
-        static const QByteArray zwoXml = R"(
-<workout_file>
-  <name>My Named Workout</name>
-  <workout>
-    <SteadyState Duration="600" Power="0.80"/>
-  </workout>
-</workout_file>)";
-
-        const Workout w = ImporterWorkoutZwo::importFromByteArray(zwoXml, "fallback");
-        QVERIFY2(w.getName().contains(QLatin1String("My Named Workout")),
-                 qPrintable(QString("Expected 'My Named Workout' in workout name, got: '%1'")
-                                .arg(w.getName())));
-        qDebug().noquote()
-            << "[ZwoInline] Name extracted correctly:" << w.getName() << "— PASS";
-    }
 };
 
 QTEST_MAIN(TstUiScreens)

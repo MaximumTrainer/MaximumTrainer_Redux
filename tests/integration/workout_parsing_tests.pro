@@ -1,29 +1,16 @@
 ###############################################################################
 # tests/integration/workout_parsing_tests.pro
 #
-# Workout Parsing & User Journey Tests -- MaximumTrainer
+# Live Intervals.icu Workout Pull-and-Load Test -- MaximumTrainer
 #
-# Exercises the ZWO (Zwift workout XML) parsing pipeline and the workout
-# model construction workflow end-to-end with no display requirement:
+# Contains a single live integration test that fetches a ZWO workout from
+# intervals.icu, parses it, and verifies all intervals have positive duration.
+# QSKIP when credentials are absent.
 #
-#   1. ZWO inline string parsing:
-#      Raw ZWO XML strings embedded in C++ source code are fed to
-#      ImporterWorkoutZwo::importFromByteArray() and the resulting
-#      Workout model is verified for interval count, step type, and
-#      FTP fraction.  Structures covered: SteadyState, Ramp, IntervalsT,
-#      mixed Warmup/SteadyState/Cooldown, and FreeRide.
-#
-#   2. Workout model from programmatic intervals:
-#      A three-interval workout (Warmup / SteadyState / Cooldown) is
-#      constructed entirely in C++ using Interval objects and the 8-
-#      parameter Workout constructor.  Every field and the calculated
-#      average-power metric are verified.
-#
-#   3. Intervals.icu pull-and-load workflow (live, optional):
-#      A real HTTPS request retrieves the athlete's 90-day workout list,
-#      downloads the ZWO for the first entry, parses it, and asserts that
-#      every interval has a positive duration.  QSKIP when credentials
-#      are absent.
+# ZWO inline-string parsing tests and programmatic model tests were removed;
+# canonical coverage lives in:
+#   • tst_workout_io.cpp      (ZWO parsing, XML round-trip, mock JSON)
+#   • tst_workout_creator.cpp (Workout / Interval model construction)
 #
 # Dependencies
 # ──────────────────────────────────────────────────────────────────────

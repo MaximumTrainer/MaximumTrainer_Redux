@@ -1,25 +1,16 @@
 ###############################################################################
 # tests/integration/ui_navigation_tests.pro
 #
-# UI Navigation & User Journey Tests -- MaximumTrainer
+# Full Application Journey Test -- MaximumTrainer
 #
-# Covers the primary UI screen interaction flows using Qt Test's
-# mouse/keyboard simulation facilities:
+# Runs the MaximumTrainer binary out-of-process via QProcess with the
+# --screenshots flag and verifies that all expected screenshot files are
+# produced for each tab.
 #
-#   1. ConnectionDialog (DialogConnectionMethod)
-#      Verifies that clicking "Simulation" or "BTLE Device" accepts the
-#      dialog and returns the correct ConnectionMethod enum value.
-#      Uses QTest::mouseClick() and QSignalSpy.
-#
-#   2. WorkoutCreator — IntervalTableModel interactions
-#      Exercises the model that backs the WorkoutCreator interval table:
-#      insertRows(), removeRows(), copyRows(), setListInterval().
-#
-#   3. Post-workout summary screen
-#      Constructs a WorkoutHistorySummary with known data, renders a
-#      1280×720 summary window, and verifies all metric fields.
-#
-#   4. Visual evidence screenshots (1280×720, platform-tagged, PNG)
+# Component-level tests (ConnectionDialog, IntervalTableModel,
+# WorkoutHistorySummary) were removed; canonical coverage lives in:
+#   • tst_ui_screens.cpp   (ConnectionDialog, PostWorkoutSummary)
+#   • tst_workout_creator.cpp  (IntervalTableModel)
 #
 # Dependencies follow the same pattern as workout_ui_tests.pro:
 #   • Real util.h / util.cpp (requires QWT for QwtPlot types)
@@ -92,7 +83,6 @@ SOURCES += \
     ../../src/model/settings.cpp \
     ../../src/model/workout.cpp \
     ../../src/model/interval.cpp \
-    ../../src/model/intervaltablemodel.cpp \
     ../../src/model/sensor.cpp \
     ../../src/model/radio.cpp \
     ../../src/model/repeatdata.cpp \
@@ -108,8 +98,6 @@ SOURCES += \
     ../../src/persistence/db/intervalsicudao.cpp \
     ../../src/persistence/file/xmlutil.cpp \
     ../../src/persistence/file/gpxparser.cpp \
-    ../../src/ui/dialog_connection_method.cpp \
-    ../../src/ui/workout_editor/repeatwidget.cpp \
     ../intervals_icu/credential_store_stub.cpp \
     tst_ui_navigation.cpp
 
@@ -120,11 +108,4 @@ HEADERS += \
     ../../src/model/settings.h \
     ../../src/model/workout.h \
     ../../src/model/interval.h \
-    ../../src/model/intervaltablemodel.h \
-    ../../src/model/workouthistorysummary.h \
-    ../../src/ui/dialog_connection_method.h \
-    ../../src/persistence/file/xmlutil.h \
-    ../../src/ui/workout_editor/repeatwidget.h
-
-FORMS += \
-    ../../src/ui/workout_editor/repeatwidget.ui
+    ../../src/persistence/file/xmlutil.h
