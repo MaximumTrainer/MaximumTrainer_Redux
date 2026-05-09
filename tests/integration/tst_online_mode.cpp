@@ -1120,7 +1120,7 @@ void TstOnlineMode::testCalendarPlan()
         { "category",         "WORKOUT"                    },
         { "type",             "Ride"                       },
         { "name",             eventName                    },
-        { "start_date_local", tomorrow.toString(Qt::ISODate) }
+        { "start_date_local", QDateTime(tomorrow, QTime(0, 0)).toString(Qt::ISODate) }
     };
     const QByteArray eventBody = QJsonDocument(eventJson).toJson(QJsonDocument::Compact);
 
