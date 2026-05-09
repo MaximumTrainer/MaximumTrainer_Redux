@@ -860,7 +860,11 @@ private slots:
                  "pushButton_startOffline must start hidden");
 
         // Click the checkbox to enter offline mode.
-        QTest::mouseClick(checkBox, Qt::LeftButton);
+        // Use QAbstractButton::click() instead of QTest::mouseClick() — the
+        // API-level click emits clicked(bool) and toggled(bool) correctly on
+        // headless Xvfb runners regardless of widget geometry, whereas
+        // mouseClick() can miss if the widget hasn't been laid out yet.
+        checkBox->click();
         QCoreApplication::processEvents();
 
         QVERIFY2(checkBox->isChecked(),
@@ -872,7 +876,7 @@ private slots:
         QSignalSpy acceptedSpy(&dialog, &QDialog::accepted);
 
         // Click "Start Offline".
-        QTest::mouseClick(btnOffline, Qt::LeftButton);
+        btnOffline->click();
         QCoreApplication::processEvents();
 
         QVERIFY2(acceptedSpy.count() == 1,
