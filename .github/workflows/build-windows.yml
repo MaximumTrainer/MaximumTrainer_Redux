@@ -193,6 +193,8 @@ jobs:
         $sfmlDirFwd = $sfmlDir -replace '\\','/'
         $env:QMAKEFEATURES = "$env:QWT_INSTALL_DIR\features"
         $env:TP_CLIENT_SECRET = "${{ secrets.TP_CLIENT_SECRET }}"
+        $env:INTERVALS_OAUTH_CLIENT_ID = "${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}"
+        $env:INTERVALS_OAUTH_CLIENT_SECRET = "${{ secrets.INTERVALS_OAUTH_CLIENT_SECRET }}"
         qmake PowerVelo.pro `
           "VLCQT_INSTALL=$($env:VLCQT_DIR -replace '\\','/')" `
           "SFML_INSTALL=$sfmlDirFwd"

@@ -10,8 +10,7 @@
 #include "account.h"
 #include "settings.h"
 
-class DialogInfoWebView;
-
+class IntervalsIcuOAuthWidget;
 
 namespace Ui {
 class DialogLogin;
@@ -40,63 +39,78 @@ private slots:
     void slotFinishedIntervalsIcuAthlete();
     void slotFinishedIntervalsIcuSettings();
 
-    /// Called when the user clicks "Login with Intervals.icu" or presses
-    /// Return in one of the form fields.
+    /// Called when the user clicks "Sign in with Intervals.icu".
     void onLoginWithIntervalsIcuClicked();
-    /// Called when the Intervals.icu OAuth2 dialog reports success or failure.
-    void onIntervalsIcuOAuthLinked(bool linked);
-    /// Called when the Intervals.icu OAuth2 dialog is rejected (user closed it).
-    void onIntervalsIcuOAuthDialogRejected();
+
+    // ── OAuth widget callbacks ───────────────────────────────────────────────
+    void onOAuthSucceeded();
+    void onOAuthFailed();
+    void onOAuthCancelRequested();
+
+    // ── Account switching ────────────────────────────────────────────────────
+    void onSwitchAccountClicked();
+    void onUseDifferentAccountClicked(); ///< Alias for the loading-page link.
+
+    // ── Silent session restore ───────────────────────────────────────────────
+    void onSilentAuthFinished();
+    void onTokenRefreshFinished();
+    void onSilentAuthTimeout();
 
     void on_comboBox_language_currentIndexChanged(int index);
-    void on_checkBox_autoLogin_clicked(bool checked);
     void on_checkBox_workOffline_clicked(bool checked);
     void on_pushButton_startOffline_clicked();
 
 signals:
-    /// Emitted synchronously just before the Intervals.icu OAuth2 dialog
-    /// calls exec().  Integration tests connect to this to detect and
-    /// dismiss the dialog without relying on post-exec() state.
-    void intervalsIcuOAuthDialogCreated(DialogInfoWebView *dialog);
+    /// Emitted when the Intervals.icu OAuth WebView page becomes active.
+    /// Integration tests connect to this to detect the start of the OAuth flow.
+    void intervalsIcuOAuthStarted();
 
 private:
     void loginOffline();
 
     /// Fetch the athlete profile and training zones from Intervals.icu using
-    /// the OAuth2 Bearer token obtained during the OAuth login flow.
-    /// Called after a successful Intervals.icu OAuth2 authorization.
+    /// the OAuth2 Bearer token. Switches to the loading page (index 2).
     void fetchIntervalsIcuDataOAuth();
 
     /// Provision and complete the login using an Intervals.icu OAuth identity.
-    /// Sets up the Account object and loads any previously saved local data.
     void loginWithIntervalsIcuIdentity();
 
-    /// Final step of the login flow: accept the dialog and hand control back
-    /// to MainWindow.
+    /// Final step: accept the dialog and hand control back to MainWindow.
     void completeLogin();
 
-    Ui::DialogLogin *ui;
-    QTranslator     m_translator;   /**< contains the translations for this application */
-    QString         m_currLang;     /**< contains the currently loaded language */
+    /// Switch to the login form page (index 0) and show/hide the session-
+    /// expired notice.
+    void showLoginForm(bool showExpiredMessage);
 
-    Account *account;
+    /// Clear OAuth tokens from CredentialStore and Account in-memory state.
+    void clearTokens();
+
+    Ui::DialogLogin          *ui;
+    QTranslator               m_translator;
+    QString                   m_currLang;
+
+    Account  *account;
     Settings *settings;
 
-    QMovie* movie;  //loading gif
+    QMovie *movie;
+
+    IntervalsIcuOAuthWidget *m_oauthWidget;
 
     QNetworkReply *replyVersion;
     QNetworkReply *replyIntervalsIcuAthlete;
     QNetworkReply *replyIntervalsIcuSettings;
-    QTimer        *m_versionTimeout;
-    QTimer        *m_intervalsIcuTimeout;
+    QNetworkReply *m_silentAuthReply;
+    QNetworkReply *m_tokenRefreshReply;
+
+    QTimer *m_versionTimeout;
+    QTimer *m_intervalsIcuTimeout;
+    QTimer *m_silentAuthTimeout;
 
     bool gotUpdateDialog;
-    int  m_pendingIntervalsIcuReplies;  ///< how many Intervals.icu replies we are still waiting for
+    bool m_silentAuthCancelled = false;
+    int  m_pendingIntervalsIcuReplies;
 
-    /// Keeps track of whether the current in-progress login is from the
-    /// Intervals.icu OAuth2 flow.
     bool m_loggingInViaIntervalsIcu = false;
-
 };
 
 #endif // DIALOGLOGIN_H

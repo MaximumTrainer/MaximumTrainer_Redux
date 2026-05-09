@@ -41,6 +41,14 @@ public:
     /// @param redirectUri The exact redirect_uri used in the authorization request.
     static QNetworkReply* intervalsIcuOAuthExchange(const QString &code, const QString &redirectUri);
 
+    /// Exchange a refresh token for a new access + refresh token pair.
+    /// POST https://intervals.icu/oauth/token  (grant_type=refresh_token)
+    /// On success, the caller should parse the response with
+    /// Util::parseJsonIntervalsIcuOAuthToken() and call
+    /// account->saveIntervalsIcuCredentials().
+    /// @param refreshToken  The stored OAuth2 refresh token.
+    static QNetworkReply* intervalsIcuOAuthRefresh(const QString &refreshToken);
+
 };
 
 #endif // EXTREQUEST_H

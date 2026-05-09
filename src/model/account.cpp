@@ -48,9 +48,28 @@ Account::Account(QObject *parent) : QObject(parent)  {
     intervals_icu_api_key     = settings.value("intervals_icu_api_key", "").toString();
     intervals_icu_athlete_id  = settings.value("intervals_icu_athlete_id", "").toString();
     intervals_icu_auto_upload = settings.value("intervals_icu_auto_upload", false).toBool();
-    // OAuth2 tokens — loaded to restore an existing OAuth session across restarts.
-    intervals_icu_access_token  = settings.value("intervals_icu_access_token",  "").toString();
-    intervals_icu_refresh_token = settings.value("intervals_icu_refresh_token", "").toString();
+    // OAuth2 tokens — loaded from the platform credential store (encrypted).
+    // Migration: if the CredentialStore is empty but an old plain-QSettings value
+    // exists (written by a previous version), copy it to CredentialStore and
+    // remove the plain-text entry so the token is protected going forward.
+    intervals_icu_access_token  = CredentialStore::load("intervals_icu", "access_token");
+    intervals_icu_refresh_token = CredentialStore::load("intervals_icu", "refresh_token");
+    if (intervals_icu_access_token.isEmpty()) {
+        const QString legacy = settings.value("intervals_icu_access_token", "").toString();
+        if (!legacy.isEmpty()) {
+            intervals_icu_access_token = legacy;
+            CredentialStore::store("intervals_icu", "access_token", legacy);
+            settings.remove("intervals_icu_access_token");
+        }
+    }
+    if (intervals_icu_refresh_token.isEmpty()) {
+        const QString legacy = settings.value("intervals_icu_refresh_token", "").toString();
+        if (!legacy.isEmpty()) {
+            intervals_icu_refresh_token = legacy;
+            CredentialStore::store("intervals_icu", "refresh_token", legacy);
+            settings.remove("intervals_icu_refresh_token");
+        }
+    }
     // Sensor dropout auto-pause
     sensor_dropout_enabled   = settings.value("sensor_dropout_enabled",   true).toBool();
     sensor_dropout_timeout_s = qBound(2, settings.value("sensor_dropout_timeout_s", 5).toInt(), 30);
@@ -229,10 +248,11 @@ void Account::saveIntervalsIcuCredentials() {
     settings.setValue("intervals_icu_api_key",    intervals_icu_api_key);
     settings.setValue("intervals_icu_athlete_id", intervals_icu_athlete_id);
     settings.setValue("intervals_icu_auto_upload", intervals_icu_auto_upload);
-    // OAuth2 tokens — persisted so they survive an app restart.
-    settings.setValue("intervals_icu_access_token",  intervals_icu_access_token);
-    settings.setValue("intervals_icu_refresh_token", intervals_icu_refresh_token);
     settings.endGroup();
+
+    // OAuth2 tokens — persisted in the platform credential store (encrypted).
+    CredentialStore::store("intervals_icu", "access_token",  intervals_icu_access_token);
+    CredentialStore::store("intervals_icu", "refresh_token", intervals_icu_refresh_token);
 }
 
 void Account::saveStravaCredentials()

@@ -40,13 +40,27 @@ const static QString urlIntervalsIcuCalendar = "https://intervals.icu/athlete/%1
 ///   SETTINGS:READ   — read training zones (HR zones, power zones)
 ///
 /// The redirect_uri is appended at runtime by Environnement::getURLIntervalsIcuAuthorize().
+/// Note: client_id is substituted at runtime via getIntervalsIcuClientId() so the
+/// compile-time constant here is only a documentation reference; the actual URL is
+/// built dynamically in getURLIntervalsIcuAuthorize().
 const static QString urlIntervalsIcuOAuthAuthorize(
     "https://intervals.icu/oauth/authorize?"
-    "client_id=259"
-    "&response_type=code"
+    "response_type=code"
     "&scope=ACTIVITY:READ+WELLNESS:READ+CALENDAR:READ+SETTINGS:READ");
 
-const static QString CLIENT_ID_ICV  = "259";
+/// Intervals.icu OAuth2 client credentials.
+/// client_id and client_secret are injected at build time via environment variables
+/// INTERVALS_OAUTH_CLIENT_ID and INTERVALS_OAUTH_CLIENT_SECRET (see PowerVelo.pro).
+/// The macros default to "259" (existing public client) and "" (no secret) when
+/// the environment variables are not set.
+#ifndef INTERVALS_OAUTH_CLIENT_ID
+#define INTERVALS_OAUTH_CLIENT_ID "259"
+#endif
+#ifndef INTERVALS_OAUTH_CLIENT_SECRET
+#define INTERVALS_OAUTH_CLIENT_SECRET ""
+#endif
+const static QString CLIENT_ID_ICV     = QStringLiteral(INTERVALS_OAUTH_CLIENT_ID);
+const static QString CLIENT_SECRET_ICV = QStringLiteral(INTERVALS_OAUTH_CLIENT_SECRET);
 const static QString URL_TOKEN_ICV  = "https://intervals.icu/oauth/token";
 
 /// Sentinel athlete ID meaning "the currently authenticated OAuth2 user".
@@ -197,6 +211,14 @@ public:
     /// @param state  Per-request CSRF token; pass an empty string to omit.
     static QString getURLIntervalsIcuAuthorize(const QString &state = QString());
     static QString getUrlIntervalsIcuRegister();
+    /// Return the Intervals.icu OAuth2 client_id.
+    /// Checks CredentialStore("intervals_icu_app","client_id") first; falls back
+    /// to the build-time constant (INTERVALS_OAUTH_CLIENT_ID / "259").
+    static QString getIntervalsIcuClientId();
+    /// Return the Intervals.icu OAuth2 client_secret.
+    /// Checks CredentialStore("intervals_icu_app","client_secret") first; falls back
+    /// to the build-time constant (INTERVALS_OAUTH_CLIENT_SECRET / "").
+    static QString getIntervalsIcuClientSecret();
 
 
     static QString getUrlLogin();

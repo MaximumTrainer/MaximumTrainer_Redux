@@ -87,7 +87,9 @@ jobs:
         qmake PowerVelo.pro "INCLUDEPATH+=/usr/local/include" "LIBS+=-L/usr/local/lib"
       env:
         QMAKEFEATURES: /usr/share/qt5/mkspecs/features
-        TP_CLIENT_SECRET: ${{ secrets.TP_CLIENT_SECRET }}
+        TP_CLIENT_SECRET:              ${{ secrets.TP_CLIENT_SECRET }}
+        INTERVALS_OAUTH_CLIENT_ID:     ${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}
+        INTERVALS_OAUTH_CLIENT_SECRET: ${{ secrets.INTERVALS_OAUTH_CLIENT_SECRET }}
 
     - name: Build
       run: |
@@ -998,7 +1000,9 @@ jobs:
     permissions:
       contents: read
     env:
-      TP_CLIENT_SECRET:    ${{ secrets.TP_CLIENT_SECRET }}
+      TP_CLIENT_SECRET:              ${{ secrets.TP_CLIENT_SECRET }}
+      INTERVALS_OAUTH_CLIENT_ID:     ${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}
+      INTERVALS_OAUTH_CLIENT_SECRET: ${{ secrets.INTERVALS_OAUTH_CLIENT_SECRET }}
       STRAVA_ACCESS_TOKEN: ${{ secrets.STRAVA_ACCESS_TOKEN }}
       TP_REFRESH_TOKEN:    ${{ secrets.TP_REFRESH_TOKEN }}
       SELFLOOPS_EMAIL:     ${{ secrets.SELFLOOPS_EMAIL }}

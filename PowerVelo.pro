@@ -48,6 +48,27 @@ TP_SECRET_VAL = $$(TP_CLIENT_SECRET)
     DEFINES += TP_CLIENT_SECRET=\\\"\\\"
 }
 
+# Intervals.icu OAuth2 client credentials — supplied at build time via env vars.
+# In GitHub Actions CI, add INTERVALS_OAUTH_CLIENT_ID and INTERVALS_OAUTH_CLIENT_SECRET
+# as repository secrets and expose them on the qmake step.  For local development,
+# export the variables before running qmake.
+# Fallback: client_id=259 (existing public client registration), client_secret=""
+# (public client — no secret required).  The fallbacks preserve existing behaviour
+# when the secrets are absent.
+ICV_CLIENT_ID_VAL = $$(INTERVALS_OAUTH_CLIENT_ID)
+!isEmpty(ICV_CLIENT_ID_VAL) {
+    DEFINES += INTERVALS_OAUTH_CLIENT_ID=\\\"$$ICV_CLIENT_ID_VAL\\\"
+} else {
+    DEFINES += INTERVALS_OAUTH_CLIENT_ID=\\\"259\\\"
+}
+
+ICV_CLIENT_SECRET_VAL = $$(INTERVALS_OAUTH_CLIENT_SECRET)
+!isEmpty(ICV_CLIENT_SECRET_VAL) {
+    DEFINES += INTERVALS_OAUTH_CLIENT_SECRET=\\\"$$ICV_CLIENT_SECRET_VAL\\\"
+} else {
+    DEFINES += INTERVALS_OAUTH_CLIENT_SECRET=\\\"\\\"
+}
+
 # Derive qmake's VERSION variable from GIT_VERSION.  This is used by qmake to
 # populate the Windows RC file so the version appears in the .exe "Details" tab
 # of the file-properties dialog.  The leading "v" is stripped and any

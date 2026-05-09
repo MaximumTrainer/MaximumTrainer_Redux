@@ -1,6 +1,7 @@
 #include "environnement.h"
 
 #include "settings.h"
+#include "credential_store.h"
 
 Environnement::Environnement()
 {  
@@ -294,10 +295,23 @@ QString Environnement::getURLTrainingPeaksAuthorize() {
 QString Environnement::getURLIntervalsIcuAuthorize(const QString &state) {
 
     QString myURL = urlIntervalsIcuOAuthAuthorize;
+    myURL += "&client_id=" + getIntervalsIcuClientId();
     myURL += "&redirect_uri=" + getURLEnvironnement() + "intervals_icu_token_exchange";
     if (!state.isEmpty())
         myURL += "&state=" + state;
     return myURL;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+QString Environnement::getIntervalsIcuClientId() {
+    const QString stored = CredentialStore::load("intervals_icu_app", "client_id");
+    return stored.isEmpty() ? CLIENT_ID_ICV : stored;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+QString Environnement::getIntervalsIcuClientSecret() {
+    const QString stored = CredentialStore::load("intervals_icu_app", "client_secret");
+    return stored.isEmpty() ? CLIENT_SECRET_ICV : stored;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

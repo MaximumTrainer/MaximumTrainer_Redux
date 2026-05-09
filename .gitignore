@@ -35,3 +35,4 @@ __pycache__/
 *.pyc
 MaximumTrainer_Archived/
 tests/integration/ui_repeatwidget.h
+.copilot-specs-cache/

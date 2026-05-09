@@ -90,13 +90,14 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QSignalSpy>
+#include <QStackedWidget>
 
 #include "../../src/btle/simulator_hub.h"
 #include "../../src/persistence/db/environnement.h"
 #include "../../src/model/account.h"
 #include "../../src/model/settings.h"
 #include "../../src/ui/dialoglogin.h"
-#include "../../src/ui/dialoginfowebview.h"
+#include "../../src/ui/intervalsicuoauthwidget.h"
 
 // ---------------------------------------------------------------------------
 // Compile-time platform tag used in screenshots and window titles
@@ -747,9 +748,10 @@ private slots:
     // testDialogLoginInitialState
     //
     // Verifies that the real DialogLogin widget in test mode immediately
-    // reveals the native login form (widget_center visible, lineEdit_athleteEmail
-    // present) and the bottom interaction area (widget_bottom visible), and
-    // hides the loading spinner (widget_loading hidden).
+    // reveals the native login form (widget_center visible as the current page
+    // of stackedWidget_main) and the bottom interaction area (widget_bottom
+    // visible), and hides the loading page (widget_loading hidden because it
+    // is not the current page of the stacked widget).
     //
     // NOTE: Production mode (testMode=false) is intentionally NOT used here
     // because it fires real network requests (version check) that can show
@@ -759,22 +761,23 @@ private slots:
     // initialisation path runs correctly.
     //
     // Acceptance criteria:
-    //   • widget_loading is logically hidden in test mode (no spinner shown).
-    //   • widget_center is logically visible in test mode (login form shown).
-    //   • widget_bottom is logically visible in test mode (buttons accessible).
-    //   • lineEdit_athleteEmail exists in the dialog.
+    //   • widget_loading is logically hidden in test mode (not current page).
+    //   • widget_center is logically visible in test mode (current page 0).
+    //   • widget_bottom is logically visible in test mode (outside stacked widget).
+    //   • pushButton_loginIntervalsIcu exists in the dialog.
     //   • Screenshot saved and non-empty.
     // -----------------------------------------------------------------------
     void testDialogLoginInitialState()
     {
-        // Test mode: skip network requests; widget_center and widget_bottom are
-        // immediately visible and widget_loading is hidden.
+        // Test mode: skip network requests; stackedWidget_main defaults to
+        // page 0 (widget_center) so it is logically visible, widget_loading
+        // (page 2) is hidden, and widget_bottom (outside the stack) is visible.
         DialogLogin dialog(nullptr, /*testMode=*/true);
 
         const auto *widgetLoading = dialog.findChild<QWidget *>("widget_loading");
         const auto *widgetCenter  = dialog.findChild<QWidget *>("widget_center");
         const auto *widgetBottom  = dialog.findChild<QWidget *>("widget_bottom");
-        const auto *editEmail     = dialog.findChild<QLineEdit *>("lineEdit_athleteEmail");
+        const auto *loginBtn      = dialog.findChild<QPushButton *>("pushButton_loginIntervalsIcu");
 
         QVERIFY2(widgetLoading != nullptr,
                  "widget_loading must exist in DialogLogin");
@@ -782,17 +785,18 @@ private slots:
                  "widget_center must exist in DialogLogin");
         QVERIFY2(widgetBottom  != nullptr,
                  "widget_bottom must exist in DialogLogin");
-        QVERIFY2(editEmail != nullptr,
-                 "lineEdit_athleteEmail must exist in DialogLogin");
+        QVERIFY2(loginBtn != nullptr,
+                 "pushButton_loginIntervalsIcu must exist in DialogLogin");
 
-        // isVisibleTo() checks logical visibility relative to the ancestor
-        // without requiring the top-level window to be shown yet.
-        QVERIFY2(!widgetLoading->isVisibleTo(&dialog),
-                 "widget_loading must be logically hidden in test mode");
-        QVERIFY2(widgetCenter->isVisibleTo(&dialog),
-                 "widget_center must be logically visible in test mode");
+        // Use currentIndex() to verify which stacked page is active — this is
+        // stable regardless of whether the top-level window has been shown yet.
+        const auto *stackedWidget = dialog.findChild<QStackedWidget *>("stackedWidget_main");
+        QVERIFY2(stackedWidget != nullptr,
+                 "stackedWidget_main must exist in DialogLogin");
+        QVERIFY2(stackedWidget->currentIndex() == 0,
+                 "stackedWidget_main must show page 0 (login form) by default");
         QVERIFY2(widgetBottom->isVisibleTo(&dialog),
-                 "widget_bottom must be logically visible in test mode");
+                 "widget_bottom (footer, outside stacked widget) must be visible");
 
         const QString screenshotName =
             QString("dialoglogin-initial-state-%1-%2.png")
@@ -929,14 +933,15 @@ private slots:
     // -----------------------------------------------------------------------
     // testDialogLoginIntervalsIcuOAuthDialog
     //
-    // Verifies that clicking "Login with Intervals.icu" on the real
-    // DialogLogin widget (test mode) creates a DialogInfoWebView child dialog
-    // configured as an Intervals.icu OAuth2 flow.  The child dialog is
-    // immediately rejected so it does not block the test.
+    // Verifies that clicking "Sign in with Intervals.icu" on the real
+    // DialogLogin widget (test mode) switches the stacked widget to the OAuth
+    // page and emits intervalsIcuOAuthStarted().  The embedded
+    // IntervalsIcuOAuthWidget is found and cancel() is called to return to
+    // the login form without blocking the test.
     //
     // Acceptance criteria:
-    //   • Clicking pushButton_loginIntervalsIcu creates a DialogInfoWebView
-    //     child with parent == &dialog.
+    //   • Clicking pushButton_loginIntervalsIcu emits intervalsIcuOAuthStarted().
+    //   • An IntervalsIcuOAuthWidget child exists in the dialog.
     //   • Screenshot saved and non-empty.
     // -----------------------------------------------------------------------
     void testDialogLoginIntervalsIcuOAuthDialog()
@@ -949,37 +954,25 @@ private slots:
         QVERIFY2(btn != nullptr,
                  "pushButton_loginIntervalsIcu must exist in DialogLogin");
 
-        // Connect to the synchronous signal emitted by DialogLogin just before
-        // calling exec() on the OAuth child dialog.  This fires synchronously
-        // before exec() enters its nested event loop — so childFound is set
-        // even if exec() returns immediately (e.g. WebEngine init failure in CI).
-        // Rejection is deferred with singleShot(0) + QPointer so it fires in
-        // the first iteration of exec()'s nested event loop (not before it).
-        // QPointer guards against the dialog being deleted before the timer fires.
-        bool childFound = false;
-        bool childParentOk = false;
-        QObject::connect(&dialog, &DialogLogin::intervalsIcuOAuthDialogCreated,
-                         [&dialog, &childFound, &childParentOk](DialogInfoWebView *oauthDlg) {
-                             if (!oauthDlg) return;
-                             childFound    = true;
-                             childParentOk = (oauthDlg->parent() == &dialog);
-                             QPointer<DialogInfoWebView> guard(oauthDlg);
-                             QTimer::singleShot(0, &dialog, [guard]() {
-                                 if (guard) guard->reject();
-                             });
-                         });
+        bool oauthStarted = false;
+        QObject::connect(&dialog, &DialogLogin::intervalsIcuOAuthStarted,
+                         [&oauthStarted]() { oauthStarted = true; });
 
         // Click the button — triggers onLoginWithIntervalsIcuClicked() which
-        // emits intervalsIcuOAuthDialogCreated (setting childFound) and then
-        // calls exec().  The rejected() signal causes exec() to return.
+        // switches the stacked widget to the OAuth page and emits
+        // intervalsIcuOAuthStarted().
         QTest::mouseClick(btn, Qt::LeftButton);
         QCoreApplication::processEvents();
 
-        QVERIFY2(childFound,
-                 "Clicking 'Login with Intervals.icu' must create a "
-                 "DialogInfoWebView child dialog");
-        QVERIFY2(childParentOk,
-                 "DialogInfoWebView parent must be the DialogLogin instance");
+        QVERIFY2(oauthStarted,
+                 "Clicking 'Sign in with Intervals.icu' must emit intervalsIcuOAuthStarted()");
+
+        // Find the embedded OAuth widget and cancel the flow so it doesn't block.
+        auto *oauthWidget = dialog.findChild<IntervalsIcuOAuthWidget *>();
+        QVERIFY2(oauthWidget != nullptr,
+                 "An IntervalsIcuOAuthWidget child must exist in DialogLogin");
+        oauthWidget->cancel();
+        QCoreApplication::processEvents();
 
         const QString screenshotName =
             QString("dialoglogin-intervals-oauth-dialog-%1-%2.png")

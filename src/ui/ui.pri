@@ -26,6 +26,7 @@ $$PWD/workoutdialog.cpp \
     $$PWD/pmcdialog.cpp \
     $$PWD/workoutcountdowndialog.cpp \
     $$PWD/queuepanelwidget.cpp \
+    $$PWD/intervalsicuoauthwidget.cpp \
     #$$PWD/main_coursepage.cpp
 
 HEADERS += $$PWD/mainwindow.h\
@@ -50,6 +51,7 @@ $$PWD/workoutdialog.h \
     $$PWD/queuepanelwidget.h \
     $$PWD/apptheme.h \
     $$PWD/planadherencewidget.h \
+    $$PWD/intervalsicuoauthwidget.h \
     #$$PWD/main_coursepage.h
 
 FORMS    += $$PWD/mainwindow.ui \

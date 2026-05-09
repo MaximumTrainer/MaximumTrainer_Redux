@@ -409,13 +409,46 @@ QNetworkReply* ExtRequest::intervalsIcuOAuthExchange(const QString &code, const 
 
     QUrlQuery postData;
     postData.addQueryItem("grant_type",    "authorization_code");
-    postData.addQueryItem("client_id",     CLIENT_ID_ICV);
+    postData.addQueryItem("client_id",     Environnement::getIntervalsIcuClientId());
     postData.addQueryItem("code",          code);
     postData.addQueryItem("redirect_uri",  redirectUri);
+    const QString secret = Environnement::getIntervalsIcuClientSecret();
+    if (!secret.isEmpty())
+        postData.addQueryItem("client_secret", secret);
 
     QNetworkRequest request;
     request.setUrl(QUrl(URL_TOKEN_ICV));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 
+    return managerWS->post(request, postData.toString(QUrl::FullyEncoded).toUtf8());
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// POST https://intervals.icu/oauth/token  (grant_type=refresh_token)
+/// Exchanges a stored refresh token for a new access + refresh token pair.
+/// The caller must connect finished() and parse the response with
+/// Util::parseJsonIntervalsIcuOAuthToken(), then call
+/// account->saveIntervalsIcuCredentials().
+QNetworkReply* ExtRequest::intervalsIcuOAuthRefresh(const QString &refreshToken)
+{
+    QNetworkAccessManager *managerWS = qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
+    if (!managerWS) {
+        LOG_WARN("ExtRequest", QStringLiteral("intervalsIcuOAuthRefresh: NetworkManagerWS not available"));
+        return nullptr;
+    }
+
+    QUrlQuery postData;
+    postData.addQueryItem("grant_type",    "refresh_token");
+    postData.addQueryItem("client_id",     Environnement::getIntervalsIcuClientId());
+    postData.addQueryItem("refresh_token", refreshToken);
+    const QString secret = Environnement::getIntervalsIcuClientSecret();
+    if (!secret.isEmpty())
+        postData.addQueryItem("client_secret", secret);
+
+    QNetworkRequest request;
+    request.setUrl(QUrl(URL_TOKEN_ICV));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+    LOG_INFO("ExtRequest", QStringLiteral("intervalsIcuOAuthRefresh: refreshing access token"));
     return managerWS->post(request, postData.toString(QUrl::FullyEncoded).toUtf8());
 }

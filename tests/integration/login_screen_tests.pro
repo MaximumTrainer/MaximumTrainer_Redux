@@ -104,7 +104,7 @@ SOURCES += \
     ../../src/persistence/file/gpxparser.cpp \
     ../../src/ui/dialoglogin.cpp \
     ../../src/ui/updatedialog.cpp \
-    ../../src/ui/dialoginfowebview.cpp \
+    ../../src/ui/intervalsicuoauthwidget.cpp \
     ../../src/ui/components/languagecombobox.cpp \
     ../../src/ui/workout_editor/repeatwidget.cpp \
     ../intervals_icu/credential_store_stub.cpp \
@@ -117,7 +117,7 @@ HEADERS += \
     ../../src/persistence/file/xmlutil.h \
     ../../src/ui/dialoglogin.h \
     ../../src/ui/updatedialog.h \
-    ../../src/ui/dialoginfowebview.h \
+    ../../src/ui/intervalsicuoauthwidget.h \
     ../../src/ui/components/languagecombobox.h \
     ../../src/ui/components/myqwebenginepage.h \
     ../../src/ui/workout_editor/repeatwidget.h
@@ -125,5 +125,4 @@ HEADERS += \
 FORMS += \
     ../../src/ui/dialoglogin.ui \
     ../../src/ui/updatedialog.ui \
-    ../../src/ui/dialoginfowebview.ui \
     ../../src/ui/workout_editor/repeatwidget.ui
