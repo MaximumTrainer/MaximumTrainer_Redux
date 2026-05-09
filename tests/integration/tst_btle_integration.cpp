@@ -291,5 +291,7 @@ private slots:
                                 .arg(afterStopSpy.count())));
     }
 
+}; // class TstBtleIntegration
+
 QTEST_MAIN(TstBtleIntegration)
 #include "tst_btle_integration.moc"
