@@ -1042,7 +1042,6 @@ void TstOnlineMode::testActivityUpload()
              qPrintable(QString("Could not extract activity id from: %1").arg(QString(body))));
 
     qDebug().noquote() << "[testActivityUpload] Uploaded activity id:" << m_uploadedActivityId;
-    grabScreenshot();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1100,7 +1099,6 @@ void TstOnlineMode::testWorkoutHistory()
 
     qDebug().noquote() << "[testWorkoutHistory] Activity" << m_uploadedActivityId
                        << "confirmed in history";
-    grabScreenshot();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1183,6 +1181,5 @@ void TstOnlineMode::testCalendarPlan()
 
     qDebug().noquote() << "[testCalendarPlan] Event" << m_createdEventId
                        << "confirmed in calendar for" << tomorrow.toString();
-    grabScreenshot();
 }
 QTEST_MAIN(TstOnlineMode)
