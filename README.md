@@ -1,6 +1,6 @@
 # MaximumTrainer
 
-An open-source, high-performance indoor cycling training application built with the **Qt framework (C++17)**. MaximumTrainer delivers structured interval workouts with real-time power, cadence, heart rate, and speed feedback, and controls smart trainers automatically via FTMS ERG mode. Browse and sync workouts from [intervals.icu](https://www.intervals.icu), or import your own `.erg` / `.mrc` files.
+An open-source, high-performance indoor cycling training application built with the **Qt framework (C++17)**. MaximumTrainer delivers structured interval workouts with real-time power, cadence, heart rate, and speed feedback, and controls smart trainers automatically via FTMS ERG mode. Browse and sync workouts from [intervals.icu](https://www.intervals.icu), or import your own `.erg` / `.mrc` / `.zwo` files.
 
 ## Technical Overview
 
@@ -11,8 +11,8 @@ An open-source, high-performance indoor cycling training application built with 
 | **Build file** | `PowerVelo.pro` (qmake) |
 | **Qt modules** | core · gui · widgets · network · bluetooth · webenginewidgets · printsupport · concurrent |
 | **Trainer protocol** | Bluetooth LE Fitness Machine Service (FTMS / 0x1826) for ERG resistance control |
-| **Sensor profiles** | Heart Rate (0x180D) · Cycling Speed & Cadence (0x1816) · Cycling Power (0x1818) |
-| **Workout formats** | `.erg`, `.mrc` (imported and converted to the native `.workout` XML format) |
+| **Sensor profiles** | Heart Rate (0x180D) · Cycling Speed & Cadence (0x1816) · Cycling Power (0x1818) · Moxy Muscle Oxygen (0xAAB0) |
+| **Workout formats** | `.erg`, `.mrc`, `.zwo` (imported and converted to the native XML format) · Intervals.icu calendar sync · export as `.fit` |
 | **Workout source** | Integrated intervals.icu for online workout plans |
 
 ## Hardware Setup
@@ -39,6 +39,7 @@ An open-source, high-performance indoor cycling training application built with 
 | Cycling Speed & Cadence | 0x1816 | Speed (km/h) · Cadence (RPM) | No |
 | Cycling Power | 0x1818 | Power (W) | No |
 | **Fitness Machine (FTMS)** | **0x1826** | Speed · Cadence · Power | **Yes — enables ERG mode** |
+| Moxy Muscle Oxygen | 0xAAB0 | SmO₂ (%) · tHb (g/dL) | No |
 
 > **Important:** Select the **Fitness Machine (FTMS / 0x1826)** profile for your smart trainer if you want the app to set resistance automatically. Choosing a plain Power or Speed profile disables ERG control.
 
@@ -93,10 +94,10 @@ Once a workout starts you will see:
 
 - **Interval countdown** — time remaining in the current interval, and total workout time elapsed / remaining.
 - **Target vs. Actual Power graph** — a QWT-based real-time plot showing the structured intervals as coloured zones and your live power overlaid on top.
-- **Metrics widgets** — live Heart Rate · Cadence · Speed · Power · Left/Right Power Balance (if a dual-sided power meter is connected) · SpO₂ (if an oxygen sensor is connected).
+- **Metrics widgets** — live Heart Rate · Cadence · Speed · Power · Left/Right Power Balance (if a dual-sided power meter is connected) · SmO₂ / tHb (if a Moxy muscle-oxygen sensor is connected).
 - **Controls** — Start/Pause, Skip Interval, Adjust Difficulty (±5 % FTP increments), and Lap.
 
-Completed workout data is saved as a FIT activity file and can be uploaded to **Strava**, **TrainingPeaks**, or **SelfLoops** from the post-workout screen.
+Completed workout data is saved as a FIT activity file and can be uploaded to **Strava**, **TrainingPeaks**, **SelfLoops**, or **Intervals.icu** from the post-workout screen.
 
 ## Screenshots
 
@@ -278,9 +279,25 @@ make
 
 ## Testing
 
-BTLE sensor-data parsing is validated by a headless Qt Test suite in `tests/btle/` — no real hardware required. Tests run on Ubuntu, Windows, and macOS in CI.
+MaximumTrainer has a multi-tier test suite covering BLE parsing, service APIs, UI flows, and integration scenarios — all run headlessly in CI without real hardware.
 
-### Running the tests
+### Test tiers
+
+| Suite | Location | What is tested |
+|-------|----------|----------------|
+| BLE unit tests | `tests/btle/` | BLE characteristic parsing (HR, CSC, Power, FTMS), SimulatorHub signal emission, trainer simulations (Elite, Wahoo KICKR, Garmin Tacx), battery level, interval summary |
+| Service unit tests | `tests/strava/`, `tests/trainingpeaks/`, `tests/selfloops/`, `tests/intervals_icu/` | HTTP request construction, auth headers, URL patterns, null-manager guards for all cloud upload services |
+| ZWO importer tests | `tests/intervals_icu/` | Parsing of SteadyState, Ramp, IntervalsT, FreeRide, mixed, and malformed ZWO workout files |
+| Credential store tests | `tests/credential_store/` | Round-trip read/write, overwrite, remove, missing key, multi-service, WASM no-op |
+| Plan adherence tests | `tests/plan_adherence/` | Completed/skipped/substituted entries, adherence %, encode-decode, change signals |
+| Logger tests | `tests/logger/` | Log level filtering, output format, file write enable/disable |
+| Studio tests | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling |
+| Login screen tests | `tests/integration/` | OAuth dialog state, offline login path, Intervals.icu OAuth URL generation |
+| Workout UI tests | `tests/integration/` | Full ERG session driven by SimulatorHub through WorkoutDialog; interval advancement; data accumulation |
+| Offline / BLE integration | `tests/integration/` | BLE adapter smoke test, offline mode screenshot, runtime validation |
+| Playwright (E2E) | `tests/playwright/` | WASM asset loading, Web Bluetooth API mock, login screen, landing page |
+
+### Running the BLE unit tests
 
 ```bash
 cd tests/btle
@@ -289,9 +306,7 @@ make -j$(nproc)
 ../../build/tests/btle_tests -v2
 ```
 
-### Test output (Ubuntu 22.04, Qt 5.15.2)
-
-The BLE unit test suite currently has **51 test cases** across heart rate parsing, CSC, power, FTMS, trainer simulations (Elite, Wahoo KICKR, Garmin Tacx), SimulatorHub signal behaviour, battery level, and interval summary groups. See the [CI run status](https://github.com/MaximumTrainer/MaximumTrainer_Redux/actions) for the current pass/fail counts on Linux, Windows, and macOS.
+The BLE suite has **51 test cases** across HR parsing, CSC, Power, FTMS, trainer simulations, SimulatorHub, battery, and interval summary. See the [CI run status](https://github.com/MaximumTrainer/MaximumTrainer_Redux/actions) for pass/fail counts on Linux, Windows, and macOS.
 
 ## Language
 
