@@ -551,14 +551,45 @@ export class WasmAppPage {
           refresh_token: 'playwright_mock_refresh',
           token_type:    'Bearer',
           expires_in:    3600,
-          athlete_id:    'i00000',
+          athlete_id:    WasmAppPage.FAKE_ATHLETE_ID,
         }),
       });
     });
+
+    // Mock the athlete profile and settings endpoints that DialogLogin calls
+    // after the token exchange to verify the login and populate the account.
+    // Without this, tests that don't call mockIntervalsIcuApi() (e.g. the BLE
+    // GATT test) will see 404 WARN messages in the log overlay.
+    // Use a regex to match ONLY /athlete/{id} and /athlete/{id}/settings —
+    // NOT calendar/event sub-paths — to avoid intercepting functional test routes.
+    await this.page.route(
+      /^https:\/\/intervals\.icu\/api\/v1\/athlete\/[^/]+(?:\/settings)?$/,
+      async (route) => {
+        if (route.request().method() === 'OPTIONS') {
+          await route.fulfill({ status: 204, headers: corsHeaders });
+          return;
+        }
+        const isSettings = route.request().url().includes('/settings');
+        await route.fulfill({
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          body: isSettings
+            ? JSON.stringify({})
+            : JSON.stringify({
+                id:        WasmAppPage.FAKE_ATHLETE_ID,
+                firstname: 'Test',
+                lastname:  'User',
+              }),
+        });
+      },
+    );
   }
 
   /** Fake access token returned by `setupOAuthMock()` — exposed for assertions. */
   static readonly FAKE_ACCESS_TOKEN = 'playwright_wasm_oauth_mock_token';
+
+  /** Fake athlete ID returned in the mock OAuth token response. */
+  static readonly FAKE_ATHLETE_ID = 'i00000';
 
   /**
    * Complete the OAuth2 login flow after the WASM app has loaded.
