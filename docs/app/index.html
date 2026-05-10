@@ -160,9 +160,9 @@
     <div id="loading-status">Loading application…</div>
   </div>
 
-  <!-- Qt Wasm canvas -->
+  <!-- Qt WASM container (Qt 6.6+ requires a <div>, not a <canvas>) -->
   <div id="qt-canvas-wrapper">
-    <canvas id="qt-canvas" oncontextmenu="event.preventDefault()"></canvas>
+    <div id="qt-canvas" oncontextmenu="event.preventDefault()"></div>
   </div>
 
   <!-- BLE reconnect overlay — shown by webbluetooth_bridge.cpp JS when the
@@ -181,6 +181,83 @@
       <button id="ble-reconnect-dismiss">Continue without trainer</button>
     </div>
   </div>
+
+  <!-- ── Intervals.icu CORS proxy interceptor ───────────────────────────────
+       Rewrites XHR and fetch requests that target https://intervals.icu to
+       go through the Cloudflare Worker CORS proxy instead.
+       intervals.icu does not emit CORS headers, so all API calls and the
+       OAuth token exchange would otherwise be blocked by the browser.
+
+       The placeholder __INTERVALS_PROXY_URL__ is replaced by the
+       pages.yml deployment workflow using the INTERVALS_PROXY_URL
+       repository variable (Settings → Variables → Actions).
+       See workers/intervals-cors-proxy/README.md for setup instructions.
+
+       Set window.PLAYWRIGHT_DISABLE_ICU_PROXY = true (via addInitScript)
+       before page load to disable this interceptor in Playwright tests,
+       which mock https://intervals.icu/** directly at the network layer.
+  -->
+  <script>
+    (function () {
+      'use strict';
+      var PROXY = '__INTERVALS_PROXY_URL__';
+      var ICU   = 'https://intervals.icu';
+
+      // Skip if the proxy URL was not injected (e.g. local development).
+      if (!PROXY || PROXY.charAt(0) === '_') return;
+
+      // Skip if a Playwright test has opted out (tests mock intervals.icu directly).
+      if ((window as any).PLAYWRIGHT_DISABLE_ICU_PROXY) return;
+
+      // Normalise: strip any trailing slashes from the proxy base URL.
+      PROXY = PROXY.replace(/\/+$/, '');
+
+      function rewriteUrl(url) {
+        if (typeof url === 'string' && url.indexOf(ICU) === 0) {
+          return PROXY + '/proxy' + url.slice(ICU.length);
+        }
+        return url;
+      }
+
+      // ── Override XMLHttpRequest.prototype.open ─────────────────────────────
+      // Qt WASM (Emscripten 3.1.43 singlethread) uses XHR for all
+      // QNetworkAccessManager requests.  Patching open() before any WASM
+      // module loads intercepts every intervals.icu network call.
+      var origXhrOpen = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function (method, url, async, user, pass) {
+        // async defaults to true per the XHR spec when omitted.
+        return origXhrOpen.call(
+          this, method, rewriteUrl(url),
+          async !== undefined ? async : true,
+          user, pass
+        );
+      };
+
+      // ── Override window.fetch ──────────────────────────────────────────────
+      // Some Qt WASM paths and the broader Emscripten runtime may use the
+      // native Fetch API directly.
+      var origFetch = window.fetch;
+      window.fetch = function (input, init) {
+        if (typeof input === 'string') {
+          return origFetch.call(this, rewriteUrl(input), init);
+        }
+        if (input instanceof URL) {
+          return origFetch.call(this, new URL(rewriteUrl(input.href)), init);
+        }
+        if (input && typeof input.url === 'string') {
+          // Merge any init overrides before rewriting so headers/body are
+          // not lost when constructing the rewritten Request.
+          var merged = init ? new Request(input, init) : input;
+          var rewritten = rewriteUrl(merged.url);
+          if (rewritten !== merged.url) {
+            return origFetch.call(this, new Request(rewritten, merged));
+          }
+          return origFetch.call(this, merged);
+        }
+        return origFetch.apply(this, arguments);
+      };
+    })();
+  </script>
 
   <script>
     // ── Web Bluetooth capability check ─────────────────────────────────────────

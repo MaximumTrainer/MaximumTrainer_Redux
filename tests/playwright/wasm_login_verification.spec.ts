@@ -132,6 +132,7 @@ test.describe('Login verification – Layer B: OAuth popup flow', () => {
     ctx = await browser.newContext();
     wasmApp = new WasmAppPage(await ctx.newPage());
 
+    await wasmApp.disableIcuProxyInterceptor();
     await wasmApp.stubBluetooth();
     await wasmApp.mockBackendApis();
 

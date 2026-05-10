@@ -1,0 +1,10 @@
+name            = "mt-intervals-proxy"
+main            = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Workers are deployed to:
+#   https://mt-intervals-proxy.<account-subdomain>.workers.dev
+#
+# After deploying, copy that URL and set it as the INTERVALS_PROXY_URL
+# repository variable in GitHub Actions (Settings → Variables → Actions).
+# The pages.yml workflow will inject it into docs/app/index.html.

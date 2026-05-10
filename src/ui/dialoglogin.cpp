@@ -115,20 +115,28 @@ EM_JS(void, js_openOAuthPopup, (const char *authUrlCStr), {
     var popup = window.open(authUrl, 'mt_oauth_login',
                             'width=600,height=720,menubar=no,toolbar=no,resizable=yes');
     if (!popup) {
-        // Popup was blocked.  Remove the listener and notify C++ via empty code/state
-        // so that the failure path in onWasmOAuthCodeReceived triggers onOAuthFailed().
+        // Popup was blocked.  Remove the listener and send the real OAuth
+        // state with an empty code so that the state check in C++ passes and
+        // we reach the "empty authorization code" → onOAuthFailed() branch.
+        // Sending empty state would incorrectly trigger the CSRF-warning path.
         window.removeEventListener('message', window._mtOAuthMsgListener);
         window._mtOAuthMsgListener = null;
 
+        var stateParam = '';
+        try {
+            stateParam = new URL(authUrl).searchParams.get('state') || '';
+        } catch (e) {}
+
         var enc      = new TextEncoder();
-        var emptyBuf = enc.encode('\0');
-        var p1       = _malloc(emptyBuf.length);
-        var p2       = _malloc(emptyBuf.length);
-        HEAPU8.set(emptyBuf, p1);
-        HEAPU8.set(emptyBuf, p2);
-        Module._mt_wasm_oauth_code_received_impl(p1, p2);
-        _free(p1);
-        _free(p2);
+        var codeBuf  = enc.encode('\0');
+        var stateBuf = enc.encode(stateParam + '\0');
+        var codePtr  = _malloc(codeBuf.length);
+        var statePtr = _malloc(stateBuf.length);
+        HEAPU8.set(codeBuf,  codePtr);
+        HEAPU8.set(stateBuf, statePtr);
+        Module._mt_wasm_oauth_code_received_impl(codePtr, statePtr);
+        _free(codePtr);
+        _free(statePtr);
     }
 });
 
@@ -161,8 +169,11 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
 {
     ui->setupUi(this);
 
-    Qt::WindowFlags flags(Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
-    this->setWindowFlags(flags);
+#ifndef Q_OS_WASM
+    // Qt WASM platform plugin does not support setWindowFlags/setParent;
+    // omit this call to avoid the "This plugin does not support setParent!" warning.
+    this->setWindowFlags(Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
+#endif
 
     gotUpdateDialog              = false;
     replyIntervalsIcuAthlete     = nullptr;

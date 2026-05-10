@@ -63,6 +63,26 @@ export class WasmAppPage {
     await this.page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
   }
 
+  // ── Proxy / network helpers ───────────────────────────────────────────────
+
+  /**
+   * Disable the `__INTERVALS_PROXY_URL__` XHR/fetch interceptor that
+   * `docs/app/index.html` injects to route intervals.icu traffic through
+   * the Cloudflare CORS proxy.
+   *
+   * In Playwright tests we mock `https://intervals.icu/**` directly at the
+   * network layer (via `page.route`), so the proxy rewrite must not run —
+   * otherwise the browser makes requests to the proxy host, which our mocks
+   * do not cover.
+   *
+   * **Must be called before `goto()`.**
+   */
+  async disableIcuProxyInterceptor(): Promise<void> {
+    await this.page.addInitScript(() => {
+      (window as any).PLAYWRIGHT_DISABLE_ICU_PROXY = true;
+    });
+  }
+
   // ── Bluetooth stub helpers ────────────────────────────────────────────────
 
   /**
@@ -223,6 +243,10 @@ export class WasmAppPage {
    * **Must be called before `goto()`.**
    */
   async mockBackendApis(): Promise<string[]> {
+    // Disable the Cloudflare CORS proxy interceptor so that our network-level
+    // mocks for https://intervals.icu/** are matched directly.
+    await this.disableIcuProxyInterceptor();
+
     const requestedUrls: string[] = [];
 
     await this.page.route('https://maximumtrainer.com/**', async (route) => {
@@ -269,6 +293,10 @@ export class WasmAppPage {
    * **Must be called before `goto()`.**
    */
   async mockIntervalsIcuApi(): Promise<string[]> {
+    // Disable the Cloudflare CORS proxy interceptor so that our network-level
+    // mocks for https://intervals.icu/** are matched directly.
+    await this.disableIcuProxyInterceptor();
+
     const requestedUrls: string[] = [];
 
     await this.page.route('https://intervals.icu/**', async (route) => {
