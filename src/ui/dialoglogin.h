@@ -3,8 +3,10 @@
 
 #include <QDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMovie>
 #include <QNetworkReply>
+#include <QPushButton>
 #include <QTimer>
 
 #include "account.h"
@@ -60,6 +62,14 @@ private slots:
     void on_checkBox_workOffline_clicked(bool checked);
     void on_pushButton_startOffline_clicked();
 
+#ifdef Q_OS_WASM
+    /// Called when the user clicks the WASM API-key sign-in button.
+    void onApiKeyLoginClicked();
+    /// Test hook: programmatically fill and submit the API-key login form.
+    /// Registered as window.mt_loginWithApiKey() in the WASM build for Playwright.
+    void loginViaTestHook(const QString &athleteId, const QString &apiKey);
+#endif
+
 signals:
     /// Emitted when the Intervals.icu OAuth WebView page becomes active.
     /// Integration tests connect to this to detect the start of the OAuth flow.
@@ -71,6 +81,14 @@ private:
     /// Fetch the athlete profile and training zones from Intervals.icu using
     /// the OAuth2 Bearer token. Switches to the loading page (index 2).
     void fetchIntervalsIcuDataOAuth();
+
+#ifdef Q_OS_WASM
+    /// Fetch the athlete profile and training zones using an API key (WASM
+    /// path — Basic auth, no OAuth redirect required).  Sets
+    /// m_usingApiKeyLogin = true so that reply slots can show inline errors
+    /// on auth failure rather than silently proceeding.
+    void fetchIntervalsIcuDataApiKey(const QString &athleteId, const QString &apiKey);
+#endif
 
     /// Provision and complete the login using an Intervals.icu OAuth identity.
     void loginWithIntervalsIcuIdentity();
@@ -111,6 +129,15 @@ private:
     int  m_pendingIntervalsIcuReplies;
 
     bool m_loggingInViaIntervalsIcu = false;
+
+#ifdef Q_OS_WASM
+    // WASM API-key login widgets (created programmatically in the constructor).
+    QLineEdit   *m_wasmAthleteIdEdit = nullptr;
+    QLineEdit   *m_wasmApiKeyEdit    = nullptr;
+    QLabel      *m_wasmErrorLabel    = nullptr;
+    QPushButton *m_wasmSignInButton  = nullptr;
+    bool         m_usingApiKeyLogin  = false;
+#endif
 };
 
 #endif // DIALOGLOGIN_H

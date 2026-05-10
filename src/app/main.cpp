@@ -149,24 +149,26 @@ int main(int argc, char *argv[]) {
     }
 
 #ifdef Q_OS_WASM
-    // WASM has no persistent server login. Initialize the global Account with
-    // safe offline/guest defaults — identical to DialogLogin::loginOffline().
+    // WASM: show the login dialog non-blockingly (exec() is unsupported on
+    // singlethread Emscripten).  MainWindow is created only after the user
+    // successfully logs in via the API-key form in DialogLogin.
     {
-        Account *wasmAccount = qApp->property("Account").value<Account*>();
-        if (wasmAccount) {
-            wasmAccount->isOffline            = true;
-            wasmAccount->id                   = 0;
-            wasmAccount->email                = QStringLiteral("local@offline");
-            wasmAccount->email_clean          = QStringLiteral("offline_user");
-            wasmAccount->display_name         = QObject::tr("Local User");
-            wasmAccount->first_name           = QObject::tr("Local");
-            wasmAccount->last_name            = QObject::tr("User");
-            wasmAccount->subscription_type_id = 1;
-            // Load any previously saved local preferences (folder paths, etc.).
-            // XmlUtil gracefully returns if the save file does not yet exist.
-            XmlUtil::parseLocalSaveFile(wasmAccount);
-        }
+        auto *loginDlg = new DialogLogin(nullptr);
+        QObject::connect(loginDlg, &QDialog::accepted, loginDlg, [loginDlg]() {
+            auto *account = qApp->property("Account").value<Account*>();
+            if (account)
+                AppTheme::apply(qApp, static_cast<AppTheme::Mode>(account->app_theme));
+            auto *mainWin = new MainWindow();
+            mainWin->show();
+            loginDlg->deleteLater();
+        });
+        QObject::connect(loginDlg, &QDialog::rejected, loginDlg, [loginDlg]() {
+            loginDlg->deleteLater();
+            qApp->quit();
+        });
+        loginDlg->show();
     }
+    return app.exec();
 #endif // Q_OS_WASM
 
     MainWindow w;

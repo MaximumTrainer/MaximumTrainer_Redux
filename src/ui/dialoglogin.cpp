@@ -5,6 +5,7 @@
 #include <QMessageBox>
 #include <QRegularExpression>
 #include <QUuid>
+#include <QVBoxLayout>
 
 #include "logger.h"
 
@@ -17,6 +18,51 @@
 #include "extrequest.h"
 #include "credential_store.h"
 #include "intervalsicuoauthwidget.h"
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WASM: Emscripten bridge for the Playwright login test hook.
+// Declares g_loginDialog and js_exposeLoginTestApi() so they are available
+// in the DialogLogin constructor, which is defined later in this file.
+// ─────────────────────────────────────────────────────────────────────────────
+#ifdef GC_WASM_BUILD
+#include <emscripten.h>
+#include <QPointer>
+
+static QPointer<DialogLogin> g_loginDialog;
+
+extern "C" {
+
+EMSCRIPTEN_KEEPALIVE
+void mt_login_with_api_key_impl(const char *athleteId, const char *apiKey)
+{
+    if (!g_loginDialog) return;
+    const QString id  = QString::fromUtf8(athleteId);
+    const QString key = QString::fromUtf8(apiKey);
+    QMetaObject::invokeMethod(g_loginDialog.data(), "loginViaTestHook",
+                              Qt::QueuedConnection,
+                              Q_ARG(QString, id), Q_ARG(QString, key));
+}
+
+} // extern "C"
+
+EM_JS(void, js_exposeLoginTestApi, (), {
+    // window.mt_loginWithApiKey(athleteId, apiKey) — fills and submits the
+    // API-key login form.  Available as soon as the WASM app loads (before
+    // login).  Playwright tests call this to authenticate in the WASM app.
+    window.mt_loginWithApiKey = function(athleteId, apiKey) {
+        var enc    = new TextEncoder();
+        var idBuf  = enc.encode(String(athleteId || '') + '\0');
+        var keyBuf = enc.encode(String(apiKey    || '') + '\0');
+        var idPtr  = _malloc(idBuf.length);
+        var keyPtr = _malloc(keyBuf.length);
+        HEAPU8.set(idBuf,  idPtr);
+        HEAPU8.set(keyBuf, keyPtr);
+        Module._mt_login_with_api_key_impl(idPtr, keyPtr);
+        _free(idPtr);
+        _free(keyPtr);
+    };
+});
+#endif // GC_WASM_BUILD
 
 
 
@@ -95,6 +141,75 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
         ui->label_welcomeHeading->setText(tr("Sign in with Intervals.icu"));
     }
 
+#ifdef Q_OS_WASM
+    // ── WASM: replace OAuth flow with API-key login ───────────────────────
+    // OAuth requires a browser redirect that can't return to the WASM app.
+    // Hide offline and OAuth widgets; show a simple API-key entry form.
+    ui->checkBox_workOffline->setVisible(false);
+    ui->pushButton_startOffline->setVisible(false);
+    ui->line_separator->setVisible(false);
+    ui->pushButton_loginIntervalsIcu->setVisible(false);
+
+    {
+        auto *wasmWidget = new QWidget(this);
+        auto *wasmLayout = new QVBoxLayout(wasmWidget);
+        wasmLayout->setContentsMargins(0, 8, 0, 0);
+        wasmLayout->setSpacing(8);
+
+        auto *instructions = new QLabel(
+            tr("Enter your <a href='https://intervals.icu'>Intervals.icu</a> "
+               "athlete ID and API key.<br>"
+               "<small>Find your API key in Intervals.icu → Account Settings → API Key</small>"),
+            this);
+        instructions->setOpenExternalLinks(true);
+        instructions->setWordWrap(true);
+        instructions->setTextFormat(Qt::RichText);
+
+        m_wasmAthleteIdEdit = new QLineEdit(this);
+        m_wasmAthleteIdEdit->setPlaceholderText(tr("Athlete ID (e.g. i12345)"));
+        if (!account->intervals_icu_athlete_id.isEmpty())
+            m_wasmAthleteIdEdit->setText(account->intervals_icu_athlete_id);
+
+        m_wasmApiKeyEdit = new QLineEdit(this);
+        m_wasmApiKeyEdit->setPlaceholderText(tr("API key"));
+        m_wasmApiKeyEdit->setEchoMode(QLineEdit::Password);
+
+        m_wasmSignInButton = new QPushButton(tr("Sign in"), this);
+        // Reuse the stylesheet that targets pushButton_loginIntervalsIcu's style
+        m_wasmSignInButton->setObjectName(QStringLiteral("pushButton_loginIntervalsIcu"));
+
+        m_wasmErrorLabel = new QLabel(this);
+        m_wasmErrorLabel->setVisible(false);
+        m_wasmErrorLabel->setWordWrap(true);
+        m_wasmErrorLabel->setStyleSheet(QStringLiteral("color: #c0392b; font-size: 11px;"));
+
+        wasmLayout->addWidget(instructions);
+        wasmLayout->addWidget(m_wasmAthleteIdEdit);
+        wasmLayout->addWidget(m_wasmApiKeyEdit);
+        wasmLayout->addWidget(m_wasmSignInButton);
+        wasmLayout->addWidget(m_wasmErrorLabel);
+
+        // Insert the widget into the login-form page's layout, before the
+        // last item (bottom spacer).
+        if (auto *lay = qobject_cast<QVBoxLayout *>(ui->widget_center->layout())) {
+            lay->insertWidget(lay->count() - 1, wasmWidget);
+        }
+
+        connect(m_wasmSignInButton, &QPushButton::clicked,
+                this, &DialogLogin::onApiKeyLoginClicked);
+        // Allow pressing Enter in either field to trigger sign-in.
+        connect(m_wasmAthleteIdEdit, &QLineEdit::returnPressed,
+                this, &DialogLogin::onApiKeyLoginClicked);
+        connect(m_wasmApiKeyEdit, &QLineEdit::returnPressed,
+                this, &DialogLogin::onApiKeyLoginClicked);
+    }
+#ifdef GC_WASM_BUILD
+    // Register this dialog as the target for the Playwright login test hook.
+    g_loginDialog = this;
+    js_exposeLoginTestApi();
+#endif
+#endif // Q_OS_WASM
+
     if (testMode) {
         // In test mode skip all network requests.  stackedWidget_main defaults
         // to page 0 (widget_center) from Qt Designer, so widget_center is
@@ -104,6 +219,8 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     }
 
     // Check for app updates in the background; never block the login UI.
+    // WASM users cannot download a desktop binary, so skip the version check.
+#ifndef Q_OS_WASM
     replyVersion = VersionDAO::getVersion();
     if (replyVersion) {
         connect(replyVersion, &QNetworkReply::finished,
@@ -114,6 +231,7 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
                 this, &DialogLogin::onVersionTimeout);
         m_versionTimeout->start(10000);
     }
+#endif // Q_OS_WASM
 
     // Silent session restore: if stored tokens exist, try to validate them
     // against the API before showing the login form.
@@ -122,7 +240,13 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     if (!storedToken.isEmpty() && !storedAthleteId.isEmpty()) {
         ui->label_process->setText(tr("Reconnecting to Intervals.icu..."));
         ui->stackedWidget_main->setCurrentIndex(2); // loading/reconnecting page
+#ifdef Q_OS_WASM
+        // On WASM the stored "token" is the API key — use Basic auth.
+        m_silentAuthReply = IntervalsIcuDAO::getAthlete(storedAthleteId, storedToken);
+        m_usingApiKeyLogin = true;
+#else
         m_silentAuthReply = IntervalsIcuDAO::getAthleteBearer(storedAthleteId, storedToken);
+#endif
         if (m_silentAuthReply) {
             connect(m_silentAuthReply, &QNetworkReply::finished,
                     this, &DialogLogin::onSilentAuthFinished);
@@ -378,8 +502,7 @@ void DialogLogin::onOAuthFailed()
         this,
         tr("Intervals.icu Login Failed"),
         tr("Intervals.icu authorization was denied or did not complete.\n\n"
-           "Please click \"Sign in with Intervals.icu\" to try again, or check the "
-           "\"Work Offline\" box to continue without an Intervals.icu account."));
+           "Please click \"Sign in with Intervals.icu\" to try again."));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -604,7 +727,45 @@ void DialogLogin::slotFinishedIntervalsIcuAthlete()
 {
     if (!replyIntervalsIcuAthlete) return;
 
-    if (replyIntervalsIcuAthlete->error() == QNetworkReply::NoError) {
+    const QNetworkReply::NetworkError netError = replyIntervalsIcuAthlete->error();
+    const int httpStatus = replyIntervalsIcuAthlete->attribute(
+        QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+#ifdef Q_OS_WASM
+    // On WASM, an auth failure (401/403) during API-key login means bad
+    // credentials — stop here and show an inline error instead of logging in
+    // with an incomplete account.
+    if (m_usingApiKeyLogin
+        && (httpStatus == 401 || httpStatus == 403
+            || netError == QNetworkReply::AuthenticationRequiredError)) {
+        LOG_WARN("DialogLogin",
+                 QStringLiteral("API-key login: auth rejected (HTTP %1)").arg(httpStatus));
+        replyIntervalsIcuAthlete->deleteLater();
+        replyIntervalsIcuAthlete = nullptr;
+        if (replyIntervalsIcuSettings) {
+            replyIntervalsIcuSettings->abort();
+            replyIntervalsIcuSettings->deleteLater();
+            replyIntervalsIcuSettings = nullptr;
+        }
+        m_pendingIntervalsIcuReplies = 0;
+        m_loggingInViaIntervalsIcu   = false;
+        m_usingApiKeyLogin           = false;
+        if (m_intervalsIcuTimeout) m_intervalsIcuTimeout->stop();
+        // Clear the credentials we just tried so they are not persisted.
+        clearTokens();
+        account->intervals_icu_athlete_id.clear();
+        if (m_wasmErrorLabel)
+            m_wasmErrorLabel->setText(tr("Invalid athlete ID or API key. Please check your credentials and try again."));
+        if (m_wasmErrorLabel)
+            m_wasmErrorLabel->setVisible(true);
+        if (m_wasmSignInButton)
+            m_wasmSignInButton->setEnabled(true);
+        showLoginForm(false);
+        return;
+    }
+#endif // Q_OS_WASM
+
+    if (netError == QNetworkReply::NoError) {
         const QByteArray data = replyIntervalsIcuAthlete->readAll();
         Util::parseJsonIntervalsIcuAthlete(QString::fromUtf8(data));
         LOG_INFO("DialogLogin", QStringLiteral("Intervals.icu athlete profile retrieved successfully"));
@@ -676,3 +837,117 @@ void DialogLogin::completeLogin()
     LOG_INFO("DialogLogin", QStringLiteral("Login complete – entering application"));
     this->accept();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WASM API-key login
+// ─────────────────────────────────────────────────────────────────────────────
+#ifdef Q_OS_WASM
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void DialogLogin::onApiKeyLoginClicked()
+{
+    if (!m_wasmAthleteIdEdit || !m_wasmApiKeyEdit) return;
+
+    const QString athleteId = m_wasmAthleteIdEdit->text().trimmed();
+    const QString apiKey    = m_wasmApiKeyEdit->text().trimmed();
+
+    if (m_wasmErrorLabel) m_wasmErrorLabel->setVisible(false);
+
+    if (athleteId.isEmpty() || apiKey.isEmpty()) {
+        if (m_wasmErrorLabel) {
+            m_wasmErrorLabel->setText(tr("Please enter both your athlete ID and API key."));
+            m_wasmErrorLabel->setVisible(true);
+        }
+        return;
+    }
+
+    // Prevent double submission.
+    if (m_wasmSignInButton) m_wasmSignInButton->setEnabled(false);
+
+    // Store credentials temporarily — they are persisted only on success.
+    account->intervals_icu_athlete_id    = athleteId;
+    account->intervals_icu_api_key       = apiKey;  // used by Basic-auth API calls
+    account->intervals_icu_access_token  = apiKey;  // stored for silent restore on WASM
+    // Clear any stale OAuth refresh token that belongs to a previous session.
+    account->intervals_icu_refresh_token.clear();
+
+    m_loggingInViaIntervalsIcu = true;
+    m_usingApiKeyLogin         = true;
+
+    fetchIntervalsIcuDataApiKey(athleteId, apiKey);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Fetch the athlete profile and training zones using Intervals.icu Basic auth
+/// (API key).  On success the shared slots call loginWithIntervalsIcuIdentity()
+/// exactly as the OAuth path does.  On auth failure, slotFinishedIntervalsIcuAthlete()
+/// shows an inline error and aborts the login.
+void DialogLogin::fetchIntervalsIcuDataApiKey(const QString &athleteId, const QString &apiKey)
+{
+    LOG_INFO("DialogLogin",
+             QStringLiteral("Fetching Intervals.icu profile via API key for athlete: ")
+             + athleteId);
+    ui->label_process->setText(tr("Retrieving your Intervals.icu profile..."));
+    ui->stackedWidget_main->setCurrentIndex(2); // loading page
+
+    m_pendingIntervalsIcuReplies = 2;
+
+    replyIntervalsIcuAthlete = IntervalsIcuDAO::getAthlete(athleteId, apiKey);
+    if (replyIntervalsIcuAthlete) {
+        connect(replyIntervalsIcuAthlete, &QNetworkReply::finished,
+                this, &DialogLogin::slotFinishedIntervalsIcuAthlete);
+    } else {
+        m_pendingIntervalsIcuReplies--;
+    }
+
+    replyIntervalsIcuSettings = IntervalsIcuDAO::getAthleteSettings(athleteId, apiKey);
+    if (replyIntervalsIcuSettings) {
+        connect(replyIntervalsIcuSettings, &QNetworkReply::finished,
+                this, &DialogLogin::slotFinishedIntervalsIcuSettings);
+    } else {
+        m_pendingIntervalsIcuReplies--;
+    }
+
+    if (m_pendingIntervalsIcuReplies <= 0) {
+        loginWithIntervalsIcuIdentity();
+        return;
+    }
+
+    // Safety-net timeout.
+    if (m_intervalsIcuTimeout) {
+        m_intervalsIcuTimeout->stop();
+        m_intervalsIcuTimeout->deleteLater();
+    }
+    m_intervalsIcuTimeout = new QTimer(this);
+    m_intervalsIcuTimeout->setSingleShot(true);
+    connect(m_intervalsIcuTimeout, &QTimer::timeout, this, [this]() {
+        if (!m_loggingInViaIntervalsIcu) return;
+        LOG_WARN("DialogLogin",
+                 QStringLiteral("API-key profile fetch timed out – proceeding with login"));
+        m_pendingIntervalsIcuReplies = 0;
+        if (replyIntervalsIcuAthlete) {
+            auto *r = replyIntervalsIcuAthlete;
+            replyIntervalsIcuAthlete = nullptr;
+            r->abort(); r->deleteLater();
+        }
+        if (replyIntervalsIcuSettings) {
+            auto *r = replyIntervalsIcuSettings;
+            replyIntervalsIcuSettings = nullptr;
+            r->abort(); r->deleteLater();
+        }
+        loginWithIntervalsIcuIdentity();
+    });
+    m_intervalsIcuTimeout->start(15000);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Playwright test hook: programmatically fill and submit the API-key login form.
+/// Exposed as window.mt_loginWithApiKey(athleteId, apiKey) via Emscripten.
+void DialogLogin::loginViaTestHook(const QString &athleteId, const QString &apiKey)
+{
+    if (m_wasmAthleteIdEdit) m_wasmAthleteIdEdit->setText(athleteId);
+    if (m_wasmApiKeyEdit)    m_wasmApiKeyEdit->setText(apiKey);
+    onApiKeyLoginClicked();
+}
+
+#endif // Q_OS_WASM

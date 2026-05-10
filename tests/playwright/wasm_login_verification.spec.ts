@@ -8,16 +8,17 @@
  * ──────────────────────────────────────────────────────────────────────────────
  * Layer A – pre-authentication state (no credentials required, runs always):
  *   A1. App loads without premature intervals.icu API calls.
- *   A2. Login test hooks are exposed after the WASM app loads.
+ *   A2. The mt_loginWithApiKey test hook is exposed after the WASM app loads,
+ *       allowing Playwright to trigger the API-key login form programmatically.
  *
  * Layer B – real credentials login verification (requires GitHub Secrets):
  *   B0. Real credentials are validated by a direct Node.js HTTPS call to the
  *       intervals.icu API (bypasses CORS).  All subsequent Layer B tests are
  *       gated on this – the suite only passes when real login succeeds.
- *   B1. WASM uses injected credentials in its intervals.icu API requests.
- *   B2. WASM constructs the correct Authorization header from the injected
- *       credentials.
- *   B3. No WASM errors are reported after a successful authenticated API call.
+ *   B1. WASM login form accepts credentials and reaches MainWindow (verified
+ *       by mt_setIntervalsCredentials and mt_intervalsRefresh hooks appearing).
+ *   B2. WASM uses the correct Authorization header in post-login API requests.
+ *   B3. No WASM errors are reported after a successful authenticated login.
  */
 
 import { test, expect } from '@playwright/test';
@@ -68,16 +69,14 @@ test.describe('Login verification – Layer A: pre-authentication state', () => 
     ).toHaveLength(0);
   });
 
-  test('A2 – login test hooks are exposed after WASM app loads', async () => {
-    const hooksExist = await wasmApp.page.evaluate(
-      () =>
-        typeof (window as any).mt_setIntervalsCredentials === 'function' &&
-        typeof (window as any).mt_intervalsRefresh === 'function',
+  test('A2 – login test hook (mt_loginWithApiKey) is exposed after WASM app loads', async () => {
+    const hookExists = await wasmApp.page.evaluate(
+      () => typeof (window as any).mt_loginWithApiKey === 'function',
     );
     expect(
-      hooksExist,
-      'window.mt_setIntervalsCredentials and window.mt_intervalsRefresh ' +
-      'must both be functions after the WASM app loads.',
+      hookExists,
+      'window.mt_loginWithApiKey must be a function after the WASM app loads. ' +
+      'This hook allows Playwright to submit the API-key login form programmatically.',
     ).toBe(true);
   });
 });
@@ -182,12 +181,29 @@ test.describe('Login verification – Layer B: real credentials', () => {
     await wasmApp.goto();
     await wasmApp.waitForFullyLoaded(300_000);
 
-    // Wait for both test hooks to be registered.
-    await wasmApp.waitForIntervalsTestHooks();
+    // ── Step 3: Wait for the login hook and submit the API-key login form ─────
+    // The WASM app now shows a login form instead of going offline automatically.
+    // mt_loginWithApiKey fills and submits the form, which causes DialogLogin to
+    // validate credentials (via the mocked intervals.icu route above) and then
+    // create MainWindow on success.
+    await wasmApp.page.waitForFunction(
+      () => typeof (window as any).mt_loginWithApiKey === 'function',
+      null,
+      { timeout: 60_000 },
+    );
 
-    // ── Step 3: Inject real credentials into the running WASM app ─────────────
-    await wasmApp.injectIntervalsCredentials(apiKey, athleteId);
+    await wasmApp.page.evaluate(
+      ({ key, id }: { key: string; id: string }) =>
+        (window as any).mt_loginWithApiKey(id, key),
+      { key: apiKey, id: athleteId },
+    );
 
+    // ── Step 4: Wait for MainWindow to appear (login succeeded) ──────────────
+    // After successful login, TabIntervalsIcu registers mt_setIntervalsCredentials
+    // and mt_intervalsRefresh.  Their presence confirms MainWindow is ready.
+    await wasmApp.waitForIntervalsTestHooks(120_000);
+
+    // ── Step 5: Trigger a calendar refresh and wait for an /events response ───
     const calendarResponsePromise = wasmApp.page.waitForResponse(
       (resp) =>
         resp.url().includes('intervals.icu') && resp.url().includes('/events'),
@@ -226,8 +242,8 @@ test.describe('Login verification – Layer B: real credentials', () => {
     ).toBe(200);
   });
 
-  // ── B1: WASM makes API request after credentials are injected ────────────────
-  test('B1 – WASM issues an intervals.icu API request after credentials are injected', async () => {
+  // ── B1: WASM login form accepts credentials and MainWindow loads ─────────────
+  test('B1 – WASM login form accepts credentials and MainWindow loads', async () => {
     if (!hasCredentials) {
       test.skip(
         true,
@@ -235,15 +251,17 @@ test.describe('Login verification – Layer B: real credentials', () => {
         'to run Intervals.icu login verification tests.',
       );
     }
+    // If MainWindow loaded, the intervals hooks were registered (checked in beforeAll).
+    // Additionally verify that at least one intervals.icu data request was made.
     const dataRequests = capturedRequests.filter((r) => r.method !== 'OPTIONS');
     expect(
       dataRequests.length,
-      `No intervals.icu data requests were made after credential injection.`,
+      'No intervals.icu data requests were made after API-key login.',
     ).toBeGreaterThan(0);
   });
 
   // ── B2: WASM uses the correct Authorization header ───────────────────────────
-  test('B2 – WASM constructs the correct Authorization header from injected credentials', async () => {
+  test('B2 – WASM constructs the correct Authorization header from API key credentials', async () => {
     if (!hasCredentials) {
       test.skip(
         true,
