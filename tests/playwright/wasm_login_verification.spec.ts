@@ -2,22 +2,25 @@
  * Intervals.icu Login Verification – WASM
  *
  * Verifies that MaximumTrainer WASM correctly authenticates with Intervals.icu
- * using real credentials supplied via GitHub Actions secrets.
+ * using the OAuth2 popup flow.  Real credentials (from GitHub Actions secrets)
+ * are used to gate Layer B tests, but all actual HTTP traffic to intervals.icu
+ * is intercepted and mocked so the browser-side OAuth code path is exercised
+ * without requiring CORS or a real token exchange.
  *
  * Test structure
  * ──────────────────────────────────────────────────────────────────────────────
  * Layer A – pre-authentication state (no credentials required, runs always):
  *   A1. App loads without premature intervals.icu API calls.
- *   A2. The mt_loginWithApiKey test hook is exposed after the WASM app loads,
- *       allowing Playwright to trigger the API-key login form programmatically.
+ *   A2. The mt_wasmOAuthReady flag is set after the WASM app loads, confirming
+ *       the OAuth popup bridge is initialized and ready.
  *
- * Layer B – real credentials login verification (requires GitHub Secrets):
+ * Layer B – OAuth popup flow verification (requires GitHub Secrets):
  *   B0. Real credentials are validated by a direct Node.js HTTPS call to the
  *       intervals.icu API (bypasses CORS).  All subsequent Layer B tests are
- *       gated on this – the suite only passes when real login succeeds.
- *   B1. WASM login form accepts credentials and reaches MainWindow (verified
+ *       gated on this – the suite only passes when real credentials are valid.
+ *   B1. Mocked OAuth popup flow completes login and reaches MainWindow (verified
  *       by mt_setIntervalsCredentials and mt_intervalsRefresh hooks appearing).
- *   B2. WASM uses the correct Authorization header in post-login API requests.
+ *   B2. WASM uses Bearer authorization in post-login API requests.
  *   B3. No WASM errors are reported after a successful authenticated login.
  */
 
@@ -69,34 +72,37 @@ test.describe('Login verification – Layer A: pre-authentication state', () => 
     ).toHaveLength(0);
   });
 
-  test('A2 – login test hook (mt_loginWithApiKey) is exposed after WASM app loads', async () => {
-    const hookExists = await wasmApp.page.evaluate(
-      () => typeof (window as any).mt_loginWithApiKey === 'function',
+  test('A2 – WASM OAuth bridge (mt_wasmOAuthReady) is exposed after app loads', async () => {
+    const ready = await wasmApp.page.evaluate(
+      () => (window as any).mt_wasmOAuthReady === true,
     );
     expect(
-      hookExists,
-      'window.mt_loginWithApiKey must be a function after the WASM app loads. ' +
-      'This hook allows Playwright to submit the API-key login form programmatically.',
+      ready,
+      'window.mt_wasmOAuthReady must be true after the WASM app loads. ' +
+      'This flag confirms the OAuth popup bridge is initialized and ready.',
     ).toBe(true);
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Layer B – real credentials login verification
+// Layer B – OAuth popup flow verification (requires GitHub Secrets)
 // ─────────────────────────────────────────────────────────────────────────────
-test.describe('Login verification – Layer B: real credentials', () => {
+test.describe('Login verification – Layer B: OAuth popup flow', () => {
   test.describe.configure({ timeout: 420_000 });
 
   const apiKey      = process.env['INTERVALS_ICU_API_KEY']    ?? '';
   const athleteId   = process.env['INTERVALS_ICU_ATHLETE_ID'] ?? '';
   const hasCredentials = !!(apiKey && athleteId);
 
+  // Fake Bearer token returned by the mocked token exchange endpoint.
+  const FAKE_ACCESS_TOKEN  = 'test_access_token_abcdef';
+  const FAKE_REFRESH_TOKEN = 'test_refresh_token_ghijkl';
+
   let wasmApp: WasmAppPage;
   let ctx: import('@playwright/test').BrowserContext;
 
   // Real HTTP response from the Node.js credential validation call.
-  let realApiStatus    = 0;
-  let realApiAthleteId = '';
+  let realApiStatus = 0;
 
   // Captured from browser-side route interception.
   let capturedRequests: Array<{ method: string; url: string; auth: string }> = [];
@@ -118,42 +124,89 @@ test.describe('Login verification – Layer B: real credentials', () => {
     try {
       const resp = await apiContext.get(`/api/v1/athlete/${athleteId}`);
       realApiStatus = resp.status();
-      if (realApiStatus === 200) {
-        const body = await resp.json() as Record<string, unknown>;
-        realApiAthleteId = String(body['id'] ?? body['athlete_id'] ?? '');
-      }
     } finally {
       await apiContext.dispose();
     }
 
-    // ── Step 2: Launch WASM browser with route interception ───────────────────
+    // ── Step 2: Launch WASM browser with OAuth popup mock ─────────────────────
     ctx = await browser.newContext();
     wasmApp = new WasmAppPage(await ctx.newPage());
 
     await wasmApp.stubBluetooth();
     await wasmApp.mockBackendApis();
 
-    // Intercept intervals.icu to capture the Authorization header and fulfil
-    // with mock 200 responses (CORS-safe in the localhost test environment).
+    // Mock window.open to capture the OAuth URL and immediately post a synthetic
+    // authorization code back via window.dispatchEvent('message').  This simulates
+    // the oauth_callback.html popup posting back to the opener.
+    // Must be installed BEFORE goto() so it is active when the WASM app runs.
+    await wasmApp.page.addInitScript(() => {
+      const origOpen = window.open.bind(window);
+      (window as any).open = function(
+        url?: string | URL,
+        target?: string,
+        features?: string,
+      ) {
+        if (target === 'mt_oauth_login' && typeof url === 'string') {
+          // Extract the state parameter from the OAuth URL.
+          try {
+            const parsed = new URL(url);
+            const state  = parsed.searchParams.get('state') ?? '';
+            // js_openOAuthPopup registers the message listener BEFORE calling
+            // window.open, so dispatching synchronously (setTimeout 0) is safe.
+            setTimeout(() => {
+              window.dispatchEvent(new MessageEvent('message', {
+                data: {
+                  mt_oauth_code:  'playwright_test_code_' + state.slice(0, 8),
+                  mt_oauth_state: state,
+                },
+                origin: window.location.origin,
+              }));
+            }, 0);
+          } catch (e) {
+            console.error('[Playwright] Failed to parse OAuth URL:', e);
+          }
+          // Return a minimal popup stub (already closed).
+          return { closed: true } as Window;
+        }
+        return origOpen(url, target, features);
+      };
+    });
+
+    // Intercept all intervals.icu requests: handle token exchange and data APIs.
+    const corsHeaders = {
+      'Access-Control-Allow-Origin':  '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'authorization, content-type',
+    };
+
     await wasmApp.page.route('https://intervals.icu/**', async (route) => {
       const req    = route.request();
       const method = req.method();
       const url    = req.url();
       const auth   = req.headers()['authorization'] ?? '';
 
-      capturedRequests.push({ method, url, auth });
-
-      const corsHeaders = {
-        'Access-Control-Allow-Origin':  '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers':
-          req.headers()['access-control-request-headers'] ?? 'authorization, content-type',
-      };
-
       if (method === 'OPTIONS') {
         await route.fulfill({ status: 204, headers: corsHeaders });
         return;
       }
+
+      // OAuth token exchange — must be handled before the general API catch-all.
+      if (url === 'https://intervals.icu/oauth/token' || url.includes('/oauth/token')) {
+        await route.fulfill({
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            access_token:  FAKE_ACCESS_TOKEN,
+            refresh_token: FAKE_REFRESH_TOKEN,
+            token_type:    'Bearer',
+            expires_in:    3600,
+            athlete_id:    athleteId,
+          }),
+        });
+        return;
+      }
+
+      capturedRequests.push({ method, url, auth });
 
       if (url.includes('/events')) {
         await route.fulfill({
@@ -173,7 +226,7 @@ test.describe('Login verification – Layer B: real credentials', () => {
         await route.fulfill({
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: athleteId }),
+          body: JSON.stringify({ id: athleteId, name: 'Test Athlete' }),
         });
       }
     });
@@ -181,26 +234,18 @@ test.describe('Login verification – Layer B: real credentials', () => {
     await wasmApp.goto();
     await wasmApp.waitForFullyLoaded(300_000);
 
-    // ── Step 3: Wait for the login hook and submit the API-key login form ─────
-    // The WASM app now shows a login form instead of going offline automatically.
-    // mt_loginWithApiKey fills and submits the form, which causes DialogLogin to
-    // validate credentials (via the mocked intervals.icu route above) and then
-    // create MainWindow on success.
+    // ── Step 3: Wait for the OAuth bridge and trigger login ───────────────────
     await wasmApp.page.waitForFunction(
-      () => typeof (window as any).mt_loginWithApiKey === 'function',
+      () => typeof (window as any).mt_triggerOAuthLogin === 'function'
+            && (window as any).mt_wasmOAuthReady === true,
       null,
       { timeout: 60_000 },
     );
 
-    await wasmApp.page.evaluate(
-      ({ key, id }: { key: string; id: string }) =>
-        (window as any).mt_loginWithApiKey(id, key),
-      { key: apiKey, id: athleteId },
-    );
+    // Trigger the OAuth popup flow (synchronous call within a user-gesture context).
+    await wasmApp.page.evaluate(() => (window as any).mt_triggerOAuthLogin());
 
     // ── Step 4: Wait for MainWindow to appear (login succeeded) ──────────────
-    // After successful login, TabIntervalsIcu registers mt_setIntervalsCredentials
-    // and mt_intervalsRefresh.  Their presence confirms MainWindow is ready.
     await wasmApp.waitForIntervalsTestHooks(120_000);
 
     // ── Step 5: Trigger a calendar refresh and wait for an /events response ───
@@ -242,8 +287,8 @@ test.describe('Login verification – Layer B: real credentials', () => {
     ).toBe(200);
   });
 
-  // ── B1: WASM login form accepts credentials and MainWindow loads ─────────────
-  test('B1 – WASM login form accepts credentials and MainWindow loads', async () => {
+  // ── B1: OAuth popup flow completes and MainWindow loads ───────────────────────
+  test('B1 – OAuth popup flow completes and MainWindow loads', async () => {
     if (!hasCredentials) {
       test.skip(
         true,
@@ -256,12 +301,12 @@ test.describe('Login verification – Layer B: real credentials', () => {
     const dataRequests = capturedRequests.filter((r) => r.method !== 'OPTIONS');
     expect(
       dataRequests.length,
-      'No intervals.icu data requests were made after API-key login.',
+      'No intervals.icu data requests were made after OAuth login.',
     ).toBeGreaterThan(0);
   });
 
-  // ── B2: WASM uses the correct Authorization header ───────────────────────────
-  test('B2 – WASM constructs the correct Authorization header from API key credentials', async () => {
+  // ── B2: WASM uses Bearer authorization after OAuth login ─────────────────────
+  test('B2 – WASM uses Bearer authorization header in post-login API requests', async () => {
     if (!hasCredentials) {
       test.skip(
         true,
@@ -270,21 +315,20 @@ test.describe('Login verification – Layer B: real credentials', () => {
       );
     }
 
-    const authRequest = capturedRequests.find(
-      (r) => r.method !== 'OPTIONS' && r.auth !== '',
+    const bearerRequest = capturedRequests.find(
+      (r) => r.method !== 'OPTIONS' && r.auth.startsWith('Bearer '),
     );
     expect(
-      authRequest,
-      'No intercepted intervals.icu request contained an Authorization header.',
+      bearerRequest,
+      'No intercepted intervals.icu request contained a Bearer Authorization header. ' +
+      'The WASM app should use OAuth Bearer tokens for post-login API requests.',
     ).toBeTruthy();
 
-    const expectedBase64 = Buffer.from(`API_KEY:${apiKey}`).toString('base64');
-    const expectedHeader  = `Basic ${expectedBase64}`;
-
+    // Verify the Bearer token matches the one returned by the mocked token exchange.
     expect(
-      authRequest!.auth,
-      `Authorization header mismatch.\nExpected: "${expectedHeader}"\nReceived: "${authRequest!.auth}"`,
-    ).toBe(expectedHeader);
+      bearerRequest!.auth,
+      `Expected "Bearer ${FAKE_ACCESS_TOKEN}" but received "${bearerRequest!.auth}"`,
+    ).toBe(`Bearer ${FAKE_ACCESS_TOKEN}`);
   });
 
   // ── B3: No WASM errors after authenticated login ──────────────────────────────
@@ -303,3 +347,4 @@ test.describe('Login verification – Layer B: real credentials', () => {
     ).toHaveLength(0);
   });
 });
+

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>MaximumTrainer – Completing sign-in…</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: #f5f5f5;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <p>Completing sign-in — this window will close automatically.</p>
+  <script>
+  (function () {
+    'use strict';
+    var params = new URLSearchParams(window.location.search);
+    var msg = {
+      mt_oauth_code:  params.get('code')  || '',
+      mt_oauth_state: params.get('state') || '',
+      mt_oauth_error: params.get('error') || ''
+    };
+    if (window.opener && !window.opener.closed) {
+      // Same origin as the WASM app (both on maximumtrainer.github.io).
+      window.opener.postMessage(msg, window.location.origin);
+    }
+    window.close();
+  }());
+  </script>
+</body>
+</html>

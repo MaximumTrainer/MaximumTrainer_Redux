@@ -5,7 +5,6 @@
 #include <QMessageBox>
 #include <QRegularExpression>
 #include <QUuid>
-#include <QVBoxLayout>
 
 #include "logger.h"
 
@@ -20,9 +19,19 @@
 #include "intervalsicuoauthwidget.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WASM: Emscripten bridge for the Playwright login test hook.
-// Declares g_loginDialog and js_exposeLoginTestApi() so they are available
-// in the DialogLogin constructor, which is defined later in this file.
+// WASM: Emscripten bridge for the OAuth popup flow.
+//
+// Two C functions are exported to JavaScript:
+//   mt_wasm_oauth_code_received_impl(code, state) — called by the message
+//     listener when oauth_callback.html posts the authorization code back.
+//   mt_trigger_wasm_oauth_login_impl() — Playwright test hook; triggers the
+//     OAuth popup exactly as if the user clicked "Sign in with Intervals.icu".
+//
+// Two EM_JS functions are compiled into the module:
+//   js_openOAuthPopup(authUrl) — opens the authorization popup and registers
+//     the message listener that calls mt_wasm_oauth_code_received_impl.
+//   js_exposeWasmOAuthBridge() — sets window.mt_wasmOAuthReady and
+//     window.mt_triggerOAuthLogin() for Playwright and other test harnesses.
 // ─────────────────────────────────────────────────────────────────────────────
 #ifdef GC_WASM_BUILD
 #include <emscripten.h>
@@ -33,36 +42,108 @@ static QPointer<DialogLogin> g_loginDialog;
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE
-void mt_login_with_api_key_impl(const char *athleteId, const char *apiKey)
+void mt_wasm_oauth_code_received_impl(const char *code, const char *state)
 {
     if (!g_loginDialog) return;
-    const QString id  = QString::fromUtf8(athleteId);
-    const QString key = QString::fromUtf8(apiKey);
-    QMetaObject::invokeMethod(g_loginDialog.data(), "loginViaTestHook",
+    QMetaObject::invokeMethod(g_loginDialog.data(), "onWasmOAuthCodeReceived",
                               Qt::QueuedConnection,
-                              Q_ARG(QString, id), Q_ARG(QString, key));
+                              Q_ARG(QString, QString::fromUtf8(code)),
+                              Q_ARG(QString, QString::fromUtf8(state)));
+}
+
+EMSCRIPTEN_KEEPALIVE
+void mt_trigger_wasm_oauth_login_impl()
+{
+    if (!g_loginDialog) return;
+    QMetaObject::invokeMethod(g_loginDialog.data(), "onWasmOAuthLoginClicked",
+                              Qt::QueuedConnection);
 }
 
 } // extern "C"
 
-EM_JS(void, js_exposeLoginTestApi, (), {
-    // window.mt_loginWithApiKey(athleteId, apiKey) — fills and submits the
-    // API-key login form.  Available as soon as the WASM app loads (before
-    // login).  Playwright tests call this to authenticate in the WASM app.
-    window.mt_loginWithApiKey = function(athleteId, apiKey) {
-        var enc    = new TextEncoder();
-        var idBuf  = enc.encode(String(athleteId || '') + '\0');
-        var keyBuf = enc.encode(String(apiKey    || '') + '\0');
-        var idPtr  = _malloc(idBuf.length);
-        var keyPtr = _malloc(keyBuf.length);
-        HEAPU8.set(idBuf,  idPtr);
-        HEAPU8.set(keyBuf, keyPtr);
-        Module._mt_login_with_api_key_impl(idPtr, keyPtr);
-        _free(idPtr);
-        _free(keyPtr);
+// Open the Intervals.icu OAuth authorization URL in a browser popup and
+// register a message listener to receive the code from oauth_callback.html.
+EM_JS(void, js_openOAuthPopup, (const char *authUrlCStr), {
+    var authUrl = UTF8ToString(authUrlCStr);
+
+    // Remove any stale listener from a previous login attempt.
+    if (window._mtOAuthMsgListener) {
+        window.removeEventListener('message', window._mtOAuthMsgListener);
+        window._mtOAuthMsgListener = null;
+    }
+
+    // Expected origin of the oauth_callback.html page (same GitHub Pages host).
+    var expectedOrigin = 'https://maximumtrainer.github.io';
+
+    window._mtOAuthMsgListener = function onOAuthMessage(event) {
+        // Reject messages from unexpected origins.
+        if (event.origin !== expectedOrigin && event.origin !== window.location.origin)
+            return;
+        if (!event.data || typeof event.data !== 'object') return;
+        if (!Object.prototype.hasOwnProperty.call(event.data, 'mt_oauth_code')) return;
+
+        window.removeEventListener('message', window._mtOAuthMsgListener);
+        window._mtOAuthMsgListener = null;
+
+        var code  = String(event.data.mt_oauth_code  || '');
+        var state = String(event.data.mt_oauth_state || '');
+        var err   = String(event.data.mt_oauth_error || '');
+
+        if (err) {
+            // Forward error to C++ as an empty code so the state-mismatch / empty
+            // code paths in onWasmOAuthCodeReceived() invoke onOAuthFailed().
+            code = '';
+        }
+
+        // Marshal code and state strings into Emscripten heap and call C++.
+        var enc      = new TextEncoder();
+        var codeBuf  = enc.encode(code  + '\0');
+        var stateBuf = enc.encode(state + '\0');
+        var codePtr  = _malloc(codeBuf.length);
+        var statePtr = _malloc(stateBuf.length);
+        HEAPU8.set(codeBuf,  codePtr);
+        HEAPU8.set(stateBuf, statePtr);
+        Module._mt_wasm_oauth_code_received_impl(codePtr, statePtr);
+        _free(codePtr);
+        _free(statePtr);
+    };
+    // Register the listener BEFORE opening the popup so that an immediate
+    // redirect (e.g., when the user is already logged in at intervals.icu)
+    // does not race with listener registration.
+    window.addEventListener('message', window._mtOAuthMsgListener);
+
+    var popup = window.open(authUrl, 'mt_oauth_login',
+                            'width=600,height=720,menubar=no,toolbar=no,resizable=yes');
+    if (!popup) {
+        // Popup was blocked.  Remove the listener and notify C++ via empty code/state
+        // so that the failure path in onWasmOAuthCodeReceived triggers onOAuthFailed().
+        window.removeEventListener('message', window._mtOAuthMsgListener);
+        window._mtOAuthMsgListener = null;
+
+        var enc      = new TextEncoder();
+        var emptyBuf = enc.encode('\0');
+        var p1       = _malloc(emptyBuf.length);
+        var p2       = _malloc(emptyBuf.length);
+        HEAPU8.set(emptyBuf, p1);
+        HEAPU8.set(emptyBuf, p2);
+        Module._mt_wasm_oauth_code_received_impl(p1, p2);
+        _free(p1);
+        _free(p2);
+    }
+});
+
+// Expose the WASM OAuth bridge to JavaScript for testing.
+// window.mt_wasmOAuthReady — boolean, true once the login dialog is set up.
+// window.mt_triggerOAuthLogin() — triggers the OAuth login popup (Playwright hook).
+EM_JS(void, js_exposeWasmOAuthBridge, (), {
+    window.mt_wasmOAuthReady = true;
+
+    window.mt_triggerOAuthLogin = function() {
+        Module._mt_trigger_wasm_oauth_login_impl();
     };
 });
 #endif // GC_WASM_BUILD
+
 
 
 
@@ -142,71 +223,25 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     }
 
 #ifdef Q_OS_WASM
-    // ── WASM: replace OAuth flow with API-key login ───────────────────────
-    // OAuth requires a browser redirect that can't return to the WASM app.
-    // Hide offline and OAuth widgets; show a simple API-key entry form.
+    // ── WASM: OAuth popup flow ─────────────────────────────────────────────
+    // The embedded IntervalsIcuOAuthWidget (QWebEngineView) is desktop-only.
+    // On WASM the "Sign in with Intervals.icu" button is rewired to open a
+    // browser popup to the authorization URL; the popup redirects to
+    // oauth_callback.html which posts the code back via window.opener.postMessage.
+    // Offline mode is not available on WASM.
     ui->checkBox_workOffline->setVisible(false);
     ui->pushButton_startOffline->setVisible(false);
     ui->line_separator->setVisible(false);
-    ui->pushButton_loginIntervalsIcu->setVisible(false);
 
-    {
-        auto *wasmWidget = new QWidget(this);
-        auto *wasmLayout = new QVBoxLayout(wasmWidget);
-        wasmLayout->setContentsMargins(0, 8, 0, 0);
-        wasmLayout->setSpacing(8);
+    // Rewire the Intervals.icu button to the WASM popup handler.
+    disconnect(ui->pushButton_loginIntervalsIcu, &QPushButton::clicked,
+               this, &DialogLogin::onLoginWithIntervalsIcuClicked);
+    connect(ui->pushButton_loginIntervalsIcu, &QPushButton::clicked,
+            this, &DialogLogin::onWasmOAuthLoginClicked);
 
-        auto *instructions = new QLabel(
-            tr("Enter your <a href='https://intervals.icu'>Intervals.icu</a> "
-               "athlete ID and API key.<br>"
-               "<small>Find your API key in Intervals.icu → Account Settings → API Key</small>"),
-            this);
-        instructions->setOpenExternalLinks(true);
-        instructions->setWordWrap(true);
-        instructions->setTextFormat(Qt::RichText);
-
-        m_wasmAthleteIdEdit = new QLineEdit(this);
-        m_wasmAthleteIdEdit->setPlaceholderText(tr("Athlete ID (e.g. i12345)"));
-        if (!account->intervals_icu_athlete_id.isEmpty())
-            m_wasmAthleteIdEdit->setText(account->intervals_icu_athlete_id);
-
-        m_wasmApiKeyEdit = new QLineEdit(this);
-        m_wasmApiKeyEdit->setPlaceholderText(tr("API key"));
-        m_wasmApiKeyEdit->setEchoMode(QLineEdit::Password);
-
-        m_wasmSignInButton = new QPushButton(tr("Sign in"), this);
-        // Reuse the stylesheet that targets pushButton_loginIntervalsIcu's style
-        m_wasmSignInButton->setObjectName(QStringLiteral("pushButton_loginIntervalsIcu"));
-
-        m_wasmErrorLabel = new QLabel(this);
-        m_wasmErrorLabel->setVisible(false);
-        m_wasmErrorLabel->setWordWrap(true);
-        m_wasmErrorLabel->setStyleSheet(QStringLiteral("color: #c0392b; font-size: 11px;"));
-
-        wasmLayout->addWidget(instructions);
-        wasmLayout->addWidget(m_wasmAthleteIdEdit);
-        wasmLayout->addWidget(m_wasmApiKeyEdit);
-        wasmLayout->addWidget(m_wasmSignInButton);
-        wasmLayout->addWidget(m_wasmErrorLabel);
-
-        // Insert the widget into the login-form page's layout, before the
-        // last item (bottom spacer).
-        if (auto *lay = qobject_cast<QVBoxLayout *>(ui->widget_center->layout())) {
-            lay->insertWidget(lay->count() - 1, wasmWidget);
-        }
-
-        connect(m_wasmSignInButton, &QPushButton::clicked,
-                this, &DialogLogin::onApiKeyLoginClicked);
-        // Allow pressing Enter in either field to trigger sign-in.
-        connect(m_wasmAthleteIdEdit, &QLineEdit::returnPressed,
-                this, &DialogLogin::onApiKeyLoginClicked);
-        connect(m_wasmApiKeyEdit, &QLineEdit::returnPressed,
-                this, &DialogLogin::onApiKeyLoginClicked);
-    }
 #ifdef GC_WASM_BUILD
-    // Register this dialog as the target for the Playwright login test hook.
     g_loginDialog = this;
-    js_exposeLoginTestApi();
+    js_exposeWasmOAuthBridge();
 #endif
 #endif // Q_OS_WASM
 
@@ -240,13 +275,7 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     if (!storedToken.isEmpty() && !storedAthleteId.isEmpty()) {
         ui->label_process->setText(tr("Reconnecting to Intervals.icu..."));
         ui->stackedWidget_main->setCurrentIndex(2); // loading/reconnecting page
-#ifdef Q_OS_WASM
-        // On WASM the stored "token" is the API key — use Basic auth.
-        m_silentAuthReply = IntervalsIcuDAO::getAthlete(storedAthleteId, storedToken);
-        m_usingApiKeyLogin = true;
-#else
         m_silentAuthReply = IntervalsIcuDAO::getAthleteBearer(storedAthleteId, storedToken);
-#endif
         if (m_silentAuthReply) {
             connect(m_silentAuthReply, &QNetworkReply::finished,
                     this, &DialogLogin::onSilentAuthFinished);
@@ -498,11 +527,17 @@ void DialogLogin::onOAuthFailed()
     LOG_WARN("DialogLogin", QStringLiteral("Intervals.icu OAuth2 authorization denied or failed"));
     m_oauthWidget->reset();
     showLoginForm(false);
+#ifndef Q_OS_WASM
     QMessageBox::warning(
         this,
         tr("Intervals.icu Login Failed"),
         tr("Intervals.icu authorization was denied or did not complete.\n\n"
            "Please click \"Sign in with Intervals.icu\" to try again."));
+#else
+    ui->pushButton_loginIntervalsIcu->setEnabled(true);
+    ui->label_sessionExpired->setText(tr("Authorization failed — please try again."));
+    ui->label_sessionExpired->setVisible(true);
+#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -731,40 +766,6 @@ void DialogLogin::slotFinishedIntervalsIcuAthlete()
     const int httpStatus = replyIntervalsIcuAthlete->attribute(
         QNetworkRequest::HttpStatusCodeAttribute).toInt();
 
-#ifdef Q_OS_WASM
-    // On WASM, an auth failure (401/403) during API-key login means bad
-    // credentials — stop here and show an inline error instead of logging in
-    // with an incomplete account.
-    if (m_usingApiKeyLogin
-        && (httpStatus == 401 || httpStatus == 403
-            || netError == QNetworkReply::AuthenticationRequiredError)) {
-        LOG_WARN("DialogLogin",
-                 QStringLiteral("API-key login: auth rejected (HTTP %1)").arg(httpStatus));
-        replyIntervalsIcuAthlete->deleteLater();
-        replyIntervalsIcuAthlete = nullptr;
-        if (replyIntervalsIcuSettings) {
-            replyIntervalsIcuSettings->abort();
-            replyIntervalsIcuSettings->deleteLater();
-            replyIntervalsIcuSettings = nullptr;
-        }
-        m_pendingIntervalsIcuReplies = 0;
-        m_loggingInViaIntervalsIcu   = false;
-        m_usingApiKeyLogin           = false;
-        if (m_intervalsIcuTimeout) m_intervalsIcuTimeout->stop();
-        // Clear the credentials we just tried so they are not persisted.
-        clearTokens();
-        account->intervals_icu_athlete_id.clear();
-        if (m_wasmErrorLabel)
-            m_wasmErrorLabel->setText(tr("Invalid athlete ID or API key. Please check your credentials and try again."));
-        if (m_wasmErrorLabel)
-            m_wasmErrorLabel->setVisible(true);
-        if (m_wasmSignInButton)
-            m_wasmSignInButton->setEnabled(true);
-        showLoginForm(false);
-        return;
-    }
-#endif // Q_OS_WASM
-
     if (netError == QNetworkReply::NoError) {
         const QByteArray data = replyIntervalsIcuAthlete->readAll();
         Util::parseJsonIntervalsIcuAthlete(QString::fromUtf8(data));
@@ -839,115 +840,106 @@ void DialogLogin::completeLogin()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WASM API-key login
+// WASM OAuth popup login
 // ─────────────────────────────────────────────────────────────────────────────
 #ifdef Q_OS_WASM
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void DialogLogin::onApiKeyLoginClicked()
-{
-    if (!m_wasmAthleteIdEdit || !m_wasmApiKeyEdit) return;
-
-    const QString athleteId = m_wasmAthleteIdEdit->text().trimmed();
-    const QString apiKey    = m_wasmApiKeyEdit->text().trimmed();
-
-    if (m_wasmErrorLabel) m_wasmErrorLabel->setVisible(false);
-
-    if (athleteId.isEmpty() || apiKey.isEmpty()) {
-        if (m_wasmErrorLabel) {
-            m_wasmErrorLabel->setText(tr("Please enter both your athlete ID and API key."));
-            m_wasmErrorLabel->setVisible(true);
-        }
-        return;
-    }
-
-    // Prevent double submission.
-    if (m_wasmSignInButton) m_wasmSignInButton->setEnabled(false);
-
-    // Store credentials temporarily — they are persisted only on success.
-    account->intervals_icu_athlete_id    = athleteId;
-    account->intervals_icu_api_key       = apiKey;  // used by Basic-auth API calls
-    account->intervals_icu_access_token  = apiKey;  // stored for silent restore on WASM
-    // Clear any stale OAuth refresh token that belongs to a previous session.
-    account->intervals_icu_refresh_token.clear();
-
-    m_loggingInViaIntervalsIcu = true;
-    m_usingApiKeyLogin         = true;
-
-    fetchIntervalsIcuDataApiKey(athleteId, apiKey);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// Fetch the athlete profile and training zones using Intervals.icu Basic auth
-/// (API key).  On success the shared slots call loginWithIntervalsIcuIdentity()
-/// exactly as the OAuth path does.  On auth failure, slotFinishedIntervalsIcuAthlete()
-/// shows an inline error and aborts the login.
-void DialogLogin::fetchIntervalsIcuDataApiKey(const QString &athleteId, const QString &apiKey)
+/// Opens the Intervals.icu OAuth authorization page in a browser popup.
+/// The popup redirects to oauth_callback.html which posts the authorization
+/// code back to this window via window.opener.postMessage, which is then
+/// forwarded to onWasmOAuthCodeReceived() via the Emscripten bridge.
+void DialogLogin::onWasmOAuthLoginClicked()
 {
     LOG_INFO("DialogLogin",
-             QStringLiteral("Fetching Intervals.icu profile via API key for athlete: ")
-             + athleteId);
-    ui->label_process->setText(tr("Retrieving your Intervals.icu profile..."));
-    ui->stackedWidget_main->setCurrentIndex(2); // loading page
+             QStringLiteral("WASM: opening Intervals.icu OAuth popup"));
 
-    m_pendingIntervalsIcuReplies = 2;
+    // Generate and store a fresh CSRF state token for this login attempt.
+    m_wasmOAuthState = QUuid::createUuid().toString(QUuid::Id128).left(16);
 
-    replyIntervalsIcuAthlete = IntervalsIcuDAO::getAthlete(athleteId, apiKey);
-    if (replyIntervalsIcuAthlete) {
-        connect(replyIntervalsIcuAthlete, &QNetworkReply::finished,
-                this, &DialogLogin::slotFinishedIntervalsIcuAthlete);
-    } else {
-        m_pendingIntervalsIcuReplies--;
-    }
+    const QString authUrl = Environnement::getURLIntervalsIcuAuthorizeWasm(m_wasmOAuthState);
 
-    replyIntervalsIcuSettings = IntervalsIcuDAO::getAthleteSettings(athleteId, apiKey);
-    if (replyIntervalsIcuSettings) {
-        connect(replyIntervalsIcuSettings, &QNetworkReply::finished,
-                this, &DialogLogin::slotFinishedIntervalsIcuSettings);
-    } else {
-        m_pendingIntervalsIcuReplies--;
-    }
+    ui->label_sessionExpired->setVisible(false);
+    ui->pushButton_loginIntervalsIcu->setEnabled(false);
 
-    if (m_pendingIntervalsIcuReplies <= 0) {
-        loginWithIntervalsIcuIdentity();
-        return;
-    }
-
-    // Safety-net timeout.
-    if (m_intervalsIcuTimeout) {
-        m_intervalsIcuTimeout->stop();
-        m_intervalsIcuTimeout->deleteLater();
-    }
-    m_intervalsIcuTimeout = new QTimer(this);
-    m_intervalsIcuTimeout->setSingleShot(true);
-    connect(m_intervalsIcuTimeout, &QTimer::timeout, this, [this]() {
-        if (!m_loggingInViaIntervalsIcu) return;
-        LOG_WARN("DialogLogin",
-                 QStringLiteral("API-key profile fetch timed out – proceeding with login"));
-        m_pendingIntervalsIcuReplies = 0;
-        if (replyIntervalsIcuAthlete) {
-            auto *r = replyIntervalsIcuAthlete;
-            replyIntervalsIcuAthlete = nullptr;
-            r->abort(); r->deleteLater();
-        }
-        if (replyIntervalsIcuSettings) {
-            auto *r = replyIntervalsIcuSettings;
-            replyIntervalsIcuSettings = nullptr;
-            r->abort(); r->deleteLater();
-        }
-        loginWithIntervalsIcuIdentity();
-    });
-    m_intervalsIcuTimeout->start(15000);
+#ifdef GC_WASM_BUILD
+    js_openOAuthPopup(authUrl.toUtf8().constData());
+#else
+    Q_UNUSED(authUrl)
+#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// Playwright test hook: programmatically fill and submit the API-key login form.
-/// Exposed as window.mt_loginWithApiKey(athleteId, apiKey) via Emscripten.
-void DialogLogin::loginViaTestHook(const QString &athleteId, const QString &apiKey)
+/// Called (via QMetaObject::invokeMethod) when the OAuth popup posts the
+/// authorization code back to this window.  Validates the CSRF state, then
+/// starts the token exchange.
+void DialogLogin::onWasmOAuthCodeReceived(const QString &code, const QString &state)
 {
-    if (m_wasmAthleteIdEdit) m_wasmAthleteIdEdit->setText(athleteId);
-    if (m_wasmApiKeyEdit)    m_wasmApiKeyEdit->setText(apiKey);
-    onApiKeyLoginClicked();
+    if (state != m_wasmOAuthState) {
+        LOG_WARN("DialogLogin",
+                 QStringLiteral("WASM OAuth: state mismatch — possible CSRF attempt (ignored)"));
+        ui->pushButton_loginIntervalsIcu->setEnabled(true);
+        ui->label_sessionExpired->setText(tr("Authorization failed — please try again."));
+        ui->label_sessionExpired->setVisible(true);
+        return;
+    }
+    if (code.isEmpty()) {
+        LOG_WARN("DialogLogin", QStringLiteral("WASM OAuth: empty authorization code"));
+        onOAuthFailed();
+        return;
+    }
+    LOG_INFO("DialogLogin", QStringLiteral("WASM OAuth: authorization code received, exchanging for tokens"));
+    ui->label_process->setText(tr("Signing in with Intervals.icu..."));
+    ui->stackedWidget_main->setCurrentIndex(2); // loading page
+
+    const QString redirectUri = Environnement::getWasmOAuthRedirectUri();
+    m_wasmTokenReply = ExtRequest::intervalsIcuOAuthExchange(code, redirectUri);
+    if (!m_wasmTokenReply) {
+        LOG_WARN("DialogLogin", QStringLiteral("WASM OAuth: failed to create token exchange request"));
+        ui->pushButton_loginIntervalsIcu->setEnabled(true);
+        showLoginForm(true);
+        return;
+    }
+    connect(m_wasmTokenReply, &QNetworkReply::finished,
+            this, &DialogLogin::onWasmOAuthTokenExchangeFinished);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Called when the token exchange request finishes.  Parses the Bearer token,
+/// stores credentials, and proceeds to fetch the athlete profile.
+void DialogLogin::onWasmOAuthTokenExchangeFinished()
+{
+    if (!m_wasmTokenReply) return;
+    auto *reply = m_wasmTokenReply;
+    m_wasmTokenReply = nullptr;
+
+    // Read all data before calling deleteLater() to avoid use-after-free.
+    const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const QNetworkReply::NetworkError netErr = reply->error();
+    const QByteArray body = reply->readAll();
+    reply->deleteLater();
+
+    if (netErr != QNetworkReply::NoError || (httpStatus != 0 && httpStatus != 200)) {
+        LOG_WARN("DialogLogin",
+                 QStringLiteral("WASM OAuth: token exchange failed (HTTP %1, err %2)")
+                 .arg(httpStatus).arg(netErr));
+        onOAuthFailed();
+        return;
+    }
+
+    // parseJsonIntervalsIcuOAuthToken() writes the access token into the
+    // Account singleton; check that the token is now populated.
+    Util::parseJsonIntervalsIcuOAuthToken(QString::fromUtf8(body));
+    if (account->intervals_icu_access_token.isEmpty()) {
+        LOG_WARN("DialogLogin",
+                 QStringLiteral("WASM OAuth: token parse failed or access_token is empty"));
+        onOAuthFailed();
+        return;
+    }
+
+    account->saveIntervalsIcuCredentials();
+    onOAuthSucceeded();
 }
 
 #endif // Q_OS_WASM
+

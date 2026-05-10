@@ -303,6 +303,28 @@ QString Environnement::getURLIntervalsIcuAuthorize(const QString &state) {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Build the Intervals.icu OAuth2 authorization URL for the WASM popup flow.
+/// Uses a GitHub Pages callback page as the redirect_uri.  The callback page
+/// sends the authorization code back to the main window via window.opener.postMessage.
+/// @param state  A per-request random token for CSRF protection.
+QString Environnement::getURLIntervalsIcuAuthorizeWasm(const QString &state) {
+    QString myURL = urlIntervalsIcuOAuthAuthorize;
+    myURL += "&client_id=" + getIntervalsIcuClientId();
+    myURL += "&redirect_uri=" + getWasmOAuthRedirectUri();
+    if (!state.isEmpty())
+        myURL += "&state=" + state;
+    return myURL;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Return the WASM-specific OAuth2 redirect_uri.
+/// This page must be registered as an allowed redirect URI with Intervals.icu OAuth client 259.
+QString Environnement::getWasmOAuthRedirectUri() {
+    return QStringLiteral(
+        "https://maximumtrainer.github.io/MaximumTrainer_Redux/app/oauth_callback.html");
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getIntervalsIcuClientId() {
     const QString stored = CredentialStore::load("intervals_icu_app", "client_id");
     return stored.isEmpty() ? CLIENT_ID_ICV : stored;
