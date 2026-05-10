@@ -3532,8 +3532,9 @@ void WorkoutDialog::showPostWorkoutPanel()
                           && !account->training_peaks_refresh_token.isEmpty();
     const bool hasSL       = !account->selfloops_user.isEmpty()
                           && !account->selfloops_pw.isEmpty();
-    const bool hasIcu      = !account->intervals_icu_api_key.isEmpty()
-                          && !account->intervals_icu_athlete_id.isEmpty();
+    const bool hasIcu      = !account->intervals_icu_athlete_id.isEmpty() &&
+                          (!account->intervals_icu_api_key.isEmpty() ||
+                           !account->intervals_icu_access_token.isEmpty());
 
     if (hasStrava || hasTP || hasSL || hasIcu) {
         auto *upHeader = new QLabel(tr("Upload Activity:"), widgetPostWorkout);
@@ -3777,6 +3778,7 @@ void WorkoutDialog::uploadToIntervalsIcu()
 
     auto *svc = new IntervalsIcuService(this);
     svc->setCredentials(account->intervals_icu_api_key, account->intervals_icu_athlete_id);
+    svc->setAccessToken(account->intervals_icu_access_token);
     const QString externalId = QFileInfo(fitFilePath).baseName();
     replyPostIntervalsIcuUpload = svc->uploadActivity(fitFilePath, fitFileName, externalId);
     svc->deleteLater();

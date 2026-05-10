@@ -29,15 +29,30 @@ void IntervalsIcuService::setCredentials(const QString &apiKey, const QString &a
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+void IntervalsIcuService::setAccessToken(const QString &accessToken)
+{
+    m_accessToken = accessToken;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+void IntervalsIcuService::applyAuth(QNetworkRequest &request) const
+{
+    if (!m_accessToken.isEmpty()) {
+        request.setRawHeader("Authorization",
+                             QByteArray("Bearer ") + m_accessToken.toUtf8());
+    } else {
+        const QByteArray credentials =
+            ("API_KEY:" + m_apiKey).toUtf8().toBase64();
+        request.setRawHeader("Authorization", "Basic " + credentials);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 QNetworkRequest IntervalsIcuService::buildRequest(const QString &path) const
 {
     QNetworkRequest request;
     request.setUrl(QUrl(INTERVALS_BASE_URL + path));
-
-    // HTTP Basic Auth: username = "API_KEY", password = user API key
-    const QByteArray credentials =
-        ("API_KEY:" + m_apiKey).toUtf8().toBase64();
-    request.setRawHeader("Authorization", "Basic " + credentials);
+    applyAuth(request);
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       "application/json");
     return request;
@@ -106,10 +121,7 @@ QNetworkReply *IntervalsIcuService::uploadActivity(const QString &filePath,
 
     QNetworkRequest request;
     request.setUrl(url);
-
-    const QByteArray credentials =
-        ("API_KEY:" + m_apiKey).toUtf8().toBase64();
-    request.setRawHeader("Authorization", "Basic " + credentials);
+    applyAuth(request);
     // Content-Type is set automatically by Qt for multipart requests
 
     const QString suffix = QFileInfo(filePath).suffix().toLower();

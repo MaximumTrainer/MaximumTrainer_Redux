@@ -1972,13 +1972,15 @@ void MainWindow::checkToUploadFile(const QString& filename, const QString& nameO
 
     // Intervals.icu
     if (account->intervals_icu_auto_upload &&
-        !account->intervals_icu_api_key.isEmpty() &&
         !account->intervals_icu_athlete_id.isEmpty() &&
+        (!account->intervals_icu_api_key.isEmpty() ||
+         !account->intervals_icu_access_token.isEmpty()) &&
         NetworkMonitor::instance()->isOnline()) {
 
         ui->widget_bottomMenu->setGeneralMessage(tr("Uploading your activity to Intervals.icu..."));
         IntervalsIcuService *svc = new IntervalsIcuService(this);
         svc->setCredentials(account->intervals_icu_api_key, account->intervals_icu_athlete_id);
+        svc->setAccessToken(account->intervals_icu_access_token);
         const QString externalId = QFileInfo(filename).baseName();
         replyIntervalsIcuUpload = svc->uploadActivity(filename, nameOnly, externalId);
         if (replyIntervalsIcuUpload) {

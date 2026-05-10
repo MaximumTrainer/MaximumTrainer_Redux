@@ -146,9 +146,13 @@ void TabIntervalsIcu::refreshCredentials()
 
     m_service->setCredentials(account->intervals_icu_api_key,
                                account->intervals_icu_athlete_id);
+    m_service->setAccessToken(account->intervals_icu_access_token);
 
-    if (account->intervals_icu_api_key.isEmpty() ||
-        account->intervals_icu_athlete_id.isEmpty()) {
+    const bool hasCredentials = !account->intervals_icu_athlete_id.isEmpty() &&
+        (!account->intervals_icu_api_key.isEmpty() ||
+         !account->intervals_icu_access_token.isEmpty());
+
+    if (!hasCredentials) {
         // Clear any stale calendar data so the old content isn't visible
         // with credentials that may no longer be valid.
         ui->tableWidget_calendar->setRowCount(0);
@@ -233,8 +237,16 @@ void TabIntervalsIcu::setOnlineMode(bool isOnline)
 void TabIntervalsIcu::onRefreshClicked()
 {
     auto *account = qApp->property("Account").value<Account *>();
-    if (!account || account->intervals_icu_api_key.isEmpty() ||
-        account->intervals_icu_athlete_id.isEmpty()) {
+    if (!account) {
+        setStatus(tr("Please configure Intervals.icu credentials in "
+                     "Preferences → Cloud Sync first."));
+        return;
+    }
+
+    const bool hasCredentials = !account->intervals_icu_athlete_id.isEmpty() &&
+        (!account->intervals_icu_api_key.isEmpty() ||
+         !account->intervals_icu_access_token.isEmpty());
+    if (!hasCredentials) {
         setStatus(tr("Please configure Intervals.icu credentials in "
                      "Preferences → Cloud Sync first."));
         return;
@@ -476,8 +488,16 @@ void TabIntervalsIcu::setBusy(bool busy)
 void TabIntervalsIcu::startBatchSync(const QDate &from, const QDate &to)
 {
     auto *account = qApp->property("Account").value<Account *>();
-    if (!account || account->intervals_icu_api_key.isEmpty() ||
-        account->intervals_icu_athlete_id.isEmpty()) {
+    if (!account) {
+        emit syncFailed(tr("Intervals.icu credentials are not configured. "
+                           "Please set them in Preferences → Cloud Sync."));
+        return;
+    }
+
+    const bool hasCredentials = !account->intervals_icu_athlete_id.isEmpty() &&
+        (!account->intervals_icu_api_key.isEmpty() ||
+         !account->intervals_icu_access_token.isEmpty());
+    if (!hasCredentials) {
         emit syncFailed(tr("Intervals.icu credentials are not configured. "
                            "Please set them in Preferences → Cloud Sync."));
         return;

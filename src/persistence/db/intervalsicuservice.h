@@ -15,8 +15,11 @@
 ///
 /// Intervals.icu API client.
 ///
-/// Authentication: HTTP Basic Auth with username "API_KEY" and the user's
-/// personal API key as the password (found at intervals.icu → Settings → API).
+/// Authentication supports two modes:
+///   - HTTP Basic Auth: username "API_KEY" + user's personal API key
+///     (configured in intervals.icu → Settings → API).  Call setCredentials().
+///   - OAuth2 Bearer: access token from OAuth2 login flow.
+///     Call setAccessToken().  Bearer takes precedence over Basic auth when set.
 ///
 /// All methods are non-blocking and return a QNetworkReply* whose
 /// finished() signal the caller must connect to a slot.
@@ -39,8 +42,12 @@ public:
 
     explicit IntervalsIcuService(QObject *parent = nullptr);
 
-    /// Set credentials before calling any API method.
+    /// Set API-key (Basic auth) credentials.  Call before any API method.
     void setCredentials(const QString &apiKey, const QString &athleteId);
+
+    /// Set an OAuth2 Bearer access token.  When non-empty this takes
+    /// precedence over the API key and all requests use Bearer auth.
+    void setAccessToken(const QString &accessToken);
 
     QString athleteId() const { return m_athleteId; }
 
@@ -71,9 +78,11 @@ public:
 
 private:
     QNetworkRequest buildRequest(const QString &path) const;
+    void applyAuth(QNetworkRequest &request) const;
 
     QString m_apiKey;
     QString m_athleteId;
+    QString m_accessToken; ///< OAuth2 Bearer token (takes precedence over m_apiKey when set)
 };
 
 #endif // INTERVALSICUSERVICE_H
