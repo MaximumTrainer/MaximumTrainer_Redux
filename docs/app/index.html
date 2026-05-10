@@ -207,7 +207,7 @@
       if (!PROXY || PROXY.charAt(0) === '_') return;
 
       // Skip if a Playwright test has opted out (tests mock intervals.icu directly).
-      if ((window as any).PLAYWRIGHT_DISABLE_ICU_PROXY) return;
+      if (window.PLAYWRIGHT_DISABLE_ICU_PROXY) return;
 
       // Normalise: strip any trailing slashes from the proxy base URL.
       PROXY = PROXY.replace(/\/+$/, '');

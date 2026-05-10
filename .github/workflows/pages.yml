@@ -34,17 +34,20 @@ jobs:
       # After deployment, set INTERVALS_PROXY_URL as a repository variable
       # (Settings → Variables → Actions) so it is available in future runs.
       - name: Deploy Cloudflare CORS proxy
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
         working-directory: workers/intervals-cors-proxy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Cloudflare secrets not configured — skipping Worker deployment"
+            exit 0
+          fi
           npm install -g wrangler
           DEPLOY_OUTPUT=$(wrangler deploy 2>&1)
           echo "$DEPLOY_OUTPUT"
           # Extract the workers.dev URL from wrangler output
-          PROXY_URL=$(echo "$DEPLOY_OUTPUT" | grep -oP 'https://mt-intervals-proxy\.[^[:space:]]+' | head -1)
+          PROXY_URL=$(echo "$DEPLOY_OUTPUT" | grep -oE 'https://mt-intervals-proxy\.[^[:space:]]+' | head -n1)
           if [ -n "$PROXY_URL" ]; then
             echo "INTERVALS_PROXY_URL=${PROXY_URL}" >> "$GITHUB_ENV"
             echo "Proxy deployed: $PROXY_URL"
