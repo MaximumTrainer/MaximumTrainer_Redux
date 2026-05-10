@@ -486,6 +486,106 @@ export class WasmAppPage {
     await this.page.evaluate(() => (window as any).mt_intervalsRefresh());
   }
 
+  /**
+   * Set up an OAuth2 popup mock. Must be called **before** `goto()`.
+   *
+   * Two things are installed:
+   * 1. `window.open` is overridden so that any call with `target='mt_oauth_login'`
+   *    immediately posts a synthetic `message` event back to the page — simulating
+   *    the `oauth_callback.html` popup posting the auth code to the opener.
+   * 2. A Playwright route intercept for `https://intervals.icu/oauth/token`
+   *    returns a fake Bearer token so the C++ token-exchange step succeeds.
+   *
+   * Because Playwright processes routes in reverse-registration order (last
+   * registered = first tried), call `setupOAuthMock()` **after** any catch-all
+   * `https://intervals.icu/**` route (e.g. after `mockIntervalsIcuApi()`) to
+   * ensure the specific `/oauth/token` route takes priority.
+   */
+  async setupOAuthMock(): Promise<void> {
+    await this.page.addInitScript(() => {
+      const origOpen = window.open.bind(window);
+      (window as any).open = function(
+        url?: string | URL,
+        target?: string,
+        _features?: string,
+      ) {
+        if (target === 'mt_oauth_login' && typeof url === 'string') {
+          try {
+            const state = new URL(url).searchParams.get('state') ?? '';
+            // js_openOAuthPopup registers the message listener before calling
+            // window.open, so dispatching via setTimeout(0) is safe.
+            setTimeout(() => {
+              window.dispatchEvent(new MessageEvent('message', {
+                data: {
+                  mt_oauth_code:  'playwright_mock_code_' + state.slice(0, 8),
+                  mt_oauth_state: state,
+                },
+                origin: window.location.origin,
+              }));
+            }, 0);
+          } catch (e) {
+            console.error('[Playwright] OAuth mock: failed to parse URL:', e);
+          }
+          return { closed: false, close: () => {} } as unknown as Window;
+        }
+        return origOpen(url, target, _features);
+      };
+    });
+
+    const corsHeaders = {
+      'Access-Control-Allow-Origin':  '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'authorization, content-type',
+    };
+
+    await this.page.route('https://intervals.icu/oauth/token', async (route) => {
+      if (route.request().method() === 'OPTIONS') {
+        await route.fulfill({ status: 204, headers: corsHeaders });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_token:  WasmAppPage.FAKE_ACCESS_TOKEN,
+          refresh_token: 'playwright_mock_refresh',
+          token_type:    'Bearer',
+          expires_in:    3600,
+          athlete_id:    'i00000',
+        }),
+      });
+    });
+  }
+
+  /** Fake access token returned by `setupOAuthMock()` — exposed for assertions. */
+  static readonly FAKE_ACCESS_TOKEN = 'playwright_wasm_oauth_mock_token';
+
+  /**
+   * Complete the OAuth2 login flow after the WASM app has loaded.
+   *
+   * Waits for the OAuth bridge (`mt_wasmOAuthReady` + `mt_triggerOAuthLogin`)
+   * to be exposed by the `DialogLogin` constructor, triggers the OAuth popup,
+   * then waits for both `mt_setIntervalsCredentials` and `mt_intervalsRefresh`
+   * to be registered (indicating the main window has initialised).
+   *
+   * Requires `setupOAuthMock()` to have been called before `goto()`.
+   *
+   * @param timeoutMs Maximum time to wait for the main-window hooks (default 120 s).
+   */
+  async completeOAuthLogin(timeoutMs = 120_000): Promise<void> {
+    // Wait for the OAuth bridge — exposed in DialogLogin constructor.
+    await this.page.waitForFunction(
+      () =>
+        typeof (window as any).mt_triggerOAuthLogin === 'function' &&
+        (window as any).mt_wasmOAuthReady === true,
+      null,
+      { timeout: 60_000 },
+    );
+    await this.page.evaluate(() => (window as any).mt_triggerOAuthLogin());
+    // Wait for the main window to initialise (hook registration is the signal).
+    await this.waitForIntervalsTestHooks(timeoutMs);
+  }
+
   // ── Convenience getters ───────────────────────────────────────────────────
 
   /** Full URL of the WASM app shell page. */

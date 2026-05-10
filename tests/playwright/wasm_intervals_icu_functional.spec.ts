@@ -63,13 +63,14 @@ test.describe('Intervals.icu WASM functional', () => {
       ).toHaveLength(0);
     });
 
-    test('mt_intervalsRefresh test hook is exposed after app loads', async () => {
-      const hookExists = await wasmApp.page.evaluate(
-        () => typeof (window as any).mt_intervalsRefresh === 'function',
+    test('mt_wasmOAuthReady is exposed after app loads', async () => {
+      const bridgeReady = await wasmApp.page.evaluate(
+        () => (window as any).mt_wasmOAuthReady === true,
       );
       expect(
-        hookExists,
-        'window.mt_intervalsRefresh should be a function after the WASM app loads',
+        bridgeReady,
+        'window.mt_wasmOAuthReady should be true after the WASM app loads ' +
+        '(set by the DialogLogin constructor)',
       ).toBe(true);
     });
   });
@@ -91,11 +92,14 @@ test.describe('Intervals.icu WASM functional', () => {
       await wasmApp.mockBackendApis();
       intervalsRequests = await wasmApp.mockIntervalsIcuApi();
 
+      // Install OAuth mock after catch-all so /oauth/token takes precedence.
+      await wasmApp.setupOAuthMock();
+
       await wasmApp.goto();
       await wasmApp.waitForFullyLoaded(300_000);
 
-      // Wait for BOTH test hooks to be registered by the C++ WASM code.
-      await wasmApp.waitForIntervalsTestHooks();
+      // Complete OAuth login so the main window and test hooks are available.
+      await wasmApp.completeOAuthLogin();
 
       // Inject credentials directly into the Account object.
       await wasmApp.injectIntervalsCredentials(TEST_API_KEY, TEST_ATHLETE_ID);

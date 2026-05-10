@@ -62,10 +62,17 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     // connection-refused errors that produce WARN overlay lines.
     const apiRequestedUrls = await sharedWasmApp.mockBackendApis();
 
+    // Install OAuth popup mock so the login dialog completes automatically.
+    // Must be called after mockBackendApis() (catch-all) so the specific
+    // /oauth/token route takes precedence (last-registered = first-tried).
+    await sharedWasmApp.setupOAuthMock();
+
     await sharedWasmApp.goto();
 
     try {
       await sharedWasmApp.waitForFullyLoaded();
+      // Complete the OAuth login so the main window (and its API calls) load.
+      await sharedWasmApp.completeOAuthLogin(420_000);
     } catch (loadErr) {
       // Dump all available diagnostics so CI logs show exactly what happened.
       console.error('[diagnostic] waitForFullyLoaded timed out.');

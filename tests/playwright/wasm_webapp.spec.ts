@@ -108,6 +108,7 @@ test.describe('WASM webapp page', () => {
 
 // ── BLE GATT ready callback ────────────────────────────────────────────────
 test.describe('BLE GATT ready callback', () => {
+  test.describe.configure({ timeout: 420_000 });
   test('page loads without errors when a mock async-GATT BLE device is present', async ({ page }, testInfo) => {
     const wasmApp = new WasmAppPage(page);
 
@@ -152,6 +153,9 @@ test.describe('BLE GATT ready callback', () => {
     // Mock maximumtrainer.com backend APIs before navigation.
     const apiRequestedUrls = await wasmApp.mockBackendApis();
 
+    // Install OAuth popup mock so the login dialog completes automatically.
+    await wasmApp.setupOAuthMock();
+
     const consoleMessages: Array<{ type: string; text: string }> = [];
     page.on('console', (msg) =>
       consoleMessages.push({ type: msg.type(), text: msg.text() }),
@@ -172,6 +176,9 @@ test.describe('BLE GATT ready callback', () => {
     );
 
     await page.waitForTimeout(3000);
+
+    // Complete the OAuth login so the main window (and radio API) loads.
+    await wasmApp.completeOAuthLogin();
 
     // No [MT] BLE error messages should have been emitted during loading
     const bleErrors = consoleMessages.filter(

@@ -144,9 +144,12 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
     await wasmApp.mockBackendApis();
     const captured = await setupIntervalsIcuMocking(page);
 
+    // Install OAuth mock after catch-all so /oauth/token takes precedence.
+    await wasmApp.setupOAuthMock();
+
     await wasmApp.goto();
     await wasmApp.waitForFullyLoaded(300_000);
-    await wasmApp.waitForIntervalsTestHooks();
+    await wasmApp.completeOAuthLogin();
 
     // Inject credentials via the C++ test hook (avoids clear-text localStorage write).
     await wasmApp.injectIntervalsCredentials(apiKey, athleteId);
@@ -195,9 +198,12 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
       ]),
     );
 
+    // Install OAuth mock after catch-all so /oauth/token takes precedence.
+    await wasmApp.setupOAuthMock();
+
     await wasmApp.goto();
     await wasmApp.waitForFullyLoaded(300_000);
-    await wasmApp.waitForIntervalsTestHooks();
+    await wasmApp.completeOAuthLogin();
 
     // Inject credentials via the C++ test hook (avoids clear-text localStorage write).
     await wasmApp.injectIntervalsCredentials(apiKey, athleteId);
