@@ -50,7 +50,6 @@ signals :
 
 public slots:
     void filterChanged(const QString& field, const QString& value);
-    void filterChangedList(int id);
     void filterChangedWorkoutType(bool includedWorkout);
 
     void setFilterPlanName(const QString& name);
@@ -66,8 +65,9 @@ public slots:
 
 private slots:
 
-    void connectWebChannelWorkout();
-    void fillWorkoutPage();
+    void applyFiltersToInputs();
+    void onFilterTypeIndexChanged(int index);
+    void on_pushButton_filter_clear_clicked();
 
 
     void on_tableView_workout_doubleClicked(const QModelIndex &index);
