@@ -56,6 +56,45 @@ Radio RadioTableModel::getRadioAtRow(const QModelIndex &index) {
 }
 
 // ------------------------------------------------------------------------------------------
+void RadioTableModel::addRadio(const Radio& radio) {
+
+    const int row = lstRadio.size();
+    beginInsertRows(QModelIndex(), row, row);
+    lstRadio.append(radio);
+    endInsertRows();
+}
+
+
+// ------------------------------------------------------------------------------------------
+void RadioTableModel::replaceRadioAtRow(int row, const Radio& radio) {
+
+    if (row < 0 || row >= lstRadio.size())
+        return;
+
+    lstRadio.replace(row, radio);
+    emit dataChanged(index(row, 0), index(row, columnCount() - 1));
+}
+
+
+// ------------------------------------------------------------------------------------------
+void RadioTableModel::removeRadioAtRow(int row) {
+
+    if (row < 0 || row >= lstRadio.size())
+        return;
+
+    beginRemoveRows(QModelIndex(), row, row);
+    lstRadio.removeAt(row);
+    endRemoveRows();
+}
+
+
+// ------------------------------------------------------------------------------------------
+QList<Radio> RadioTableModel::getAllRadios() const {
+    return lstRadio;
+}
+
+
+// ------------------------------------------------------------------------------------------
 int RadioTableModel::rowCount(const QModelIndex &parent) const {
 
     Q_UNUSED(parent);

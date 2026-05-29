@@ -111,6 +111,15 @@ public:
     static QList<Sensor> parseJsonSensorList(QString data);
     static QList<Radio> parseJsonRadioList(QString data);
     static QList<Achievement> parseJsonAchievementList(QString data);
+
+    /// Local radio list — JSON file under the MaximumTrainer document root.
+    /// loadLocalRadioList() returns the parsed list; if the file is missing
+    /// or unreadable it writes the bundled defaults and returns those, so
+    /// the caller always gets at least a few stations to play.
+    static QList<Radio> loadLocalRadioList();
+    static bool         saveLocalRadioList(const QList<Radio>& lstRadio);
+    static QList<Radio> getDefaultRadioList();
+    static QString      getLocalRadioListPath();
     static QSet<int> parseJsonAchievementListForUser(QString data);
 
     /// Intervals.icu — parse the GET /api/v1/athlete/{id} response.

@@ -102,6 +102,13 @@ private slots:
     void on_pushButton_prevRadio_clicked();
     void on_pushButton_nextRadio_clicked();
 
+    // Radio list editor (Add / Edit / Delete buttons under the table).
+    // Each persists the full radio list to the local radios.json after the
+    // model is updated, so changes survive restart.
+    void on_pushButton_addRadio_clicked();
+    void on_pushButton_editRadio_clicked();
+    void on_pushButton_deleteRadio_clicked();
+
 
     ///timers
     void on_checkBox_showTimerOnTop_clicked(bool checked);
