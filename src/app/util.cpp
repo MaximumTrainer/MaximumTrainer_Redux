@@ -1270,24 +1270,13 @@ QString Util::getLocalRadioListPath() {
 
 QList<Radio> Util::getDefaultRadioList() {
 
-    /// Three ad-free, listener-supported defaults across distinct genres.
-    /// All URLs are stable, direct streams that libvlc can open without an
-    /// HTML player wrapper. Users can delete or replace any of them via the
-    /// radio editor.
-    QList<Radio> defaults;
-    defaults.append(Radio(QStringLiteral("SomaFM Beat Blender"),
-                          QStringLiteral("Dance / Electronic"),
-                          /*gotAds=*/false, 128, QStringLiteral("EN"),
-                          QStringLiteral("https://ice1.somafm.com/beatblender-128-mp3")));
-    defaults.append(Radio(QStringLiteral("Radio Paradise — Mellow Mix"),
-                          QStringLiteral("Eclectic Rock"),
-                          /*gotAds=*/false, 128, QStringLiteral("EN"),
-                          QStringLiteral("https://stream.radioparadise.com/mellow-128")));
-    defaults.append(Radio(QStringLiteral("FIP"),
-                          QStringLiteral("Jazz / World"),
-                          /*gotAds=*/false, 192, QStringLiteral("FR"),
-                          QStringLiteral("https://icecast.radiofrance.fr/fip-midfi.mp3")));
-    return defaults;
+    QFile bundled(QStringLiteral(":/data/resources/data/default_radios.json"));
+    if (!bundled.open(QIODevice::ReadOnly)) {
+        qWarning() << "getDefaultRadioList: cannot open bundled resource:"
+                   << bundled.errorString();
+        return QList<Radio>();
+    }
+    return Util::parseJsonRadioList(QString::fromUtf8(bundled.readAll()));
 }
 
 

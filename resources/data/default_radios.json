@@ -1,0 +1,82 @@
+[
+    {
+        "name": "SomaFM Groove Salad",
+        "genre": "Chill Electronic",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://ice1.somafm.com/groovesalad-128-mp3"
+    },
+    {
+        "name": "SomaFM Beat Blender",
+        "genre": "Late-night Electronic",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://ice1.somafm.com/beatblender-128-mp3"
+    },
+    {
+        "name": "SomaFM Indie Pop Rocks",
+        "genre": "Indie Pop",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://ice1.somafm.com/indiepop-128-mp3"
+    },
+    {
+        "name": "SomaFM Boot Liquor",
+        "genre": "Americana / Country",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://ice1.somafm.com/bootliquor-128-mp3"
+    },
+    {
+        "name": "SomaFM Drone Zone",
+        "genre": "Ambient",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://ice1.somafm.com/dronezone-128-mp3"
+    },
+    {
+        "name": "SomaFM Underground 80s",
+        "genre": "New Wave / Synth-pop",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://ice1.somafm.com/u80s-128-mp3"
+    },
+    {
+        "name": "Radio Paradise — Main Mix",
+        "genre": "Eclectic Rock / Pop",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://stream.radioparadise.com/aac-128"
+    },
+    {
+        "name": "Radio Paradise — Global Mix",
+        "genre": "World / Electronic",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://stream.radioparadise.com/global-128"
+    },
+    {
+        "name": "FIP",
+        "genre": "Jazz / Eclectic",
+        "gotAds": "0",
+        "bitrate": "192",
+        "lang": "FR",
+        "url": "https://icecast.radiofrance.fr/fip-midfi.mp3"
+    },
+    {
+        "name": "France Musique",
+        "genre": "Classical",
+        "gotAds": "0",
+        "bitrate": "192",
+        "lang": "FR",
+        "url": "https://icecast.radiofrance.fr/francemusique-midfi.mp3"
+    }
+]

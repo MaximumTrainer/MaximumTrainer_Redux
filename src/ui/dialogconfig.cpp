@@ -1569,15 +1569,17 @@ void DialogConfig::on_pushButton_addRadio_clicked() {
 //----------------------------------------------------------------------------
 void DialogConfig::on_pushButton_editRadio_clicked() {
 
-    const QModelIndexList sel = ui->tableView_radio->selectionModel()->selectedRows();
-    if (sel.isEmpty()) {
+    QModelIndex idx = ui->tableView_radio->selectionModel()->currentIndex();
+    if (!idx.isValid())
+        idx = currentRadioIndex;
+    if (!idx.isValid()) {
         QMessageBox::information(this, tr("Edit Radio"),
             tr("Select a radio station to edit."));
         return;
     }
 
-    const int row = sel.first().row();
-    Radio existing = tableModel->getRadioAtRow(sel.first());
+    const int row = idx.row();
+    Radio existing = tableModel->getRadioAtRow(idx);
     if (!runRadioEditDialog(this, existing))
         return;
 
@@ -1589,18 +1591,18 @@ void DialogConfig::on_pushButton_editRadio_clicked() {
 //----------------------------------------------------------------------------
 void DialogConfig::on_pushButton_deleteRadio_clicked() {
 
-    const QModelIndexList sel = ui->tableView_radio->selectionModel()->selectedRows();
-    if (sel.isEmpty()) {
+    QModelIndex idx = ui->tableView_radio->selectionModel()->currentIndex();
+    if (!idx.isValid())
+        idx = currentRadioIndex;
+    if (!idx.isValid()) {
         QMessageBox::information(this, tr("Delete Radio"),
             tr("Select a radio station to delete."));
         return;
     }
 
-    const int row = sel.first().row();
-    const Radio radio = tableModel->getRadioAtRow(sel.first());
+    const int row = idx.row();
+    const Radio radio = tableModel->getRadioAtRow(idx);
 
-    /// Confirm so the user doesn't nuke a default by accident, but we do
-    /// allow deleting bundled defaults — that's the whole point.
     if (QMessageBox::question(this, tr("Delete Radio"),
             tr("Delete \"%1\"?").arg(radio.getName()),
             QMessageBox::Yes | QMessageBox::No,
@@ -1609,5 +1611,7 @@ void DialogConfig::on_pushButton_deleteRadio_clicked() {
     }
 
     tableModel->removeRadioAtRow(row);
+    if (currentRadioIndex.row() == row)
+        currentRadioIndex = QModelIndex();
     Util::saveLocalRadioList(tableModel->getAllRadios());
 }
