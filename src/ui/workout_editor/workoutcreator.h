@@ -46,8 +46,8 @@ signals :
 
 
 private slots:
-    void connectWebChannelWorkoutCreator();
-    void fillWorkoutCreatorPageWeb(QString name, QString plan, QString creator, int type, QString description);
+    void populateInputsFromWorkout();
+    void on_pushButton_save_workout_clicked();
 
 
 

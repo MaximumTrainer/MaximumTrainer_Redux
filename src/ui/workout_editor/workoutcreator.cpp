@@ -18,14 +18,6 @@
 #include "environnement.h"
 
 
-#include <QWebEngineView>
-#include <QWebEngineProfile>
-#include <QWebEngineScript>
-#include <QWebEnginePage>
-#include <QWebEngineScriptCollection>
-#include <QWebChannel>
-
-
 
 WorkoutCreator::~WorkoutCreator()
 {
@@ -43,9 +35,19 @@ WorkoutCreator::WorkoutCreator(QWidget *parent) : QWidget(parent), ui(new Ui::Wo
     this->account = qApp->property("Account").value<Account*>();
 
 
-    connectWebChannelWorkoutCreator();
-    ui->webView_createWorkout->setUrl(QUrl(Environnement::getUrlWorkoutCreator()));
-    /// ----------------------------------------------------
+    /// Populate the type combobox in the same order as Workout::Type so
+    /// QComboBox::currentIndex() maps directly onto the enum value.
+    ui->comboBox_type_workout->addItem(tr("Endurance"), Workout::T_ENDURANCE);
+    ui->comboBox_type_workout->addItem(tr("Interval"),  Workout::T_INTERVAL);
+    ui->comboBox_type_workout->addItem(tr("Tempo"),     Workout::T_TEMPO);
+    ui->comboBox_type_workout->addItem(tr("Test"),      Workout::T_TEST);
+    ui->comboBox_type_workout->addItem(tr("Other"),     Workout::T_OTHERS);
+    ui->comboBox_type_workout->addItem(tr("Threshold"), Workout::T_THRESHOLD);
+
+    connect(ui->lineEdit_name_workout,    SIGNAL(textChanged(QString)), this, SLOT(checkToEnableButtonSave()));
+    connect(ui->lineEdit_plan_workout,    SIGNAL(textChanged(QString)), this, SLOT(checkToEnableButtonSave()));
+    connect(ui->lineEdit_creator_workout, SIGNAL(textChanged(QString)), this, SLOT(checkToEnableButtonSave()));
+    connect(ui->pushButton_save_workout,  SIGNAL(clicked()),            this, SLOT(on_pushButton_save_workout_clicked()));
 
 
 
@@ -164,41 +166,20 @@ WorkoutCreator::WorkoutCreator(QWidget *parent) : QWidget(parent), ui(new Ui::Wo
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-void WorkoutCreator::connectWebChannelWorkoutCreator() {
+void WorkoutCreator::populateInputsFromWorkout() {
 
-    qDebug() << "connectWebChannelWorkoutCreator";
+    /// Sync the native input widgets with the current `workout` state.
+    /// Called from resetWorkout()/editWorkout() — replaces the old
+    /// fillWorkoutCreatorPageWeb() that pushed values into the embedded
+    /// jQuery page via runJavaScript().
+    ui->lineEdit_name_workout->setText(workout.getName());
+    ui->lineEdit_plan_workout->setText(workout.getPlan());
+    ui->lineEdit_creator_workout->setText(workout.getCreatedBy());
+    ui->plainTextEdit_description_workout->setPlainText(workout.getDescription());
 
-    QFile webChannelJsFile(":/qtwebchannel/qwebchannel.js");
-    if(  !webChannelJsFile.open(QIODevice::ReadOnly) ) {
-        qDebug() << QString("Couldn't open qwebchannel.js file: %1").arg(webChannelJsFile.errorString());
-    }
-    else {
-        qDebug() << "OK webEngineProfile";
-        QByteArray webChannelJs = webChannelJsFile.readAll();
-        webChannelJs.append(
-                    "\n"
-                    "var WorkoutCreator"
-                    "\n"
-                    "new QWebChannel(qt.webChannelTransport, function(channel) {"
-                    "     WorkoutCreator = channel.objects.WorkoutCreator;"
-                    "});"
-                    "\n"
-                    );
-
-        QWebChannel *channel = new QWebChannel(ui->webView_createWorkout);
-        QWebEngineScript script;
-        script.setSourceCode(webChannelJs);
-        script.setName("qwebchannel.js");
-        script.setWorldId(QWebEngineScript::MainWorld);
-        script.setInjectionPoint(QWebEngineScript::DocumentCreation);
-        script.setRunsOnSubFrames(false);
-
-        ui->webView_createWorkout->page()->scripts().insert(script);
-        ui->webView_createWorkout->page()->setWebChannel(channel);
-        channel->registerObject("WorkoutCreator", this);
-    }
-
-
+    int typeIndex = ui->comboBox_type_workout->findData(static_cast<int>(workout.getType()));
+    if (typeIndex < 0) typeIndex = 0;
+    ui->comboBox_type_workout->setCurrentIndex(typeIndex);
 }
 
 
@@ -239,7 +220,12 @@ void WorkoutCreator::resetWorkout() {
     lstRepeatWidget.clear();
     lstRepeatData.clear();
 
-    fillWorkoutCreatorPageWeb("", "-", account->display_name, 0, "");
+    workout.setName("");
+    workout.setPlan("-");
+    workout.setCreator(account->display_name);
+    workout.setDescription("");
+    workout.setType(Workout::T_ENDURANCE);
+    populateInputsFromWorkout();
 
     computeWorkout();
 
@@ -325,41 +311,8 @@ void WorkoutCreator::editWorkout(Workout workoutToEdit) {
     intervalModel->setListInterval(workoutToEdit.getLstIntervalSource());
     restoreRepeatWidgetInterface();
 
-    fillWorkoutCreatorPageWeb(workout.getName(), workout.getPlan(), workout.getCreatedBy(), workout.getType(), workout.getDescription());
+    populateInputsFromWorkout();
     checkToEnableButtonSave();
-}
-
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WorkoutCreator::fillWorkoutCreatorPageWeb(QString name, QString plan, QString creator, int type, QString description) {
-
-    qDebug() << "fillWorkoutCreatorPageWeb";
-
-    //Parse for Quotes, Javascript doesnt like them so escape them
-    QString planEscaped = plan.replace("\'", "\\'");
-    QString creatorEscaped = creator.replace("\'", "\\'");
-    QString descriptionEscaped = description.replace("\'", "\\'");
-    descriptionEscaped = descriptionEscaped.replace("\n", "\\n");
-
-
-    //// ----------- Set Data in QWebView : have to put null at the end of evaluate javascript or it's really slow
-    /// source : http://stackoverflow.com/questions/19505063/qt-javascript-execution-slow-unless-i-log-to-the-console
-    QString jsToExecute = QString("$('#name-workout').val( '%1' ); ").arg(name);
-    jsToExecute += QString("$('#plan-workout').val( '%1' ); ").arg(planEscaped);
-    jsToExecute += QString("$('#creator-workout').val( '%1' ); ").arg(creatorEscaped);
-    jsToExecute += QString("$('#description-workout').val( '%1' ); ").arg(descriptionEscaped);
-
-    jsToExecute += QString("$('#select-type-workout').val( %1 );").arg(type);
-    jsToExecute += "$('#select-type-workout').selectpicker('refresh');";
-    //    ui->webView_createWorkout->page()->mainFrame()->documentElement().evaluateJavaScript(jsToExecute + "; null");
-
-    // Guard against pages where jQuery is not yet loaded (e.g. screenshot/CI
-    // mode where the external URL was replaced with blank HTML).
-    ui->webView_createWorkout->page()->runJavaScript(
-        QStringLiteral("if(typeof window.$==='function'){") + jsToExecute + QStringLiteral("}"));
-
-
 }
 
 
@@ -367,31 +320,25 @@ void WorkoutCreator::fillWorkoutCreatorPageWeb(QString name, QString plan, QStri
 ////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutCreator::checkToEnableButtonSave() {
 
-
     qDebug() << "OK WORKOUT CREATOR CHECK BUTTON SAVE";
 
-    bool enabled = true;
-    if (intervalModel->rowCount() == 0) {
-        enabled = false;
-    }
+    const bool hasIntervals = intervalModel->rowCount() > 0;
+    const bool hasName    = !ui->lineEdit_name_workout->text().isEmpty();
+    const bool hasPlan    = !ui->lineEdit_plan_workout->text().isEmpty();
+    const bool hasCreator = !ui->lineEdit_creator_workout->text().isEmpty();
+
+    ui->pushButton_save_workout->setEnabled(hasIntervals && hasName && hasPlan && hasCreator);
+}
 
 
-    QString jsToRun = "var nameValue = $('#name-workout').val();"
-                      "var planValue =   $('#plan-workout').val();"
-                      "var creatorValue = $('#creator-workout').val();"
-                      "if (nameValue.length > 0 && creatorValue.length > 0 && planValue.length > 0 && " + QString::number(enabled) +") {"
-                      "$('#btn-save-workout').prop('disabled', false);"
-                      "}"
-                      "else {"
-                      "$('#btn-save-workout').prop('disabled', true);"
-                      "}";
+////////////////////////////////////////////////////////////////////////////////////////////
+void WorkoutCreator::on_pushButton_save_workout_clicked() {
 
-//    qDebug() << "ok button check JS is " << jsToRun;
-
-    // Guard against pages where jQuery is not yet loaded.
-    ui->webView_createWorkout->page()->runJavaScript(
-        QStringLiteral("if(typeof window.$==='function'){") + jsToRun + QStringLiteral("}"));
-
+    createWorkout(ui->lineEdit_name_workout->text(),
+                  ui->lineEdit_plan_workout->text(),
+                  ui->lineEdit_creator_workout->text(),
+                  ui->plainTextEdit_description_workout->toPlainText(),
+                  ui->comboBox_type_workout->currentIndex());
 }
 
 
