@@ -44,10 +44,14 @@ WorkoutCreator::WorkoutCreator(QWidget *parent) : QWidget(parent), ui(new Ui::Wo
     ui->comboBox_type_workout->addItem(tr("Other"),     Workout::T_OTHERS);
     ui->comboBox_type_workout->addItem(tr("Threshold"), Workout::T_THRESHOLD);
 
+    // Note: pushButton_save_workout::clicked() is hooked up automatically by
+    // QMetaObject::connectSlotsByName via the on_pushButton_save_workout_clicked
+    // slot name — adding an explicit connect() here would fire it twice and
+    // make the second call see the just-written file, triggering a spurious
+    // "workout already exists" dialog.
     connect(ui->lineEdit_name_workout,    SIGNAL(textChanged(QString)), this, SLOT(checkToEnableButtonSave()));
     connect(ui->lineEdit_plan_workout,    SIGNAL(textChanged(QString)), this, SLOT(checkToEnableButtonSave()));
     connect(ui->lineEdit_creator_workout, SIGNAL(textChanged(QString)), this, SLOT(checkToEnableButtonSave()));
-    connect(ui->pushButton_save_workout,  SIGNAL(clicked()),            this, SLOT(on_pushButton_save_workout_clicked()));
 
 
 
