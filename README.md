@@ -238,6 +238,7 @@ Install system packages and build VLC-Qt from source, then build the app:
 sudo apt-get install -y \
   qtbase5-dev qtwebengine5-dev qtconnectivity5-dev \
   libqwt-qt5-dev libsfml-dev libvlc-dev libvlccore-dev \
+  vlc-plugin-base vlc-plugin-video-output \
   cmake build-essential
 
 # Build VLC-Qt 1.1.1 from source
@@ -252,6 +253,8 @@ export PATH=/usr/lib/qt5/bin:$PATH
 qmake PowerVelo.pro "INCLUDEPATH+=/usr/local/include" "LIBS+=-L/usr/local/lib"
 make -j$(nproc)
 ```
+
+> `vlc-plugin-video-output` is required for libvlc to render video into the Workout dialog. Without it, libvlc loads but reports `failed to create video output` and the player shows only the timer.
 
 ### macOS
 

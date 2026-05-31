@@ -18,7 +18,10 @@ TableViewInterval::TableViewInterval(QWidget *parent) :
     setDragDropMode(QAbstractItemView::InternalMove);
     setDragDropOverwriteMode(false);
     setDefaultDropAction(Qt::MoveAction);
-    setSelectionMode(QAbstractItemView::SingleSelection);
+    // ExtendedSelection (not SingleSelection) so Shift-click / Ctrl-click
+    // can select a multi-row range — required by the Repeat button, which
+    // wraps the selected interval range in a repeat block.
+    setSelectionMode(QAbstractItemView::ExtendedSelection);
 }
 
 

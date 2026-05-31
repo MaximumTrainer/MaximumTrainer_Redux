@@ -9,13 +9,7 @@
 #include "util.h"
 #include "environnement.h"
 #include "workoututil.h"
-
-#include <QWebEngineView>
-#include <QWebEngineProfile>
-#include <QWebEngineScript>
-#include <QWebEnginePage>
-#include <QWebEngineScriptCollection>
-#include <QWebChannel>
+#include "workout.h"
 
 
 
@@ -66,8 +60,37 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
     ui->tableView_workout->setModel(proxyModel);
     ui->tableView_workout->verticalHeader()->setDefaultSectionSize(60);
 
-    connectWebChannelWorkout();
-    ui->webView_workouts->setUrl(QUrl(Environnement::getUrlWorkout()));
+    /// Populate the type-filter combobox. Index 0 is "All" (no type filter);
+    /// the remaining entries map onto Workout::Type enum values via userData.
+    ui->comboBox_filter_type->addItem(tr("All types"), -1);
+    ui->comboBox_filter_type->addItem(tr("Endurance"), Workout::T_ENDURANCE);
+    ui->comboBox_filter_type->addItem(tr("Interval"),  Workout::T_INTERVAL);
+    ui->comboBox_filter_type->addItem(tr("Tempo"),     Workout::T_TEMPO);
+    ui->comboBox_filter_type->addItem(tr("Test"),      Workout::T_TEST);
+    ui->comboBox_filter_type->addItem(tr("Other"),     Workout::T_OTHERS);
+    ui->comboBox_filter_type->addItem(tr("Threshold"), Workout::T_THRESHOLD);
+
+    /// Wire each filter input to the existing filterChanged proxy logic.
+    /// QueuedConnection is unnecessary here — proxy invalidation is cheap.
+    connect(ui->lineEdit_filter_name, &QLineEdit::textChanged, this,
+            [this](const QString& v){ filterChanged("name", v); });
+    connect(ui->lineEdit_filter_plan, &QLineEdit::textChanged, this,
+            [this](const QString& v){ filterChanged("plan", v); });
+    connect(ui->lineEdit_filter_creator, &QLineEdit::textChanged, this,
+            [this](const QString& v){ filterChanged("creator", v); });
+    connect(ui->comboBox_filter_type,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &Main_WorkoutPage::onFilterTypeIndexChanged);
+
+    /// Apply the persisted filter state loaded from QSettings to the inputs;
+    /// the textChanged/currentIndexChanged hooks above will then push those
+    /// values into the proxy model.
+    applyFiltersToInputs();
+
+    if (!account->show_included_workout) {
+        ui->checkBox->setChecked(false);
+        filterChangedWorkoutType(false);
+    }
 
 
     ui->tableView_workout->sortByColumn(0, Qt::AscendingOrder);
@@ -117,9 +140,6 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
     actionDelete->setEnabled(false);
     actionOpenFolder->setEnabled(false);
 
-
-    connect(ui->webView_workouts, SIGNAL(loadFinished(bool)), this, SLOT(fillWorkoutPage()));
-
 }
 
 
@@ -161,78 +181,51 @@ void Main_WorkoutPage::parseMapWorkout(int userFTP) {
 
 
 //---------------------------------------------------------------------------------------------------------
-void Main_WorkoutPage::connectWebChannelWorkout() {
+void Main_WorkoutPage::applyFiltersToInputs() {
 
+    /// Push the persisted nameFilter/planFilter/creatorFilter/typeFilter
+    /// values into the native input widgets. The textChanged /
+    /// currentIndexChanged signals wired up in the constructor will then
+    /// drive the proxy filter through filterChanged().
+    ui->lineEdit_filter_name->setText(nameFilter);
+    ui->lineEdit_filter_plan->setText(planFilter);
+    ui->lineEdit_filter_creator->setText(creatorFilter);
 
-    qDebug() << "connectWebChannelWorkout";
-
-    QFile webChannelJsFile(":/qtwebchannel/qwebchannel.js");
-    if(  !webChannelJsFile.open(QIODevice::ReadOnly) ) {
-        qDebug() << QString("Couldn't open qwebchannel.js file: %1").arg(webChannelJsFile.errorString());
-    }
-    else {
-        qDebug() << "OK webEngineProfile";
-        QByteArray webChannelJs = webChannelJsFile.readAll();
-        webChannelJs.append(
-                    "\n"
-                    "var workoutObject"
-                    "\n"
-                    "new QWebChannel(qt.webChannelTransport, function(channel) {"
-                    "     workoutObject = channel.objects.workoutObject;"
-                    "});"
-                    "\n"
-                    );
-
-        QWebChannel *channel = new QWebChannel(ui->webView_workouts);
-        QWebEngineScript script;
-        script.setSourceCode(webChannelJs);
-        script.setName("qwebchannel.js");
-        script.setWorldId(QWebEngineScript::MainWorld);
-        script.setInjectionPoint(QWebEngineScript::DocumentCreation);
-        script.setRunsOnSubFrames(false);
-
-        ui->webView_workouts->page()->scripts().insert(script);
-        ui->webView_workouts->page()->setWebChannel(channel);
-        channel->registerObject("workoutObject", this);
-    }
-
-
-    if (!account->show_included_workout) {
-        ui->checkBox->setChecked(false);
-        filterChangedWorkoutType(false);
-    }
-
+    int comboIndex = ui->comboBox_filter_type->findData(typeFilter);
+    if (comboIndex < 0) comboIndex = 0; // "All types"
+    ui->comboBox_filter_type->setCurrentIndex(comboIndex);
 }
 
 
 //---------------------------------------------------------------------------------------------------------
-void Main_WorkoutPage::fillWorkoutPage() {
+void Main_WorkoutPage::onFilterTypeIndexChanged(int index) {
 
+    const int typeId = ui->comboBox_filter_type->itemData(index).toInt();
+    typeFilter = typeId;
 
-    qDebug() << "fillWorkoutPage";
-
-    QString jsCode;
-    jsCode = QString("$('#name-workout').val('%1');").arg(nameFilter);
-    jsCode += QString("$('#plan-workout').val('%1');").arg(planFilter);
-    jsCode += QString("$('#creator-workout').val('%1');").arg(creatorFilter);
-
-    if (typeFilter != -1) {
-        jsCode += QString("$('#select-type-workout').val(%1);").arg(typeFilter);
-        jsCode += "$('#select-type-workout').selectpicker('refresh');";
-        jsCode += "$('#select-type-workout').trigger('change');";
+    if (typeId < 0) {
+        // "All types" — clear the type column filter.
+        proxyModel->addFilterFixedString(3, "");
     }
+    else {
+        // Match what gets shown in column 3 (Workout::getTypeToString()).
+        Workout tmp;
+        tmp.setType(static_cast<Workout::Type>(typeId));
+        proxyModel->addFilterFixedString(3, tmp.getTypeToString());
+    }
+    proxyModel->invalidate();
+}
 
 
-    qDebug() << "JSTOEXECUTE IS:" << jsCode;
-    // Guard against pages where jQuery is not yet loaded (e.g. screenshot/CI
-    // mode where the external URL was replaced with blank HTML).
-    ui->webView_workouts->page()->runJavaScript(
-        QStringLiteral("if(typeof window.$==='function'){") + jsCode + QStringLiteral("}"));
+//---------------------------------------------------------------------------------------------------------
+void Main_WorkoutPage::on_pushButton_filter_clear_clicked() {
 
-    filterChanged("name", nameFilter);
-    filterChanged("plan", planFilter);
-    filterChanged("creator", creatorFilter);
-
+    /// Resetting the inputs triggers the textChanged / currentIndexChanged
+    /// hooks, which propagate empty filters to the proxy model.
+    ui->lineEdit_filter_name->clear();
+    ui->lineEdit_filter_plan->clear();
+    ui->lineEdit_filter_creator->clear();
+    ui->comboBox_filter_type->setCurrentIndex(0);
 }
 
 
@@ -473,28 +466,17 @@ void Main_WorkoutPage::updateTableViewMetrics() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Main_WorkoutPage::setFilterPlanName(const QString& plan) {
 
-
     qDebug() << "setFilterPlanName";
 
-    // Escape backslashes and single quotes so the value is safe inside a JS single-quoted string
-    QString jsPlan = plan;
-    jsPlan.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
-    jsPlan.replace(QLatin1Char('\''), QStringLiteral("\\'"));
+    /// Replace any active filters with a plan-only filter. Setting the
+    /// inputs fires textChanged/currentIndexChanged which propagate the
+    /// new values into the proxy model.
+    ui->lineEdit_filter_name->clear();
+    ui->lineEdit_filter_creator->clear();
+    ui->comboBox_filter_type->setCurrentIndex(0);
+    ui->lineEdit_filter_plan->setText(plan);
 
-    QString jsToExecute = "$('#name-workout').val( '' ); ";
-    jsToExecute += QString("$('#plan-workout').val( '%1' ); ").arg(jsPlan);
-    jsToExecute += "$('#creator-workout').val( '' ); ";
-
-    jsToExecute += "$('#select-type-workout option:selected').prop('selected', false); ";
-    jsToExecute += "$('#select-type-workout').selectpicker('refresh'); ";
-
-
-    ui->webView_workouts->page()->runJavaScript(jsToExecute);
-
-
-    filterChanged("", "");
-    filterChanged("plan", plan);
-    if (!ui->checkBox->isChecked() && plan != "") {
+    if (!ui->checkBox->isChecked() && !plan.isEmpty()) {
         ui->checkBox->setChecked(true);
         filterChangedWorkoutType(true);
     }
@@ -505,26 +487,13 @@ void Main_WorkoutPage::setFilterPlanName(const QString& plan) {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Main_WorkoutPage::setFilterWorkoutName(const QString& workoutName) {
 
-
     qDebug() << "setFilterWorkoutName";
 
-    // Escape backslashes and single quotes so the value is safe inside a JS single-quoted string
-    QString jsWorkoutName = workoutName;
-    jsWorkoutName.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
-    jsWorkoutName.replace(QLatin1Char('\''), QStringLiteral("\\'"));
-
-    QString jsToExecute = "$('#plan-workout').val( '' ); ";
-    jsToExecute += QString("$('#name-workout ').val( '%1' ); ").arg(jsWorkoutName);
-    jsToExecute += "$('#creator-workout').val( '' ); ";
-
-    jsToExecute += "$('#select-type-workout option:selected').prop('selected', false); ";
-    jsToExecute += "$('#select-type-workout').selectpicker('refresh'); ";
-
-    ui->webView_workouts->page()->runJavaScript(jsToExecute);
-
-
-    filterChanged("", "");
-    filterChanged("name", workoutName);
+    /// Replace any active filters with a name-only filter.
+    ui->lineEdit_filter_plan->clear();
+    ui->lineEdit_filter_creator->clear();
+    ui->comboBox_filter_type->setCurrentIndex(0);
+    ui->lineEdit_filter_name->setText(workoutName);
 
     ui->tableView_workout->scrollToTop();
 }
@@ -561,14 +530,6 @@ void Main_WorkoutPage::loadFilterFields() {
     qDebug() << "Setings to load filter should be" << nameFilter << planFilter << creatorFilter << typeFilter;
 }
 
-
-//---------------------------------------------------------------
-void Main_WorkoutPage::filterChangedList(int id) {
-
-    //Just to save to settings later on
-    qDebug() << "ok it changed here" << id;
-    typeFilter = id;
-}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Main_WorkoutPage::filterChanged(const QString& field, const QString& value) {
