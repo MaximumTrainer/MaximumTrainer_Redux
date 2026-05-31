@@ -134,6 +134,7 @@ public:
     QUrl url() const { return m_currentUrl; }
     void setPage(QWebEnginePage *page) { if (page) m_page = page; }
     QWebEnginePage *page() const { return m_page; }
+    QWebEngineSettings *settings() { return QWebEngineSettings::defaultSettings(); }
     QAction *pageAction(QWebEnginePage::WebAction action) { return m_page->action(action); }
     void back() {}
     void forward() {}
