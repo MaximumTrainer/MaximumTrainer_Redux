@@ -26,6 +26,13 @@ public:
     void saveIntervalSummarySettings();
     void saveAppTheme();
 
+    /// Display & sound preferences (video player, widget displays, target/curve
+    /// toggles, sound alerts). These were historically stored only server-side
+    /// via the now-defunct putAccount REST endpoint, so they were lost on every
+    /// restart (especially offline). These persist them to local QSettings.
+    void loadDisplayPrefs();
+    void saveDisplayPrefs();
+
     /// Encrypt and persist Strava OAuth2 tokens to QSettings.
     /// Call after a successful token exchange or refresh.
     void saveStravaCredentials();

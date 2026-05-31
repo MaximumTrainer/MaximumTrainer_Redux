@@ -947,6 +947,11 @@ void DialogConfig::saveSettings() {
     settings.setValue("defaultUrl", ui->lineEdit_homePage->text());
     settings.endGroup();
 
+    // Persist display & sound prefs locally (the server putAccount endpoint is
+    // defunct), so the user's choices — including the video player — survive a
+    // restart.
+    account->saveDisplayPrefs();
+
     // Save the new preference tabs
     saveLoggingTab();
     saveLanguageTab();
