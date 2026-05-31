@@ -256,6 +256,8 @@ make -j$(nproc)
 
 > `vlc-plugin-video-output` is required for libvlc to render video into the Workout dialog. Without it, libvlc loads but reports `failed to create video output` and the player shows only the timer.
 
+> **Wayland:** libvlc's Linux video output is X11/XCB-only (VLC 3.0.x ships no native Wayland output), so under a Wayland session it cannot embed video into the Qt widget and spawns a separate window. The app detects Wayland and automatically forces the `xcb` platform (via XWayland) so video stays in the workout frame. Set `QT_QPA_PLATFORM` yourself to override this.
+
 ### macOS
 
 Uses Qt 6.7.3 with Clang. QWT is built from source (non-framework) against Qt 6. VLC-Qt is optional on macOS.
