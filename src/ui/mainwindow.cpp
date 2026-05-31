@@ -1571,15 +1571,15 @@ void MainWindow::on_actionAbout_MT_triggered()
 {
     const QString appName = QCoreApplication::applicationName();
     QString nameWithVersion = appName + " " + QCoreApplication::applicationVersion();
-    QString copyright = tr("Copyright 2013-2019 MaximumTrainer. All rights reserved");
+    QString copyright = tr("Copyright 2013-2019 maximus321")
+                      + "<br/>"
+                      + tr("Copyright 2019-present MaximumTrainer maintainers");
     this->setStyleSheet("QMessageBox { messagebox-text-interaction-flags: 5; }");
     QMessageBox::about(this,
                        tr("About ") + appName,
                        "<b>"+ nameWithVersion + "</b> - " + tr("Build on ")  + Environnement::getDateBuilded() + "<br/>" +
-                       copyright + "<br/><hr/>" +
-                       tr("Normalized Power®(NP), Training Stress Score®(TSS) and Intensity Factor®(IF) are registered trademarks of Peaksware LLC.") +
-                       "<hr/><b>Donation</b><br/>" +
-                       "BTC:<br/>3LKr2aZabvCn8yadtfPNmLo5GyGiGft6yw<br/>ETH:<br/>0x51B7D1dDE1b3B4c8bfdb70D4B3E4dA2f8511F8AD");
+                       copyright + "<hr/>" +
+                       tr("Normalized Power®(NP), Training Stress Score®(TSS) and Intensity Factor®(IF) are registered trademarks of Peaksware LLC."));
 
 
 }
