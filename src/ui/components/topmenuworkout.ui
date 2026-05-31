@@ -628,59 +628,59 @@ border-radius: 1px;
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="pushButton_prevRadio">
-        <property name="maximumSize">
-         <size>
-          <width>65</width>
-          <height>16777215</height>
-         </size>
-        </property>
+       <widget class="QToolButton" name="pushButton_prevRadio">
         <property name="cursor">
-         <cursorShape>ArrowCursor</cursorShape>
+         <cursorShape>PointingHandCursor</cursorShape>
         </property>
         <property name="focusPolicy">
          <enum>Qt::NoFocus</enum>
         </property>
+        <property name="toolTip">
+         <string>Previous station (F6)</string>
+        </property>
         <property name="text">
-         <string>&lt;&lt; (F6)</string>
+         <string/>
+        </property>
+        <property name="autoRaise">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="pushButton_playPauseRadio">
-        <property name="maximumSize">
-         <size>
-          <width>65</width>
-          <height>16777215</height>
-         </size>
-        </property>
+       <widget class="QToolButton" name="pushButton_playPauseRadio">
         <property name="cursor">
-         <cursorShape>ArrowCursor</cursorShape>
+         <cursorShape>PointingHandCursor</cursorShape>
         </property>
         <property name="focusPolicy">
          <enum>Qt::NoFocus</enum>
         </property>
+        <property name="toolTip">
+         <string>Play / Pause (F7)</string>
+        </property>
         <property name="text">
-         <string>&gt; (F7)</string>
+         <string/>
+        </property>
+        <property name="autoRaise">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="pushButton_nextRadio">
-        <property name="maximumSize">
-         <size>
-          <width>65</width>
-          <height>16777215</height>
-         </size>
-        </property>
+       <widget class="QToolButton" name="pushButton_nextRadio">
         <property name="cursor">
-         <cursorShape>ArrowCursor</cursorShape>
+         <cursorShape>PointingHandCursor</cursorShape>
         </property>
         <property name="focusPolicy">
          <enum>Qt::NoFocus</enum>
         </property>
+        <property name="toolTip">
+         <string>Next station (F8)</string>
+        </property>
         <property name="text">
-         <string>&gt;&gt; (F8)</string>
+         <string/>
+        </property>
+        <property name="autoRaise">
+         <bool>true</bool>
         </property>
        </widget>
       </item>

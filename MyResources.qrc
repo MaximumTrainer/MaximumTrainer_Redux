@@ -133,6 +133,9 @@
     <qresource prefix="/included_workout/sufferfest">
         <file>resources/included_workout/Sufferfest/ISLAGIATT.workout</file>
     </qresource>
+    <qresource prefix="/data">
+        <file>resources/data/default_radios.json</file>
+    </qresource>
     <qresource prefix="/included_workout/rachel">
         <file>resources/included_workout/Rachel/Intervals-01.workout</file>
         <file>resources/included_workout/Rachel/Intervals-02.workout</file>

@@ -6,7 +6,24 @@
 #include <QAction>
 #include <QDebug>
 #include <QKeyEvent>
+#include <QPainter>
+#include <QStyle>
 #include "util.h"
+
+namespace {
+QIcon tintedStandardIcon(QStyle *style, QStyle::StandardPixmap sp,
+                         const QSize& size, const QColor& color) {
+    QPixmap source = style->standardIcon(sp).pixmap(size);
+    QPixmap out(source.size());
+    out.fill(Qt::transparent);
+    QPainter p(&out);
+    p.drawPixmap(0, 0, source);
+    p.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    p.fillRect(out.rect(), color);
+    p.end();
+    return QIcon(out);
+}
+}
 
 
 TopMenuWorkout::~TopMenuWorkout()
@@ -68,6 +85,15 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
 
     ui->label_radioIcon->setPixmap(pixmapRadio);
 
+    const QSize iconSize(20, 20);
+    const QColor iconColor(230, 230, 230);
+    ui->pushButton_prevRadio->setIcon(tintedStandardIcon(style(), QStyle::SP_MediaSkipBackward, iconSize, iconColor));
+    ui->pushButton_prevRadio->setIconSize(iconSize);
+    ui->pushButton_playPauseRadio->setIcon(tintedStandardIcon(style(), QStyle::SP_MediaPlay, iconSize, iconColor));
+    ui->pushButton_playPauseRadio->setIconSize(iconSize);
+    ui->pushButton_nextRadio->setIcon(tintedStandardIcon(style(), QStyle::SP_MediaSkipForward, iconSize, iconColor));
+    ui->pushButton_nextRadio->setIconSize(iconSize);
+
 
     ui->pushButton_calibrateFEC->setFocusPolicy(Qt::NoFocus);
     ui->pushButton_calibratePM->setFocusPolicy(Qt::NoFocus);
@@ -116,11 +142,13 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
 
 ////////////////////////////////////////////////////////////////////////
 void TopMenuWorkout::radioStartedPlaying() {
-    ui->pushButton_playPauseRadio->setText("|| (F7)");
+    ui->pushButton_playPauseRadio->setIcon(
+        tintedStandardIcon(style(), QStyle::SP_MediaPause, QSize(20, 20), QColor(230, 230, 230)));
 }
 
 void TopMenuWorkout::radioStoppedPlaying() {
-    ui->pushButton_playPauseRadio->setText("> (F7)");
+    ui->pushButton_playPauseRadio->setIcon(
+        tintedStandardIcon(style(), QStyle::SP_MediaPlay, QSize(20, 20), QColor(230, 230, 230)));
 }
 
 

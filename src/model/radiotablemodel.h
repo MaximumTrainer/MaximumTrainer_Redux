@@ -16,6 +16,14 @@ public:
     void addListRadio(QList<Radio> lstRadio);
     Radio getRadioAtRow(const QModelIndex &index);
 
+    /// CRUD helpers used by the radio editor in DialogConfig. They emit the
+    /// model-reset signals so the table view repaints; the dialog persists
+    /// the full list to disk after each call.
+    void addRadio(const Radio& radio);
+    void replaceRadioAtRow(int row, const Radio& radio);
+    void removeRadioAtRow(int row);
+    QList<Radio> getAllRadios() const;
+
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
     int columnCount(const QModelIndex &parent = QModelIndex()) const;
 

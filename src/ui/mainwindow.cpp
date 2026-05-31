@@ -293,10 +293,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 
 
-    ///Retrieve Internet Radio from DB
-    replyRadioDone = false;
-    replyRadio = RadioDAO::getAllRadios();
-    connect(replyRadio, SIGNAL(finished()), this, SLOT(slotFinishedGetRadio()));
+    /// Load the radio list from the user's local radios.json file. The
+    /// legacy maximumtrainer.com REST endpoint is gone; Util seeds the file
+    /// with a few bundled defaults on first run, and the user manages it
+    /// from the workout-dialog Settings → Radio tab.
+    lstRadio = Util::loadLocalRadioList();
+    this->setEnabled(true);
 
     qDebug() << "Test1";
 
@@ -350,72 +352,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-//---------------------------------------------------------------------------------
-void MainWindow::checkToEnableWindow() {
-
-    if (replyRadioDone) {
-        this->setEnabled(true);
-    }
-}
-
-
-
-//---------------------------------------------------------------------------------
-void MainWindow::slotFinishedGetRadio() {
-
-
-    //success
-    if (replyRadio->error() == QNetworkReply::NoError) {
-        qDebug() << "Get radio finished!";
-        QByteArray arrayData =  replyRadio->readAll();
-        lstRadio = Util::parseJsonRadioList(arrayData);
-        //enable mainWindow
-        ui->widget_bottomMenu->removeGeneralMessage();
-
-        replyRadioDone = true;
-        m_radioRetryCount = 0;
-        checkToEnableWindow();
-
-
-        replyRadio->deleteLater();
-    }
-    else {
-        LOG_WARN("MainWindow",
-                 QStringLiteral("Radio list fetch failed: ") + replyRadio->errorString());
-        ui->widget_bottomMenu->setGeneralMessage("Error retrieving data from Server..." + replyRadio->errorString(), 7000);
-
-        // In screenshot / offline mode, give up immediately so we don't produce
-        // a tight infinite loop when the server is unreachable (e.g. on CI).
-        // Also give up after 3 consecutive failures as a general safety net.
-        const auto *acct = qApp->property("Account").value<Account*>();
-        const bool inOfflineMode = !m_ssOutputDir.isEmpty()
-                                   || (acct && acct->isOffline);
-        if (inOfflineMode) {
-            LOG_WARN("MainWindow", "Radio list fetch: not retrying (offline/screenshot mode)");
-            replyRadio->deleteLater();
-            replyRadioDone = true;
-            checkToEnableWindow();
-            return;
-        }
-        if (++m_radioRetryCount >= 3) {
-            LOG_WARN("MainWindow", QStringLiteral("Radio list fetch: giving up after %1 attempt(s)").arg(m_radioRetryCount));
-            replyRadio->deleteLater();
-            replyRadioDone = true;
-            checkToEnableWindow();
-            return;
-        }
-
-        // Retry: start a fresh request and hand off the old reply for deletion.
-        QNetworkReply *old = replyRadio;
-        replyRadio = RadioDAO::getAllRadios();
-        connect(replyRadio, SIGNAL(finished()), this, SLOT(slotFinishedGetRadio()));
-        old->deleteLater();
-    }
-
-}
-
 
 
 //---------------------------------------------------------------------------------
@@ -2364,13 +2300,6 @@ void MainWindow::startScreenshotMode(const QString &outputDir)
     // with that established pattern for an inherently offline code-path.
     if (auto *acct = qApp->property("Account").value<Account*>())
         acct->isOffline = true;
-
-    // Abort any in-flight radio fetch so the tight retry loop stops immediately.
-    // slotFinishedGetRadio() will be called with OperationCanceledError; the
-    // offline/screenshot-mode check there will mark replyRadioDone and return.
-    if (!replyRadioDone && replyRadio) {
-        replyRadio->abort();
-    }
 
     // Navigate ALL WebEngine views (including nested ones in child widgets) to
     // blank HTML.  External pages depend on jQuery / RxJS loaded from CDN; in

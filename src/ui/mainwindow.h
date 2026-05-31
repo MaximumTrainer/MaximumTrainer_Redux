@@ -119,9 +119,6 @@ public slots:
 
 
 private slots:
-    void slotFinishedGetRadio();
-
-
     void on_actionAbout_MT_triggered();
     void on_actionAbout_Qt_triggered();
     void on_actionRequest_Help_triggered();
@@ -195,7 +192,6 @@ private:
 
     void tryAdvanceWorkoutQueue();
 
-    void checkToEnableWindow();
     void sendDataToSettingsOrStudioPage(int deviceType, int numberDeviceFound, QList<int> lstDevicePairedr, QList<int> lstTypeDevicePairedr, bool fromStudioPage);
 
     // Screenshot mode helpers
@@ -216,8 +212,6 @@ private:
     Ui::MainWindow *ui;
     DialogMainWindowConfig *dconfig;
 
-    bool replyRadioDone;
-    QNetworkReply *replyRadio;
     QList<Radio> lstRadio;
 
     ZoneObject *zoneObject;
@@ -263,10 +257,6 @@ private:
     int            m_ssStep       = 0;
     WorkoutDialog *m_ssWorkoutDlg = nullptr;
     SimulatorHub  *m_ssSimHub     = nullptr;
-
-    // Radio fetch retry guard – limits retries to avoid a tight loop when the
-    // server is unreachable (e.g. in screenshot/CI mode).
-    int            m_radioRetryCount = 0;
 
     // Plan Adherence (#157)
     PlanAdherenceStore *m_adherenceStore = nullptr;

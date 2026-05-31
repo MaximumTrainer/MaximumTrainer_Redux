@@ -3,6 +3,10 @@
 #include <QDebug>
 #include <QDir>
 #include <QDesktopServices>
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QRegularExpression>
 
 #include "account.h"
@@ -1248,4 +1252,101 @@ void Util::parseJsonIntervalsIcuOAuthToken(const QString &data)
         account->intervals_icu_athlete_id = athleteId;
 
     qDebug() << "parseJsonIntervalsIcuOAuthToken: athlete_id =" << account->intervals_icu_athlete_id;
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//  Local radio list — stored as JSON under the MaximumTrainer document root.
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+QString Util::getLocalRadioListPath() {
+
+    const QString base = Util::getMaximumTrainerDocumentPath();
+    if (base == "invalid_writable_path")
+        return QString();
+    return base + QDir::separator() + "radios.json";
+}
+
+
+QList<Radio> Util::getDefaultRadioList() {
+
+    QFile bundled(QStringLiteral(":/data/resources/data/default_radios.json"));
+    if (!bundled.open(QIODevice::ReadOnly)) {
+        qWarning() << "getDefaultRadioList: cannot open bundled resource:"
+                   << bundled.errorString();
+        return QList<Radio>();
+    }
+    return Util::parseJsonRadioList(QString::fromUtf8(bundled.readAll()));
+}
+
+
+bool Util::saveLocalRadioList(const QList<Radio>& lstRadio) {
+
+    const QString path = getLocalRadioListPath();
+    if (path.isEmpty()) {
+        qWarning() << "saveLocalRadioList: writable path unavailable";
+        return false;
+    }
+
+    QJsonArray arr;
+    for (const Radio& r : lstRadio) {
+        QJsonObject obj;
+        obj["name"]    = r.getName();
+        obj["genre"]   = r.getGenre();
+        // Match the on-the-wire schema parseJsonRadioList expects: gotAds and
+        // bitrate were strings (the legacy server returned them as such).
+        obj["gotAds"]  = QString::number(r.getGotAds() ? 1 : 0);
+        obj["bitrate"] = QString::number(r.getBitrate());
+        obj["lang"]    = r.getLanguage();
+        obj["url"]     = r.getUrl();
+        arr.append(obj);
+    }
+
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        qWarning() << "saveLocalRadioList: cannot open" << path << ":" << file.errorString();
+        return false;
+    }
+    file.write(QJsonDocument(arr).toJson(QJsonDocument::Indented));
+    return true;
+}
+
+
+QList<Radio> Util::loadLocalRadioList() {
+
+    const QString path = getLocalRadioListPath();
+
+    /// First-run / corrupt-path: drop the bundled defaults to disk and use
+    /// them. saveLocalRadioList may itself fail (read-only home, etc.) — in
+    /// that case we still return the defaults so the in-memory list is
+    /// usable for the session.
+    auto fallbackToDefaults = [&]() {
+        QList<Radio> defaults = getDefaultRadioList();
+        if (!path.isEmpty())
+            saveLocalRadioList(defaults);
+        return defaults;
+    };
+
+    if (path.isEmpty())
+        return fallbackToDefaults();
+
+    QFile file(path);
+    if (!file.exists())
+        return fallbackToDefaults();
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "loadLocalRadioList: cannot open" << path << ":" << file.errorString();
+        return fallbackToDefaults();
+    }
+
+    /// Reuse parseJsonRadioList — same schema as the legacy server.
+    /// On parse failure we keep the user's file untouched (so they can fix
+    /// it manually) and fall back to defaults for this session only.
+    QList<Radio> parsed = Util::parseJsonRadioList(QString::fromUtf8(file.readAll()));
+    if (parsed.isEmpty()) {
+        qWarning() << "loadLocalRadioList: parsed 0 radios from" << path
+                   << "— using bundled defaults for this session";
+        return getDefaultRadioList();
+    }
+    return parsed;
 }
