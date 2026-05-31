@@ -20,7 +20,6 @@
 #include "userdao.h"
 #include "savingwindow.h"
 #include "soundplayer.h"
-#include "dialoginfowebview.h"
 #include "dialogmainwindowconfig.h"
 #include "savingwindow.h"
 #include "workoutdialog.h"
@@ -1536,10 +1535,9 @@ void MainWindow::on_actionAbout_Qt_triggered()
 //-----------------------------------------------
 void MainWindow::on_actionRequest_Help_triggered()
 {
-    DialogInfoWebView infoAntStick;
-    infoAntStick.setUrlWebView(Environnement::getUrlSupport());
-    qDebug() << "URL IS : " << Environnement::getUrlSupport();
-    infoAntStick.exec();
+    // Open the online user guide in the user's default browser.
+    QDesktopServices::openUrl(QUrl(QStringLiteral(
+        "https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html")));
 }
 //-----------------------------------------------
 void MainWindow::on_actionKeyboard_Shortcuts_triggered()
