@@ -99,6 +99,8 @@ Once a workout starts you will see:
 
 Completed workout data is saved as a FIT activity file and can be uploaded to **Strava**, **TrainingPeaks**, **SelfLoops**, or **Intervals.icu** from the post-workout screen.
 
+> **Video entertainment:** the workout view can show either the built-in VLC player (local files / internet radio) or an embedded web browser (**Preferences → Video Player → WebView**). The web browser is for YouTube and other DRM-free sites — DRM services such as Netflix require the proprietary Widevine module, which cannot be bundled in this open-source build, so they will not play.
+
 ## Screenshots
 
 > **Note:** Screenshots showing the cross-platform UI will be added here. Contributions of high-quality screenshots on each platform are welcome — please open a pull request.

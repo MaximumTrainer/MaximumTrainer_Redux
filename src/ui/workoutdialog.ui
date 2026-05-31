@@ -152,6 +152,20 @@ QwtScaleWidget {
            <height>1</height>
           </size>
          </property>
+         <layout class="QVBoxLayout" name="layout_webPlayer">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+         </layout>
         </widget>
        </item>
        <item>

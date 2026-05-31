@@ -34,6 +34,7 @@
 #include "clock.h"
 #include "workoututil.h"
 #include "dialogconfig.h"
+#include "webbrowserview.h"
 #include "dialogcalibrate.h"
 #include "dialogcalibratepm.h"
 #include "dialogkeyboardshortcuts.h"
@@ -1712,7 +1713,7 @@ void WorkoutDialog::start_or_pause_workout() {
         setWidgetsStopped(false);
         startWorkout();
         emit playPlayer();
-        // ui->widget_webPlayer->playVideo(); // WebBrowserV2 removed
+        if (webPlayer) webPlayer->playVideo();
 
     }
     // If workout paused, we resume it
@@ -1735,7 +1736,7 @@ void WorkoutDialog::start_or_pause_workout() {
         setWidgetsStopped(false);
         emit resumeClock();
         emit playPlayer();
-        // ui->widget_webPlayer->playVideo(); // WebBrowserV2 removed
+        if (webPlayer) webPlayer->playVideo();
 
     }
     // If not paused, we pause it
@@ -1750,7 +1751,7 @@ void WorkoutDialog::start_or_pause_workout() {
         setMessagePlot();
         emit pauseClock();
         emit pausePlayer();
-        // ui->widget_webPlayer->pauseVideo(); // WebBrowserV2 removed
+        if (webPlayer) webPlayer->pauseVideo();
     }
 }
 
@@ -2638,10 +2639,23 @@ void WorkoutDialog::setTimerFontSize(int value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
+// Lazily create the QWebEngine-backed web player on first use, so the heavy
+// Chromium process is not started when the user stays on the default VLC player.
+WebBrowserView *WorkoutDialog::ensureWebPlayer() {
+    if (!webPlayer) {
+        webPlayer = new WebBrowserView(ui->widget_webPlayer);
+        ui->widget_webPlayer->layout()->addWidget(webPlayer);
+    }
+    return webPlayer;
+}
+
 void WorkoutDialog::showVideoPlayer(int choice) {
 
     /// Standard
     if (choice == 0) {
+        // Hiding the QWebEngineView only stops rendering, not playback, so
+        // explicitly pause it or its audio keeps playing behind the VLC player.
+        if (webPlayer) webPlayer->pauseVideo();
         ui->widget_webPlayer->setVisible(false);
         ui->widgetVideo->setVisible(true);
     }
@@ -2649,6 +2663,7 @@ void WorkoutDialog::showVideoPlayer(int choice) {
     else {
         ui->widgetVideo->setVisible(false);
         ui->widget_webPlayer->setVisible(true);
+        ensureWebPlayer()->loadHomePageIfNeeded();
     }
 }
 

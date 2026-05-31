@@ -16,6 +16,7 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QAction>
 #include <QDesktopServices>
 #include <functional>
 
@@ -27,9 +28,17 @@ class QWebEngineScriptCollection;
 // ─────────────────────────────── QWebEngineSettings ──────────────────────────
 class QWebEngineSettings {
 public:
-    enum WebAttribute { PluginsEnabled = 0, JavascriptEnabled = 1 };
+    enum WebAttribute { PluginsEnabled = 0, JavascriptEnabled = 1, FullScreenSupportEnabled = 2 };
     void setAttribute(WebAttribute, bool) {}
     static QWebEngineSettings *defaultSettings() { static QWebEngineSettings s; return &s; }
+};
+
+// ─────────────────────── QWebEngineFullScreenRequest ─────────────────────────
+class QWebEngineFullScreenRequest {
+public:
+    void accept() {}
+    void reject() {}
+    bool toggleOn() const { return false; }
 };
 
 // ─────────────────────────────── QWebEngineScript ────────────────────────────
@@ -66,6 +75,7 @@ public:
 class QWebEnginePage : public QObject {
 public:
     enum NavigationType { NavigationTypeLinkClicked = 0 };
+    enum WebAction { Back = 0, Forward = 1, Reload = 2, Stop = 3 };
     explicit QWebEnginePage(QObject *parent = nullptr)
         : QObject(parent), m_profile(new QWebEngineProfile(this)) {}
     explicit QWebEnginePage(QWebEngineProfile *profile, QObject *parent = nullptr)
@@ -78,12 +88,14 @@ public:
     QUrl url() const { return {}; }
     QWebEngineProfile *profile() const { return m_profile; }
     QWebEngineScriptCollection &scripts() { return m_scripts; }
+    QAction *action(WebAction) { return &m_action; }
     void setWebChannel(QObject *) {}
     void toPlainText(std::function<void(const QString &)>) {}
 
 private:
     QWebEngineProfile *m_profile;
     QWebEngineScriptCollection m_scripts;
+    QAction m_action;
 };
 
 // ─────────────────────────────── QWebEngineView ──────────────────────────────
@@ -122,6 +134,7 @@ public:
     QUrl url() const { return m_currentUrl; }
     void setPage(QWebEnginePage *page) { if (page) m_page = page; }
     QWebEnginePage *page() const { return m_page; }
+    QAction *pageAction(QWebEnginePage::WebAction action) { return m_page->action(action); }
     void back() {}
     void forward() {}
     void reload() {}
