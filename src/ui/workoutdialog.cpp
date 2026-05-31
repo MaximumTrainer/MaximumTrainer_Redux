@@ -4253,6 +4253,11 @@ void WorkoutDialog::showFullScreenWin() {
     qDebug() << "showFullScreenWin";
     this->setSizeGripEnabled(false);
     ui->widget_topMenu->setMinExpandExitVisible(true);
+    // Re-apply the expand-button icon: when the dialog opens directly in
+    // fullscreen the button's image stylesheet was set in the constructor while
+    // the button was hidden and is not rendered (shows as a white box) until it
+    // is reapplied. showNormalWin() already does this for the windowed path.
+    ui->widget_topMenu->updateExpandIcon();
 
 #ifdef Q_OS_MAC
     this->showMaximized();
