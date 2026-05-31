@@ -1467,40 +1467,6 @@ void MainWindow::on_actionExit_triggered()
 
 
 //----------------------------------------------------------------------------------------
-void MainWindow::on_actionLog_off_Exit_triggered()
-{
-
-    QMessageBox msgBox(this);
-    msgBox.setIcon(QMessageBox::Question);
-
-    msgBox.setText(tr("This will log you out of MaximumTrainer. You will need to re-enter your password to use MaximumTrainer again."));
-    msgBox.setInformativeText(tr("Do you wish to continue?"));
-
-    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
-    msgBox.setDefaultButton(QMessageBox::Yes);
-    msgBox.setButtonText(QMessageBox::Yes, tr("Logout"));
-    int reply = msgBox.exec();
-    if (reply == QMessageBox::Yes) {
-        qDebug() << "Yes was clicked";
-        Settings *settings = qApp->property("User_Settings").value<Settings*>();
-        settings->rememberMyPassword = false;
-        settings->lastLoggedKey = "";
-        settings->saveGeneralSettings();
-        this->close();
-
-    } else { //Cancel
-        qDebug() << "Cancel was clicked";
-        return;
-    }
-
-
-    /////////////////////
-
-
-}
-
-
-
 //----------------------------------------------------------------------------------------
 void MainWindow::on_actionAbout_MT_triggered()
 {
