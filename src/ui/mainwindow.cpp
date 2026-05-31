@@ -1510,11 +1510,17 @@ void MainWindow::on_actionAbout_MT_triggered()
     QString copyright = tr("Copyright 2013-2019 maximus321")
                       + "<br/>"
                       + tr("Copyright 2019-present MaximumTrainer maintainers");
+    const QString repoUrl = QStringLiteral("https://github.com/MaximumTrainer/MaximumTrainer_Redux");
+    QString openSource = tr("%1 is free and open source. Contributions are welcome — "
+                            "fork it, open an issue, or send a pull request on "
+                            "<a href=\"%2\">GitHub</a>.")
+                            .arg(appName, repoUrl);
     this->setStyleSheet("QMessageBox { messagebox-text-interaction-flags: 5; }");
     QMessageBox::about(this,
                        tr("About ") + appName,
                        "<b>"+ nameWithVersion + "</b> - " + tr("Build on ")  + Environnement::getDateBuilded() + "<br/>" +
                        copyright + "<hr/>" +
+                       openSource + "<hr/>" +
                        tr("Normalized Power®(NP), Training Stress Score®(TSS) and Intensity Factor®(IF) are registered trademarks of Peaksware LLC."));
 
 
