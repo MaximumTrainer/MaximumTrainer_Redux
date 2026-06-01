@@ -482,7 +482,15 @@ void DialogConfig::initUi() {
 
     QSettings settings;
     settings.beginGroup("webBrowserWorkout");
-    QString urlSaved = settings.value("defaultUrl", "http://netflix.com" ).toString();
+    // One-time reset: clear any previously saved home page and force YouTube.
+    // DRM services (e.g. the old Netflix default) need Widevine, which the
+    // embedded QWebEngineView cannot bundle, so they never played. Guarded by a
+    // flag so the user can still set their own URL afterwards.
+    if (!settings.value("youtubeResetDone", false).toBool()) {
+        settings.setValue("defaultUrl", "https://www.youtube.com");
+        settings.setValue("youtubeResetDone", true);
+    }
+    QString urlSaved = settings.value("defaultUrl", "https://www.youtube.com" ).toString();
     settings.endGroup();
     ui->lineEdit_homePage->setText(urlSaved);
 
@@ -938,6 +946,11 @@ void DialogConfig::saveSettings() {
     settings.beginGroup("webBrowserWorkout");
     settings.setValue("defaultUrl", ui->lineEdit_homePage->text());
     settings.endGroup();
+
+    // Persist display & sound prefs locally (the server putAccount endpoint is
+    // defunct), so the user's choices — including the video player — survive a
+    // restart.
+    account->saveDisplayPrefs();
 
     // Save the new preference tabs
     saveLoggingTab();

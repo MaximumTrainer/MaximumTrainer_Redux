@@ -137,7 +137,6 @@ private slots:
 
     void on_actionOpen_Ride_triggered();
     void on_actionExit_triggered();
-    void on_actionLog_off_Exit_triggered();
 
 
     void on_actionSingle_Workout_triggered();

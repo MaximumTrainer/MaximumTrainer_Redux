@@ -4,6 +4,12 @@ on:
   push:
     branches: ["**"]
     tags-ignore: ["**"]  # tag pushes are handled by release.yml, not build.yml
+  # Build every PR targeting master so cross-platform breakage (Windows/macOS/
+  # WASM) is caught before merge — including PRs from forks, whose branches do
+  # not trigger the push event on this repo. compute_version is master-only and
+  # skipped here; the build jobs run regardless via `needs + if: always()`.
+  pull_request:
+    branches: [master]
 
 jobs:
 

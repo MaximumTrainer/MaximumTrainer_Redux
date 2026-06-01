@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QRegularExpression>
+#include <QSettings>
 #include <QUuid>
 
 #include "logger.h"
@@ -200,6 +201,17 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     ui->comboBox_language->setCurrentIndex(settings->language_index);
     ui->label_version->setText(Environnement::getVersion());
 
+    // Restore the last "work offline" choice so users who always run offline
+    // do not have to re-tick the box every launch.
+#ifndef Q_OS_WASM
+    {
+        QSettings s;
+        const bool rememberOffline = s.value(QStringLiteral("login/workOffline"), false).toBool();
+        ui->checkBox_workOffline->setChecked(rememberOffline);
+        ui->pushButton_startOffline->setVisible(rememberOffline);
+    }
+#endif
+
     // Create the embedded OAuth widget and insert it into the placeholder page.
     m_oauthWidget = new IntervalsIcuOAuthWidget(this);
     ui->widget_oauthPage->layout()->addWidget(m_oauthWidget);
@@ -266,8 +278,12 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
 
     // Check for app updates in the background; never block the login UI.
     // WASM users cannot download a desktop binary, so skip the version check.
+    // Source/dev builds report version "0.0.0" (APP_VERSION is only populated
+    // from git describe in CI release builds), which would always look outdated
+    // and pop the update dialog on every launch — skip the check for them.
 #ifndef Q_OS_WASM
-    replyVersion = VersionDAO::getVersion();
+    const bool isDevBuild = Environnement::getVersion().remove(QRegularExpression("^[vV]")) == "0.0.0";
+    replyVersion = isDevBuild ? nullptr : VersionDAO::getVersion();
     if (replyVersion) {
         connect(replyVersion, &QNetworkReply::finished,
                 this, &DialogLogin::slotFinishedGetVersion);
@@ -360,11 +376,11 @@ void DialogLogin::slotFinishedGetVersion() {
 
 void DialogLogin::on_checkBox_workOffline_clicked(bool checked)
 {
-    if (checked) {
-        ui->pushButton_startOffline->setVisible(true);
-    } else {
-        ui->pushButton_startOffline->setVisible(false);
-    }
+    ui->pushButton_startOffline->setVisible(checked);
+
+    // Remember the choice so it is pre-selected on the next launch.
+    QSettings s;
+    s.setValue(QStringLiteral("login/workOffline"), checked);
 }
 
 

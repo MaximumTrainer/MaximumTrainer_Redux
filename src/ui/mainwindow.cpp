@@ -20,7 +20,6 @@
 #include "userdao.h"
 #include "savingwindow.h"
 #include "soundplayer.h"
-#include "dialoginfowebview.h"
 #include "dialogmainwindowconfig.h"
 #include "savingwindow.h"
 #include "workoutdialog.h"
@@ -1468,40 +1467,6 @@ void MainWindow::on_actionExit_triggered()
 
 
 //----------------------------------------------------------------------------------------
-void MainWindow::on_actionLog_off_Exit_triggered()
-{
-
-    QMessageBox msgBox(this);
-    msgBox.setIcon(QMessageBox::Question);
-
-    msgBox.setText(tr("This will log you out of MaximumTrainer. You will need to re-enter your password to use MaximumTrainer again."));
-    msgBox.setInformativeText(tr("Do you wish to continue?"));
-
-    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
-    msgBox.setDefaultButton(QMessageBox::Yes);
-    msgBox.setButtonText(QMessageBox::Yes, tr("Logout"));
-    int reply = msgBox.exec();
-    if (reply == QMessageBox::Yes) {
-        qDebug() << "Yes was clicked";
-        Settings *settings = qApp->property("User_Settings").value<Settings*>();
-        settings->rememberMyPassword = false;
-        settings->lastLoggedKey = "";
-        settings->saveGeneralSettings();
-        this->close();
-
-    } else { //Cancel
-        qDebug() << "Cancel was clicked";
-        return;
-    }
-
-
-    /////////////////////
-
-
-}
-
-
-
 //----------------------------------------------------------------------------------------
 void MainWindow::on_actionAbout_MT_triggered()
 {
@@ -1510,11 +1475,17 @@ void MainWindow::on_actionAbout_MT_triggered()
     QString copyright = tr("Copyright 2013-2019 maximus321")
                       + "<br/>"
                       + tr("Copyright 2019-present MaximumTrainer maintainers");
+    const QString repoUrl = QStringLiteral("https://github.com/MaximumTrainer/MaximumTrainer_Redux");
+    QString openSource = tr("%1 is free and open source. Contributions are welcome — "
+                            "fork it, open an issue, or send a pull request on "
+                            "<a href=\"%2\">GitHub</a>.")
+                            .arg(appName, repoUrl);
     this->setStyleSheet("QMessageBox { messagebox-text-interaction-flags: 5; }");
     QMessageBox::about(this,
                        tr("About ") + appName,
                        "<b>"+ nameWithVersion + "</b> - " + tr("Build on ")  + Environnement::getDateBuilded() + "<br/>" +
                        copyright + "<hr/>" +
+                       openSource + "<hr/>" +
                        tr("Normalized Power®(NP), Training Stress Score®(TSS) and Intensity Factor®(IF) are registered trademarks of Peaksware LLC."));
 
 
@@ -1530,10 +1501,9 @@ void MainWindow::on_actionAbout_Qt_triggered()
 //-----------------------------------------------
 void MainWindow::on_actionRequest_Help_triggered()
 {
-    DialogInfoWebView infoAntStick;
-    infoAntStick.setUrlWebView(Environnement::getUrlSupport());
-    qDebug() << "URL IS : " << Environnement::getUrlSupport();
-    infoAntStick.exec();
+    // Open the online user guide in the user's default browser.
+    QDesktopServices::openUrl(QUrl(QStringLiteral(
+        "https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html")));
 }
 //-----------------------------------------------
 void MainWindow::on_actionKeyboard_Shortcuts_triggered()

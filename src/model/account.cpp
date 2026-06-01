@@ -203,6 +203,10 @@ Account::Account(QObject *parent) : QObject(parent)  {
     hashCourseDone = QSet<QString>();
     //------------------------------
 
+    // Override the display/sound defaults above with any locally-persisted
+    // values (the server-side putAccount endpoint is defunct, so these are the
+    // authoritative store now).
+    loadDisplayPrefs();
 }
 
 
@@ -237,6 +241,120 @@ void Account::saveErgSmoothingDuration(int seconds)
     QSettings settings;
     settings.beginGroup("account");
     settings.setValue("erg_smoothing_duration_s", erg_smoothing_duration_s);
+    settings.endGroup();
+}
+
+// Group/key prefix for the locally-persisted display & sound preferences.
+// Kept distinct from the legacy server fields so it is self-contained.
+void Account::loadDisplayPrefs() {
+
+    QSettings settings;
+    settings.beginGroup("displayPrefs");
+
+    // Widget visibility
+    show_hr_widget            = settings.value("show_hr_widget",            show_hr_widget).toBool();
+    show_power_widget         = settings.value("show_power_widget",         show_power_widget).toBool();
+    show_power_balance_widget = settings.value("show_power_balance_widget", show_power_balance_widget).toBool();
+    show_cadence_widget       = settings.value("show_cadence_widget",       show_cadence_widget).toBool();
+    show_speed_widget         = settings.value("show_speed_widget",         show_speed_widget).toBool();
+    show_calories_widget      = settings.value("show_calories_widget",      show_calories_widget).toBool();
+    show_oxygen_widget        = settings.value("show_oxygen_widget",        show_oxygen_widget).toBool();
+    show_trainer_speed        = settings.value("show_trainer_speed",        show_trainer_speed).toBool();
+
+    // Per-metric display mode
+    display_hr            = settings.value("display_hr",            display_hr).toInt();
+    display_power         = settings.value("display_power",         display_power).toInt();
+    display_power_balance = settings.value("display_power_balance", display_power_balance).toInt();
+    display_cadence       = settings.value("display_cadence",       display_cadence).toInt();
+    averaging_power       = settings.value("averaging_power",       averaging_power).toInt();
+    offset_power          = settings.value("offset_power",          offset_power).toInt();
+
+    // Timer display
+    show_timer_on_top       = settings.value("show_timer_on_top",       show_timer_on_top).toBool();
+    show_interval_remaining = settings.value("show_interval_remaining", show_interval_remaining).toBool();
+    show_workout_remaining  = settings.value("show_workout_remaining",  show_workout_remaining).toBool();
+    show_elapsed            = settings.value("show_elapsed",            show_elapsed).toBool();
+
+    // Plot target/curve toggles
+    show_seperator_interval = settings.value("show_seperator_interval", show_seperator_interval).toBool();
+    show_grid               = settings.value("show_grid",               show_grid).toBool();
+    show_hr_target          = settings.value("show_hr_target",          show_hr_target).toBool();
+    show_power_target       = settings.value("show_power_target",       show_power_target).toBool();
+    show_cadence_target     = settings.value("show_cadence_target",     show_cadence_target).toBool();
+    show_speed_target       = settings.value("show_speed_target",       show_speed_target).toBool();
+    show_hr_curve           = settings.value("show_hr_curve",           show_hr_curve).toBool();
+    show_power_curve        = settings.value("show_power_curve",        show_power_curve).toBool();
+    show_cadence_curve      = settings.value("show_cadence_curve",      show_cadence_curve).toBool();
+    show_speed_curve        = settings.value("show_speed_curve",        show_speed_curve).toBool();
+
+    // Video player (0 = VLC, 1 = WebView)
+    display_video = settings.value("display_video", display_video).toInt();
+
+    // Sound
+    sound_player_vol               = settings.value("sound_player_vol",               sound_player_vol).toInt();
+    enable_sound                   = settings.value("enable_sound",                   enable_sound).toBool();
+    sound_interval                 = settings.value("sound_interval",                 sound_interval).toBool();
+    sound_pause_resume_workout     = settings.value("sound_pause_resume_workout",     sound_pause_resume_workout).toBool();
+    sound_achievement              = settings.value("sound_achievement",              sound_achievement).toBool();
+    sound_end_workout              = settings.value("sound_end_workout",              sound_end_workout).toBool();
+    sound_alert_power_under_target = settings.value("sound_alert_power_under_target", sound_alert_power_under_target).toBool();
+    sound_alert_power_above_target = settings.value("sound_alert_power_above_target", sound_alert_power_above_target).toBool();
+    sound_alert_cadence_under_target = settings.value("sound_alert_cadence_under_target", sound_alert_cadence_under_target).toBool();
+    sound_alert_cadence_above_target = settings.value("sound_alert_cadence_above_target", sound_alert_cadence_above_target).toBool();
+
+    settings.endGroup();
+}
+
+void Account::saveDisplayPrefs() {
+
+    QSettings settings;
+    settings.beginGroup("displayPrefs");
+
+    settings.setValue("show_hr_widget",            show_hr_widget);
+    settings.setValue("show_power_widget",         show_power_widget);
+    settings.setValue("show_power_balance_widget", show_power_balance_widget);
+    settings.setValue("show_cadence_widget",       show_cadence_widget);
+    settings.setValue("show_speed_widget",         show_speed_widget);
+    settings.setValue("show_calories_widget",      show_calories_widget);
+    settings.setValue("show_oxygen_widget",        show_oxygen_widget);
+    settings.setValue("show_trainer_speed",        show_trainer_speed);
+
+    settings.setValue("display_hr",            display_hr);
+    settings.setValue("display_power",         display_power);
+    settings.setValue("display_power_balance", display_power_balance);
+    settings.setValue("display_cadence",       display_cadence);
+    settings.setValue("averaging_power",       averaging_power);
+    settings.setValue("offset_power",          offset_power);
+
+    settings.setValue("show_timer_on_top",       show_timer_on_top);
+    settings.setValue("show_interval_remaining", show_interval_remaining);
+    settings.setValue("show_workout_remaining",  show_workout_remaining);
+    settings.setValue("show_elapsed",            show_elapsed);
+
+    settings.setValue("show_seperator_interval", show_seperator_interval);
+    settings.setValue("show_grid",               show_grid);
+    settings.setValue("show_hr_target",          show_hr_target);
+    settings.setValue("show_power_target",       show_power_target);
+    settings.setValue("show_cadence_target",     show_cadence_target);
+    settings.setValue("show_speed_target",       show_speed_target);
+    settings.setValue("show_hr_curve",           show_hr_curve);
+    settings.setValue("show_power_curve",        show_power_curve);
+    settings.setValue("show_cadence_curve",      show_cadence_curve);
+    settings.setValue("show_speed_curve",        show_speed_curve);
+
+    settings.setValue("display_video", display_video);
+
+    settings.setValue("sound_player_vol",               sound_player_vol);
+    settings.setValue("enable_sound",                   enable_sound);
+    settings.setValue("sound_interval",                 sound_interval);
+    settings.setValue("sound_pause_resume_workout",     sound_pause_resume_workout);
+    settings.setValue("sound_achievement",              sound_achievement);
+    settings.setValue("sound_end_workout",              sound_end_workout);
+    settings.setValue("sound_alert_power_under_target", sound_alert_power_under_target);
+    settings.setValue("sound_alert_power_above_target", sound_alert_power_above_target);
+    settings.setValue("sound_alert_cadence_under_target", sound_alert_cadence_under_target);
+    settings.setValue("sound_alert_cadence_above_target", sound_alert_cadence_above_target);
+
     settings.endGroup();
 }
 

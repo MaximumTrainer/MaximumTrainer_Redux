@@ -99,6 +99,8 @@ Once a workout starts you will see:
 
 Completed workout data is saved as a FIT activity file and can be uploaded to **Strava**, **TrainingPeaks**, **SelfLoops**, or **Intervals.icu** from the post-workout screen.
 
+> **Video entertainment:** the workout view can show either the built-in VLC player (local files / internet radio) or an embedded web browser (**Preferences → Video Player → WebView**). The web browser is for YouTube and other DRM-free sites — DRM services such as Netflix require the proprietary Widevine module, which cannot be bundled in this open-source build, so they will not play.
+
 ## Screenshots
 
 > **Note:** Screenshots showing the cross-platform UI will be added here. Contributions of high-quality screenshots on each platform are welcome — please open a pull request.
@@ -255,6 +257,8 @@ make -j$(nproc)
 ```
 
 > `vlc-plugin-video-output` is required for libvlc to render video into the Workout dialog. Without it, libvlc loads but reports `failed to create video output` and the player shows only the timer.
+
+> **Wayland:** libvlc's Linux video output is X11/XCB-only (VLC 3.0.x ships no native Wayland output), so under a Wayland session it cannot embed video into the Qt widget and spawns a separate window. The app detects Wayland and automatically forces the `xcb` platform (via XWayland) so video stays in the workout frame. Set `QT_QPA_PLATFORM` yourself to override this.
 
 ### macOS
 

@@ -524,7 +524,6 @@
     </property>
     <addaction name="actionPreferences"/>
     <addaction name="separator"/>
-    <addaction name="actionLog_off_Exit"/>
     <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuTEst">
@@ -612,11 +611,6 @@
    </property>
    <property name="text">
     <string>Start Free Ride</string>
-   </property>
-  </action>
-  <action name="actionLog_off_Exit">
-   <property name="text">
-    <string>Change User</string>
    </property>
   </action>
   <action name="actionExit">

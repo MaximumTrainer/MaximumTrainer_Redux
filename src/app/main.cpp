@@ -31,6 +31,23 @@ int main(int argc, char *argv[]) {
     // will override it from QSettings once the application identity is set.
     Logger::install();
 
+#if defined(Q_OS_LINUX) && !defined(Q_OS_WASM)
+    // libvlc embeds video by drawing into the Qt widget's native window handle,
+    // but its Linux video-output plugins are all X11/XCB-based (VLC 3.0.x ships
+    // no native Wayland vout). Under a native Wayland session winId() is a
+    // Wayland surface libvlc cannot draw into, so it spawns its own top-level
+    // window instead of staying in the workout frame. Forcing the xcb platform
+    // routes us through XWayland, giving libvlc a real X11 drawable. Only do
+    // this when we detect Wayland and the user has not pinned a platform.
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
+        const QByteArray sessionType = qgetenv("XDG_SESSION_TYPE");
+        const bool isWayland = sessionType.compare("wayland", Qt::CaseInsensitive) == 0
+                            || !qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY");
+        if (isWayland)
+            qputenv("QT_QPA_PLATFORM", "xcb");
+    }
+#endif
+
     QApplication app(argc, argv);
 
 #ifdef Q_OS_WIN
