@@ -47,17 +47,37 @@
 	border: 2px solid #525252;
 }
 
+/* The WorkoutDialog is intentionally always dark and defines its own look.
+   The application dark theme's generic "QWidget { background-color:#2b2b2b }"
+   rule otherwise paints over the video pane and the bottom metric widgets,
+   which rely on the dialog's own dark background showing through. Neutralise
+   it for everything under the two content containers. We scope by the
+   container object names (and their descendants) rather than a blanket
+   "#WorkoutDialog QWidget" — the child Workout Config dialog is parented to
+   the WorkoutDialog but lives OUTSIDE these containers, so it is unaffected
+   and still follows the app theme. */
+#widget_videoPlayers, #widget_videoPlayers QWidget,
+#widget_allSpeedo, #widget_allSpeedo QWidget {
+	background-color: transparent;
+}
 
 #widgetVideo {
 	border: 2px solid grey;
 }
 
-QLabel {
+/* White label text is for the always-dark workout view ONLY. Scope it to this
+   dialog's own content containers (toolbar + video pane + metric pane) so it
+   does not cascade into the child Workout Config dialog or the confirmation
+   message boxes (parented to this dialog but outside these containers), where
+   it would be unreadable white-on-light in the light theme. */
+#widget_topMenu QLabel,
+#widget_videoPlayers QLabel,
+#widget_allSpeedo QLabel {
 	color: white;
 }
 
 
-QwtScaleWidget {  
+QwtScaleWidget {
 	color: white;
 }
 

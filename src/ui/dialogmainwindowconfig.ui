@@ -13,12 +13,6 @@
   <property name="windowTitle">
    <string>Preferences</string>
   </property>
-  <property name="styleSheet">
-   <string notr="true">QLabel {
-	color: black;
-}
-</string>
-  </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0" rowspan="2">
     <widget class="QListWidget" name="listWidget_settings">
@@ -144,6 +138,55 @@
              </item>
              <item>
               <spacer name="horizontalSpacer_5">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>1</width>
+                 <height>1</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_theme">
+             <item>
+              <widget class="QLabel" name="label_theme">
+               <property name="minimumSize">
+                <size>
+                 <width>60</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Theme:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="comboBox_theme">
+               <item>
+                <property name="text">
+                 <string>OS Default</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Light</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Dark</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer_theme">
                <property name="orientation">
                 <enum>Qt::Horizontal</enum>
                </property>

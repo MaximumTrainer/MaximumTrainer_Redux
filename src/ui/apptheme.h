@@ -8,6 +8,10 @@
 #include <QColor>
 #include <QPalette>
 
+#ifdef Q_OS_WASM
+#include <emscripten.h>
+#endif
+
 /// Manages the two built-in application stylesheets (Light / Dark)
 /// and the automatic "System" mode that tracks the OS colour scheme.
 ///
@@ -24,10 +28,24 @@ public:
     {
         if (mode != System)
             return mode;
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+#if defined(Q_OS_WASM)
+        // In the browser, read the CSS prefers-color-scheme media query.
+        // Returns 1 when the user's browser/OS prefers dark, 0 otherwise.
+        const int prefersDark = emscripten_run_script_int(
+            "(window.matchMedia && "
+            "window.matchMedia('(prefers-color-scheme: dark)').matches) ? 1 : 0");
+        return prefersDark ? Dark : Light;
+#elif QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
         return (QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark)
                ? Dark : Light;
 #else
+        // Qt < 6.5 has no QStyleHints::colorScheme(). This palette-lightness
+        // heuristic does NOT read the GNOME/KDE color-scheme preference under
+        // xcb (the palette is the generic light Fusion palette regardless of
+        // the desktop's dark-mode setting), so "System" will usually resolve
+        // to Light here. Reliable detection requires Qt 6.5+; this is left
+        // as-is pending the Qt 6 migration. Users can still pick Dark/Light
+        // explicitly in Preferences.
         const QColor bg = QGuiApplication::palette().color(QPalette::Window);
         return (bg.lightness() < 128) ? Dark : Light;
 #endif

@@ -178,6 +178,44 @@ jobs:
         ./build/tests/logger_tests -v2
 
   # ──────────────────────────────────────────────────────────────────────────
+  # AppTheme Unit Tests (Linux)
+  #
+  # Builds and runs the AppTheme unit test suite (tests/apptheme/) to verify
+  # the dark/light theming helper: explicit-mode resolution, that apply()
+  # switches the global stylesheet, and that no stylesheet colour literals are
+  # invalid. Runs under the offscreen platform (no display needed).
+  # ──────────────────────────────────────────────────────────────────────────
+  test_apptheme:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install Qt and dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          qtbase5-dev \
+          build-essential
+
+    - name: Build AppTheme unit tests
+      run: |
+        export PATH=/usr/lib/qt5/bin:$PATH
+        mkdir -p build/tests
+        cd tests/apptheme
+        qmake apptheme_tests.pro
+        make -j$(nproc)
+
+    - name: Run AppTheme unit tests
+      run: |
+        QT_QPA_PLATFORM=offscreen ./build/tests/apptheme_tests -v2
+
+  # ──────────────────────────────────────────────────────────────────────────
   # BTLE Unit Tests (Linux)
   #
   # Builds and runs the BtleHub unit test suite (tests/btle/) to verify that

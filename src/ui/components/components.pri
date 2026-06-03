@@ -20,7 +20,6 @@ SOURCES +=\
     $$PWD/faderframe.cpp \
     $$PWD/tableviewhover.cpp \
     $$PWD/clock.cpp \
-    $$PWD/languagecombobox.cpp \
     $$PWD/infosworkout.cpp \
     $$PWD/timewidget.cpp \
     $$PWD/oxygenwidget.cpp \
@@ -32,7 +31,6 @@ SOURCES +=\
 
 HEADERS +=\
     $$PWD/workoutcombobox.h \
-    $$PWD/languagecombobox.h \
     $$PWD/delegaterowhover.h \
     $$PWD/mytableview.h \
     $$PWD/shapefactory.h \

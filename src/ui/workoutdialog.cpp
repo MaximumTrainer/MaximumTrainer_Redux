@@ -1414,7 +1414,6 @@ void WorkoutDialog::moveToInterval(int nbInterval, double secWorkout, double sta
     if (showConfirmation) {
         isAskingUserQuestion = true;
         QMessageBox msgBox(this);
-        msgBox.setStyleSheet("QLabel {color: black;}");
         msgBox.setIcon(QMessageBox::Question);
         msgBox.setText(tr("Move to the interval starting at: ") + timeStartInterval + "?");
         msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
@@ -2986,8 +2985,8 @@ void WorkoutDialog::slotGetSensorListFinished() {
                      + replyGetListSensor->errorString());
             QMessageBox msgBox(this);
             msgBox.setIcon(QMessageBox::Warning);
-            msgBox.setText(tr("<font color=black>Could not retrieve sensors from our server<br/>"
-                              "Please re-open the workout again.</font>"));
+            msgBox.setText(tr("Could not retrieve sensors from our server<br/>"
+                              "Please re-open the workout again."));
             msgBox.setStandardButtons(QMessageBox::Ok);
             msgBox.setDefaultButton(QMessageBox::Ok);
             msgBox.exec();
@@ -3194,8 +3193,8 @@ void WorkoutDialog::slotPutAccountFinished() {
                      + replyPutAccountToCheckSessionExpired->errorString());
             QMessageBox msgBox(this);
             msgBox.setIcon(QMessageBox::Warning);
-            msgBox.setText(tr("<font color=black>Could not retrieve your session data.<br/>"
-                              "Please reconnect to MaximumTrainer.</font>"));
+            msgBox.setText(tr("Could not retrieve your session data.<br/>"
+                              "Please reconnect to MaximumTrainer."));
             msgBox.setStandardButtons(QMessageBox::Ok);
             msgBox.setDefaultButton(QMessageBox::Ok);
             msgBox.exec();
@@ -3227,8 +3226,8 @@ void WorkoutDialog::slotPutAccountFinished() {
         qDebug() << "SESSION_ID AND ID NOT PRESENT IN DB!, kick out!";
         QMessageBox msgBox(this);
         msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setText(tr("<font color=black>Your session has expired.<br/>"
-                          "Please reconnect to MaximumTrainer.</font>"));
+        msgBox.setText(tr("Your session has expired.<br/>"
+                          "Please reconnect to MaximumTrainer."));
         msgBox.setStandardButtons(QMessageBox::Ok);
         msgBox.setDefaultButton(QMessageBox::Ok);
         msgBox.exec();
@@ -3350,7 +3349,6 @@ void WorkoutDialog::sureYouWantToQuit() {
 
         isAskingUserQuestion = true;
         QMessageBox msgBox(this);
-        msgBox.setStyleSheet("QLabel {color: black;}");
         msgBox.setIcon(QMessageBox::Question);
         msgBox.setText(tr("Workout is not completed."));
         msgBox.setInformativeText(tr("Save your progress?"));

@@ -42,7 +42,7 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
 
 
     tableModel = new WorkoutTableModel(this);
-    xmlUtil = new XmlUtil(settings->language, this);
+    xmlUtil = new XmlUtil(this);
 
 
     delegateRow = new delegateRowHover(false, this);
@@ -147,7 +147,7 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 void Main_WorkoutPage::parseIncludedWorkouts() {
 
-    xmlUtil = new XmlUtil(settings->language, this);
+    xmlUtil = new XmlUtil(this);
     QList<Workout> lstWorkout;
 
     QList<Workout> lstWorkoutBase = WorkoutUtil::getListWorkoutBase();
@@ -165,7 +165,7 @@ void Main_WorkoutPage::parseIncludedWorkouts() {
 //-----------------------------------------------------
 void Main_WorkoutPage::parseUserWorkouts() {
 
-    xmlUtil = new XmlUtil(settings->language, this);
+    xmlUtil = new XmlUtil(this);
     QList<Workout> lstWorkoutUser = xmlUtil->getLstUserWorkout();
     tableModel->addListWorkout(lstWorkoutUser);
 }

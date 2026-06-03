@@ -16,8 +16,7 @@ static const quint64 INTERVALS_ICU_CRYPT_KEY = Q_UINT64_C(0xdd85116f2b81d85f);
 
 
 //http://qt-project.org/doc/qt-5.0/qtcore/qxmlstreamreader.html#details
-XmlUtil::XmlUtil(QString lang, QObject *parent) :QObject(parent) {
-    this->lang = lang;
+XmlUtil::XmlUtil(QObject *parent) :QObject(parent) {
 }
 
 
@@ -890,9 +889,6 @@ Interval XmlUtil::parseInterval(QXmlStreamReader &xml) {
         else if(xml.name() == QLatin1String("DisplayMessage")) {
             displayMessage = xml.readElementText();
 
-        }
-        else if(lang == "fr" && xml.name() == QLatin1String("DisplayMessageFr")) {
-            displayMessage = xml.readElementText();
         }
         else if(xml.name() == QLatin1String("TestInterval")) {
             testInterval = xml.readElementText().toInt();

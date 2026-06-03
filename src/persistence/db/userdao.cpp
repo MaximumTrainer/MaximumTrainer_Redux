@@ -41,8 +41,6 @@ QNetworkReply* UserDAO::putAccount(Account *account) {
         LOG_WARN("UserDAO", QStringLiteral("putAccount: NetworkManagerWS not available"));
         return nullptr;
     }
-    Settings *mySettings = qApp->property("User_Settings").value<Settings*>();
-
     const QString url =  Environnement::getURLEnvironnementWS() + "api/account_rest/account/";
     LOG_DEBUG("UserDAO", QStringLiteral("putAccount: PUT ") + url);
 
@@ -56,7 +54,6 @@ QNetworkReply* UserDAO::putAccount(Account *account) {
     postData.addQueryItem("session_mt_id", account->session_mt_id);
 
 
-    postData.addQueryItem("last_lang",  mySettings->language);
     postData.addQueryItem("last_os", account->os);
 
 

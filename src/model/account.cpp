@@ -186,6 +186,16 @@ Account::Account(QObject *parent) : QObject(parent)  {
         interval_summary_enabled    = s.value("interval_summary_enabled",    true).toBool();
         interval_summary_duration_s = qBound(2, s.value("interval_summary_duration_s", 5).toInt(), 15);
         app_theme = qBound(0, s.value("app_theme", 2).toInt(), 2); // default: System
+
+        // One-time migration: force the Dark theme on the first launch of the
+        // release that introduces theming, to showcase the feature. The flag
+        // ensures this runs exactly once — afterwards the user's own choice
+        // (changed in Preferences) is always respected. AppTheme::Mode: Dark=1.
+        if (!s.value("forced_dark_default_applied", false).toBool()) {
+            app_theme = 1; // Dark
+            s.setValue("app_theme", app_theme);
+            s.setValue("forced_dark_default_applied", true);
+        }
         s.endGroup();
     }
 

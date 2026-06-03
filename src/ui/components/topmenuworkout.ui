@@ -31,6 +31,16 @@ QFrame#frame_menu {
         background-color: rgb(0, 0, 0);
 }
 
+/* This toolbar is part of the always-dark workout view. Reset buttons to a
+   flat, borderless look so the application dark theme's generic
+   QPushButton/QToolButton styling (background + border) does not draw boxes
+   around the icon-only controls. The per-id image rules below still apply. */
+QPushButton, QToolButton {
+        background-color: transparent;
+        border: none;
+        color: white;
+}
+
 QGroupBox#groupBox_commandWorkout {
      border: 2px solid gray;
 	 background-color: rgb(0, 0, 0);
@@ -71,16 +81,7 @@ color:white;
 
 
 
-/* MINIMIZE */
-QPushButton#pushButton_minimize {
-        image: url(:/image/icon/min1);
-border-radius: 1px;
-}
-
-QPushButton#pushButton_minimize:hover {
-        image: url(:/image/icon/min2);
-border-radius: 1px;
-}
+/* MINIMIZE — icon set in code via a tinted Qt standard pixmap */
 
 
 /* EXPAND */
@@ -97,28 +98,9 @@ border-radius: 1px;
 */
 
 
-/* CLOSE */
-QPushButton#pushButton_exit {
-        image: url(:/image/icon/exit1);
-border-radius: 1px;
-}
+/* CLOSE — icon set in code via a tinted Qt standard pixmap */
 
-QPushButton#pushButton_exit:hover {
-        image: url(:/image/icon/exit2);
-border-radius: 1px;
-}
-
-
-/* CONFIG */
-QPushButton#pushButton_config {
-        image: url(:/image/icon/conf1);
-border-radius: 1px;
-}
-
-QPushButton#pushButton_config:hover {
-        image: url(:/image/icon/conf2);
-border-radius: 1px;
-}
+/* CONFIG — icon set in code via a tinted Qt standard pixmap */
 
 
 
@@ -794,14 +776,14 @@ border-radius: 1px;
         </property>
         <property name="minimumSize">
          <size>
-          <width>20</width>
-          <height>25</height>
+          <width>30</width>
+          <height>28</height>
          </size>
         </property>
         <property name="maximumSize">
          <size>
-          <width>20</width>
-          <height>25</height>
+          <width>30</width>
+          <height>28</height>
          </size>
         </property>
         <property name="toolTip">
@@ -812,8 +794,8 @@ border-radius: 1px;
         </property>
         <property name="iconSize">
          <size>
-          <width>20</width>
-          <height>25</height>
+          <width>30</width>
+          <height>28</height>
          </size>
         </property>
        </widget>
@@ -833,14 +815,14 @@ border-radius: 1px;
           </property>
           <property name="minimumSize">
            <size>
-            <width>20</width>
-            <height>25</height>
+            <width>30</width>
+            <height>28</height>
            </size>
           </property>
           <property name="maximumSize">
            <size>
-            <width>20</width>
-            <height>25</height>
+            <width>30</width>
+            <height>28</height>
            </size>
           </property>
           <property name="text">
@@ -848,8 +830,8 @@ border-radius: 1px;
           </property>
           <property name="iconSize">
            <size>
-            <width>20</width>
-            <height>25</height>
+            <width>30</width>
+            <height>28</height>
            </size>
           </property>
          </widget>
@@ -864,14 +846,14 @@ border-radius: 1px;
           </property>
           <property name="minimumSize">
            <size>
-            <width>20</width>
-            <height>25</height>
+            <width>30</width>
+            <height>28</height>
            </size>
           </property>
           <property name="maximumSize">
            <size>
-            <width>20</width>
-            <height>25</height>
+            <width>30</width>
+            <height>28</height>
            </size>
           </property>
           <property name="text">
@@ -879,8 +861,8 @@ border-radius: 1px;
           </property>
           <property name="iconSize">
            <size>
-            <width>20</width>
-            <height>25</height>
+            <width>30</width>
+            <height>28</height>
            </size>
           </property>
          </widget>
@@ -895,14 +877,14 @@ border-radius: 1px;
           </property>
           <property name="minimumSize">
            <size>
-            <width>20</width>
-            <height>25</height>
+            <width>30</width>
+            <height>28</height>
            </size>
           </property>
           <property name="maximumSize">
            <size>
-            <width>20</width>
-            <height>25</height>
+            <width>30</width>
+            <height>28</height>
            </size>
           </property>
           <property name="text">
@@ -910,8 +892,8 @@ border-radius: 1px;
           </property>
           <property name="iconSize">
            <size>
-            <width>20</width>
-            <height>25</height>
+            <width>30</width>
+            <height>28</height>
            </size>
           </property>
          </widget>
