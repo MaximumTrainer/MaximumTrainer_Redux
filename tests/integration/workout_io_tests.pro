@@ -38,8 +38,15 @@ MOC_DIR     = .moc_workout_io
 
 # ── QWT: platform-specific include / link ────────────────────────────────────
 linux {
-    INCLUDEPATH += /usr/include/qwt
-    LIBS        += -lqwt-qt5
+    # Qt6 has no qwt apt package: build QWT from source and pass QWT_INSTALL=...
+    # Qt5 apt build leaves QWT_INSTALL empty and links the system -lqwt-qt5.
+    !isEmpty(QWT_INSTALL) {
+        INCLUDEPATH += $${QWT_INSTALL}/include
+        LIBS        += -L$${QWT_INSTALL}/lib -lqwt
+    } else {
+        INCLUDEPATH += /usr/include/qwt
+        LIBS        += -lqwt-qt5
+    }
 }
 win32 {
     !isEmpty(QWT_INSTALL) {

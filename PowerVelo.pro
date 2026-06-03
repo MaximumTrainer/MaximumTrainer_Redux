@@ -87,7 +87,13 @@ else: DEFINES += QT_NO_UITOOLS
 # Used if you want console output on windows
 #CONFIG += console
 
-CONFIG += qwt qt thread
+# QWT: on Linux the apt qwt package ships a qmake feature (qwt.prf) enabled via
+# "CONFIG += qwt". For Qt6 there is no qwt apt package, so QWT must be built
+# from source and its location passed via QWT_INSTALL=... — in that case we
+# wire the include/lib paths directly and must NOT add "CONFIG += qwt" (no
+# feature file exists). See the QWT_INSTALL block further down.
+isEmpty(QWT_INSTALL): CONFIG += qwt
+CONFIG += qt thread
 CONFIG += release
 CONFIG += c++17
 
@@ -239,8 +245,26 @@ win32-msvc* {
         # Linux Flex compiler grumbles about unsigned comparisons
         QMAKE_CXXFLAGS += -Wno-sign-compare
 
-        LIBS += -lsfml-audio -lsfml-system -lVLCQtCore -lVLCQtWidgets
-        DEFINES += GC_HAVE_VLCQT
+        LIBS += -lsfml-audio -lsfml-system
+
+        # QWT: when built from source for Qt6 (no qwt apt package exists for
+        # Qt6), point qmake at it with QWT_INSTALL=... . The Qt5 apt build
+        # leaves QWT_INSTALL empty and uses "CONFIG += qwt" instead (see top).
+        !isEmpty(QWT_INSTALL) {
+            INCLUDEPATH += $${QWT_INSTALL}/include
+            LIBS += -L$${QWT_INSTALL}/lib -lqwt
+            DEFINES += QWT_DLL
+        }
+
+        # VLC-Qt (optional; enable by passing VLCQT_INSTALL=... to qmake).
+        # Off by default: upstream VLC-Qt is Qt5-only and unmaintained, so the
+        # Qt6 build ships without it (video falls back to the embedded web
+        # player). Matches the macOS / Windows opt-in pattern.
+        !isEmpty(VLCQT_INSTALL) {
+            DEFINES += GC_HAVE_VLCQT
+            INCLUDEPATH += $${VLCQT_INSTALL}/include
+            LIBS += -L$${VLCQT_INSTALL}/lib -lVLCQtCore -lVLCQtWidgets
+        }
     }
 }
 
