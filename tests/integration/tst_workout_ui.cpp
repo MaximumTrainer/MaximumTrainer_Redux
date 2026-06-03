@@ -1406,7 +1406,7 @@ private slots:
         QVERIFY2(QFileInfo(path).size() > 0, "Written workout file is empty");
 
         // Parse back
-        XmlUtil parser(QStringLiteral("en"));
+        XmlUtil parser;
         Workout wkIn = parser.parseSingleWorkoutXml(path);
 
         QCOMPARE(wkIn.getCreatedBy(),   QStringLiteral("CI Bot"));
