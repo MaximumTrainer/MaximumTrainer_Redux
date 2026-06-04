@@ -14,6 +14,10 @@
 SensorsWidget::SensorsWidget(QWidget *parent)
     : QWidget(parent)
 {
+    // Paint the page with the palette's Window colour. The light stylesheet only
+    // backgrounds a few named widgets and trusts the palette elsewhere, so without
+    // this the MainWindow chrome gradient shows through this page in light mode.
+    setAutoFillBackground(true);
     buildUi();
     reload();
 }
