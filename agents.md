@@ -692,3 +692,5 @@ and should be **removed with the PowerCurve cleanup** (§7.1):
 *This document should be updated alongside any architectural change.
 When adding a new hardware protocol, runtime target, or test tier, update the
 relevant section and add an entry to the layer diagram.*
+
+<!-- ci: validate concurrency auto-cancel -->
