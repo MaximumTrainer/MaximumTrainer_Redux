@@ -1654,35 +1654,45 @@ void MainWindow::executeWorkout(Workout workout) {
     if (connDlg.selectedMethod() == DialogConnectionMethod::Simulation) {
         SimulatorHub *simHub = new SimulatorHub(this);
 
-        WorkoutDialog w(workout, lstRadio, vecUserStudio);
+        // Show WorkoutDialog NON-MODALLY (window-modal via setWindowModality,
+        // run on the main event loop instead of QDialog::exec()). The embedded
+        // QWebEngine video player reparents widgets when it initialises, which
+        // destroys and recreates the dialog's native window; inside a nested
+        // exec() loop that window-destroy calls QEventLoop::exit() and tears the
+        // dialog down. Running on the main loop removes that hazard. Post-workout
+        // cleanup moves to the finished() handler below.
+        WorkoutDialog *w = new WorkoutDialog(workout, lstRadio, vecUserStudio);
+        w->setAttribute(Qt::WA_DeleteOnClose);
+        w->setWindowModality(Qt::ApplicationModal);
 
-        connect(simHub, SIGNAL(signal_hr(int,int)),               &w, SLOT(HrDataReceived(int,int)));
-        connect(simHub, SIGNAL(signal_cadence(int,int)),          &w, SLOT(CadenceDataReceived(int,int)));
-        connect(simHub, SIGNAL(signal_speed(int,double)),         &w, SLOT(TrainerSpeedDataReceived(int,double)));
-        connect(simHub, SIGNAL(signal_power(int,int)),            &w, SLOT(PowerDataReceived(int,int)));
-        connect(simHub, SIGNAL(signal_oxygen(int,double,double)), &w, SLOT(OxygenValueChanged(int,double,double)));
+        connect(simHub, SIGNAL(signal_hr(int,int)),               w, SLOT(HrDataReceived(int,int)));
+        connect(simHub, SIGNAL(signal_cadence(int,int)),          w, SLOT(CadenceDataReceived(int,int)));
+        connect(simHub, SIGNAL(signal_speed(int,double)),         w, SLOT(TrainerSpeedDataReceived(int,double)));
+        connect(simHub, SIGNAL(signal_power(int,int)),            w, SLOT(PowerDataReceived(int,int)));
+        connect(simHub, SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
 
-        connect(&w, SIGNAL(setLoad(int,double)),  simHub, SLOT(setLoad(int,double)));
-        connect(&w, SIGNAL(setSlope(int,double)), simHub, SLOT(setSlope(int,double)));
-        connect(&w, SIGNAL(stopDecodingMsgHub()), simHub, SLOT(stopDecodingMsg()));
+        connect(w, SIGNAL(setLoad(int,double)),  simHub, SLOT(setLoad(int,double)));
+        connect(w, SIGNAL(setSlope(int,double)), simHub, SLOT(setSlope(int,double)));
+        connect(w, SIGNAL(stopDecodingMsgHub()), simHub, SLOT(stopDecodingMsg()));
 
-        connect(&w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
-        connect(&w, SIGNAL(ftp_lthr_changed()), this, SLOT(updateZoneInterface()));
-        connect(&w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
-        connect(&w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
+        connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
+        connect(w, SIGNAL(ftp_lthr_changed()), this, SLOT(updateZoneInterface()));
+        connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
+        connect(w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
+
+        connect(w, &QDialog::finished, this, [this, simHub]() {
+            workoutOver();
+            simHub->stopDecodingMsg();
+            delete simHub;
+            ui->webView_achiev->reload();
+            // Auto-advance to next queued workout if one exists
+            tryAdvanceWorkoutQueue();
+        });
 
         simHub->start();
         workoutExecuting();
         QApplication::restoreOverrideCursor();
-        w.exec();
-        workoutOver();
-
-        simHub->stopDecodingMsg();
-        delete simHub;
-        ui->webView_achiev->reload();
-
-        // Auto-advance to next queued workout if one exists
-        tryAdvanceWorkoutQueue();
+        w->show();
         return;
     }
 
@@ -1728,48 +1738,54 @@ void MainWindow::executeWorkout(Workout workout) {
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
-    WorkoutDialog w(workout, lstRadio, vecUserStudio);
+    // Show WorkoutDialog NON-MODALLY (window-modal, run on the main event loop
+    // instead of QDialog::exec()) so the embedded QWebEngine video player does
+    // not tear down the dialog when it initialises. See the simulation path
+    // above for the full rationale. Post-workout cleanup moves to finished().
+    WorkoutDialog *w = new WorkoutDialog(workout, lstRadio, vecUserStudio);
+    w->setAttribute(Qt::WA_DeleteOnClose);
+    w->setWindowModality(Qt::ApplicationModal);
 
-    connect(btleHub, SIGNAL(signal_hr(int,int)),               &w, SLOT(HrDataReceived(int,int)));
-    connect(btleHub, SIGNAL(signal_cadence(int,int)),          &w, SLOT(CadenceDataReceived(int,int)));
-    connect(btleHub, SIGNAL(signal_speed(int,double)),         &w, SLOT(TrainerSpeedDataReceived(int,double)));
-    connect(btleHub, SIGNAL(signal_power(int,int)),            &w, SLOT(PowerDataReceived(int,int)));
-    connect(btleHub, SIGNAL(signal_oxygen(int,double,double)), &w, SLOT(OxygenValueChanged(int,double,double)));
-    connect(btleHub, &BtleHub::signal_battery, &w, &WorkoutDialog::batteryStatusReceived);
+    connect(btleHub, SIGNAL(signal_hr(int,int)),               w, SLOT(HrDataReceived(int,int)));
+    connect(btleHub, SIGNAL(signal_cadence(int,int)),          w, SLOT(CadenceDataReceived(int,int)));
+    connect(btleHub, SIGNAL(signal_speed(int,double)),         w, SLOT(TrainerSpeedDataReceived(int,double)));
+    connect(btleHub, SIGNAL(signal_power(int,int)),            w, SLOT(PowerDataReceived(int,int)));
+    connect(btleHub, SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
+    connect(btleHub, &BtleHub::signal_battery, w, &WorkoutDialog::batteryStatusReceived);
 
     // Surface BLE disconnections mid-workout so WorkoutDialog can pause and
     // the user sees the DOM reconnect overlay (WASM) or a status message.
-    connect(btleHub, &BtleHub::connectionError, &w, &WorkoutDialog::onBleConnectionError);
+    connect(btleHub, &BtleHub::connectionError, w, &WorkoutDialog::onBleConnectionError);
 
-    connect(&w, SIGNAL(setLoad(int,double)),  btleHub, SLOT(setLoad(int,double)));
-    connect(&w, SIGNAL(setSlope(int,double)), btleHub, SLOT(setSlope(int,double)));
-    connect(&w, SIGNAL(stopDecodingMsgHub()), btleHub, SLOT(stopDecodingMsg()));
+    connect(w, SIGNAL(setLoad(int,double)),  btleHub, SLOT(setLoad(int,double)));
+    connect(w, SIGNAL(setSlope(int,double)), btleHub, SLOT(setSlope(int,double)));
+    connect(w, SIGNAL(stopDecodingMsgHub()), btleHub, SLOT(stopDecodingMsg()));
 
 #ifdef Q_OS_WASM
     // On WASM, BtleHub is aliased to BtleHubWasm which exposes scanForDevice().
     // The DOM overlay's Reconnect button routes through bleReconnectRequestC →
     // BtleHubWasm::scanForDevice(), but WorkoutDialog can also emit reconnectDevice()
     // if needed from Qt-side logic.
-    connect(&w, &WorkoutDialog::reconnectDevice, btleHub, &BtleHub::scanForDevice);
+    connect(w, &WorkoutDialog::reconnectDevice, btleHub, &BtleHub::scanForDevice);
 #endif
 
-    connect(&w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
-    connect(&w, SIGNAL(ftp_lthr_changed()), this, SLOT(updateZoneInterface()));
-    connect(&w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
-    connect(&w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
+    connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
+    connect(w, SIGNAL(ftp_lthr_changed()), this, SLOT(updateZoneInterface()));
+    connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
+    connect(w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
+
+    connect(w, &QDialog::finished, this, [this, btleHub]() {
+        workoutOver();
+        btleHub->disconnectFromDevice();
+        delete btleHub;
+        ui->webView_achiev->reload();
+        // Auto-advance to next queued workout if one exists
+        tryAdvanceWorkoutQueue();
+    });
 
     workoutExecuting();
     QApplication::restoreOverrideCursor();
-    w.exec();
-    workoutOver();
-
-    btleHub->disconnectFromDevice();
-    delete btleHub;
-
-    ui->webView_achiev->reload();
-
-    // Auto-advance to next queued workout if one exists
-    tryAdvanceWorkoutQueue();
+    w->show();
 }
 
 

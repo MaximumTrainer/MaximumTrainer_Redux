@@ -141,6 +141,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
     display_power = 2;
     display_power_balance = 1;
     display_cadence = 1;
+    display_video = 0;
 
     show_timer_on_top = false;
     show_interval_remaining = true;
@@ -275,6 +276,7 @@ void Account::loadDisplayPrefs() {
     display_power         = settings.value("display_power",         display_power).toInt();
     display_power_balance = settings.value("display_power_balance", display_power_balance).toInt();
     display_cadence       = settings.value("display_cadence",       display_cadence).toInt();
+    display_video         = settings.value("display_video",         display_video).toInt();
     averaging_power       = settings.value("averaging_power",       averaging_power).toInt();
     offset_power          = settings.value("offset_power",          offset_power).toInt();
 
@@ -329,6 +331,7 @@ void Account::saveDisplayPrefs() {
     settings.setValue("display_power",         display_power);
     settings.setValue("display_power_balance", display_power_balance);
     settings.setValue("display_cadence",       display_cadence);
+    settings.setValue("display_video",         display_video);
     settings.setValue("averaging_power",       averaging_power);
     settings.setValue("offset_power",          offset_power);
 

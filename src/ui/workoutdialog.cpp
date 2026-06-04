@@ -34,6 +34,7 @@
 #include "clock.h"
 #include "workoututil.h"
 #include "dialogconfig.h"
+#include "webbrowserview.h"
 #include "dialogcalibrate.h"
 #include "dialogcalibratepm.h"
 #include "dialogkeyboardshortcuts.h"
@@ -95,6 +96,16 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
     ui->setupUi(this);
     this->setFocusPolicy(Qt::ClickFocus);
+
+    // Make the web-player container a native window up front. The embedded
+    // QWebEngineView (created lazily when the user picks the WebView player)
+    // requires a native window; if the container is not already native, Qt
+    // recreates the native window of the nearest native ANCESTOR — i.e. the
+    // whole WorkoutDialog — which makes it flicker closed/reopen and orphans
+    // any open child dialog (the settings dialog became unclickable).
+    // WA_DontCreateNativeAncestors confines the native window to this container.
+    ui->widget_webPlayer->setAttribute(Qt::WA_DontCreateNativeAncestors, true);
+    ui->widget_webPlayer->setAttribute(Qt::WA_NativeWindow, true);
     // Disable ScreenSaver
 #ifdef Q_OS_MAC
     macUtil.disableScreensaver();
@@ -610,6 +621,11 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     //Dialog config — shown non-modally so the workout session continues uninterrupted (#137)
     dconfig = new DialogConfig(lstRadio, this, this);
     dconfig->setModal(false);
+    // When the workout window is forced on top it would otherwise float above
+    // (and block interaction with) its own non-modal settings dialog. Give the
+    // settings dialog the same stay-on-top hint so it remains reachable.
+    if (account->force_workout_window_on_top)
+        dconfig->setWindowFlag(Qt::WindowStaysOnTopHint, true);
     connect(dconfig, &QDialog::finished, this, [this](int) { emit insideConfig(false); });
 
     //Internet Radio Player (QtMultimedia: QMediaPlayer streaming a network URL)
@@ -868,6 +884,8 @@ void WorkoutDialog::initUI() {
     mainPlot->showHideCurveHeartRate(account->show_hr_curve);
     mainPlot->showHideCurvePower(account->show_power_curve);
     mainPlot->showHideCurveSpeed(account->show_speed_curve);
+    /// VideoDisplay
+    showVideoPlayer(account->display_video);
 
 
     ui->widget_topMenu->setWorkoutNameLabel(workout.getName());
@@ -1689,6 +1707,7 @@ void WorkoutDialog::start_or_pause_workout() {
         setWidgetsStopped(false);
         startWorkout();
         emit playPlayer();
+        if (webPlayer) webPlayer->playVideo();
 
     }
     // If workout paused, we resume it
@@ -1711,6 +1730,7 @@ void WorkoutDialog::start_or_pause_workout() {
         setWidgetsStopped(false);
         emit resumeClock();
         emit playPlayer();
+        if (webPlayer) webPlayer->playVideo();
 
     }
     // If not paused, we pause it
@@ -1725,6 +1745,7 @@ void WorkoutDialog::start_or_pause_workout() {
         setMessagePlot();
         emit pauseClock();
         emit pausePlayer();
+        if (webPlayer) webPlayer->pauseVideo();
     }
 }
 
@@ -2609,6 +2630,43 @@ void WorkoutDialog::showTimerWorkoutElapsed(bool show) {
 void WorkoutDialog::setTimerFontSize(int value) {
 
     ui->widget_time->setTimerFontSize(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+// Lazily create the QWebEngine-backed web player on first use, so the heavy
+// Chromium process is not started when the user stays on the default VLC player.
+WebBrowserView *WorkoutDialog::ensureWebPlayer() {
+    if (!webPlayer) {
+        webPlayer = new WebBrowserView(ui->widget_webPlayer);
+        ui->widget_webPlayer->layout()->addWidget(webPlayer);
+    }
+    return webPlayer;
+}
+
+void WorkoutDialog::showVideoPlayer(int choice) {
+
+    /// Standard
+    if (choice == 0) {
+        // Hiding the QWebEngineView only stops rendering, not playback, so
+        // explicitly pause it or its audio keeps playing behind the VLC player.
+        if (webPlayer) webPlayer->pauseVideo();
+        ui->widget_webPlayer->setVisible(false);
+        ui->widgetVideo->setVisible(true);
+    }
+    /// WebView
+    else {
+        ui->widgetVideo->setVisible(false);
+        ui->widget_webPlayer->setVisible(true);
+        // Defer creation/loading of the QWebEngineView to the next event-loop
+        // iteration. Creating a WebEngine native child window synchronously
+        // from inside the config combobox's "activated" signal handler causes
+        // event-routing problems on Qt6/xcb (the host dialog can close). Doing
+        // it after the current event finishes avoids that.
+        QTimer::singleShot(0, this, [this]() {
+            if (ui->widget_webPlayer->isVisible())   // still on WebView
+                ensureWebPlayer()->loadHomePageIfNeeded();
+        });
+    }
 }
 
 

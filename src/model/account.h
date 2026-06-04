@@ -186,6 +186,7 @@ public:
     int display_power;
     int display_power_balance;
     int display_cadence;
+    int display_video;
 
     bool show_timer_on_top;
     bool show_interval_remaining;
