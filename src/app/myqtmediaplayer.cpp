@@ -52,8 +52,15 @@ MyVlcPlayer::MyVlcPlayer(QWidget *parent) : QWidget(parent)
     m_hint->setAttribute(Qt::WA_TransparentForMouseEvents, true);   // clicks fall through to the container
     layout->addWidget(m_hint, 0, 0, 1, 1);   // same cell, shown while the video is hidden
 
-    // Right-click menu: open media, transport, and volume controls.
+    // Right-click menu: open media, transport, and volume controls. The player
+    // lives in the always-dark WorkoutDialog, so style the menu explicitly dark
+    // (otherwise in Light mode it inherits the light palette and renders an
+    // out-of-place light menu with poor contrast over the dark video area).
     m_menu = new QMenu(this);
+    m_menu->setStyleSheet(
+        "QMenu { background-color: #2b2b2b; color: #e0e0e0; border: 1px solid #555; }"
+        "QMenu::item:selected { background-color: #4a7ab5; color: white; }"
+        "QMenu::separator { height: 1px; background: #555; margin: 4px 0; }");
     m_menu->addAction(tr("Open File…"),  this, &MyVlcPlayer::openLocal);
     m_menu->addAction(tr("Open URL…"),   this, &MyVlcPlayer::openUrl);
     m_menu->addSeparator();

@@ -67,10 +67,31 @@ public:
         if (resolved == Dark) {
             app->setStyleSheet(darkStylesheet());
         } else {
-            // Restore the original z_stylesheet-based light theme.
+            // Restore the original z_stylesheet-based light theme, plus a few
+            // control rules the base sheet lacks (the unstyled native checkbox
+            // indicator is nearly invisible against light backgrounds, and
+            // menus need an explicit light look for good contrast).
             const QString base = qApp->property("lightStylesheet").toString();
-            app->setStyleSheet(base.isEmpty() ? lightStylesheet() : base);
+            app->setStyleSheet((base.isEmpty() ? lightStylesheet() : base)
+                               + lightControlsStylesheet());
         }
+    }
+
+    /// Extra light-mode rules for controls the base light sheet does not style.
+    static QString lightControlsStylesheet()
+    {
+        return QStringLiteral(
+"QCheckBox::indicator, QRadioButton::indicator {"
+"  width: 14px; height: 14px; border: 1px solid #888; border-radius: 2px; background: #ffffff;"
+"}"
+"QCheckBox::indicator:checked {"
+"  background: #4a7ab5; border-color: #3a6aa5;"
+"}"
+"QRadioButton::indicator { border-radius: 7px; }"
+"QRadioButton::indicator:checked { background: #4a7ab5; border-color: #3a6aa5; }"
+"QMenu { background-color: #ffffff; color: #202020; border: 1px solid #b0b0b0; }"
+"QMenu::item:selected { background-color: #4a7ab5; color: white; }"
+        );
     }
 
     /// Standard light palette (independent of the OS colour scheme).
