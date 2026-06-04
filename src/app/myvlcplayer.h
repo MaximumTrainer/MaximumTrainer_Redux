@@ -33,6 +33,9 @@ public:
     void setMovieTime(int msec);
     void setRadio(bool isRadio) { this->isRadio = isRadio; }
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 signals:
     void playing();
     void stopped();

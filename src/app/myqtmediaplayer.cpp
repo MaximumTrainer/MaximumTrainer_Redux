@@ -6,8 +6,8 @@
 #include <QAudioOutput>
 #include <QVideoWidget>
 #include <QGridLayout>
-#include <QVBoxLayout>
 #include <QMenu>
+#include <QMouseEvent>
 #include <QLabel>
 #include <QAction>
 #include <QFileDialog>
@@ -28,27 +28,29 @@ MyVlcPlayer::MyVlcPlayer(QWidget *parent) : QWidget(parent)
     m_audio  = new QAudioOutput(this);
     m_player->setAudioOutput(m_audio);
 
-    // Video surface (unused/harmless in radio mode).
-    m_video = new QVideoWidget(this);
-    m_player->setVideoOutput(m_video);
-
     auto *layout = new QGridLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
+
+    // Video surface. Qt's QVideoWidget is a NATIVE surface on Linux/Windows: it
+    // paints opaque black over any sibling/child widget and swallows mouse
+    // events at the OS level, so a label overlaid on top is invisible and a
+    // right-click on it never reaches Qt. The old VLC player avoided this by
+    // hiding the placeholder once media loaded; we go one step further and keep
+    // the video widget itself HIDDEN until something plays. While idle, the
+    // plain container shows the hint label and receives the context-menu click;
+    // once media plays the video widget is shown and covers the label.
+    m_video = new QVideoWidget(this);
+    m_player->setVideoOutput(m_video);
+    m_video->hide();
     layout->addWidget(m_video, 0, 0, 1, 1);
 
-    // Placeholder hint shown over the (empty) video area until media loads.
-    // The hint is a CHILD of the video widget, not a layout sibling: the video
-    // surface paints over sibling widgets (and swallows their mouse events), so
-    // a sibling label would be invisible and would block the right-click. As a
-    // child it renders on top of the video content. A layout keeps it centred
-    // and resized with the video.
-    auto *hintLayout = new QVBoxLayout(m_video);
-    hintLayout->setContentsMargins(0, 0, 0, 0);
-    m_hint = new QLabel(tr("Right-click to open a video file or URL"), m_video);
+    // Placeholder hint shown on the (plain) container until media loads.
+    // White text on the always-dark workout view, centred.
+    m_hint = new QLabel(tr("Right-click to open a video file or URL"), this);
     m_hint->setAlignment(Qt::AlignCenter);
     m_hint->setStyleSheet("color: white; background-color: transparent; font-size: 16px;");
-    m_hint->setAttribute(Qt::WA_TransparentForMouseEvents, true);   // clicks fall through to the video widget
-    hintLayout->addWidget(m_hint);
+    m_hint->setAttribute(Qt::WA_TransparentForMouseEvents, true);   // clicks fall through to the container
+    layout->addWidget(m_hint, 0, 0, 1, 1);   // same cell, shown while the video is hidden
 
     // Right-click menu: open media, transport, and volume controls.
     m_menu = new QMenu(this);
@@ -62,27 +64,51 @@ MyVlcPlayer::MyVlcPlayer(QWidget *parent) : QWidget(parent)
     m_menu->addAction(tr("Volume -10%"), this, [this]() { changeVolume(qMax(0,   audioVol - 10)); });
     m_menu->addAction(tr("Mute / Unmute"), this, [this]() { muteVolume(!isMuted); });
 
-    // The video widget is what actually receives mouse events over the player,
-    // so the context-menu policy and signal must live on it (a policy on the
-    // parent never fires because the video surface sits on top).
-    m_video->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(m_video, &QWidget::customContextMenuRequested,
+    // Right-click on the container (while idle). Once the video widget is shown
+    // it covers the container, so an event filter also forwards its right-clicks
+    // (a CustomContextMenu policy on a native QVideoWidget is unreliable).
+    setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(this, &QWidget::customContextMenuRequested,
             this, [this](const QPoint &) { videoRightClick(); });
+    m_video->installEventFilter(this);
 
     audioVol = loadSoundVolume();
     applyVolume();
 
     // Re-emit player state as the legacy playing()/paused()/stopped() signals
-    // the config dialog and workout dialog connect to. Also hide the hint once
-    // something is playing.
+    // the config dialog and workout dialog connect to. Show the video widget
+    // (hiding the hint) while playing; reveal the hint again when stopped.
     connect(m_player, &QMediaPlayer::playbackStateChanged, this,
             [this](QMediaPlayer::PlaybackState st) {
         switch (st) {
-        case QMediaPlayer::PlayingState: m_hint->hide(); emit playing(); break;
-        case QMediaPlayer::PausedState:  emit paused();  break;
-        case QMediaPlayer::StoppedState: emit stopped(); break;
+        case QMediaPlayer::PlayingState:
+            if (!isRadio) { m_video->show(); m_hint->hide(); }
+            emit playing();
+            break;
+        case QMediaPlayer::PausedState:
+            emit paused();
+            break;
+        case QMediaPlayer::StoppedState:
+            m_video->hide();
+            m_hint->show();
+            emit stopped();
+            break;
         }
     });
+}
+
+bool MyVlcPlayer::eventFilter(QObject *watched, QEvent *event)
+{
+    // Forward right-clicks on the (native) video surface to the context menu,
+    // since a CustomContextMenu policy on QVideoWidget does not fire reliably.
+    if (watched == m_video && event->type() == QEvent::MouseButtonPress) {
+        auto *me = static_cast<QMouseEvent *>(event);
+        if (me->button() == Qt::RightButton) {
+            videoRightClick();
+            return true;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }
 
 MyVlcPlayer::~MyVlcPlayer() = default;
