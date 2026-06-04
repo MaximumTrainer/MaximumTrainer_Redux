@@ -1428,6 +1428,10 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 
     savingWindow.hide();
     qDebug () << "closeEvent Done mainWindow";
+
+    // quitOnLastWindowClosed is disabled (see main.cpp), so quit explicitly
+    // once the main window has finished closing.
+    qApp->quit();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

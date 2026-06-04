@@ -21,7 +21,7 @@
 #include "faderlabel.h"
 #include "faderframe.h"
 #include "radio.h"
-#ifdef GC_HAVE_VLCQT
+#ifdef GC_HAVE_QTMULTIMEDIA
 #include "myvlcplayer.h"
 #endif
 #include "userstudiowidget.h"
@@ -294,7 +294,7 @@ private:
 
 
     //Internet radio player
-#ifdef GC_HAVE_VLCQT
+#ifdef GC_HAVE_QTMULTIMEDIA
     MyVlcPlayer *radioPlayer;
 #endif
 

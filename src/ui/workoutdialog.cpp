@@ -610,45 +610,22 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     dconfig->setModal(false);
     connect(dconfig, &QDialog::finished, this, [this](int) { emit insideConfig(false); });
 
-    //Internet Radio Player
-#ifdef GC_HAVE_VLCQT
-    // Guard against libvlc being absent (e.g. on machines without VLC installed
-    // or in CI/screenshot environments). Without libvlc the VlcInstance
-    // constructor would crash, so we only create the player when the library
-    // can actually be loaded.
-    radioPlayer = nullptr;
-    {
-        QLibrary vlcLib(QStringLiteral("libvlc"));
-        if (vlcLib.load()) {
-            vlcLib.unload(); // availability confirmed; VlcInstance reloads it
-            try {
-                radioPlayer = new MyVlcPlayer(this);
-                radioPlayer->setVisible(false);
-                radioPlayer->setRadio(true);
+    //Internet Radio Player (QtMultimedia: QMediaPlayer streaming a network URL)
+#ifdef GC_HAVE_QTMULTIMEDIA
+    radioPlayer = new MyVlcPlayer(this);
+    radioPlayer->setVisible(false);
+    radioPlayer->setRadio(true);
 
-                connect(dconfig, SIGNAL(signal_connectToRadioUrl(QString)), radioPlayer, SLOT(openUrlRadio(QString)) );
-                connect(dconfig, SIGNAL(signal_volumeRadioChanged(int)), radioPlayer, SLOT(changeVolume(int)) );
-                connect(dconfig, SIGNAL(signal_stopPlayingRadio()), radioPlayer, SLOT(stop()) );
+    connect(dconfig, SIGNAL(signal_connectToRadioUrl(QString)), radioPlayer, SLOT(openUrlRadio(QString)) );
+    connect(dconfig, SIGNAL(signal_volumeRadioChanged(int)), radioPlayer, SLOT(changeVolume(int)) );
+    connect(dconfig, SIGNAL(signal_stopPlayingRadio()), radioPlayer, SLOT(stop()) );
 
-                connect(radioPlayer, SIGNAL(playing()), dconfig, SLOT(radioStartedPlaying()) );
-                connect(radioPlayer, SIGNAL(paused()), dconfig, SLOT(radioStoppedPlaying()) );
-                connect(radioPlayer, SIGNAL(stopped()), dconfig, SLOT(radioStoppedPlaying()) );
-                connect(radioPlayer, SIGNAL(playing()), ui->widget_topMenu, SLOT(radioStartedPlaying()) );
-                connect(radioPlayer, SIGNAL(paused()), ui->widget_topMenu, SLOT(radioStoppedPlaying()) );
-                connect(radioPlayer, SIGNAL(stopped()), ui->widget_topMenu, SLOT(radioStoppedPlaying()) );
-            } catch (const std::exception &e) {
-                LOG_WARN("WorkoutDialog", QStringLiteral("VLC initialization failed: ") + QString::fromStdString(e.what()));
-                delete radioPlayer;
-                radioPlayer = nullptr;
-            } catch (...) {
-                LOG_WARN("WorkoutDialog", QStringLiteral("VLC initialization failed (unknown exception)"));
-                delete radioPlayer;
-                radioPlayer = nullptr;
-            }
-        } else {
-            LOG_WARN("WorkoutDialog", QStringLiteral("libvlc not found; internet radio player disabled"));
-        }
-    }
+    connect(radioPlayer, SIGNAL(playing()), dconfig, SLOT(radioStartedPlaying()) );
+    connect(radioPlayer, SIGNAL(paused()), dconfig, SLOT(radioStoppedPlaying()) );
+    connect(radioPlayer, SIGNAL(stopped()), dconfig, SLOT(radioStoppedPlaying()) );
+    connect(radioPlayer, SIGNAL(playing()), ui->widget_topMenu, SLOT(radioStartedPlaying()) );
+    connect(radioPlayer, SIGNAL(paused()), ui->widget_topMenu, SLOT(radioStoppedPlaying()) );
+    connect(radioPlayer, SIGNAL(stopped()), ui->widget_topMenu, SLOT(radioStoppedPlaying()) );
 #endif
 
     connect(dconfig, SIGNAL(radioStatus(QString)), ui->widget_topMenu, SLOT(updateRadioStatus(QString)) );
@@ -2662,7 +2639,15 @@ void WorkoutDialog::showVideoPlayer(int choice) {
     else {
         ui->widgetVideo->setVisible(false);
         ui->widget_webPlayer->setVisible(true);
-        ensureWebPlayer()->loadHomePageIfNeeded();
+        // Defer creation/loading of the QWebEngineView to the next event-loop
+        // iteration. Creating a WebEngine native child window synchronously
+        // from inside the config combobox's "activated" signal handler causes
+        // event-routing problems on Qt6/xcb (the host dialog can close). Doing
+        // it after the current event finishes avoids that.
+        QTimer::singleShot(0, this, [this]() {
+            if (ui->widget_webPlayer->isVisible())   // still on WebView
+                ensureWebPlayer()->loadHomePageIfNeeded();
+        });
     }
 }
 
@@ -3312,6 +3297,17 @@ void WorkoutDialog::keyPressEvent(QKeyEvent *event)
             DialogKeyboardShortcuts dlg(this);
             dlg.exec();
         }
+        return;
+    case Qt::Key_Return:
+    case Qt::Key_Enter:
+        // Enter starts/pauses the workout (matching the eventFilter and the
+        // "press Enter or the start button" prompt). Handle it here too and do
+        // NOT fall through to QDialog::keyPressEvent(), which would click the
+        // dialog's default button and accept()/close the workout — triggered
+        // unexpectedly when the embedded web video player (QWebEngineView) has
+        // focus and forwards a Return key back to the dialog.
+        if (!event->isAutoRepeat())
+            start_or_pause_workout();
         return;
     default:
         break;

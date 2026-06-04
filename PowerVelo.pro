@@ -110,6 +110,13 @@ qtHaveModule(bluetooth):        QT += bluetooth
 qtHaveModule(webenginewidgets): QT += webenginewidgets
 qtHaveModule(webenginecore):    QT += webenginecore
 
+# QtMultimedia provides the native video + radio-stream player (QMediaPlayer /
+# QVideoWidget / QAudioOutput). Guarded so the WASM target (no multimedia) and
+# any Qt without the module are unaffected. The GC_HAVE_QTMULTIMEDIA define is
+# set further below once the platform blocks have run.
+qtHaveModule(multimedia):        QT += multimedia
+qtHaveModule(multimediawidgets): QT += multimediawidgets
+
 #QT += serialport
 #QT += multimedia
 #QT += multimediawidgets
@@ -168,20 +175,6 @@ MOC_DIR = $$DESTDIR/.moc
 RCC_DIR = $$DESTDIR/.qrc
 UI_DIR = $$DESTDIR/.u
 
-###=============================================================
-### OPTIONAL => VLC [Windows, Linux and OSX]
-###=============================================================
-
-!isEmpty(VLC_INSTALL) {
-
-    # we will work out the rest if you tell use where it is installed
-    isEmpty(VLC_INCLUDE) { VLC_INCLUDE = $${VLC_INSTALL}/include }
-    isEmpty(VLC_LIBS)    { VLC_LIBS    = -L$${VLC_INSTALL}/lib -lvlc }
-
-    DEFINES     += GC_HAVE_VLC
-    INCLUDEPATH += $${VLC_INCLUDE}
-    LIBS        += $${VLC_LIBS}
-}
 
 ###=======================================================================
 ### Directory Structure - Split into subdirs to be more manageable
@@ -255,25 +248,11 @@ win32-msvc* {
             LIBS += -L$${QWT_INSTALL}/lib -lqwt
             DEFINES += QWT_DLL
         }
-
-        # VLC-Qt (optional; enable by passing VLCQT_INSTALL=... to qmake).
-        # Off by default: upstream VLC-Qt is Qt5-only and unmaintained, so the
-        # Qt6 build ships without it (video falls back to the embedded web
-        # player). Matches the macOS / Windows opt-in pattern.
-        !isEmpty(VLCQT_INSTALL) {
-            DEFINES += GC_HAVE_VLCQT
-            INCLUDEPATH += $${VLCQT_INSTALL}/include
-            LIBS += -L$${VLCQT_INSTALL}/lib -lVLCQtCore -lVLCQtWidgets
-        }
     }
 }
 
 win32:!wasm_emscripten {
-    # Windows: VLC-Qt and SFML paths (configure via qmake variables)
-    !isEmpty(VLCQT_INSTALL) {
-        INCLUDEPATH += $${VLCQT_INSTALL}/include
-        LIBS += -L$${VLCQT_INSTALL}/lib -lVLCQtCore -lVLCQtWidgets
-    }
+    # Windows: SFML path (configure via qmake variable)
     !isEmpty(SFML_INSTALL) {
         INCLUDEPATH += $${SFML_INSTALL}/include
         LIBS += -L$${SFML_INSTALL}/lib -lsfml-audio -lsfml-system
@@ -296,14 +275,6 @@ macx:!wasm_emscripten {
     # Bluetooth entitlement required for App Store distribution
     QMAKE_CODE_SIGN_ENTITLEMENTS = $$PWD/mac/MaximumTrainer.entitlements
 
-    # VLC-Qt (optional; enable by passing VLCQT_INSTALL=... to qmake)
-    !isEmpty(VLCQT_INSTALL) {
-        DEFINES += GC_HAVE_VLCQT
-        INCLUDEPATH += $${VLCQT_INSTALL}/include
-        LIBS += -F$${VLCQT_INSTALL}/lib -framework VLCQtCore
-        LIBS += -F$${VLCQT_INSTALL}/lib -framework VLCQtWidgets
-    }
-
     # SFML (configure via SFML_INSTALL=...)
     !isEmpty(SFML_INSTALL) {
         INCLUDEPATH += $${SFML_INSTALL}/include
@@ -320,6 +291,15 @@ macx:!wasm_emscripten {
         DEFINES += QWT_DLL
     }
 
+}
+
+
+# ── Video/radio player backend ───────────────────────────────────────────────
+# The embedded video player and internet radio use QtMultimedia
+# (QMediaPlayer/QVideoWidget/QAudioOutput) on every desktop platform. Enable it
+# whenever the module is present and we are not building the WASM target.
+qtHaveModule(multimedia):!contains(QMAKE_PLATFORM, wasm) {
+    DEFINES += GC_HAVE_QTMULTIMEDIA
 }
 
 
