@@ -60,6 +60,7 @@ jobs:
           libusb-1.0-0-dev \
           libssl-dev \
           libgl1-mesa-dev \
+          libxcb-cursor0 \
           libfuse2 \
           file
 
