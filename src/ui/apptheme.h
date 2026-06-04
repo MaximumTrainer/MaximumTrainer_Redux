@@ -55,6 +55,15 @@ public:
     static void apply(QApplication *app, Mode mode)
     {
         const Mode resolved = resolveMode(mode);
+
+        // Force an explicit palette for the chosen mode. Without this the app
+        // inherits the OS palette: under an OS dark theme, "Light" mode would
+        // render dark/light text from the dark palette (washed-out main window,
+        // fully-dark dialogs that set no background of their own), because our
+        // stylesheets only set backgrounds for a few named widgets and trust
+        // the palette for everything else.
+        app->setPalette(resolved == Dark ? darkPalette() : lightPalette());
+
         if (resolved == Dark) {
             app->setStyleSheet(darkStylesheet());
         } else {
@@ -62,6 +71,61 @@ public:
             const QString base = qApp->property("lightStylesheet").toString();
             app->setStyleSheet(base.isEmpty() ? lightStylesheet() : base);
         }
+    }
+
+    /// Standard light palette (independent of the OS colour scheme).
+    static QPalette lightPalette()
+    {
+        QPalette p;
+        const QColor window(240, 240, 240);
+        const QColor base(255, 255, 255);
+        const QColor text(20, 20, 20);
+        const QColor button(240, 240, 240);
+        const QColor highlight(74, 122, 181);
+        p.setColor(QPalette::Window, window);
+        p.setColor(QPalette::WindowText, text);
+        p.setColor(QPalette::Base, base);
+        p.setColor(QPalette::AlternateBase, QColor(247, 247, 247));
+        p.setColor(QPalette::Text, text);
+        p.setColor(QPalette::Button, button);
+        p.setColor(QPalette::ButtonText, text);
+        p.setColor(QPalette::ToolTipBase, base);
+        p.setColor(QPalette::ToolTipText, text);
+        p.setColor(QPalette::PlaceholderText, QColor(120, 120, 120));
+        p.setColor(QPalette::Highlight, highlight);
+        p.setColor(QPalette::HighlightedText, Qt::white);
+        p.setColor(QPalette::Disabled, QPalette::Text, QColor(150, 150, 150));
+        p.setColor(QPalette::Disabled, QPalette::WindowText, QColor(150, 150, 150));
+        p.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(150, 150, 150));
+        return p;
+    }
+
+    /// Standard dark palette (independent of the OS colour scheme), matched to
+    /// the colours used in darkStylesheet().
+    static QPalette darkPalette()
+    {
+        QPalette p;
+        const QColor window(43, 43, 43);
+        const QColor base(46, 46, 46);
+        const QColor text(224, 224, 224);
+        const QColor button(61, 61, 61);
+        const QColor highlight(74, 122, 181);
+        p.setColor(QPalette::Window, window);
+        p.setColor(QPalette::WindowText, text);
+        p.setColor(QPalette::Base, base);
+        p.setColor(QPalette::AlternateBase, QColor(51, 51, 51));
+        p.setColor(QPalette::Text, text);
+        p.setColor(QPalette::Button, button);
+        p.setColor(QPalette::ButtonText, text);
+        p.setColor(QPalette::ToolTipBase, QColor(58, 58, 58));
+        p.setColor(QPalette::ToolTipText, text);
+        p.setColor(QPalette::PlaceholderText, QColor(140, 140, 140));
+        p.setColor(QPalette::Highlight, highlight);
+        p.setColor(QPalette::HighlightedText, Qt::white);
+        p.setColor(QPalette::Disabled, QPalette::Text, QColor(119, 119, 119));
+        p.setColor(QPalette::Disabled, QPalette::WindowText, QColor(119, 119, 119));
+        p.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(119, 119, 119));
+        return p;
     }
 
     /// The existing (unchanged) light stylesheet.

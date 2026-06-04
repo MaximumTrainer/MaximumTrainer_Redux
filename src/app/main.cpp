@@ -137,6 +137,10 @@ int main(int argc, char *argv[]) {
     Z_StyleSheet styleSheetDummy;
     const QString lightQss = styleSheetDummy.styleSheet();
     qApp->setProperty("lightStylesheet", lightQss);
+    // Force the light palette for the baseline/login UI too: otherwise, under an
+    // OS dark theme Qt hands the app a dark palette and the light stylesheet
+    // (which only sets a few backgrounds) renders light text on light widgets.
+    app.setPalette(AppTheme::lightPalette());
     app.setStyleSheet(lightQss);
 
     // --screenshots [dir] / /screenshots [dir]: bypass login, capture UI
