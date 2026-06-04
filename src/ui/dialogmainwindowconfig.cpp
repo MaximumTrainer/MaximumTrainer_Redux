@@ -526,6 +526,15 @@ void DialogMainWindowConfig::accept() {
 
     settings->saveGeneralSettings();
 
+    // Persist the preferences edited here locally (the maximumtrainer.com
+    // account endpoint is defunct): general/trainer/pairing/upload toggles via
+    // saveDisplayPrefs(), and the third-party credentials via their encrypted
+    // credential-store savers (covers Selfloops edits and Strava/TP disconnects).
+    account->saveDisplayPrefs();
+    account->saveSelfloopsCredentials();
+    account->saveStravaCredentials();
+    account->saveTrainingPeaksCredentials();
+
     if (intervalsChanged)
         emit intervalsIcuCredentialsChanged();
 

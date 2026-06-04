@@ -300,6 +300,35 @@ void Account::loadDisplayPrefs() {
     averaging_power       = settings.value("averaging_power",       averaging_power).toInt();
     offset_power          = settings.value("offset_power",          offset_power).toInt();
 
+    // Start-workout trigger and its per-mode threshold values.
+    start_trigger       = settings.value("start_trigger",       start_trigger).toInt();
+    value_cadence_start = settings.value("value_cadence_start", value_cadence_start).toInt();
+    value_power_start   = settings.value("value_power_start",   value_power_start).toInt();
+    value_speed_start   = settings.value("value_speed_start",   value_speed_start).toInt();
+
+    // Workout timer font size and the last-selected config tab/sub-tab.
+    font_size_timer                    = settings.value("font_size_timer",                    font_size_timer).toInt();
+    last_index_selected_config_workout = settings.value("last_index_selected_config_workout", last_index_selected_config_workout).toInt();
+    last_tab_sub_config_selected       = settings.value("last_tab_sub_config_selected",       last_tab_sub_config_selected).toInt();
+
+    // General / trainer / pairing / upload preferences.
+    control_trainer_resistance   = settings.value("control_trainer_resistance",   control_trainer_resistance).toBool();
+    enable_studio_mode           = settings.value("enable_studio_mode",           enable_studio_mode).toBool();
+    distance_in_km               = settings.value("distance_in_km",               distance_in_km).toBool();
+    force_workout_window_on_top  = settings.value("force_workout_window_on_top",  force_workout_window_on_top).toBool();
+    stop_pairing_on_found        = settings.value("stop_pairing_on_found",        stop_pairing_on_found).toBool();
+    nb_sec_pairing               = settings.value("nb_sec_pairing",               nb_sec_pairing).toInt();
+    strava_private_upload        = settings.value("strava_private_upload",        strava_private_upload).toBool();
+    training_peaks_public_upload = settings.value("training_peaks_public_upload", training_peaks_public_upload).toBool();
+
+    // Studio / power-meter / virtual-speed / included-content preferences.
+    nb_user_studio        = settings.value("nb_user_studio",        nb_user_studio).toInt();
+    use_pm_for_cadence    = settings.value("use_pm_for_cadence",    use_pm_for_cadence).toBool();
+    use_pm_for_speed      = settings.value("use_pm_for_speed",      use_pm_for_speed).toBool();
+    use_virtual_speed     = settings.value("use_virtual_speed",     use_virtual_speed).toBool();
+    show_included_workout = settings.value("show_included_workout", show_included_workout).toBool();
+    show_included_course  = settings.value("show_included_course",  show_included_course).toBool();
+
     // Timer display
     show_timer_on_top       = settings.value("show_timer_on_top",       show_timer_on_top).toBool();
     show_interval_remaining = settings.value("show_interval_remaining", show_interval_remaining).toBool();
@@ -354,6 +383,39 @@ void Account::saveDisplayPrefs() {
     settings.setValue("display_video",         display_video);
     settings.setValue("averaging_power",       averaging_power);
     settings.setValue("offset_power",          offset_power);
+
+    // Start-workout trigger and its per-mode threshold values. Formerly loaded
+    // from the (now-defunct) server account endpoint; persisted locally so the
+    // choice survives a restart.
+    settings.setValue("start_trigger",       start_trigger);
+    settings.setValue("value_cadence_start", value_cadence_start);
+    settings.setValue("value_power_start",   value_power_start);
+    settings.setValue("value_speed_start",   value_speed_start);
+
+    // Workout timer font size and the last-selected config tab/sub-tab.
+    settings.setValue("font_size_timer",                    font_size_timer);
+    settings.setValue("last_index_selected_config_workout", last_index_selected_config_workout);
+    settings.setValue("last_tab_sub_config_selected",       last_tab_sub_config_selected);
+
+    // General / trainer / pairing / upload preferences. Formerly server-saved;
+    // persisted locally so they survive a restart.
+    settings.setValue("control_trainer_resistance",  control_trainer_resistance);
+    settings.setValue("enable_studio_mode",          enable_studio_mode);
+    settings.setValue("distance_in_km",              distance_in_km);
+    settings.setValue("force_workout_window_on_top", force_workout_window_on_top);
+    settings.setValue("stop_pairing_on_found",       stop_pairing_on_found);
+    settings.setValue("nb_sec_pairing",              nb_sec_pairing);
+    settings.setValue("strava_private_upload",       strava_private_upload);
+    settings.setValue("training_peaks_public_upload", training_peaks_public_upload);
+
+    // Studio / power-meter / virtual-speed / included-content preferences.
+    // Formerly server-saved; persisted locally so they survive a restart.
+    settings.setValue("nb_user_studio",        nb_user_studio);
+    settings.setValue("use_pm_for_cadence",    use_pm_for_cadence);
+    settings.setValue("use_pm_for_speed",      use_pm_for_speed);
+    settings.setValue("use_virtual_speed",     use_virtual_speed);
+    settings.setValue("show_included_workout", show_included_workout);
+    settings.setValue("show_included_course",  show_included_course);
 
     settings.setValue("show_timer_on_top",       show_timer_on_top);
     settings.setValue("show_interval_remaining", show_interval_remaining);
