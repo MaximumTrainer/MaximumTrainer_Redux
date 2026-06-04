@@ -9,7 +9,7 @@ SOURCES += $$PWD/main.cpp\
     $$PWD/reportutil.cpp \
     $$PWD/networkmonitor.cpp \
 
-# SoundPlayer: full SFML implementation on native, no-op stub on Wasm
+# SoundPlayer: QSoundEffect (QtMultimedia) on native, no-op stub on Wasm
 contains(QMAKE_PLATFORM, wasm) {
     SOURCES += $$PWD/soundplayer_wasm.cpp
 } else {

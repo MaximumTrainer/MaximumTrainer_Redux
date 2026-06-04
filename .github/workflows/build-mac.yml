@@ -35,12 +35,12 @@ jobs:
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
-        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
         cache: true
         cache-key-prefix: qt-mac
 
-    - name: Install SFML and OpenSSL
-      run: brew install sfml openssl@3
+    - name: Install OpenSSL
+      run: brew install openssl@3
 
     - name: Restore QWT cache
       id: qwt-cache
@@ -97,7 +97,6 @@ jobs:
     - name: Create Makefile
       run: |
         qmake PowerVelo.pro \
-          "SFML_INSTALL=$(brew --prefix sfml)" \
           "QWT_INSTALL=/usr/local/qwt-6.2.0"
       env:
         TP_CLIENT_SECRET:              ${{ secrets.TP_CLIENT_SECRET }}
@@ -665,16 +664,9 @@ jobs:
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
-        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
         cache: true
         cache-key-prefix: qt-mac
-
-    - name: Install SFML (required by MaximumTrainer.app at runtime)
-      # The app bundle links against /opt/homebrew/opt/sfml/lib/libsfml-audio.3.0.dylib.
-      # The build machine has SFML installed via brew, but the test runner does not.
-      # Installing SFML here ensures the dynamic loader finds the library when
-      # testFullApplicationJourney() launches the real app binary.
-      run: brew install sfml
 
     - name: Download build artifact
       uses: actions/download-artifact@v4

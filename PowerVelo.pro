@@ -262,8 +262,6 @@ win32-msvc* {
         # Linux Flex compiler grumbles about unsigned comparisons
         QMAKE_CXXFLAGS += -Wno-sign-compare
 
-        LIBS += -lsfml-audio -lsfml-system
-
         # QWT: when built from source for Qt6 (no qwt apt package exists for
         # Qt6), point qmake at it with QWT_INSTALL=... . The Qt5 apt build
         # leaves QWT_INSTALL empty and uses "CONFIG += qwt" instead (see top).
@@ -274,15 +272,6 @@ win32-msvc* {
         }
     }
 }
-
-win32:!wasm_emscripten {
-    # Windows: SFML path (configure via qmake variable)
-    !isEmpty(SFML_INSTALL) {
-        INCLUDEPATH += $${SFML_INSTALL}/include
-        LIBS += -L$${SFML_INSTALL}/lib -lsfml-audio -lsfml-system
-    }
-}
-
 
 #////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -298,12 +287,6 @@ macx:!wasm_emscripten {
 
     # Bluetooth entitlement required for App Store distribution
     QMAKE_CODE_SIGN_ENTITLEMENTS = $$PWD/mac/MaximumTrainer.entitlements
-
-    # SFML (configure via SFML_INSTALL=...)
-    !isEmpty(SFML_INSTALL) {
-        INCLUDEPATH += $${SFML_INSTALL}/include
-        LIBS += -L$${SFML_INSTALL}/lib -lsfml-audio -lsfml-system
-    }
 
     # on mac we use native buttons and video, but have native fullscreen support
     LIBS    += -lobjc -framework IOKit -framework AppKit -framework Security

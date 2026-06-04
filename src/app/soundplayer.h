@@ -1,12 +1,15 @@
 #ifndef SOUNDPLAYER_H
 #define SOUNDPLAYER_H
 
-#include <optional>
-#include <QResource>
 #include <QtCore>
 
-#ifndef Q_OS_WASM
-#include "SFML/Audio.hpp"
+// Desktop sound effects use Qt Multimedia's QSoundEffect (low-latency, WAV).
+// WASM has no QtMultimedia and uses the Web Audio stub in soundplayer_wasm.cpp.
+// If QtMultimedia is unavailable (GC_HAVE_QTMULTIMEDIA unset) every call is a
+// no-op, just like the headless case.
+#if !defined(Q_OS_WASM) && defined(GC_HAVE_QTMULTIMEDIA)
+#define SOUNDPLAYER_USE_QSOUNDEFFECT
+#include <QSoundEffect>
 #endif
 
 
@@ -41,40 +44,23 @@ public:
 
 
 private :
-#ifndef Q_OS_WASM
-    sf::SoundBuffer bufferSoundAchievement;
-    std::optional<sf::Sound> soundAchievement;
-
-    sf::SoundBuffer bufferSoundLastBeepInterval;
-    std::optional<sf::Sound> soundLastBeepInterval;
-
-    sf::SoundBuffer bufferSoundFirstBeepInterval;
-    std::optional<sf::Sound> soundFirstBeepInterval;
-
-    sf::SoundBuffer bufferSoundEndWorkout;
-    std::optional<sf::Sound> soundEndWorkout;
-
-    sf::SoundBuffer bufferSoundStartWorkout;
-    std::optional<sf::Sound> soundStartWorkout;
-
-    sf::SoundBuffer bufferSoundCadenceTooLow;
-    std::optional<sf::Sound> soundCadenceTooLow;
-
-    sf::SoundBuffer bufferSoundCadenceTooHigh;
-    std::optional<sf::Sound> soundCadenceTooHigh;
-
-    sf::SoundBuffer bufferSoundPowerTooLow;
-    std::optional<sf::Sound> soundPowerTooLow;
-
-    sf::SoundBuffer bufferSoundPowerTooHigh;
-    std::optional<sf::Sound> soundPowerTooHigh;
-#endif // Q_OS_WASM
+#ifdef SOUNDPLAYER_USE_QSOUNDEFFECT
+    QSoundEffect soundAchievement;
+    QSoundEffect soundLastBeepInterval;
+    QSoundEffect soundFirstBeepInterval;
+    QSoundEffect soundEndWorkout;
+    QSoundEffect soundStartWorkout;
+    QSoundEffect soundCadenceTooLow;
+    QSoundEffect soundCadenceTooHigh;
+    QSoundEffect soundPowerTooLow;
+    QSoundEffect soundPowerTooHigh;
+#endif
 
 #ifdef Q_OS_WASM
     double m_volume = 0.7; // 0.0 – 1.0, set by setVolume(0–100)
 #endif
 
-    /// false when SFML audio is unavailable (no OpenAL device, headless CI).
+    /// false when sound output is unavailable (no QtMultimedia, headless CI).
     /// All play/setVolume calls are no-ops in that case.
     bool m_initialized = false;
 

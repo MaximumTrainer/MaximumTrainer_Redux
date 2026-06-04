@@ -35,7 +35,7 @@ completed activities to the Garmin FIT format.
 | Plotting | QWT 6.2 |
 | Serialisation | Garmin FIT SDK, TCX, GPX, XML |
 | Hardware protocols | BLE (Qt Bluetooth) |
-| Audio/Video | QtMultimedia (video + radio), SFML (sound effects), platform stubs for WASM |
+| Audio/Video | QtMultimedia (`QMediaPlayer` video + radio, `QSoundEffect` sound effects), platform stubs for WASM |
 | Build system | qmake `.pro` / `.pri` |
 | CI/CD | GitHub Actions (Linux · Windows · macOS · WebAssembly) |
 
@@ -204,7 +204,7 @@ behind compile-time guards or swappable adapters"**.
      │           webbluetooth_bridge  (WASM JS bridge) │
      │                                                 │
      │  Media:   myqtmediaplayer.cpp  (QtMultimedia)   │
-     │           soundplayer.cpp      (SFML desktop)   │
+     │           soundplayer.cpp      (QSoundEffect)   │
      │           soundplayer_wasm.cpp (WASM stub)      │
      │                                                 │
      │  Scanner: btle_scanner_dialog.cpp   (desktop)   │
@@ -225,7 +225,7 @@ scopes (`wasm`, `win32`, `macx`, `linux`) and optional defines
 |---------|-----------|-----------|
 | No native BLE APIs | Web Bluetooth is promise-based | `BtleHubWasm` + `WebBluetoothBridge` (Emscripten embind + JS callbacks) |
 | No file-system access | `QFile` writes are in-memory | Persist via browser download prompt |
-| No QtMultimedia / SFML | Shared libs unavailable | `soundplayer_wasm.cpp` stub; no video |
+| No QtMultimedia | Module unavailable on WASM | `soundplayer_wasm.cpp` stub; no video |
 | Single-threaded Emscripten | `pthread` unavailable (singlethread build) | No `QThread` use in WASM paths |
 | `QWebEngineWidgets` absent | Not ported to WASM | Stub headers in `src/ui/wasm_stubs/` |
 
@@ -407,7 +407,7 @@ cd ../..
 |-----------|------|---------|
 | `SimulatorHub` | `src/btle/simulator_hub.cpp` | UI simulation mode, integration tests |
 | `BtleDeviceSimulator` | `tests/btle/btle_device_simulator.h` | Unit test byte-level fake device |
-| WASM audio stub | `src/app/soundplayer_wasm.cpp` | WASM build (no SFML) |
+| WASM audio stub | `src/app/soundplayer_wasm.cpp` | WASM build (no QtMultimedia) |
 | WASM WebEngine stub | `src/ui/wasm_stubs/` | WASM build (no QtWebEngineWidgets) |
 
 The design principle is: **no test should require physical hardware**.
