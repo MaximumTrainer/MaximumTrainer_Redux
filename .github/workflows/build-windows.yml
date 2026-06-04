@@ -178,6 +178,19 @@ jobs:
         }
         Copy-Item $qwtDll "build\release\" -Force
         Write-Host "Copied qwt.dll to build\release\"
+
+        # qwt.dll itself depends on Qt6OpenGLWidgets.dll, but windeployqt only
+        # scans MaximumTrainer.exe's *direct* Qt imports — and the app links
+        # Qt6OpenGL / Qt6Svg directly but never Qt6OpenGLWidgets, so that DLL is
+        # never deployed. Loading qwt.dll then aborts the process before main()
+        # with STATUS_DLL_NOT_FOUND (0xC0000135). Copy it explicitly.
+        $openGlWidgets = "$env:QTDIR\bin\Qt6OpenGLWidgets.dll"
+        if (-not (Test-Path $openGlWidgets)) {
+          Write-Error "Qt6OpenGLWidgets.dll not found at expected path: $openGlWidgets"
+          exit 1
+        }
+        Copy-Item $openGlWidgets "build\release\" -Force
+        Write-Host "Copied Qt6OpenGLWidgets.dll to build\release\"
       shell: powershell
 
     - name: Copy OpenSSL DLLs
@@ -367,6 +380,17 @@ jobs:
           Write-Host "Copied qwt.dll to build\tests\"
         } else {
           Write-Warning "qwt.dll not found at $qwtDll - workout_ui_tests may fail to load"
+        }
+        # qwt.dll depends on Qt6OpenGLWidgets.dll, which windeployqt does not
+        # deploy for binaries that link qwt only transitively (it scans direct
+        # Qt imports only). Any test that pulls in qwt — or launches
+        # MaximumTrainer.exe — aborts at load with 0xC0000135 without it.
+        $openGlWidgets = "$env:QTDIR\bin\Qt6OpenGLWidgets.dll"
+        if (Test-Path $openGlWidgets) {
+          Copy-Item $openGlWidgets "build\tests\" -Force
+          Write-Host "Copied Qt6OpenGLWidgets.dll to build\tests\"
+        } else {
+          Write-Warning "Qt6OpenGLWidgets.dll not found at $openGlWidgets"
         }
         # FFmpeg DLLs for the QtMultimedia backend: tests that construct a
         # WorkoutDialog (workout_ui_tests) or launch MaximumTrainer.exe

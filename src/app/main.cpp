@@ -149,70 +149,33 @@ int main(int argc, char *argv[]) {
     const bool screenshotMode = cliArgs.contains(QLatin1String("--screenshots"), Qt::CaseInsensitive)
                              || cliArgs.contains(QLatin1String("/screenshots"),  Qt::CaseInsensitive);
 
+    // Creates and shows the MainWindow once login has completed (or has been
+    // bypassed in screenshot mode). Heap-allocated so it outlives this scope;
+    // the app quits explicitly from MainWindow::closeEvent (we disabled
+    // quitOnLastWindowClosed above).
+    auto launchMainWindow = [&]() -> MainWindow * {
+        // Re-apply theme based on user preference now that the Account is loaded.
+        if (auto *account = qApp->property("Account").value<Account*>())
+            AppTheme::apply(qApp, static_cast<AppTheme::Mode>(account->app_theme));
+
+        auto *mainWin = new MainWindow();
+#ifndef Q_OS_WASM
+        splash.setProgress(100);
+        splash.finish(mainWin);
+#endif
+        mainWin->show();
+        return mainWin;
+    };
+
 #ifndef Q_OS_WASM
     splash.setStatusMessage(QObject::tr("Applying theme…"));
     splash.setProgress(55);
 
-    if (!screenshotMode) {
-        splash.setStatusMessage(QObject::tr("Preparing login…"));
-        splash.setProgress(80);
-        // Hide the splash before showing the modal login dialog so the two
-        // windows do not overlap on small displays.
-        splash.hide();
-
-        DialogLogin login;
-
-        if (login.exec() != QDialog::Accepted) {
-            return 0; // Login refused
-        }
-        if (login.getGotUpdate()) {
-            return 0; // Executed DialogLogin and redirected to download new version
-        }
-    } else {
-        splash.hide();
-    }
-#endif // Q_OS_WASM
-
-    // Re-apply theme based on user preference now that the Account is loaded.
-    {
-        auto *account = qApp->property("Account").value<Account*>();
-        if (account)
-            AppTheme::apply(&app, static_cast<AppTheme::Mode>(account->app_theme));
-    }
-
-#ifdef Q_OS_WASM
-    // WASM: show the login dialog non-blockingly (exec() is unsupported on
-    // singlethread Emscripten).  MainWindow is created only after the user
-    // successfully logs in via the API-key form in DialogLogin.
-    {
-        auto *loginDlg = new DialogLogin(nullptr);
-        QObject::connect(loginDlg, &QDialog::accepted, loginDlg, [loginDlg]() {
-            auto *account = qApp->property("Account").value<Account*>();
-            if (account)
-                AppTheme::apply(qApp, static_cast<AppTheme::Mode>(account->app_theme));
-            auto *mainWin = new MainWindow();
-            mainWin->show();
-            loginDlg->deleteLater();
-        });
-        QObject::connect(loginDlg, &QDialog::rejected, loginDlg, [loginDlg]() {
-            loginDlg->deleteLater();
-            qApp->quit();
-        });
-        loginDlg->show();
-    }
-    return app.exec();
-#endif // Q_OS_WASM
-
-    MainWindow w;
-
-#ifndef Q_OS_WASM
-    splash.setProgress(100);
-    splash.finish(&w);
-#endif // Q_OS_WASM
-
-    w.show();
-
     if (screenshotMode) {
+        // Bypass login entirely and capture UI screenshots, then quit.
+        splash.hide();
+        MainWindow *w = launchMainWindow();
+
         // Determine output directory from optional positional argument after the flag.
         QString outDir = QCoreApplication::applicationDirPath() + QLatin1String("/screenshots");
         // QList::indexOf has no CaseSensitivity overload; flags are always lowercase.
@@ -230,9 +193,40 @@ int main(int argc, char *argv[]) {
             if (!looksLikeFlag)
                 outDir = next;
         }
-        QMetaObject::invokeMethod(&w, "startScreenshotMode", Qt::QueuedConnection,
+        QMetaObject::invokeMethod(w, "startScreenshotMode", Qt::QueuedConnection,
                                   Q_ARG(QString, outDir));
+        return app.exec();
     }
+
+    splash.setStatusMessage(QObject::tr("Preparing login…"));
+    splash.setProgress(80);
+    // Hide the splash before showing the login dialog so the two windows do not
+    // overlap on small displays.
+    splash.hide();
+#endif // Q_OS_WASM
+
+    // Show the login dialog NON-MODALLY on the main event loop, on every
+    // platform. The embedded Intervals.icu OAuth QWebEngineView reparents
+    // widgets when its web contents initialise, which destroys and recreates
+    // the dialog's native window. Inside a nested QDialog::exec() loop that
+    // window-destroy calls QEventLoop::exit() on the modal loop, so exec()
+    // returns Rejected and the whole app silently quits the moment the user
+    // clicks "Sign in with Intervals.icu". Running on the main app.exec() loop
+    // (as the WASM path always has) removes that nested loop and the hazard.
+    // MainWindow is created only once the user has successfully logged in.
+    auto *loginDlg = new DialogLogin(nullptr);
+    QObject::connect(loginDlg, &QDialog::accepted, loginDlg, [loginDlg, launchMainWindow]() {
+        // getGotUpdate(): the dialog redirected the user to a new-version
+        // download and rejected itself, so accepted() never fires in that case.
+        launchMainWindow();
+        loginDlg->deleteLater();
+    });
+    QObject::connect(loginDlg, &QDialog::rejected, loginDlg, [loginDlg]() {
+        // Login refused, or redirected to a version download (getGotUpdate()).
+        loginDlg->deleteLater();
+        qApp->quit();
+    });
+    loginDlg->show();
 
     return app.exec();
 }
