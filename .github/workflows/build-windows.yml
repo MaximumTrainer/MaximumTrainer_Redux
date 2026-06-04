@@ -47,7 +47,6 @@ jobs:
         version: ${{ env.QT_VERSION }}
         arch: win64_msvc2019_64
         modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
-        tools: 'tools_openssl_x64'
         dir: ${{ env.QT_HOME }}
         cache: true
         cache-key-prefix: qt-win
@@ -60,14 +59,30 @@ jobs:
       run: choco install jom -y
       shell: cmd
 
-    - name: Locate OpenSSL 3 DLLs
+    - name: Restore OpenSSL cache
+      id: openssl-cache
+      uses: actions/cache@v4
+      with:
+        path: C:\openssl
+        key: openssl-3.5.4-win64
+
+    - name: Download OpenSSL 3
       # Qt 6 requires OpenSSL 3.x DLLs (libssl-3-x64.dll / libcrypto-3-x64.dll)
-      # for HTTPS/TLS. install-qt-action's tools_openssl_x64 tool installs them
-      # under Qt\Tools\OpenSSLv3\Win_x64\bin. Expose that directory as OPENSSL_BIN.
+      # for HTTPS/TLS. Download the pre-built FireDaemon distribution rather than
+      # relying on aqtinstall's tools catalogue (the tool-name format is unstable
+      # across aqt releases).
+      if: steps.openssl-cache.outputs.cache-hit != 'true'
       run: |
-        $dll = Get-ChildItem "${{ env.QT_HOME }}\Qt" -Recurse -Filter "libssl-3-x64.dll" -ErrorAction SilentlyContinue |
+        curl.exe -L -o "$env:TEMP\openssl.zip" "https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.4.zip"
+        Expand-Archive -Path "$env:TEMP\openssl.zip" -DestinationPath "C:\openssl" -Force
+        Write-Host "OpenSSL extracted to C:\openssl"
+      shell: powershell
+
+    - name: Set OPENSSL_BIN
+      run: |
+        $dll = Get-ChildItem "C:\openssl" -Recurse -Filter "libssl-3-x64.dll" |
                Select-Object -First 1
-        if (-not $dll) { Write-Error "libssl-3-x64.dll not found under ${{ env.QT_HOME }}\Qt"; exit 1 }
+        if (-not $dll) { Write-Error "libssl-3-x64.dll not found in C:\openssl"; exit 1 }
         echo "OPENSSL_BIN=$($dll.DirectoryName)" >> $env:GITHUB_ENV
         Write-Host "OpenSSL DLLs at: $($dll.DirectoryName)"
       shell: powershell
@@ -471,7 +486,6 @@ jobs:
       with:
         version: ${{ env.QT_VERSION }}
         arch: win64_msvc2019_64
-        tools: 'tools_openssl_x64'
         dir: 'C:\Qt'
         cache: true
         cache-key-prefix: qt-win
@@ -484,11 +498,25 @@ jobs:
       run: choco install jom -y
       shell: cmd
 
-    - name: Locate OpenSSL 3 DLLs
+    - name: Restore OpenSSL cache
+      id: openssl-cache
+      uses: actions/cache@v4
+      with:
+        path: C:\openssl
+        key: openssl-3.5.4-win64
+
+    - name: Download OpenSSL 3
+      if: steps.openssl-cache.outputs.cache-hit != 'true'
       run: |
-        $dll = Get-ChildItem "C:\Qt\Qt" -Recurse -Filter "libssl-3-x64.dll" -ErrorAction SilentlyContinue |
+        curl.exe -L -o "$env:TEMP\openssl.zip" "https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.4.zip"
+        Expand-Archive -Path "$env:TEMP\openssl.zip" -DestinationPath "C:\openssl" -Force
+      shell: powershell
+
+    - name: Set OPENSSL_BIN
+      run: |
+        $dll = Get-ChildItem "C:\openssl" -Recurse -Filter "libssl-3-x64.dll" |
                Select-Object -First 1
-        if (-not $dll) { Write-Error "libssl-3-x64.dll not found"; exit 1 }
+        if (-not $dll) { Write-Error "libssl-3-x64.dll not found in C:\openssl"; exit 1 }
         echo "OPENSSL_BIN=$($dll.DirectoryName)" >> $env:GITHUB_ENV
       shell: powershell
 
