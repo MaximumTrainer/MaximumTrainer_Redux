@@ -226,6 +226,24 @@ jobs:
             build\release\MaximumTrainer.exe
       shell: powershell
 
+    - name: Copy QtMultimedia FFmpeg backend DLLs
+      # Qt 6.7's QtMultimedia uses the FFmpeg backend by default. windeployqt
+      # copies the multimedia plugin but NOT the FFmpeg runtime DLLs it depends
+      # on (avcodec/avformat/avutil/swresample/swscale), so the app fails to
+      # start with STATUS_DLL_NOT_FOUND (0xC0000135) the moment a QMediaPlayer
+      # is constructed. Copy them from the Qt bin directory explicitly.
+      run: |
+        $ffmpeg = Get-ChildItem "$env:QTDIR\bin" -Filter "*.dll" |
+                  Where-Object { $_.Name -match '^(avcodec|avformat|avutil|swresample|swscale|avdevice|avfilter|postproc)' }
+        if ($ffmpeg.Count -eq 0) {
+          Write-Warning "No FFmpeg DLLs found in $env:QTDIR\bin"
+        }
+        foreach ($dll in $ffmpeg) {
+          Copy-Item $dll.FullName "build\release\" -Force
+          Write-Host "Copied $($dll.Name)"
+        }
+      shell: powershell
+
     - name: Build runtime validation test
       run: |
         New-Item -ItemType Directory -Force -Path build\tests | Out-Null
@@ -349,6 +367,16 @@ jobs:
           Write-Host "Copied qwt.dll to build\tests\"
         } else {
           Write-Warning "qwt.dll not found at $qwtDll - workout_ui_tests may fail to load"
+        }
+        # FFmpeg DLLs for the QtMultimedia backend: tests that construct a
+        # WorkoutDialog (workout_ui_tests) or launch MaximumTrainer.exe
+        # (ui_navigation_tests) create a QMediaPlayer and need these at load
+        # time, but windeployqt does not copy them.
+        $ffmpeg = Get-ChildItem "$env:QTDIR\bin" -Filter "*.dll" |
+                  Where-Object { $_.Name -match '^(avcodec|avformat|avutil|swresample|swscale|avdevice|avfilter|postproc)' }
+        foreach ($dll in $ffmpeg) {
+          Copy-Item $dll.FullName "build\tests\" -Force
+          Write-Host "Copied $($dll.Name) to build\tests\"
         }
       shell: powershell
 
