@@ -60,7 +60,6 @@ XmlStreamWriterTCX::XmlStreamWriterTCX()
 //        helperBuildTcxWorkout(data, lastIntervalDone, lstSkippedSec);
 //    }
 
-//    this->addEndDocumentTcx("en"); //settings->language
 //    fileTcx.close();
 //}
 
@@ -96,7 +95,6 @@ XmlStreamWriterTCX::XmlStreamWriterTCX()
 //        helperBuildTcxFreeRide(data, timeDoneSec);
 //    }
 
-//    this->addEndDocumentTcx("en"); //settings->language
 //    fileTcx.close();
 //}
 
@@ -868,35 +866,6 @@ XmlStreamWriterTCX::XmlStreamWriterTCX()
 //    writeStartElement("Activity");
 //    writeAttribute("Sport", "Biking");
 //    writeTextElement("Id", dateTimeNow.toString(Qt::ISODate));    ///<Id>2007-08-07T02:42:41Z</Id>
-//}
-
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//void XmlStreamWriterTCX::addEndDocumentTcx(QString lang) {
-
-
-//    writeEndElement();  /// Activity
-//    writeEndElement();  /// Activities
-
-//    writeStartElement("Author");
-//    writeAttribute("xsi:type", "Application_t");
-//    writeTextElement("Name", "MaximumTrainer - Garmin tcx module");
-//    writeStartElement("Build");
-//    writeStartElement("Version");
-//    writeTextElement("VersionMajor", "1");
-//    writeTextElement("VersionMinor", "0");
-//    writeTextElement("BuildMajor", "0");
-//    writeTextElement("BuildMinor", "0");
-//    writeEndElement();  /// Version
-//    writeTextElement("Type", "Beta");
-//    writeEndElement();  /// Build
-//    writeTextElement("LangID", lang);   // Specifies the two character ISO 693-1 language id that identifies the installed language of this application. see http://www.loc.gov/standards/iso639-2/ for appropriate ISO identifiers
-//    writeTextElement("PartNumber", "XXX-XXXXX-XX");
-//    writeEndElement();  /// Author
-//    writeEndElement();  /// TrainingCenterDatabase
-//    writeEndDocument();
-
 //}
 
 

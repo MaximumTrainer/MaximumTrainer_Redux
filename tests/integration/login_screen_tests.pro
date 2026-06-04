@@ -49,8 +49,15 @@ DESTDIR  = ../../build/tests
 
 # ── QWT: platform-specific include / link ───────────────────────────────────
 linux {
-    INCLUDEPATH += /usr/include/qwt
-    LIBS        += -lqwt-qt5
+    # Qt6 has no qwt apt package: build QWT from source and pass QWT_INSTALL=...
+    # Qt5 apt build leaves QWT_INSTALL empty and links the system -lqwt-qt5.
+    !isEmpty(QWT_INSTALL) {
+        INCLUDEPATH += $${QWT_INSTALL}/include
+        LIBS        += -L$${QWT_INSTALL}/lib -lqwt
+    } else {
+        INCLUDEPATH += /usr/include/qwt
+        LIBS        += -lqwt-qt5
+    }
 }
 win32 {
     !isEmpty(QWT_INSTALL) {
@@ -105,7 +112,6 @@ SOURCES += \
     ../../src/ui/dialoglogin.cpp \
     ../../src/ui/updatedialog.cpp \
     ../../src/ui/intervalsicuoauthwidget.cpp \
-    ../../src/ui/components/languagecombobox.cpp \
     ../../src/ui/workout_editor/repeatwidget.cpp \
     ../intervals_icu/credential_store_stub.cpp \
     tst_login_screen.cpp
@@ -118,7 +124,6 @@ HEADERS += \
     ../../src/ui/dialoglogin.h \
     ../../src/ui/updatedialog.h \
     ../../src/ui/intervalsicuoauthwidget.h \
-    ../../src/ui/components/languagecombobox.h \
     ../../src/ui/components/myqwebenginepage.h \
     ../../src/ui/workout_editor/repeatwidget.h
 

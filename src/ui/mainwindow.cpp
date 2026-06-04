@@ -207,7 +207,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 
     //Load userStudio xml file to VecUserStudio
-    XmlUtil *xmlUtil = new XmlUtil(settings->language, this);
+    XmlUtil *xmlUtil = new XmlUtil(this);
     vecUserStudio = xmlUtil->parseUserStudioFile("");
 
 
@@ -692,7 +692,7 @@ void MainWindow::tryAdvanceWorkoutQueue()
     // Defer via singleShot so this stack frame fully unwinds before
     // the next workout begins — avoids unbounded recursion with long queues.
     QTimer::singleShot(0, this, [this, nextPath]() {
-        XmlUtil xmlNext(settings->language);
+        XmlUtil xmlNext;
         Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
         m_workoutQueue->dequeueFilePath();
         if (!next.getName().isEmpty()) {
@@ -1211,7 +1211,7 @@ void MainWindow::loadConfigStudio() {
 
 
     //Parse File and reset QWebView with QVector
-    XmlUtil *xmlUtil = new XmlUtil(this->settings->language, this);
+    XmlUtil *xmlUtil = new XmlUtil(this);
     vecUserStudio = xmlUtil->parseUserStudioFile(file);
     fillStudioPage();
     ui->widget_bottomMenu->setGeneralMessage(QString(tr("Studio Profile %1 loaded")).arg(file), 5000);
@@ -1428,6 +1428,10 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 
     savingWindow.hide();
     qDebug () << "closeEvent Done mainWindow";
+
+    // quitOnLastWindowClosed is disabled (see main.cpp), so quit explicitly
+    // once the main window has finished closing.
+    qApp->quit();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

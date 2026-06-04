@@ -15,6 +15,9 @@ on:
         required: false
         default: ''
 
+env:
+  QT_VERSION: '6.7.3'
+
 jobs:
 
   build_windows:
@@ -24,7 +27,7 @@ jobs:
     env:
       # Qt installation root - install-qt-action places Qt under $QT_HOME\Qt\$version\$arch.
       # For local Windows builds, set QT_HOME to the parent of your Qt installation
-      # (e.g. C:\ if Qt is at C:\Qt\5.15.2\msvc2019_64).
+      # (e.g. C:\ if Qt is at C:\Qt\6.7.3\msvc2019_64).
       QT_HOME: C:\Qt
       # Stable QWT install directory used by the cache action and PowerShell build steps.
       QWT_INSTALL_DIR: C:\qwt
@@ -41,91 +44,47 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
-        version: '5.15.2'
-        modules: 'qtwebengine'
+        version: ${{ env.QT_VERSION }}
+        arch: win64_msvc2019_64
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
         dir: ${{ env.QT_HOME }}
         cache: true
         cache-key-prefix: qt-win
 
     - name: Set QTDIR
-      run: echo "QTDIR=${{ env.QT_HOME }}\Qt\5.15.2\msvc2019_64" >> $env:GITHUB_ENV
+      run: echo "QTDIR=${{ env.QT_HOME }}\Qt\${{ env.QT_VERSION }}\msvc2019_64" >> $env:GITHUB_ENV
       shell: powershell
 
     - name: Install jom
       run: choco install jom -y
       shell: cmd
 
-    - name: Write PowerShell helpers
-      run: |
-        @'
-        function Invoke-WebRequestWithRetry {
-          param([string]$Uri, [string]$OutFile, [int]$MaxAttempts = 5, [int]$BackoffSeconds = 5)
-          for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
-            try {
-              Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing
-              return
-            } catch {
-              if ($attempt -eq $MaxAttempts) { throw }
-              Write-Host "Attempt $attempt failed: $_. Retrying in $BackoffSeconds seconds..."
-              Start-Sleep -Seconds $BackoffSeconds
-              $BackoffSeconds *= 2
-            }
-          }
-        }
-        '@ | Set-Content C:\helpers.ps1
-      shell: powershell
-
     - name: Restore OpenSSL cache
       id: openssl-cache
       uses: actions/cache@v4
       with:
         path: C:\openssl
-        key: openssl-1.1.1w-win64
+        key: openssl-3.5.4-win64
 
-    - name: Download OpenSSL 1.1.x
-      # Qt 5.15.2 requires OpenSSL 1.1.x DLLs (libssl-1_1-x64.dll / libcrypto-1_1-x64.dll)
-      # for HTTPS/TLS. Download the pre-built FireDaemon distribution and expose the
-      # DLL directory as OPENSSL_BIN so later steps can reference it.
+    - name: Download OpenSSL 3
+      # Qt 6 requires OpenSSL 3.x DLLs (libssl-3-x64.dll / libcrypto-3-x64.dll)
+      # for HTTPS/TLS. Download the pre-built FireDaemon distribution rather than
+      # relying on aqtinstall's tools catalogue (the tool-name format is unstable
+      # across aqt releases).
       if: steps.openssl-cache.outputs.cache-hit != 'true'
       run: |
-        . C:\helpers.ps1
-        Invoke-WebRequestWithRetry `
-          -Uri "https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-1.1.1w.zip" `
-          -OutFile "$env:TEMP\openssl.zip"
+        curl.exe -L -o "$env:TEMP\openssl.zip" "https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.4.zip"
         Expand-Archive -Path "$env:TEMP\openssl.zip" -DestinationPath "C:\openssl" -Force
         Write-Host "OpenSSL extracted to C:\openssl"
       shell: powershell
 
     - name: Set OPENSSL_BIN
       run: |
-        $dll = Get-ChildItem "C:\openssl" -Recurse -Filter "libssl-1_1-x64.dll" |
+        $dll = Get-ChildItem "C:\openssl" -Recurse -Filter "libssl-3-x64.dll" |
                Select-Object -First 1
-        if (-not $dll) { Write-Error "libssl-1_1-x64.dll not found in C:\openssl"; exit 1 }
+        if (-not $dll) { Write-Error "libssl-3-x64.dll not found in C:\openssl"; exit 1 }
         echo "OPENSSL_BIN=$($dll.DirectoryName)" >> $env:GITHUB_ENV
         Write-Host "OpenSSL DLLs at: $($dll.DirectoryName)"
-      shell: powershell
-
-    - name: Restore VLC-Qt cache
-      id: vlcqt-cache
-      uses: actions/cache@v4
-      with:
-        path: C:\vlcqt
-        key: vlcqt-1.1.0-msvc2015-win64
-
-    - name: Download and install VLC-Qt
-      # Using 1.1.0 as it is the last release with pre-built Windows MSVC binaries
-      if: steps.vlcqt-cache.outputs.cache-hit != 'true'
-      run: |
-        . C:\helpers.ps1
-        Invoke-WebRequestWithRetry -Uri "https://github.com/vlc-qt/vlc-qt/releases/download/1.1.0/VLC-Qt_1.1.0_win64_msvc2015.7z" -OutFile "$env:TEMP\vlcqt.7z"
-        # Archive extracts directly to bin/, include/, lib/ with no wrapper dir
-        & "C:\Program Files\7-Zip\7z.exe" x "$env:TEMP\vlcqt.7z" -o"C:\vlcqt"
-        Write-Host "=== VLC-Qt lib files ==="
-        Get-ChildItem "C:\vlcqt\lib" -Filter "*.lib"
-      shell: powershell
-
-    - name: Set VLCQT_DIR
-      run: echo "VLCQT_DIR=C:/vlcqt" >> $env:GITHUB_ENV
       shell: powershell
 
     - name: Restore SFML cache
@@ -147,9 +106,12 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ env.QWT_INSTALL_DIR }}
-        key: qwt-6.2.0-qt-5.15.2-msvc2019-win64
+        key: qwt-6.2.0-qt-${{ env.QT_VERSION }}-msvc2019-win64
 
     - name: Build QWT
+      # No QWT apt/Qt6 binary package exists, so build 6.2.0 from source against
+      # the installed Qt6 and install it to QWT_INSTALL_DIR. PowerVelo.pro is
+      # pointed at this location via QWT_INSTALL=... .
       if: steps.qwt-cache.outputs.cache-hit != 'true'
       run: |
         $qwtInstallDirFwd = $env:QWT_INSTALL_DIR -replace '\\', '/'
@@ -191,17 +153,12 @@ jobs:
         $qwtInstallDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
         $sfmlDir = (Get-ChildItem "C:\sfml" -Directory | Select-Object -First 1).FullName
         $sfmlDirFwd = $sfmlDir -replace '\\','/'
-        $env:QMAKEFEATURES = "$env:QWT_INSTALL_DIR\features"
         $env:TP_CLIENT_SECRET = "${{ secrets.TP_CLIENT_SECRET }}"
         $env:INTERVALS_OAUTH_CLIENT_ID = "${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}"
         $env:INTERVALS_OAUTH_CLIENT_SECRET = "${{ secrets.INTERVALS_OAUTH_CLIENT_SECRET }}"
         qmake PowerVelo.pro `
-          "VLCQT_INSTALL=$($env:VLCQT_DIR -replace '\\','/')" `
+          "QWT_INSTALL=$qwtInstallDirFwd" `
           "SFML_INSTALL=$sfmlDirFwd"
-        Write-Host "=== VLCQt lines in Makefile.Release ==="
-        if (Test-Path Makefile.Release) {
-          Select-String -Path Makefile.Release -Pattern "VLCQt|vlcqt" | Select-Object -First 10
-        }
       shell: powershell
 
     - name: Build
@@ -224,12 +181,12 @@ jobs:
       shell: powershell
 
     - name: Copy OpenSSL DLLs
-      # Qt 5.15.2 requires OpenSSL 1.1.x DLLs for HTTPS/TLS.
-      # OPENSSL_BIN is set by the "Download OpenSSL 1.1.x" step above.
+      # Qt 6 requires OpenSSL 3.x DLLs for HTTPS/TLS.
+      # OPENSSL_BIN is set by the "Locate OpenSSL 3 DLLs" step above.
       run: |
         $opensslBin = "$env:OPENSSL_BIN"
         if (Test-Path $opensslBin) {
-          foreach ($dll in @("libssl-1_1-x64.dll", "libcrypto-1_1-x64.dll")) {
+          foreach ($dll in @("libssl-3-x64.dll", "libcrypto-3-x64.dll")) {
             $src = "$opensslBin\$dll"
             if (Test-Path $src) {
               Copy-Item $src "build\release\" -Force
@@ -240,28 +197,6 @@ jobs:
           }
         } else {
           Write-Warning "OPENSSL_BIN directory not found: $opensslBin"
-        }
-      shell: powershell
-
-    - name: Copy VLC-Qt runtime DLLs
-      # VLCQtCore.dll / VLCQtWidgets.dll live in C:\vlcqt\bin\ (dynamic build).
-      # If VLC-Qt was compiled as a static library there will be no DLLs here
-      # and the step will simply log a warning and move on.
-      run: |
-        $vlcqtBin = "C:\vlcqt\bin"
-        if (Test-Path $vlcqtBin) {
-          $dlls = Get-ChildItem $vlcqtBin -Filter "VLCQt*.dll"
-          if ($dlls.Count -gt 0) {
-            foreach ($dll in $dlls) {
-              Copy-Item $dll.FullName "build\release\" -Force
-              Write-Host "Copied $($dll.Name)"
-            }
-          } else {
-            Write-Warning "No VLCQt*.dll found in $vlcqtBin (static build?). Listing contents:"
-            Get-ChildItem $vlcqtBin | ForEach-Object { Write-Host "  $($_.Name)" }
-          }
-        } else {
-          Write-Warning "VLC-Qt bin directory not found: $vlcqtBin"
         }
       shell: powershell
 
@@ -291,19 +226,21 @@ jobs:
             build\release\MaximumTrainer.exe
       shell: powershell
 
-    - name: Copy Qt5OpenGL DLL
-      # Qt5OpenGL.dll is required at runtime but windeployqt does not always
-      # deploy it when OpenGL is used indirectly (e.g. through the QWT plot
-      # library or Qt platform plugins). Copy it explicitly alongside the
-      # executable so the app launches without a loader error.
+    - name: Copy QtMultimedia FFmpeg backend DLLs
+      # Qt 6.7's QtMultimedia uses the FFmpeg backend by default. windeployqt
+      # copies the multimedia plugin but NOT the FFmpeg runtime DLLs it depends
+      # on (avcodec/avformat/avutil/swresample/swscale), so the app fails to
+      # start with STATUS_DLL_NOT_FOUND (0xC0000135) the moment a QMediaPlayer
+      # is constructed. Copy them from the Qt bin directory explicitly.
       run: |
-        $openglDll = "$env:QTDIR\bin\Qt5OpenGL.dll"
-        if (Test-Path $openglDll) {
-          Copy-Item $openglDll "build\release\" -Force
-          Write-Host "Copied Qt5OpenGL.dll to build\release\"
-        } else {
-          Write-Error "Qt5OpenGL.dll not found at: $openglDll"
-          exit 1
+        $ffmpeg = Get-ChildItem "$env:QTDIR\bin" -Filter "*.dll" |
+                  Where-Object { $_.Name -match '^(avcodec|avformat|avutil|swresample|swscale|avdevice|avfilter|postproc)' }
+        if ($ffmpeg.Count -eq 0) {
+          Write-Warning "No FFmpeg DLLs found in $env:QTDIR\bin"
+        }
+        foreach ($dll in $ffmpeg) {
+          Copy-Item $dll.FullName "build\release\" -Force
+          Write-Host "Copied $($dll.Name)"
         }
       shell: powershell
 
@@ -402,58 +339,25 @@ jobs:
 
     - name: Deploy Qt for test binaries
       run: |
-        & "$env:QTDIR\bin\windeployqt.exe" --release `
-            --no-translations `
-            --no-system-d3d-compiler `
-            build\tests\runtime_validation_tests.exe
-        & "$env:QTDIR\bin\windeployqt.exe" --release `
-            --no-translations `
-            --no-system-d3d-compiler `
-            build\tests\btle_api_tests.exe
-        & "$env:QTDIR\bin\windeployqt.exe" --release `
-            --no-translations `
-            --no-system-d3d-compiler `
-            build\tests\offline_mode_tests.exe
-        & "$env:QTDIR\bin\windeployqt.exe" --release `
-            --no-translations `
-            --no-system-d3d-compiler `
-            build\tests\online_mode_tests.exe
-        & "$env:QTDIR\bin\windeployqt.exe" --release `
-            --no-translations `
-            --no-system-d3d-compiler `
-            build\tests\login_screen_tests.exe
-        & "$env:QTDIR\bin\windeployqt.exe" --release `
-            --no-translations `
-            --no-system-d3d-compiler `
-            build\tests\workout_ui_tests.exe
-        & "$env:QTDIR\bin\windeployqt.exe" --release `
-            --no-translations `
-            --no-system-d3d-compiler `
-            build\tests\workout_parsing_tests.exe
-        & "$env:QTDIR\bin\windeployqt.exe" --release `
-            --no-translations `
-            --no-system-d3d-compiler `
-            build\tests\ui_navigation_tests.exe
-        & "$env:QTDIR\bin\windeployqt.exe" --release `
-            --no-translations `
-            --no-system-d3d-compiler `
-            build\tests\ui_screens_tests.exe
-        & "$env:QTDIR\bin\windeployqt.exe" --release `
-            --no-translations `
-            --no-system-d3d-compiler `
-            build\tests\workout_io_tests.exe
-        & "$env:QTDIR\bin\windeployqt.exe" --release `
-            --no-translations `
-            --no-system-d3d-compiler `
-            build\tests\workout_creator_tests.exe
-        foreach ($dll in @("libssl-1_1-x64.dll", "libcrypto-1_1-x64.dll")) {
+        $tests = @(
+          "runtime_validation_tests", "btle_api_tests", "offline_mode_tests",
+          "online_mode_tests", "login_screen_tests", "workout_ui_tests",
+          "workout_parsing_tests", "ui_navigation_tests", "ui_screens_tests",
+          "workout_io_tests", "workout_creator_tests"
+        )
+        foreach ($t in $tests) {
+          $exe = "build\tests\$t.exe"
+          if (Test-Path $exe) {
+            & "$env:QTDIR\bin\windeployqt.exe" --release `
+                --no-translations `
+                --no-system-d3d-compiler `
+                $exe
+          }
+        }
+        foreach ($dll in @("libssl-3-x64.dll", "libcrypto-3-x64.dll")) {
           $src = "$env:OPENSSL_BIN\$dll"
           if (Test-Path $src) { Copy-Item $src "build\tests\" -Force }
         }
-        # Qt5OpenGL.dll is missed by windeployqt when used indirectly; copy it
-        # to the tests directory so test binaries that render Qt widgets can load.
-        $openglDll = "$env:QTDIR\bin\Qt5OpenGL.dll"
-        if (Test-Path $openglDll) { Copy-Item $openglDll "build\tests\" -Force }
         # qwt.dll is a third-party DLL not discovered by windeployqt; any test
         # binary that directly instantiates QwtPlot/QwtPlotCurve will fail to
         # load without it.  Copy it alongside the test executables.
@@ -463,6 +367,16 @@ jobs:
           Write-Host "Copied qwt.dll to build\tests\"
         } else {
           Write-Warning "qwt.dll not found at $qwtDll - workout_ui_tests may fail to load"
+        }
+        # FFmpeg DLLs for the QtMultimedia backend: tests that construct a
+        # WorkoutDialog (workout_ui_tests) or launch MaximumTrainer.exe
+        # (ui_navigation_tests) create a QMediaPlayer and need these at load
+        # time, but windeployqt does not copy them.
+        $ffmpeg = Get-ChildItem "$env:QTDIR\bin" -Filter "*.dll" |
+                  Where-Object { $_.Name -match '^(avcodec|avformat|avutil|swresample|swscale|avdevice|avfilter|postproc)' }
+        foreach ($dll in $ffmpeg) {
+          Copy-Item $dll.FullName "build\tests\" -Force
+          Write-Host "Copied $($dll.Name) to build\tests\"
         }
       shell: powershell
 
@@ -598,13 +512,14 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
-        version: '5.15.2'
+        version: ${{ env.QT_VERSION }}
+        arch: win64_msvc2019_64
         dir: 'C:\Qt'
         cache: true
         cache-key-prefix: qt-win
 
     - name: Set QTDIR
-      run: echo "QTDIR=C:\Qt\Qt\5.15.2\msvc2019_64" >> $env:GITHUB_ENV
+      run: echo "QTDIR=C:\Qt\Qt\${{ env.QT_VERSION }}\msvc2019_64" >> $env:GITHUB_ENV
       shell: powershell
 
     - name: Install jom
@@ -616,21 +531,20 @@ jobs:
       uses: actions/cache@v4
       with:
         path: C:\openssl
-        key: openssl-1.1.1w-win64
+        key: openssl-3.5.4-win64
 
-    - name: Download OpenSSL 1.1.x
+    - name: Download OpenSSL 3
       if: steps.openssl-cache.outputs.cache-hit != 'true'
       run: |
-        Invoke-WebRequest -Uri "https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-1.1.1w.zip" `
-          -OutFile "$env:TEMP\openssl.zip" -UseBasicParsing
+        curl.exe -L -o "$env:TEMP\openssl.zip" "https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.4.zip"
         Expand-Archive -Path "$env:TEMP\openssl.zip" -DestinationPath "C:\openssl" -Force
-        Write-Host "OpenSSL extracted to C:\openssl"
       shell: powershell
 
     - name: Set OPENSSL_BIN
       run: |
-        $dll = Get-ChildItem "C:\openssl" -Recurse -Filter "libssl-1_1-x64.dll" | Select-Object -First 1
-        if (-not $dll) { Write-Error "libssl-1_1-x64.dll not found in C:\openssl"; exit 1 }
+        $dll = Get-ChildItem "C:\openssl" -Recurse -Filter "libssl-3-x64.dll" |
+               Select-Object -First 1
+        if (-not $dll) { Write-Error "libssl-3-x64.dll not found in C:\openssl"; exit 1 }
         echo "OPENSSL_BIN=$($dll.DirectoryName)" >> $env:GITHUB_ENV
       shell: powershell
 
@@ -648,7 +562,7 @@ jobs:
             --no-translations `
             --no-system-d3d-compiler `
             build\tests\intervals_icu_integration_tests.exe
-        foreach ($dll in @("libssl-1_1-x64.dll", "libcrypto-1_1-x64.dll")) {
+        foreach ($dll in @("libssl-3-x64.dll", "libcrypto-3-x64.dll")) {
           $src = "$env:OPENSSL_BIN\$dll"
           if (Test-Path $src) { Copy-Item $src "build\tests\" -Force }
         }

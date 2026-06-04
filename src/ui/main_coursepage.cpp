@@ -48,7 +48,7 @@ Main_CoursePage::Main_CoursePage(QWidget *parent) : QWidget(parent), ui(new Ui::
 
 
     tableModel = new CourseTableModel(this);
-    xmlUtil = new XmlUtil(settings->language, this);
+    xmlUtil = new XmlUtil(this);
 
     delegateRow = new delegateRowHover(false, this);
     ui->tableView_course->setItemDelegate(delegateRow);
@@ -277,7 +277,7 @@ void Main_CoursePage::refreshUserCourse() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Main_CoursePage::parseIncludedCourses() {
 
-    xmlUtil = new XmlUtil(settings->language, this);
+    xmlUtil = new XmlUtil(this);
 
     QList<Course> lstCourseIncluded = xmlUtil->getLstCourseIncluded();
 
@@ -288,7 +288,7 @@ void Main_CoursePage::parseIncludedCourses() {
 /////////////////////////////////////////////////////////////////////////////////////////
 void Main_CoursePage::parseUserCourses() {
 
-    xmlUtil = new XmlUtil(settings->language, this);
+    xmlUtil = new XmlUtil(this);
     QList<Course> lstCourseUser = xmlUtil->getLstUserCourse();
     tableModel->addListCourse(lstCourseUser);
 }

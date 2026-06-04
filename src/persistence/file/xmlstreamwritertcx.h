@@ -37,7 +37,6 @@ private :
 
 
     void addStartDocumentTcx(QDateTime dateTimeNow);
-    void addEndDocumentTcx(QString lang);
     void addLapDocumentTcx(IntervalData *intervalData);
 
 

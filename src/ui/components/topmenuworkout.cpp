@@ -13,7 +13,32 @@
 namespace {
 QIcon tintedStandardIcon(QStyle *style, QStyle::StandardPixmap sp,
                          const QSize& size, const QColor& color) {
+    // Qt's title-bar standard pixmaps have differing native sizes (e.g. min and
+    // close are ~11x13 while max is 16x16) and pixmap(size) does not upscale.
+    // Scale the source up to the requested size so the toolbar icons render at
+    // a uniform visual size.
     QPixmap source = style->standardIcon(sp).pixmap(size);
+    if (source.size() != size)
+        source = source.scaled(size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    QPixmap out(size);
+    out.fill(Qt::transparent);
+    QPainter p(&out);
+    // Centre the (aspect-preserved) glyph within the target canvas.
+    const int x = (size.width()  - source.width())  / 2;
+    const int y = (size.height() - source.height()) / 2;
+    p.drawPixmap(x, y, source);
+    p.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    p.fillRect(out.rect(), color);
+    p.end();
+    return QIcon(out);
+}
+
+// Recolour an alpha-shaped resource glyph to @color. Use only for icons that
+// carry their shape in the alpha channel (not opaque-background PNGs).
+QIcon tintedPixmapIcon(const QString& resourcePath, const QColor& color) {
+    QPixmap source(resourcePath);
+    if (source.isNull())
+        return QIcon();
     QPixmap out(source.size());
     out.fill(Qt::transparent);
     QPainter p(&out);
@@ -93,6 +118,20 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     ui->pushButton_playPauseRadio->setIconSize(iconSize);
     ui->pushButton_nextRadio->setIcon(tintedStandardIcon(style(), QStyle::SP_MediaSkipForward, iconSize, iconColor));
     ui->pushButton_nextRadio->setIconSize(iconSize);
+
+    // Window/config controls: render light icons on the always-dark toolbar,
+    // instead of the legacy opaque-black PNGs that the dark theme broke.
+    // Config uses the alpha-shaped fa-gear glyph; the window controls use Qt's
+    // standard title-bar pixmaps. All tinted light to match the media buttons.
+    const QSize ctrlIconSize(20, 20);
+    ui->pushButton_config->setIcon(tintedPixmapIcon(":/image/icon/crank2", iconColor));
+    ui->pushButton_config->setIconSize(ctrlIconSize);
+    ui->pushButton_minimize->setIcon(tintedStandardIcon(style(), QStyle::SP_TitleBarMinButton, ctrlIconSize, iconColor));
+    ui->pushButton_minimize->setIconSize(ctrlIconSize);
+    ui->pushButton_expand->setIcon(tintedStandardIcon(style(), QStyle::SP_TitleBarMaxButton, ctrlIconSize, iconColor));
+    ui->pushButton_expand->setIconSize(ctrlIconSize);
+    ui->pushButton_exit->setIcon(tintedStandardIcon(style(), QStyle::SP_TitleBarCloseButton, ctrlIconSize, iconColor));
+    ui->pushButton_exit->setIconSize(ctrlIconSize);
 
 
     ui->pushButton_calibrateFEC->setFocusPolicy(Qt::NoFocus);
@@ -254,24 +293,19 @@ void TopMenuWorkout::updateRadioStatus(QString status) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void TopMenuWorkout::updateExpandIcon() {
 
-    ui->pushButton_expand->setStyleSheet("QPushButton#pushButton_expand{image: url(:/image/icon/exp1);border-radius: 1px;}");
-
-
+    ui->pushButton_expand->setIcon(
+        tintedStandardIcon(style(), QStyle::SP_TitleBarMaxButton, QSize(20, 20), QColor(230, 230, 230)));
+    ui->pushButton_expand->setIconSize(QSize(20, 20));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void TopMenuWorkout::changeConfigIcon(bool insideConfig) {
 
-
-    if (insideConfig) {
-        ui->pushButton_config->setStyleSheet("QPushButton#pushButton_config{image: url(:/image/icon/conf2);border-radius: 1px;}"
-                                             "QPushButton#pushButton_config:hover{image: url(:/image/icon/conf2);border-radius: 1px;}");
-    }
-    else {
-        ui->pushButton_config->setStyleSheet("QPushButton#pushButton_config{image: url(:/image/icon/conf1);border-radius: 1px;}"
-                                             "QPushButton#pushButton_config:hover{image: url(:/image/icon/conf2);border-radius: 1px;}");
-    }
-
+    // Tinted gear glyph (see constructor). Brighten when the config dialog is
+    // open to signal the active state, instead of swapping PNGs.
+    const QColor color = insideConfig ? QColor(255, 255, 255) : QColor(230, 230, 230);
+    ui->pushButton_config->setIcon(tintedPixmapIcon(":/image/icon/crank2", color));
+    ui->pushButton_config->setIconSize(QSize(20, 20));
 }
 
 

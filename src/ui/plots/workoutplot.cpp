@@ -302,6 +302,9 @@ void WorkoutPlot::init(bool firstInit) {
 
     if (firstInit) {
         labelMsg = new FaderLabel(this);
+        // White text: this label sits on the always-dark plot canvas. Set it
+        // explicitly rather than relying on a cascading QLabel rule.
+        labelMsg->setStyleSheet("color : white;");
         labelMsg->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         labelMsg->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
         labelMsg->hide();
@@ -322,7 +325,8 @@ void WorkoutPlot::init(bool firstInit) {
         labelMsgInterval = new FaderLabel(this);
         labelMsgInterval->setStyleSheet("background-color : rgba(1,1,1,220);"
                                         "border-radius: 15px;"
-                                        "border: 1px solid beige;");
+                                        "border: 1px solid beige;"
+                                        "color : white;");
         labelMsgInterval->setMinimumHeight(75);
         labelMsgInterval->setWordWrap(true);
         labelMsgInterval->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
@@ -493,7 +497,7 @@ void WorkoutPlot::setMessage(QString msg) {
 
     labelMsg->setText(msg);
     labelMsg->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-    labelMsg->setStyleSheet("background-color : rgba(1,1,1,140);");
+    labelMsg->setStyleSheet("background-color : rgba(1,1,1,140); color : white;");
     labelMsg->show();
     labelMsg->fadeIn(300);
     showingMessage = true;

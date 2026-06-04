@@ -15,7 +15,6 @@ public:
     ~Settings();
     Settings(QObject *parent = 0);
     void saveGeneralSettings();
-    void saveLanguage();
 
 
 
@@ -26,13 +25,6 @@ public:
     QStringList lstUsername;
     QString lastLoggedUsername;
     QString lastLoggedKey;
-
-    /// Index comboBox language loginDialog
-    int language_index;
-    QString language;
-
-
-
 
 
 
@@ -111,9 +103,6 @@ public:
 //    bool showPowerCurve;
 //    bool showCadenceCurve;
 //    bool showSpeedCurve;
-
-//    /// Video Player (0 = Vlc, 1=WebView)
-//    int displayVideo;
 
 
 

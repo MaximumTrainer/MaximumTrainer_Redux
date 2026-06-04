@@ -33,6 +33,14 @@
   </property>
   <property name="styleSheet">
    <string notr="true">
+/* This widget is an overlay drawn on top of the workout table to bracket the
+   repeated rows. Its containers must stay transparent so the table rows show
+   through; otherwise the application dark theme's generic
+   QWidget { background-color: #2b2b2b } paints over them. */
+#RepeatWidget, #widget_left, #widget_right, #frame_border_left, #frame_border_right {
+	background-color: transparent;
+}
+
 #frame_border_left {
  	border-left : 3px solid qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(7,0,62,255), stop:1 rgba(13, 0, 158, 255));
 	border-top: 3px solid qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(7,0,62,255), stop:1 rgba(13, 0, 158, 255));
@@ -47,8 +55,6 @@
  	border-right : 3px solid qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(7,0,62,255), stop:1 rgba(13, 0, 158, 255));
 	border-top: 3px solid qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(7,0,62,255), stop:1 rgba(13, 0, 158, 255));
 	border-bottom: 3px solid qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(7,0,62,255), stop:1 rgba(13, 0, 158, 255));
-	
-	background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(229, 229, 229, 255), stop:1 rgba(255, 255, 255, 255));
 }
 
 QLabel#label_repeat{

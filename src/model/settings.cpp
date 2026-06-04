@@ -42,23 +42,6 @@ Settings::Settings(QObject *parent) : QObject(parent)  {
     courseFolder = settings.value("courseFolder", "").toString();
     settings.endGroup();
 
-
-
-
-    /// Language settings
-    settings.beginGroup("language_app");
-    language_index = settings.value("lang", 0).toInt();
-    settings.endGroup();
-
-    if (language_index == 0)
-        language = "en";
-    else if (language_index == 1)
-        language = "fr";
-    else
-        language = "en";
-
-
-
 }
 
 
@@ -96,18 +79,6 @@ void Settings::saveGeneralSettings() {
 
 
 
-}
-
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Settings::saveLanguage() {
-
-    QSettings settings;
-
-    settings.beginGroup("language_app");
-    settings.setValue("lang", language_index);
-    settings.endGroup();
 }
 
 

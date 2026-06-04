@@ -68,10 +68,6 @@
         <file alias="cadenceTooLow">resources/sound/CadenceTooLow.wav</file>
         <file alias="cadenceTooHigh">resources/sound/CadenceTooHigh.wav</file>
     </qresource>
-    <qresource prefix="/language">
-        <file>resources/language/powervelo_en.qm</file>
-        <file>resources/language/powervelo_fr.qm</file>
-    </qresource>
     <qresource prefix="/included_workout/bt_16_wk_plan">
         <file>resources/included_workout/BT 16wk Power Based/Opt-Phase-Prep-wkA-wo1.workout</file>
         <file>resources/included_workout/BT 16wk Power Based/Opt-Phase-Prep-wkA-wo2.workout</file>

@@ -19,7 +19,7 @@ class XmlUtil: public QObject
     Q_OBJECT
 
 public:
-    XmlUtil(QString lang, QObject *parent = 0);
+    XmlUtil(QObject *parent = 0);
 
 
     QList<Workout> parseWorkoutLstPath(QStringList lstPath, Workout::WORKOUT_NAME workoutType);
@@ -78,10 +78,6 @@ public:
 signals:
     void workoutListIsReady();
 
-
-
-private :
-    QString lang; //langage to parse workout message [en, fr]
 
 
 

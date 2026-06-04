@@ -116,75 +116,45 @@ const static QString URL_POST_FILE_TP = "https://api.trainingpeaks.com/v1/file/"
 
 /// Login
 const static QString urlLoginEn = "login/insideMT";
-const static QString urlLoginFr = "connexion/insideMT";
-
 
 /// Profile
-const static QString urlProfilEn = "myprofile/insideMT";
-const static QString urlProfilFr = "monprofil/insideMT";
-const static QString urlProfilFrOutsideMt = "monprofil";
 const static QString urlProfilEnOutsideMt = "myprofile";
-
 
 /// Choose-Subscription
 const static QString urlChooseSubEn = "choose-subscription";
-const static QString urlChooseSubFr = "choisir-abonnement";
-
-
 
 /// News
 const static QString urlNewsEn = "news";
-const static QString urlNewsFr = "nouvelles";
-
 
 /// Zones
 const static QString urlZonesEn = "training-zones";
-const static QString urlZonesFr = "zones-entrainement";
-
 
 /// Studio
 const static QString urlStudioEn = "studio";
-const static QString urlStudioFr = "studio-fr";
-
 
 /// Achievement
 const static QString urlAchievEn = "achievement/insideMT";
-const static QString urlAchievFr = "accomplissement/insideMT";
-
 
 /// Settings
 const static QString urlSettingsEn = "settings";
-const static QString urlSettingsFr = "configuration";
-
 
 /// Workout
 const static QString urlWorkoutEn = "workouts";
-const static QString urlWorkoutFr = "entrainements";
 
 /// Workout-creator
 const static QString urlWorkoutCreatorEn = "workout-creator";
-const static QString urlWorkoutCreatorFr = "workout-createur";
 
 /// Course-creator
 const static QString urlCourseCreatorEn = "course-creator";
-const static QString urlCourseCreatorFr = "parcours-createur";
-
 
 /// Training-Plans
 const static QString urlPlanEn = "training-plans/insideMT";
-const static QString urlPlanFr = "plans-entrainement/insideMT";
-
-
-
-
 
 /// Help
 const static QString urlSupportEn = "support/insideMT";
-const static QString urlSupportFr = "aide/insideMT";
 
 /// Download
 const static QString urlDownloadEn = "download-mt";
-const static QString urlDownloadFr = "telecharger-mt";
 
 
 

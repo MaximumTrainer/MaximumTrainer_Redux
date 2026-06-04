@@ -89,7 +89,6 @@ private slots:
     void on_checkBox_HeartRateCurve_clicked(bool checked);
     void on_checkBox_SpeedCurve_clicked(bool checked);
 
-    void on_comboBox_displayVideo_activated(int index);
 
     void sliderValueMoved(int value);
     void sliderSoundPressed();
@@ -173,18 +172,12 @@ private :
     void moveElement(QString widgetIdentifier, bool moveRight); //moveRight false = moveLeft
 
     // Group C: preference tab setup helpers
-    QWidget *setupLoggingTab();
-    QWidget *setupLanguageTab();
     QWidget *setupStudioTab();
     QWidget *setupTrainerTab();
 
-    void initLoggingTab();
-    void initLanguageTab();
     void initStudioTab();
     void initTrainerTab();
 
-    void saveLoggingTab();
-    void saveLanguageTab();
     void saveStudioTab();
     void saveTrainerTab();
 
@@ -204,18 +197,6 @@ private:
     bool playOnNextSliderRelease;
 
     bool isPlayingRadio;
-
-    // Logging tab controls
-    QComboBox    *comboLogLevel     = nullptr;
-    QCheckBox    *checkLogToFile    = nullptr;
-    QLabel       *labelLogFilePath  = nullptr;
-
-    // Language tab controls
-    QComboBox    *comboLanguage     = nullptr;
-    QLabel       *labelRestartNote  = nullptr;
-
-    // Theme controls (Language tab)
-    QComboBox    *comboTheme        = nullptr;
 
     // Studio tab controls
     QCheckBox    *checkStudioMode   = nullptr;
