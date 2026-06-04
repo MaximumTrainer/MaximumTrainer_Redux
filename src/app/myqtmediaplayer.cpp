@@ -7,6 +7,7 @@
 #include <QVideoWidget>
 #include <QGridLayout>
 #include <QMenu>
+#include <QLabel>
 #include <QAction>
 #include <QFileDialog>
 #include <QInputDialog>
@@ -34,26 +35,39 @@ MyVlcPlayer::MyVlcPlayer(QWidget *parent) : QWidget(parent)
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(m_video, 0, 0, 1, 1);
 
-    // Right-click menu: Open local file / Open URL (mirrors the VLC player).
+    // Placeholder hint shown over the (empty) video area until media loads.
+    // White text on the always-dark workout view, centred.
+    m_hint = new QLabel(tr("Right-click to open a video file or URL"), this);
+    m_hint->setAlignment(Qt::AlignCenter);
+    m_hint->setStyleSheet("color: white; background-color: transparent; font-size: 16px;");
+    m_hint->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    layout->addWidget(m_hint, 0, 0, 1, 1);   // same cell, overlays the video
+
+    // Right-click menu: open media, transport, and volume controls.
     m_menu = new QMenu(this);
     m_menu->addAction(tr("Open File…"),  this, &MyVlcPlayer::openLocal);
     m_menu->addAction(tr("Open URL…"),   this, &MyVlcPlayer::openUrl);
     m_menu->addSeparator();
     m_menu->addAction(tr("Play / Pause"), this, &MyVlcPlayer::playOrPause);
     m_menu->addAction(tr("Stop"),         this, &MyVlcPlayer::stop);
+    m_menu->addSeparator();
+    m_menu->addAction(tr("Volume +10%"), this, [this]() { changeVolume(qMin(100, audioVol + 10)); });
+    m_menu->addAction(tr("Volume -10%"), this, [this]() { changeVolume(qMax(0,   audioVol - 10)); });
+    m_menu->addAction(tr("Mute / Unmute"), this, [this]() { muteVolume(!isMuted); });
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &QWidget::customContextMenuRequested,
             this, [this](const QPoint &) { videoRightClick(); });
 
     audioVol = loadSoundVolume();
-    m_audio->setVolume(audioVol / 100.0);   // QAudioOutput volume is 0.0–1.0
+    applyVolume();
 
     // Re-emit player state as the legacy playing()/paused()/stopped() signals
-    // the config dialog and workout dialog connect to.
+    // the config dialog and workout dialog connect to. Also hide the hint once
+    // something is playing.
     connect(m_player, &QMediaPlayer::playbackStateChanged, this,
             [this](QMediaPlayer::PlaybackState st) {
         switch (st) {
-        case QMediaPlayer::PlayingState: emit playing(); break;
+        case QMediaPlayer::PlayingState: m_hint->hide(); emit playing(); break;
         case QMediaPlayer::PausedState:  emit paused();  break;
         case QMediaPlayer::StoppedState: emit stopped(); break;
         }
@@ -132,16 +146,23 @@ void MyVlcPlayer::stop()
 
 void MyVlcPlayer::changeVolume(int volume)
 {
-    audioVol = volume;
-    m_audio->setVolume(volume / 100.0);
+    audioVol = qBound(0, volume, 100);
+    applyVolume();
     if (!isRadio)
-        saveSoundVolume(volume);
+        saveSoundVolume(audioVol);
 }
 
 void MyVlcPlayer::muteVolume(bool mute)
 {
     isMuted = mute;
-    m_audio->setMuted(mute);
+    applyVolume();
+}
+
+void MyVlcPlayer::applyVolume()
+{
+    // QAudioOutput volume is 0.0–1.0; honour the mute flag.
+    m_audio->setMuted(isMuted);
+    m_audio->setVolume(audioVol / 100.0);
 }
 
 // ── QSettings persistence (same keys as the VLC implementation) ──────────────

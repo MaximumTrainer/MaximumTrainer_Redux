@@ -34,7 +34,6 @@
 #include "clock.h"
 #include "workoututil.h"
 #include "dialogconfig.h"
-#include "webbrowserview.h"
 #include "dialogcalibrate.h"
 #include "dialogcalibratepm.h"
 #include "dialogkeyboardshortcuts.h"
@@ -866,8 +865,6 @@ void WorkoutDialog::initUI() {
     mainPlot->showHideCurveHeartRate(account->show_hr_curve);
     mainPlot->showHideCurvePower(account->show_power_curve);
     mainPlot->showHideCurveSpeed(account->show_speed_curve);
-    /// VideoDisplay
-    showVideoPlayer(account->display_video);
 
 
     ui->widget_topMenu->setWorkoutNameLabel(workout.getName());
@@ -1689,7 +1686,6 @@ void WorkoutDialog::start_or_pause_workout() {
         setWidgetsStopped(false);
         startWorkout();
         emit playPlayer();
-        if (webPlayer) webPlayer->playVideo();
 
     }
     // If workout paused, we resume it
@@ -1712,7 +1708,6 @@ void WorkoutDialog::start_or_pause_workout() {
         setWidgetsStopped(false);
         emit resumeClock();
         emit playPlayer();
-        if (webPlayer) webPlayer->playVideo();
 
     }
     // If not paused, we pause it
@@ -1727,7 +1722,6 @@ void WorkoutDialog::start_or_pause_workout() {
         setMessagePlot();
         emit pauseClock();
         emit pausePlayer();
-        if (webPlayer) webPlayer->pauseVideo();
     }
 }
 
@@ -2613,46 +2607,6 @@ void WorkoutDialog::setTimerFontSize(int value) {
 
     ui->widget_time->setTimerFontSize(value);
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////
-// Lazily create the QWebEngine-backed web player on first use, so the heavy
-// Chromium process is not started when the user stays on the default VLC player.
-WebBrowserView *WorkoutDialog::ensureWebPlayer() {
-    if (!webPlayer) {
-        webPlayer = new WebBrowserView(ui->widget_webPlayer);
-        ui->widget_webPlayer->layout()->addWidget(webPlayer);
-    }
-    return webPlayer;
-}
-
-void WorkoutDialog::showVideoPlayer(int choice) {
-
-    /// Standard
-    if (choice == 0) {
-        // Hiding the QWebEngineView only stops rendering, not playback, so
-        // explicitly pause it or its audio keeps playing behind the VLC player.
-        if (webPlayer) webPlayer->pauseVideo();
-        ui->widget_webPlayer->setVisible(false);
-        ui->widgetVideo->setVisible(true);
-    }
-    /// WebView
-    else {
-        ui->widgetVideo->setVisible(false);
-        ui->widget_webPlayer->setVisible(true);
-        // Defer creation/loading of the QWebEngineView to the next event-loop
-        // iteration. Creating a WebEngine native child window synchronously
-        // from inside the config combobox's "activated" signal handler causes
-        // event-routing problems on Qt6/xcb (the host dialog can close). Doing
-        // it after the current event finishes avoids that.
-        QTimer::singleShot(0, this, [this]() {
-            if (ui->widget_webPlayer->isVisible())   // still on WebView
-                ensureWebPlayer()->loadHomePageIfNeeded();
-        });
-    }
-}
-
-
-
 
 
 ///0 = Minimalist

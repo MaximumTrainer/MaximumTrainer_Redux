@@ -44,11 +44,6 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     currentRadioName = "";
     isPlayingRadio = false;
 
-    /// temporaire, a tester sur mac
-    //#ifdef Q_OS_MAC
-    //    ui->comboBox_displayVideo->setDisabled(true);
-    //#endif
-
     /// List widgets
     ui->listWidget_settings->setIconSize(QSize(24, 24));
 
@@ -56,10 +51,9 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     QListWidgetItem *item2 = new QListWidgetItem(QIcon(":/image/icon/display"), tr("Widgets"), ui->listWidget_settings);
     QListWidgetItem *item3 = new QListWidgetItem(QIcon(":/image/icon/chart"),   tr("Graph"), ui->listWidget_settings);
     QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/sound"),   tr("Sounds"), ui->listWidget_settings);
-    QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/movie"),   tr("Video Player"), ui->listWidget_settings);
-    QListWidgetItem *item6 = new QListWidgetItem(QIcon(":/image/icon/radio"),   tr("Radio"), ui->listWidget_settings);
-    QListWidgetItem *item7 = new QListWidgetItem(tr("Studio"), ui->listWidget_settings);
-    QListWidgetItem *item8 = new QListWidgetItem(tr("Trainer"), ui->listWidget_settings);
+    QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/radio"),   tr("Radio"), ui->listWidget_settings);
+    QListWidgetItem *item6 = new QListWidgetItem(tr("Studio"), ui->listWidget_settings);
+    QListWidgetItem *item7 = new QListWidgetItem(tr("Trainer"), ui->listWidget_settings);
     item1->setSizeHint(QSize(35,35));
     item2->setSizeHint(QSize(35,35));
     item3->setSizeHint(QSize(35,35));
@@ -67,7 +61,6 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     item5->setSizeHint(QSize(35,35));
     item6->setSizeHint(QSize(35,35));
     item7->setSizeHint(QSize(35,35));
-    item8->setSizeHint(QSize(35,35));
 
     ui->listWidget_settings->addItem(item1);
     ui->listWidget_settings->addItem(item2);
@@ -76,7 +69,6 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     ui->listWidget_settings->addItem(item5);
     ui->listWidget_settings->addItem(item6);
     ui->listWidget_settings->addItem(item7);
-    ui->listWidget_settings->addItem(item8);
 
     // Logging settings live only in the main-window Preferences dialog.
     ui->stackedWidget->addWidget(setupStudioTab());
@@ -465,24 +457,6 @@ void DialogConfig::initUi() {
     ui->comboBox_powerAverage->setCurrentIndex(account->averaging_power);
     ui->spinBox_offsetPower->setValue(account->offset_power);
 
-    ui->comboBox_displayVideo->setCurrentIndex(account->display_video);
-    ui->label_homePage->setVisible(account->display_video);
-    ui->lineEdit_homePage->setVisible(account->display_video);
-
-    QSettings settings;
-    settings.beginGroup("webBrowserWorkout");
-    // One-time reset: clear any previously saved home page and force YouTube.
-    // DRM services (e.g. the old Netflix default) need Widevine, which the
-    // embedded QWebEngineView cannot bundle, so they never played. Guarded by a
-    // flag so the user can still set their own URL afterwards.
-    if (!settings.value("youtubeResetDone", false).toBool()) {
-        settings.setValue("defaultUrl", "https://www.youtube.com");
-        settings.setValue("youtubeResetDone", true);
-    }
-    QString urlSaved = settings.value("defaultUrl", "https://www.youtube.com" ).toString();
-    settings.endGroup();
-    ui->lineEdit_homePage->setText(urlSaved);
-
     ui->checkBox_seperator->setChecked(account->show_seperator_interval);
     ui->checkBox_showGrid->setChecked(account->show_grid);
     ui->checkBox_targetHr->setChecked(account->show_hr_target);
@@ -776,15 +750,6 @@ void DialogConfig::on_comboBox_startTrigger_activated(int index) {
 
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-void DialogConfig::on_comboBox_displayVideo_activated(int index) {
-    parentDialog->showVideoPlayer(index);
-
-    //web browser
-    ui->label_homePage->setVisible(index == 1);
-    ui->lineEdit_homePage->setVisible(index == 1);
-
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 void DialogConfig::setStudioMode() {
@@ -901,9 +866,6 @@ void DialogConfig::saveSettings() {
     account->averaging_power = ui->comboBox_powerAverage->currentIndex();
     account->offset_power = ui->spinBox_offsetPower->value();
 
-    account->display_video =  ui->comboBox_displayVideo->currentIndex();
-
-
     account->show_seperator_interval = ui->checkBox_seperator->isChecked();
     account->show_grid = ui->checkBox_showGrid->isChecked();
     account->show_cadence_target = ui->checkBox_targetCadence->isChecked();
@@ -929,12 +891,6 @@ void DialogConfig::saveSettings() {
 
 
     qDebug() << "OK SAVED SETTINGS DONE";
-
-    // WebBrowser settings, save Url
-    QSettings settings;
-    settings.beginGroup("webBrowserWorkout");
-    settings.setValue("defaultUrl", ui->lineEdit_homePage->text());
-    settings.endGroup();
 
     // Persist display & sound prefs locally (the server putAccount endpoint is
     // defunct), so the user's choices — including the video player — survive a

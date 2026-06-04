@@ -73,10 +73,13 @@ private:
     int  audioVol = 100;
     bool isMuted = false;
 
+    void applyVolume();
+
     QMediaPlayer *m_player = nullptr;
     QAudioOutput *m_audio  = nullptr;
     QVideoWidget *m_video  = nullptr;
     QMenu        *m_menu   = nullptr;
+    QLabel       *m_hint   = nullptr;   // "right-click to open media" overlay
 };
 
 #else // ── No media backend: stub for platforms without VLC-Qt or QtMultimedia ──

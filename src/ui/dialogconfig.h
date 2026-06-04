@@ -89,7 +89,6 @@ private slots:
     void on_checkBox_HeartRateCurve_clicked(bool checked);
     void on_checkBox_SpeedCurve_clicked(bool checked);
 
-    void on_comboBox_displayVideo_activated(int index);
 
     void sliderValueMoved(int value);
     void sliderSoundPressed();

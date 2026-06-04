@@ -25,8 +25,7 @@ SOURCES +=\
     $$PWD/oxygenwidget.cpp \
     $$PWD/dialogcalibrate.cpp \
     $$PWD/dialogcalibratepm.cpp \
-    $$PWD/userstudiowidget.cpp \
-    $$PWD/webbrowserview.cpp
+    $$PWD/userstudiowidget.cpp
 
 
 HEADERS +=\
@@ -54,8 +53,7 @@ HEADERS +=\
     $$PWD/dialogcalibrate.h \
     $$PWD/dialogcalibratepm.h \
     $$PWD/userstudiowidget.h \
-    $$PWD/myqwebenginepage.h \
-    $$PWD/webbrowserview.h
+    $$PWD/myqwebenginepage.h
 
 
 
