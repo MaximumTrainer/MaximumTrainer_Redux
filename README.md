@@ -105,6 +105,10 @@ Completed workout data is saved as a FIT activity file and can be uploaded to **
 
 ## Screenshots
 
+| Workout list | Workout in progress |
+|--------------|---------------------|
+| ![Main window — workout library with power graphs and metrics](docs/assets/screenshots/screenshot_main_window.png) | ![Workout player — video, interval graph, and live power, heart rate, and cadence](docs/assets/screenshots/screenshot_workout_running.png) |
+
 | Studio mode | Activity history |
 |-------------|------------------|
 | ![Studio mode — multiple riders with live power, heart rate, and cadence](docs/assets/screenshots/screenshot_studio_mode.png) | ![Activity history with weekly totals and upload status](docs/assets/screenshots/screenshot_activity_history.png) |
