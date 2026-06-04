@@ -6,6 +6,7 @@
 #include <QAudioOutput>
 #include <QVideoWidget>
 #include <QGridLayout>
+#include <QVBoxLayout>
 #include <QMenu>
 #include <QLabel>
 #include <QAction>
@@ -36,12 +37,18 @@ MyVlcPlayer::MyVlcPlayer(QWidget *parent) : QWidget(parent)
     layout->addWidget(m_video, 0, 0, 1, 1);
 
     // Placeholder hint shown over the (empty) video area until media loads.
-    // White text on the always-dark workout view, centred.
-    m_hint = new QLabel(tr("Right-click to open a video file or URL"), this);
+    // The hint is a CHILD of the video widget, not a layout sibling: the video
+    // surface paints over sibling widgets (and swallows their mouse events), so
+    // a sibling label would be invisible and would block the right-click. As a
+    // child it renders on top of the video content. A layout keeps it centred
+    // and resized with the video.
+    auto *hintLayout = new QVBoxLayout(m_video);
+    hintLayout->setContentsMargins(0, 0, 0, 0);
+    m_hint = new QLabel(tr("Right-click to open a video file or URL"), m_video);
     m_hint->setAlignment(Qt::AlignCenter);
     m_hint->setStyleSheet("color: white; background-color: transparent; font-size: 16px;");
-    m_hint->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-    layout->addWidget(m_hint, 0, 0, 1, 1);   // same cell, overlays the video
+    m_hint->setAttribute(Qt::WA_TransparentForMouseEvents, true);   // clicks fall through to the video widget
+    hintLayout->addWidget(m_hint);
 
     // Right-click menu: open media, transport, and volume controls.
     m_menu = new QMenu(this);
@@ -54,8 +61,12 @@ MyVlcPlayer::MyVlcPlayer(QWidget *parent) : QWidget(parent)
     m_menu->addAction(tr("Volume +10%"), this, [this]() { changeVolume(qMin(100, audioVol + 10)); });
     m_menu->addAction(tr("Volume -10%"), this, [this]() { changeVolume(qMax(0,   audioVol - 10)); });
     m_menu->addAction(tr("Mute / Unmute"), this, [this]() { muteVolume(!isMuted); });
-    setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(this, &QWidget::customContextMenuRequested,
+
+    // The video widget is what actually receives mouse events over the player,
+    // so the context-menu policy and signal must live on it (a policy on the
+    // parent never fires because the video surface sits on top).
+    m_video->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_video, &QWidget::customContextMenuRequested,
             this, [this](const QPoint &) { videoRightClick(); });
 
     audioVol = loadSoundVolume();
