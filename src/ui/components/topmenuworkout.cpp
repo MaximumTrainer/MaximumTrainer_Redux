@@ -126,8 +126,6 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     const QSize ctrlIconSize(20, 20);
     ui->pushButton_config->setIcon(tintedPixmapIcon(":/image/icon/crank2", iconColor));
     ui->pushButton_config->setIconSize(ctrlIconSize);
-    ui->pushButton_minimize->setIcon(tintedStandardIcon(style(), QStyle::SP_TitleBarMinButton, ctrlIconSize, iconColor));
-    ui->pushButton_minimize->setIconSize(ctrlIconSize);
     ui->pushButton_expand->setIcon(tintedStandardIcon(style(), QStyle::SP_TitleBarMaxButton, ctrlIconSize, iconColor));
     ui->pushButton_expand->setIconSize(ctrlIconSize);
     ui->pushButton_exit->setIcon(tintedStandardIcon(style(), QStyle::SP_TitleBarCloseButton, ctrlIconSize, iconColor));
@@ -137,7 +135,6 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     ui->pushButton_calibrateFEC->setFocusPolicy(Qt::NoFocus);
     ui->pushButton_calibratePM->setFocusPolicy(Qt::NoFocus);
     ui->pushButton_config->setFocusPolicy(Qt::NoFocus);
-    ui->pushButton_minimize->setFocusPolicy(Qt::NoFocus);
     ui->pushButton_expand->setFocusPolicy(Qt::NoFocus);
     ui->pushButton_start->setFocusPolicy(Qt::NoFocus);
     ui->pushButton_lap->setFocusPolicy(Qt::NoFocus);
@@ -151,7 +148,6 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     isMacMenu = false;
 #endif
 #ifdef Q_OS_MAC
-    ui->pushButton_minimize->setVisible(false);
     ui->pushButton_expand->setVisible(false);
     ui->pushButton_exit->setVisible(false);
     isMacMenu = true;
@@ -238,7 +234,6 @@ void TopMenuWorkout::setMinExpandExitVisible(bool visible) {
     if (isMacMenu)
         return;
 
-    ui->pushButton_minimize->setVisible(visible);
     ui->pushButton_expand->setVisible(visible);
     ui->pushButton_exit->setVisible(visible);
 
@@ -250,14 +245,6 @@ void TopMenuWorkout::setMinExpandExitVisible(bool visible) {
     }
 
 }
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void TopMenuWorkout::on_pushButton_minimize_clicked()
-{
-    emit minimize();
-}
-
 
 
 //-----------------------------------------

@@ -503,7 +503,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
 
     connect(ui->widget_topMenu, SIGNAL(config()), this, SLOT(showConfig()));
-    connect(ui->widget_topMenu, SIGNAL(minimize()), this, SLOT(minimizeWindow()));
     connect(ui->widget_topMenu, SIGNAL(expand()), this, SLOT(expandWindow()));
     connect(ui->widget_topMenu, SIGNAL(exit()), this, SLOT(closeWindow()));
     connect(ui->widget_topMenu, SIGNAL(startOrPause()), this, SLOT(start_or_pause_workout()));
@@ -3255,12 +3254,6 @@ void WorkoutDialog::closeWindow() {
 
     sureYouWantToQuit();
 }
-
-void WorkoutDialog::minimizeWindow() {
-
-    this->showMinimized();
-}
-
 
 //////////////////////////////////////////////////////
 void WorkoutDialog::expandWindow() {

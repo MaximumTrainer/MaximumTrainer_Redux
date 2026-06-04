@@ -201,7 +201,6 @@ private slots:
     void speedDataChosen(int userID, double value);
 
     void closeWindow();
-    void minimizeWindow();
     void expandWindow();
     void showConfig();
     void toggleTransparent();
