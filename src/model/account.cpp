@@ -45,6 +45,12 @@ Account::Account(QObject *parent) : QObject(parent)  {
     nb_sec_show_interval = settings.value("nb_sec_show_interval", 5 ).toInt();
     nb_sec_show_interval_before = settings.value("nb_sec_show_interval_before", 4 ).toInt();
     erg_smoothing_duration_s = settings.value("erg_smoothing_duration_s", 5).toInt();
+    // Athlete profile — edited in Preferences and persisted locally so FTP /
+    // LTHR / weight survive a restart (and offline use), overriding the
+    // hardcoded defaults above. A live server value may still override at runtime.
+    FTP       = settings.value("FTP",       FTP).toInt();
+    LTHR      = settings.value("LTHR",      LTHR).toInt();
+    weight_kg = settings.value("weight_kg", weight_kg).toDouble();
     intervals_icu_api_key     = settings.value("intervals_icu_api_key", "").toString();
     intervals_icu_athlete_id  = settings.value("intervals_icu_athlete_id", "").toString();
     intervals_icu_auto_upload = settings.value("intervals_icu_auto_upload", false).toBool();
@@ -251,6 +257,20 @@ void Account::saveErgSmoothingDuration(int seconds)
     QSettings settings;
     settings.beginGroup("account");
     settings.setValue("erg_smoothing_duration_s", erg_smoothing_duration_s);
+    settings.endGroup();
+}
+
+void Account::saveProfileFields(int ftp, int lthr, double weightKg)
+{
+    FTP       = ftp;
+    LTHR      = lthr;
+    weight_kg = weightKg;
+
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("FTP",       FTP);
+    settings.setValue("LTHR",      LTHR);
+    settings.setValue("weight_kg", weight_kg);
     settings.endGroup();
 }
 

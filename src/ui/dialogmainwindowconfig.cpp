@@ -187,6 +187,11 @@ void DialogMainWindowConfig::initUI() {
     ui->checkBox_intervalsAutoUpload->setChecked(account->intervals_icu_auto_upload);
     ui->label_intervalsTestResult->clear();
 
+    // Athlete profile (FTP / LTHR / weight) — edited here, persisted locally.
+    ui->spinBox_ftp->setValue(account->FTP);
+    ui->spinBox_lthr->setValue(account->LTHR);
+    ui->doubleSpinBox_weight->setValue(account->weight_kg);
+
 }
 
 
@@ -449,6 +454,16 @@ void DialogMainWindowConfig::accept() {
     settings->historyFolder = ui->lineEdit_historyDir->text();
     account->force_workout_window_on_top = ui->checkBox_forceOnTop->isChecked();
 
+    // Athlete profile (FTP / LTHR / weight) — persist locally and notify the
+    // main window so dependent metrics (zones, workout targets) recompute.
+    const bool profileChangedNow =
+        account->FTP       != ui->spinBox_ftp->value() ||
+        account->LTHR      != ui->spinBox_lthr->value() ||
+        account->weight_kg != ui->doubleSpinBox_weight->value();
+    account->saveProfileFields(ui->spinBox_ftp->value(),
+                               ui->spinBox_lthr->value(),
+                               ui->doubleSpinBox_weight->value());
+
     // Persist the theme choice but apply it on next launch only. Live
     // re-styling via qApp->setStyleSheet() does not reliably repolish widgets
     // that carry their own stylesheets (the workout table, message boxes,
@@ -508,6 +523,9 @@ void DialogMainWindowConfig::accept() {
         emit intervalsIcuCredentialsChanged();
 
     saveLoggingSettings();
+
+    if (profileChangedNow)
+        emit profileChanged();
 
     QDialog::accept();
 

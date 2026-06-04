@@ -37,6 +37,9 @@ signals:
     void folderCourseChanged();
     /// Emitted when Intervals.icu credentials are saved so the tab can refresh.
     void intervalsIcuCredentialsChanged();
+    /// Emitted when the athlete profile (FTP / LTHR / weight) was edited, so the
+    /// main window can recompute zones and workout targets.
+    void profileChanged();
 
 
 public slots:

@@ -20,6 +20,9 @@ public:
     void saveNbSecShowInterval(int nbSec);
     void saveNbSecShowIntervalBefore(int nbSec);
     void saveErgSmoothingDuration(int seconds);
+    /// Persist athlete profile (FTP / LTHR / weight) locally so it survives a
+    /// restart and offline use. Edited from the Preferences dialog.
+    void saveProfileFields(int ftp, int lthr, double weightKg);
     void saveIntervalsIcuCredentials();
     void saveSensorDropoutSettings();
     void saveBatteryWarningThreshold();
