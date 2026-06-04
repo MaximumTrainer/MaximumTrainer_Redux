@@ -58,7 +58,6 @@ private slots:
     void onTokenRefreshFinished();
     void onSilentAuthTimeout();
 
-    void on_comboBox_language_currentIndexChanged(int index);
     void on_checkBox_workOffline_clicked(bool checked);
     void on_pushButton_startOffline_clicked();
 
@@ -97,8 +96,6 @@ private:
     void clearTokens();
 
     Ui::DialogLogin          *ui;
-    QTranslator               m_translator;
-    QString                   m_currLang;
 
     Account  *account;
     Settings *settings;

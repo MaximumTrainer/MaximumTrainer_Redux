@@ -207,8 +207,6 @@ public:
     bool show_cadence_curve;
     bool show_speed_curve;
 
-    int display_video;
-
     /* ----- */
     int sound_player_vol;
     bool enable_sound;

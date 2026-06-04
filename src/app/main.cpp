@@ -16,9 +16,6 @@
 #include "apptheme.h"
 #include "env_config.h"
 
-#ifdef GC_HAVE_VLCQT
-#include "myvlcplayer.h"
-#endif
 
 
 
@@ -32,13 +29,11 @@ int main(int argc, char *argv[]) {
     Logger::install();
 
 #if defined(Q_OS_LINUX) && !defined(Q_OS_WASM)
-    // libvlc embeds video by drawing into the Qt widget's native window handle,
-    // but its Linux video-output plugins are all X11/XCB-based (VLC 3.0.x ships
-    // no native Wayland vout). Under a native Wayland session winId() is a
-    // Wayland surface libvlc cannot draw into, so it spawns its own top-level
-    // window instead of staying in the workout frame. Forcing the xcb platform
-    // routes us through XWayland, giving libvlc a real X11 drawable. Only do
-    // this when we detect Wayland and the user has not pinned a platform.
+    // Force the xcb platform (via XWayland) under a native Wayland session.
+    // QtWebEngine and embedded native child widgets are markedly more stable
+    // on xcb than on the Wayland QPA plugin; native Wayland exposed several
+    // event-routing / rendering issues. Only do this when we detect Wayland
+    // and the user has not pinned a platform with QT_QPA_PLATFORM.
     if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
         const QByteArray sessionType = qgetenv("XDG_SESSION_TYPE");
         const bool isWayland = sessionType.compare("wayland", Qt::CaseInsensitive) == 0
@@ -48,7 +43,23 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
+    // QtWebEngine requires the GUI thread and Chromium's GPU process to share
+    // an OpenGL context. On Qt6 this is enforced strictly: without
+    // AA_ShareOpenGLContexts (set BEFORE QApplication is constructed) an
+    // embedded QWebEngineView can fail to create its GL surface and tear down
+    // itself and its host widget — e.g. the workout dialog vanishing when the
+    // web video player is shown. Qt5 was more lenient, which is why this
+    // surfaced only after the Qt6 migration.
+    QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+
     QApplication app(argc, argv);
+
+    // Do NOT auto-quit when the last window closes. On Qt6, QtWebEngine spins up
+    // transient helper windows (e.g. when the embedded web video player is
+    // shown); their lifecycle can momentarily leave zero top-level windows and
+    // trigger quitOnLastWindowClosed, terminating the whole app while a workout
+    // dialog is open. The app instead quits explicitly from MainWindow::closeEvent.
+    app.setQuitOnLastWindowClosed(false);
 
 #ifdef Q_OS_WIN
     // Windows 10 version 1703 (Creators Update, build 15063) is the minimum
@@ -126,6 +137,10 @@ int main(int argc, char *argv[]) {
     Z_StyleSheet styleSheetDummy;
     const QString lightQss = styleSheetDummy.styleSheet();
     qApp->setProperty("lightStylesheet", lightQss);
+    // Force the light palette for the baseline/login UI too: otherwise, under an
+    // OS dark theme Qt hands the app a dark palette and the light stylesheet
+    // (which only sets a few backgrounds) renders light text on light widgets.
+    app.setPalette(AppTheme::lightPalette());
     app.setStyleSheet(lightQss);
 
     // --screenshots [dir] / /screenshots [dir]: bypass login, capture UI

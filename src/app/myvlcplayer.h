@@ -9,61 +9,37 @@
 #include <QEvent>
 #include <QHostInfo>
 
-#ifdef GC_HAVE_VLCQT
+#if defined(GC_HAVE_QTMULTIMEDIA) // ── Native Qt6 QtMultimedia backend ──────
 
-#include <VLCQtCore/Common.h>
-#include <VLCQtCore/Instance.h>
-#include <VLCQtCore/Media.h>
-#include <VLCQtCore/MediaPlayer.h>
-#include <VLCQtCore/MediaListPlayer.h>
-#include <VLCQtCore/Video.h>
-#include <VLCQtCore/Audio.h>
-#include <VLCQtWidgets/ControlVideo.h>
-#include <VLCQtWidgets/ControlAudio.h>
-#include <VLCQtWidgets/WidgetSeek.h>
-#include <VLCQtWidgets/WidgetVideo.h>
+// Embedded media player built on QtMultimedia (QMediaPlayer + QVideoWidget +
+// QAudioOutput). Handles both the embedded video player and the audio-only
+// internet radio (setRadio(true)). NOTE: the class is still named
+// MyVlcPlayer for historical reasons (the .ui files promote `widgetVideo` as
+// this class); the VLC-Qt backend has been removed.
 
-
-
-#include "clickablelabel.h"
-
-
-
-class VlcInstance;
-class VlcMedia;
-class VlcMediaPlayer;
-class VlcVideo;
-class VlcAudio;
-class VlcMediaListPlayer;
-class VlcControlVideo;
-class VlcControlAudio;
-
-
-
+QT_FORWARD_DECLARE_CLASS(QMediaPlayer)
+QT_FORWARD_DECLARE_CLASS(QAudioOutput)
+QT_FORWARD_DECLARE_CLASS(QVideoWidget)
+QT_FORWARD_DECLARE_CLASS(QLabel)
+QT_FORWARD_DECLARE_CLASS(QTimer)
 
 class MyVlcPlayer : public QWidget
 {
     Q_OBJECT
 public:
-    explicit MyVlcPlayer(QWidget *parent = 0);
+    explicit MyVlcPlayer(QWidget *parent = nullptr);
     ~MyVlcPlayer();
-    bool eventFilter(QObject *watched, QEvent *event);
 
     void setMovieTime(int msec);
+    void setRadio(bool isRadio) { this->isRadio = isRadio; }
 
-    void setRadio(bool isRadio) {
-        this->isRadio = isRadio;
-    }
-
-
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 signals:
     void playing();
     void stopped();
     void paused();
-
-
-
 
 public slots:
     void openUrlRadio(QString url);
@@ -77,94 +53,39 @@ public slots:
     void pause();
     void resume();
 
-    void resetActionMenu();
-
-    void updateSubtitle();
-    void subtitleChanged();
-
+    void resetActionMenu() {}
+    void updateSubtitle() {}
+    void subtitleChanged() {}
 
     void changeVolume(int);
     void muteVolume(bool);
 
-    void hideWidgets();
-    void pushTimerHideWidgets();
+    void hideWidgets() {}
+    void pushTimerHideWidgets() {}
 
-    void audioTracksChanged(QList<QAction*>);
-//    void subtitlesTrackChanged(QList<QAction*>);
+    void audioTracksChanged(QList<QAction*>) {}
+    void checkForSubtitle(QList<QAction*>) {}
 
-    void checkForSubtitle(QList<QAction*> lstAction);
-
-
-
-
-
-private :
-    void initUI();
-    void constructSubtitleMenu();
-    void setPlayInterface();
-    void setPauseInterface();
-    void interfaceVideoLoaded(bool loaded);
+private:
     QString loadPath();
     void savePath(QString path);
-
-    void saveSoundVolume(int vol);
     int loadSoundVolume();
+    void saveSoundVolume(int vol);
 
+    bool isRadio = false;
+    int  audioVol = 100;
+    bool isMuted = false;
 
+    void applyVolume();
 
-
-
-private :
-    QMenu *menu;
-    QMenu *subMenuOpen;
-    bool isRadio;
-
-    //Subtitles
-    QMenu *subMenuSubtitleTrack;
-    QActionGroup *subtitleTrackActionGroup;
-    QList<QAction*> lstSubAction;
-
-    QAction *action_playOrPause;
-    QAction *action_stop;
-    QAction *action_openLocalMedia;
-    QAction *action_openURLMedia;
-
-    QTimer *timer_hideWidgets;
-
-    VlcInstance *_instance;
-    VlcMedia *_media;
-    VlcMediaPlayer *_player;
-    VlcVideo *_video;
-    VlcAudio *_audio;
-    VlcControlVideo *_controlVideo;
-    VlcControlAudio *_controlAudio;
-
-    bool widgetControlhidden;
-    bool isStarted;
-    bool videoLoaded;
-    bool isMuted;
-
-    int audioVol;
-
-    bool videoAlreadySet;
-    bool audioAlreadySet;
-    bool subtitlesAlreadySet;
-
-
-    // UI
-    QGridLayout *gridLayout;
-    QWidget *widget_volume;
-    QHBoxLayout *horizontalLayout;
-    QSpacerItem *horizontalSpacer;
-    ClickableLabel *label_volume;
-    QSlider *horizontalSlider_volume;
-    QLabel *label_currentVolume;
-    QLabel *label;
-    VlcWidgetVideo *video;
-    VlcWidgetSeek *seek;
+    QMediaPlayer *m_player = nullptr;
+    QAudioOutput *m_audio  = nullptr;
+    QVideoWidget *m_video  = nullptr;
+    QMenu        *m_menu   = nullptr;
+    QLabel       *m_hint   = nullptr;   // "right-click to open media" overlay
 };
 
-#else // GC_HAVE_VLCQT — stub for platforms without VLC-Qt
+#else // ── No media backend: stub for platforms without VLC-Qt or QtMultimedia ──
 
 class MyVlcPlayer : public QWidget
 {
@@ -199,6 +120,6 @@ public slots:
     void checkForSubtitle(QList<QAction*>) {}
 };
 
-#endif // GC_HAVE_VLCQT
+#endif // media backend
 
 #endif // MYVLCPLAYER_H

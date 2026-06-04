@@ -20,6 +20,32 @@
 #include "intervalsicuservice.h"
 #include "xmlutil.h"
 #include "logger.h"
+#include "apptheme.h"
+
+
+namespace {
+// The Theme combobox is displayed as OS Default / Light / Dark, but
+// account->app_theme uses the AppTheme::Mode enum (Light=0, Dark=1, System=2).
+// These map between the visible combobox index and the stored enum value.
+int themeComboIndexFromMode(int appTheme)
+{
+    switch (static_cast<AppTheme::Mode>(appTheme)) {
+    case AppTheme::Light:  return 1;
+    case AppTheme::Dark:   return 2;
+    case AppTheme::System: return 0;
+    }
+    return 0; // default to OS Default
+}
+
+int themeModeFromComboIndex(int comboIndex)
+{
+    switch (comboIndex) {
+    case 1:  return AppTheme::Light;
+    case 2:  return AppTheme::Dark;
+    default: return AppTheme::System; // index 0 == OS Default
+    }
+}
+} // namespace
 
 
 DialogMainWindowConfig::~DialogMainWindowConfig()
@@ -142,6 +168,9 @@ void DialogMainWindowConfig::initUI() {
         ui->comboBox_distance->setCurrentIndex(1);
 
     ui->checkBox_forceOnTop->setChecked(account->force_workout_window_on_top);
+
+    ui->comboBox_theme->setCurrentIndex(themeComboIndexFromMode(account->app_theme));
+
     ui->checkBox_controlTrainer->setChecked(account->control_trainer_resistance);
 
     ui->checkBox_stopPairingOnFound->setChecked(account->stop_pairing_on_found);
@@ -420,6 +449,19 @@ void DialogMainWindowConfig::accept() {
     settings->historyFolder = ui->lineEdit_historyDir->text();
     account->force_workout_window_on_top = ui->checkBox_forceOnTop->isChecked();
 
+    // Persist the theme choice but apply it on next launch only. Live
+    // re-styling via qApp->setStyleSheet() does not reliably repolish widgets
+    // that carry their own stylesheets (the workout table, message boxes,
+    // etc.), so they keep stale colours until recreated. A restart guarantees
+    // a clean, consistent result.
+    const int newTheme = themeModeFromComboIndex(ui->comboBox_theme->currentIndex());
+    bool themeChanged = false;
+    if (newTheme != account->app_theme) {
+        account->app_theme = newTheme;
+        account->saveAppTheme();
+        themeChanged = true;
+    }
+
     account->control_trainer_resistance = ui->checkBox_controlTrainer->isChecked();
     account->stop_pairing_on_found = ui->checkBox_stopPairingOnFound->isChecked();
     account->nb_sec_pairing = ui->comboBox_timePairingSec->currentText().toInt();
@@ -468,6 +510,13 @@ void DialogMainWindowConfig::accept() {
     saveLoggingSettings();
 
     QDialog::accept();
+
+    if (themeChanged) {
+        QMessageBox::information(
+            this,
+            tr("Theme Changed"),
+            tr("The new theme will be applied the next time you restart MaximumTrainer."));
+    }
 }
 
 
@@ -498,7 +547,8 @@ void DialogMainWindowConfig::onTestIntervalsConnectionClicked()
     m_intervalsService->setCredentials(apiKey, athleteId);
 
     ui->pushButton_testIntervalsConnection->setEnabled(false);
-    ui->label_intervalsTestResult->setStyleSheet("color: #555;");
+    // #888 mid-grey stays legible on both the light and dark themes.
+    ui->label_intervalsTestResult->setStyleSheet("color: #888;");
     ui->label_intervalsTestResult->setText(tr("Testing…"));
 
     replyIntervalsTest = m_intervalsService->testConnection();

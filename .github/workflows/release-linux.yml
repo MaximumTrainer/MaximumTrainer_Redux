@@ -13,6 +13,10 @@ on:
         description: 'Run ID of build.yml that produced the linux artifact'
         required: true
 
+env:
+  QT_VERSION: '6.7.3'
+  QWT_DIR: /tmp/qwt6
+
 jobs:
 
   build_linux:
@@ -38,52 +42,72 @@ jobs:
     - name: Mark binary executable
       run: chmod +x build/release/MaximumTrainer
 
-    - name: Install Qt and system dependencies
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'linux_gcc_64'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
+        cache: true
+        cache-key-prefix: qt-linux
+
+    - name: Install system dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          qtbase5-dev \
-          qtwebengine5-dev \
-          qtconnectivity5-dev \
-          libqwt-qt5-dev \
           libsfml-dev \
-          libvlc-dev \
-          libvlccore-dev \
           libusb-1.0-0-dev \
           libssl-dev \
-          cmake \
-          build-essential \
+          libgl1-mesa-dev \
           libfuse2 \
           file
 
-    - name: Build and install VLC-Qt
+    - name: Restore QWT cache
+      id: qwt-cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.QWT_DIR }}
+        key: qwt-6.2.0-qt-${{ env.QT_VERSION }}-linux
+
+    - name: Build and install QWT
+      if: steps.qwt-cache.outputs.cache-hit != 'true'
       run: |
         cd /tmp
-        git clone --branch 1.1.1 --depth 1 https://github.com/vlc-qt/vlc-qt
-        cd vlc-qt
-        mkdir build && cd build
-        cmake .. \
-          -DQT_VERSION=5 \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX=/usr/local \
-          -DCMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu
+        curl -L -o qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.2.0/qwt-6.2.0.tar.bz2/download"
+        tar xf qwt.tar.bz2
+        cd qwt-6.2.0
+        qmake qwt.pro
         make -j$(nproc)
-        sudo make install
-        sudo ldconfig
+        make install INSTALL_ROOT=/tmp/qwt6-stage
+        mkdir -p "$QWT_DIR"
+        mv /tmp/qwt6-stage/usr/local/qwt-6.2.0/* "$QWT_DIR"/
 
-    - name: Download linuxdeployqt
+    - name: Download linuxdeploy and the Qt plugin
+      # linuxdeploy + linuxdeploy-plugin-qt support Qt6; the classic
+      # linuxdeployqt "continuous" build is Qt5-only.
       run: |
-        curl -Lo /usr/local/bin/linuxdeployqt \
-          "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
-        chmod +x /usr/local/bin/linuxdeployqt
+        cd /usr/local/bin
+        sudo curl -Lo linuxdeploy \
+          "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+        sudo curl -Lo linuxdeploy-plugin-qt \
+          "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
+        sudo chmod +x linuxdeploy linuxdeploy-plugin-qt
 
     - name: Package AppImage
+      env:
+        QMAKE: ${{ env.QT_ROOT_DIR }}/bin/qmake
+        # linuxdeploy-plugin-qt also bundles the QWT .so and any extra libs found
+        # on LD_LIBRARY_PATH that the binary links against.
+        LD_LIBRARY_PATH: ${{ env.QWT_DIR }}/lib
       run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
         # Create AppDir structure
         mkdir -p AppDir/usr/bin AppDir/usr/lib AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
         cp build/release/MaximumTrainer AppDir/usr/bin/
-        # Desktop entry required by linuxdeployqt
+        # Bundle the QWT shared library so the qt plugin / patchelf can resolve it
+        cp -P "$QWT_DIR"/lib/libqwt.so* AppDir/usr/lib/
+        # Desktop entry required by linuxdeploy
         cat > AppDir/usr/share/applications/maximumtrainer.desktop << 'EOF'
         [Desktop Entry]
         Name=Maximum Trainer
@@ -99,27 +123,29 @@ jobs:
           # Fallback: create a placeholder icon
           touch AppDir/usr/share/icons/hicolor/256x256/apps/maximumtrainer.png
         fi
-        linuxdeployqt AppDir/usr/share/applications/maximumtrainer.desktop \
-          -qmake=/usr/lib/qt5/bin/qmake \
-          -appimage \
-          -no-strip \
-          -extra-plugins=iconengines,imageformats
-        # linuxdeployqt names the AppImage after the desktop Name= entry + git hash + arch
-        # (e.g. Maximum_Trainer-<hash>-x86_64.AppImage), so use a wildcard to rename it
+        linuxdeploy --appdir AppDir --plugin qt \
+          --executable AppDir/usr/bin/MaximumTrainer \
+          --desktop-file AppDir/usr/share/applications/maximumtrainer.desktop \
+          --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/maximumtrainer.png \
+          --output appimage
+        # linuxdeploy names the AppImage after the desktop Name= entry + arch
+        # (e.g. Maximum_Trainer-x86_64.AppImage), so use a wildcard to rename it
         appimage=$(find . -maxdepth 1 -name "*.AppImage" | head -1)
         if [ -z "$appimage" ]; then echo "Error: No AppImage found"; exit 1; fi
         mv "$appimage" MaximumTrainer-linux-x86_64.AppImage
 
-    - name: Verify Qt OpenGL library bundled
-      # linuxdeployqt should copy libQt5OpenGL.so.5 into AppDir/usr/lib/ when the
-      # binary links to it. Warn (but do not fail) if it is absent so the root
-      # cause can be diagnosed without blocking the artifact upload.
+    - name: Verify Qt + QWT libraries bundled
       run: |
-        echo "=== Qt OpenGL check ==="
-        if find AppDir -name "libQt5OpenGL*" -print -quit 2>/dev/null | grep -q .; then
-          echo "PASS: libQt5OpenGL found in AppDir"
+        echo "=== Qt6 / QWT check ==="
+        if find AppDir -name "libQt6Core*" -print -quit 2>/dev/null | grep -q .; then
+          echo "PASS: libQt6Core found in AppDir"
         else
-          echo "WARN: libQt5OpenGL not found in AppDir (may be bundled differently by linuxdeployqt)"
+          echo "WARN: libQt6Core not found in AppDir"
+        fi
+        if find AppDir -name "libqwt*" -print -quit 2>/dev/null | grep -q .; then
+          echo "PASS: libqwt found in AppDir"
+        else
+          echo "WARN: libqwt not found in AppDir"
         fi
 
     - name: Upload artifact

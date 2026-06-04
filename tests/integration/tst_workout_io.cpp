@@ -575,7 +575,7 @@ private slots:
         QVERIFY2(XmlUtil::createWorkoutXml(original, path),
                  qPrintable(QString("Failed to write workout XML to: %1").arg(path)));
 
-        XmlUtil util(QStringLiteral("en"));
+        XmlUtil util;
         const Workout parsed = util.parseSingleWorkoutXml(path);
 
         QCOMPARE(parsed.getLstInterval().size(), 3);
@@ -600,7 +600,7 @@ private slots:
 
         QVERIFY(XmlUtil::createWorkoutXml(original, path));
 
-        XmlUtil util(QStringLiteral("en"));
+        XmlUtil util;
         const Workout parsed = util.parseSingleWorkoutXml(path);
         QVERIFY(parsed.getLstInterval().size() >= 2);
 
@@ -630,7 +630,7 @@ private slots:
 
         QVERIFY(XmlUtil::createWorkoutXml(original, path));
 
-        XmlUtil util(QStringLiteral("en"));
+        XmlUtil util;
         const Workout parsed = util.parseSingleWorkoutXml(path);
         QVERIFY(parsed.getLstInterval().size() >= 2);
 
@@ -664,7 +664,7 @@ private slots:
         QVERIFY2(XmlUtil::createWorkoutXml(original, path),
                  qPrintable(QString("Failed to write workout XML to: %1").arg(path)));
 
-        XmlUtil util(QStringLiteral("en"));
+        XmlUtil util;
         const Workout parsed = util.parseSingleWorkoutXml(path);
 
         // The native XML format uses the file's base name as the workout name.
@@ -692,7 +692,7 @@ private slots:
 
         QVERIFY(XmlUtil::createWorkoutXml(original, path));
 
-        XmlUtil util(QStringLiteral("en"));
+        XmlUtil util;
         const Workout parsed = util.parseSingleWorkoutXml(path);
 
         QCOMPARE(parsed.getPlan(), QStringLiteral("Base"));

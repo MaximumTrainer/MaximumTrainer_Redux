@@ -27,8 +27,8 @@ contains(QMAKE_PLATFORM, wasm) {
     SOURCES += $$PWD/credential_store_linux.cpp
     LIBS += -lcrypto
 }
-contains(DEFINES, GC_HAVE_VLCQT) {
-    SOURCES += $$PWD/myvlcplayer.cpp
+contains(DEFINES, GC_HAVE_QTMULTIMEDIA) {
+    SOURCES += $$PWD/myqtmediaplayer.cpp
 }
 # Always include header so MOC generates the meta-object / vtable for the stub class
 HEADERS += $$PWD/myvlcplayer.h

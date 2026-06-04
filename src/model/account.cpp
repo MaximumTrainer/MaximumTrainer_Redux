@@ -163,7 +163,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     show_power_curve = true;
     show_cadence_curve = true;
     show_speed_curve = true;
-    display_video = 0;
 
     /* ----- */
     sound_player_vol = 100;
@@ -186,6 +185,16 @@ Account::Account(QObject *parent) : QObject(parent)  {
         interval_summary_enabled    = s.value("interval_summary_enabled",    true).toBool();
         interval_summary_duration_s = qBound(2, s.value("interval_summary_duration_s", 5).toInt(), 15);
         app_theme = qBound(0, s.value("app_theme", 2).toInt(), 2); // default: System
+
+        // One-time migration: force the Dark theme on the first launch of the
+        // release that introduces theming, to showcase the feature. The flag
+        // ensures this runs exactly once — afterwards the user's own choice
+        // (changed in Preferences) is always respected. AppTheme::Mode: Dark=1.
+        if (!s.value("forced_dark_default_applied", false).toBool()) {
+            app_theme = 1; // Dark
+            s.setValue("app_theme", app_theme);
+            s.setValue("forced_dark_default_applied", true);
+        }
         s.endGroup();
     }
 
@@ -287,9 +296,6 @@ void Account::loadDisplayPrefs() {
     show_cadence_curve      = settings.value("show_cadence_curve",      show_cadence_curve).toBool();
     show_speed_curve        = settings.value("show_speed_curve",        show_speed_curve).toBool();
 
-    // Video player (0 = VLC, 1 = WebView)
-    display_video = settings.value("display_video", display_video).toInt();
-
     // Sound
     sound_player_vol               = settings.value("sound_player_vol",               sound_player_vol).toInt();
     enable_sound                   = settings.value("enable_sound",                   enable_sound).toBool();
@@ -341,8 +347,6 @@ void Account::saveDisplayPrefs() {
     settings.setValue("show_power_curve",        show_power_curve);
     settings.setValue("show_cadence_curve",      show_cadence_curve);
     settings.setValue("show_speed_curve",        show_speed_curve);
-
-    settings.setValue("display_video", display_video);
 
     settings.setValue("sound_player_vol",               sound_player_vol);
     settings.setValue("enable_sound",                   enable_sound);

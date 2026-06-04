@@ -20,19 +20,16 @@ SOURCES +=\
     $$PWD/faderframe.cpp \
     $$PWD/tableviewhover.cpp \
     $$PWD/clock.cpp \
-    $$PWD/languagecombobox.cpp \
     $$PWD/infosworkout.cpp \
     $$PWD/timewidget.cpp \
     $$PWD/oxygenwidget.cpp \
     $$PWD/dialogcalibrate.cpp \
     $$PWD/dialogcalibratepm.cpp \
-    $$PWD/userstudiowidget.cpp \
-    $$PWD/webbrowserview.cpp
+    $$PWD/userstudiowidget.cpp
 
 
 HEADERS +=\
     $$PWD/workoutcombobox.h \
-    $$PWD/languagecombobox.h \
     $$PWD/delegaterowhover.h \
     $$PWD/mytableview.h \
     $$PWD/shapefactory.h \
@@ -56,8 +53,7 @@ HEADERS +=\
     $$PWD/dialogcalibrate.h \
     $$PWD/dialogcalibratepm.h \
     $$PWD/userstudiowidget.h \
-    $$PWD/myqwebenginepage.h \
-    $$PWD/webbrowserview.h
+    $$PWD/myqwebenginepage.h
 
 
 

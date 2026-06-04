@@ -87,7 +87,13 @@ else: DEFINES += QT_NO_UITOOLS
 # Used if you want console output on windows
 #CONFIG += console
 
-CONFIG += qwt qt thread
+# QWT: on Linux the apt qwt package ships a qmake feature (qwt.prf) enabled via
+# "CONFIG += qwt". For Qt6 there is no qwt apt package, so QWT must be built
+# from source and its location passed via QWT_INSTALL=... — in that case we
+# wire the include/lib paths directly and must NOT add "CONFIG += qwt" (no
+# feature file exists). See the QWT_INSTALL block further down.
+isEmpty(QWT_INSTALL): CONFIG += qwt
+CONFIG += qt thread
 CONFIG += release
 CONFIG += c++17
 
@@ -103,6 +109,13 @@ qtHaveModule(concurrent):       QT += concurrent
 qtHaveModule(bluetooth):        QT += bluetooth
 qtHaveModule(webenginewidgets): QT += webenginewidgets
 qtHaveModule(webenginecore):    QT += webenginecore
+
+# QtMultimedia provides the native video + radio-stream player (QMediaPlayer /
+# QVideoWidget / QAudioOutput). Guarded so the WASM target (no multimedia) and
+# any Qt without the module are unaffected. The GC_HAVE_QTMULTIMEDIA define is
+# set further below once the platform blocks have run.
+qtHaveModule(multimedia):        QT += multimedia
+qtHaveModule(multimediawidgets): QT += multimediawidgets
 
 #QT += serialport
 #QT += multimedia
@@ -127,6 +140,16 @@ contains(QMAKE_PLATFORM, wasm) | wasm_emscripten | wasm_emscripten_singlethread 
     # emscripten::val / emscripten/val.h, which requires the embind runtime library.
     # Without this, wasm-ld reports undefined symbols _emval_new, _emval_call_void_method etc.
     LIBS += -lembind
+
+    # QWT for WASM is built from source and passed via QWT_INSTALL=... . The
+    # platform blocks below are guarded against wasm, so wire the include/lib
+    # paths here. (No qwt feature file exists for the from-source build, hence
+    # the QWT_INSTALL gate at the top skips "CONFIG += qwt".)
+    !isEmpty(QWT_INSTALL) {
+        INCLUDEPATH += $${QWT_INSTALL}/include
+        INCLUDEPATH += $${QWT_INSTALL}/include/qwt
+        LIBS += -L$${QWT_INSTALL}/lib -lqwt
+    }
 
     DEFINES += GC_WASM_BUILD
 }
@@ -162,20 +185,6 @@ MOC_DIR = $$DESTDIR/.moc
 RCC_DIR = $$DESTDIR/.qrc
 UI_DIR = $$DESTDIR/.u
 
-###=============================================================
-### OPTIONAL => VLC [Windows, Linux and OSX]
-###=============================================================
-
-!isEmpty(VLC_INSTALL) {
-
-    # we will work out the rest if you tell use where it is installed
-    isEmpty(VLC_INCLUDE) { VLC_INCLUDE = $${VLC_INSTALL}/include }
-    isEmpty(VLC_LIBS)    { VLC_LIBS    = -L$${VLC_INSTALL}/lib -lvlc }
-
-    DEFINES     += GC_HAVE_VLC
-    INCLUDEPATH += $${VLC_INCLUDE}
-    LIBS        += $${VLC_LIBS}
-}
 
 ###=======================================================================
 ### Directory Structure - Split into subdirs to be more manageable
@@ -188,15 +197,29 @@ QMAKE_CFLAGS_ISYSTEM =
 # via file extensions .lib or .a in src.pro unless the section is
 # platform specific. Instead we use directives -Ldir and -llib
 win32 {
-    #QWT is configured to build 2 libs (release/debug) on win32 (see qwtbuild.pri)
-    INCLUDEPATH += ../qwt/include
-    INCLUDEPATH += ../qwt/include/qwt
+    # QWT: built from source against Qt6 and pointed at via QWT_INSTALL=... .
+    # Fall back to the legacy ../qwt sibling layout when QWT_INSTALL is empty.
+    !isEmpty(QWT_INSTALL) {
+        INCLUDEPATH += $${QWT_INSTALL}/include
+        INCLUDEPATH += $${QWT_INSTALL}/include/qwt
+        DEFINES += QWT_DLL
+        CONFIG(release, debug|release) {
+            LIBS += -L$${QWT_INSTALL}/lib -lqwt
+        }
+        CONFIG(debug, debug|release) {
+            LIBS += -L$${QWT_INSTALL}/lib -lqwtd
+        }
+    } else {
+        #QWT is configured to build 2 libs (release/debug) on win32 (see qwtbuild.pri)
+        INCLUDEPATH += ../qwt/include
+        INCLUDEPATH += ../qwt/include/qwt
 
-    CONFIG(release, debug|release){
-        LIBS += -L$${PWD}/../qwt/lib -lqwt
-    }
-    CONFIG(debug, debug|release) {
-        LIBS += -L$${PWD}/../qwt/lib -lqwtd
+        CONFIG(release, debug|release){
+            LIBS += -L$${PWD}/../qwt/lib -lqwt
+        }
+        CONFIG(debug, debug|release) {
+            LIBS += -L$${PWD}/../qwt/lib -lqwtd
+        }
     }
 }
 
@@ -239,17 +262,21 @@ win32-msvc* {
         # Linux Flex compiler grumbles about unsigned comparisons
         QMAKE_CXXFLAGS += -Wno-sign-compare
 
-        LIBS += -lsfml-audio -lsfml-system -lVLCQtCore -lVLCQtWidgets
-        DEFINES += GC_HAVE_VLCQT
+        LIBS += -lsfml-audio -lsfml-system
+
+        # QWT: when built from source for Qt6 (no qwt apt package exists for
+        # Qt6), point qmake at it with QWT_INSTALL=... . The Qt5 apt build
+        # leaves QWT_INSTALL empty and uses "CONFIG += qwt" instead (see top).
+        !isEmpty(QWT_INSTALL) {
+            INCLUDEPATH += $${QWT_INSTALL}/include
+            LIBS += -L$${QWT_INSTALL}/lib -lqwt
+            DEFINES += QWT_DLL
+        }
     }
 }
 
 win32:!wasm_emscripten {
-    # Windows: VLC-Qt and SFML paths (configure via qmake variables)
-    !isEmpty(VLCQT_INSTALL) {
-        INCLUDEPATH += $${VLCQT_INSTALL}/include
-        LIBS += -L$${VLCQT_INSTALL}/lib -lVLCQtCore -lVLCQtWidgets
-    }
+    # Windows: SFML path (configure via qmake variable)
     !isEmpty(SFML_INSTALL) {
         INCLUDEPATH += $${SFML_INSTALL}/include
         LIBS += -L$${SFML_INSTALL}/lib -lsfml-audio -lsfml-system
@@ -272,14 +299,6 @@ macx:!wasm_emscripten {
     # Bluetooth entitlement required for App Store distribution
     QMAKE_CODE_SIGN_ENTITLEMENTS = $$PWD/mac/MaximumTrainer.entitlements
 
-    # VLC-Qt (optional; enable by passing VLCQT_INSTALL=... to qmake)
-    !isEmpty(VLCQT_INSTALL) {
-        DEFINES += GC_HAVE_VLCQT
-        INCLUDEPATH += $${VLCQT_INSTALL}/include
-        LIBS += -F$${VLCQT_INSTALL}/lib -framework VLCQtCore
-        LIBS += -F$${VLCQT_INSTALL}/lib -framework VLCQtWidgets
-    }
-
     # SFML (configure via SFML_INSTALL=...)
     !isEmpty(SFML_INSTALL) {
         INCLUDEPATH += $${SFML_INSTALL}/include
@@ -296,6 +315,15 @@ macx:!wasm_emscripten {
         DEFINES += QWT_DLL
     }
 
+}
+
+
+# ── Video/radio player backend ───────────────────────────────────────────────
+# The embedded video player and internet radio use QtMultimedia
+# (QMediaPlayer/QVideoWidget/QAudioOutput) on every desktop platform. Enable it
+# whenever the module is present and we are not building the WASM target.
+qtHaveModule(multimedia):!contains(QMAKE_PLATFORM, wasm) {
+    DEFINES += GC_HAVE_QTMULTIMEDIA
 }
 
 

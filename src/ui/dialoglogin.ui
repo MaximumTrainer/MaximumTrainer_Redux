@@ -582,35 +582,6 @@ QPushButton#pushButton_loginIntervalsIcu:pressed {
           <number>0</number>
          </property>
          <item>
-          <widget class="QLabel" name="label_language">
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
-           </property>
-           <property name="text">
-            <string>Language:</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="LanguageComboBox" name="comboBox_language">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="cursor">
-            <cursorShape>PointingHandCursor</cursorShape>
-           </property>
-          </widget>
-         </item>
-         <item>
           <spacer name="horizontalSpacer_bottom">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
@@ -666,13 +637,6 @@ QPushButton#pushButton_loginIntervalsIcu:pressed {
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>LanguageComboBox</class>
-   <extends>QComboBox</extends>
-   <header>languagecombobox.h</header>
-  </customwidget>
- </customwidgets>
  <resources>
   <include location="../MyResources.qrc"/>
  </resources>

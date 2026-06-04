@@ -36,10 +36,6 @@ QLabel#label_imageCalories {
 	image: url(:/image/icon/burn);
 }
 
-QLabel {
-	color: black;
-}
-
 
 .marginLeft {
 	margin-left:20px;
@@ -169,11 +165,6 @@ QLabel {
                  <height>16777215</height>
                 </size>
                </property>
-               <property name="styleSheet">
-                <string notr="true">QLabel {
-	color: black;
-}</string>
-               </property>
                <property name="text">
                 <string>is over:</string>
                </property>
@@ -203,11 +194,6 @@ QLabel {
              </item>
              <item>
               <widget class="QLabel" name="label_value">
-               <property name="styleSheet">
-                <string notr="true">QLabel {
-	color: black;
-}</string>
-               </property>
                <property name="text">
                 <string>rpm</string>
                </property>
@@ -285,11 +271,6 @@ QLabel {
              </item>
              <item>
               <widget class="QLabel" name="label_value_2">
-               <property name="styleSheet">
-                <string notr="true">QLabel {
-	color: black;
-}</string>
-               </property>
                <property name="text">
                 <string>seconds</string>
                </property>
@@ -367,11 +348,6 @@ QLabel {
              </item>
              <item>
               <widget class="QLabel" name="label_value_3">
-               <property name="styleSheet">
-                <string notr="true">QLabel {
-	color: black;
-}</string>
-               </property>
                <property name="text">
                 <string>seconds before interval change</string>
                </property>
@@ -2237,133 +2213,6 @@ QLabel {
            </item>
            <item>
             <spacer name="verticalSpacer_13">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-     <widget class="QWidget" name="page_videoPlayer">
-      <layout class="QVBoxLayout" name="verticalLayout_9">
-       <property name="leftMargin">
-        <number>0</number>
-       </property>
-       <property name="topMargin">
-        <number>0</number>
-       </property>
-       <property name="rightMargin">
-        <number>0</number>
-       </property>
-       <property name="bottomMargin">
-        <number>0</number>
-       </property>
-       <item>
-        <widget class="QTabWidget" name="tabWidget_6">
-         <property name="currentIndex">
-          <number>0</number>
-         </property>
-         <widget class="QWidget" name="tab_13">
-          <attribute name="title">
-           <string>Video Player</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_19">
-           <property name="topMargin">
-            <number>20</number>
-           </property>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_8">
-             <item>
-              <widget class="QLabel" name="label_typeVideo">
-               <property name="styleSheet">
-                <string notr="true">QLabel {
-	color: black;
-}</string>
-               </property>
-               <property name="text">
-                <string>Type:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="comboBox_displayVideo">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <item>
-                <property name="text">
-                 <string>Standard</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Web Browser</string>
-                </property>
-               </item>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer_9">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_19">
-             <item>
-              <widget class="QLabel" name="label_homePage">
-               <property name="styleSheet">
-                <string notr="true">QLabel {
-	color: black;
-}</string>
-               </property>
-               <property name="text">
-                <string>Home Page:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="lineEdit_homePage"/>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer_19">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <spacer name="verticalSpacer_14">
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>

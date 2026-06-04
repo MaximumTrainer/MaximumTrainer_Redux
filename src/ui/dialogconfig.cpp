@@ -13,8 +13,6 @@
 #include <QApplication>
 
 #include "workoutdialog.h"
-#include "logger.h"
-#include "apptheme.h"
 #include "account.h"
 
 
@@ -46,11 +44,6 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     currentRadioName = "";
     isPlayingRadio = false;
 
-    /// temporaire, a tester sur mac
-    //#ifdef Q_OS_MAC
-    //    ui->comboBox_displayVideo->setDisabled(true);
-    //#endif
-
     /// List widgets
     ui->listWidget_settings->setIconSize(QSize(24, 24));
 
@@ -58,12 +51,9 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     QListWidgetItem *item2 = new QListWidgetItem(QIcon(":/image/icon/display"), tr("Widgets"), ui->listWidget_settings);
     QListWidgetItem *item3 = new QListWidgetItem(QIcon(":/image/icon/chart"),   tr("Graph"), ui->listWidget_settings);
     QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/sound"),   tr("Sounds"), ui->listWidget_settings);
-    QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/movie"),   tr("Video Player"), ui->listWidget_settings);
-    QListWidgetItem *item6 = new QListWidgetItem(QIcon(":/image/icon/radio"),   tr("Radio"), ui->listWidget_settings);
-    QListWidgetItem *item7 = new QListWidgetItem(tr("Logging"), ui->listWidget_settings);
-    QListWidgetItem *item8 = new QListWidgetItem(tr("Language"), ui->listWidget_settings);
-    QListWidgetItem *item9 = new QListWidgetItem(tr("Studio"), ui->listWidget_settings);
-    QListWidgetItem *item10 = new QListWidgetItem(tr("Trainer"), ui->listWidget_settings);
+    QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/radio"),   tr("Radio"), ui->listWidget_settings);
+    QListWidgetItem *item6 = new QListWidgetItem(tr("Studio"), ui->listWidget_settings);
+    QListWidgetItem *item7 = new QListWidgetItem(tr("Trainer"), ui->listWidget_settings);
     item1->setSizeHint(QSize(35,35));
     item2->setSizeHint(QSize(35,35));
     item3->setSizeHint(QSize(35,35));
@@ -71,9 +61,6 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     item5->setSizeHint(QSize(35,35));
     item6->setSizeHint(QSize(35,35));
     item7->setSizeHint(QSize(35,35));
-    item8->setSizeHint(QSize(35,35));
-    item9->setSizeHint(QSize(35,35));
-    item10->setSizeHint(QSize(35,35));
 
     ui->listWidget_settings->addItem(item1);
     ui->listWidget_settings->addItem(item2);
@@ -82,12 +69,8 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     ui->listWidget_settings->addItem(item5);
     ui->listWidget_settings->addItem(item6);
     ui->listWidget_settings->addItem(item7);
-    ui->listWidget_settings->addItem(item8);
-    ui->listWidget_settings->addItem(item9);
-    ui->listWidget_settings->addItem(item10);
 
-    ui->stackedWidget->addWidget(setupLoggingTab());
-    ui->stackedWidget->addWidget(setupLanguageTab());
+    // Logging settings live only in the main-window Preferences dialog.
     ui->stackedWidget->addWidget(setupStudioTab());
     ui->stackedWidget->addWidget(setupTrainerTab());
 
@@ -371,8 +354,6 @@ void DialogConfig::initUi() {
         myTab->setCurrentIndex(account->last_tab_sub_config_selected);
 
     // Init the programmatic tabs
-    initLoggingTab();
-    initLanguageTab();
     initStudioTab();
     initTrainerTab();
 
@@ -475,24 +456,6 @@ void DialogConfig::initUi() {
     ui->comboBox_displayPowerBalance->setCurrentIndex(account->display_power_balance);
     ui->comboBox_powerAverage->setCurrentIndex(account->averaging_power);
     ui->spinBox_offsetPower->setValue(account->offset_power);
-
-    ui->comboBox_displayVideo->setCurrentIndex(account->display_video);
-    ui->label_homePage->setVisible(account->display_video);
-    ui->lineEdit_homePage->setVisible(account->display_video);
-
-    QSettings settings;
-    settings.beginGroup("webBrowserWorkout");
-    // One-time reset: clear any previously saved home page and force YouTube.
-    // DRM services (e.g. the old Netflix default) need Widevine, which the
-    // embedded QWebEngineView cannot bundle, so they never played. Guarded by a
-    // flag so the user can still set their own URL afterwards.
-    if (!settings.value("youtubeResetDone", false).toBool()) {
-        settings.setValue("defaultUrl", "https://www.youtube.com");
-        settings.setValue("youtubeResetDone", true);
-    }
-    QString urlSaved = settings.value("defaultUrl", "https://www.youtube.com" ).toString();
-    settings.endGroup();
-    ui->lineEdit_homePage->setText(urlSaved);
 
     ui->checkBox_seperator->setChecked(account->show_seperator_interval);
     ui->checkBox_showGrid->setChecked(account->show_grid);
@@ -787,15 +750,6 @@ void DialogConfig::on_comboBox_startTrigger_activated(int index) {
 
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-void DialogConfig::on_comboBox_displayVideo_activated(int index) {
-    parentDialog->showVideoPlayer(index);
-
-    //web browser
-    ui->label_homePage->setVisible(index == 1);
-    ui->lineEdit_homePage->setVisible(index == 1);
-
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 void DialogConfig::setStudioMode() {
@@ -912,9 +866,6 @@ void DialogConfig::saveSettings() {
     account->averaging_power = ui->comboBox_powerAverage->currentIndex();
     account->offset_power = ui->spinBox_offsetPower->value();
 
-    account->display_video =  ui->comboBox_displayVideo->currentIndex();
-
-
     account->show_seperator_interval = ui->checkBox_seperator->isChecked();
     account->show_grid = ui->checkBox_showGrid->isChecked();
     account->show_cadence_target = ui->checkBox_targetCadence->isChecked();
@@ -941,20 +892,12 @@ void DialogConfig::saveSettings() {
 
     qDebug() << "OK SAVED SETTINGS DONE";
 
-    // WebBrowser settings, save Url
-    QSettings settings;
-    settings.beginGroup("webBrowserWorkout");
-    settings.setValue("defaultUrl", ui->lineEdit_homePage->text());
-    settings.endGroup();
-
     // Persist display & sound prefs locally (the server putAccount endpoint is
     // defunct), so the user's choices — including the video player — survive a
     // restart.
     account->saveDisplayPrefs();
 
     // Save the new preference tabs
-    saveLoggingTab();
-    saveLanguageTab();
     saveStudioTab();
     saveTrainerTab();
 
@@ -1121,145 +1064,6 @@ static QWidget *makeTabPage(const QString &objectName)
     layout->setContentsMargins(16, 16, 16, 16);
     layout->setSpacing(10);
     return page;
-}
-
-// ─── Logging tab (#136) ───────────────────────────────────────────────────────
-QWidget *DialogConfig::setupLoggingTab()
-{
-    QWidget *page = makeTabPage("page_logging");
-    auto *layout = qobject_cast<QVBoxLayout*>(page->layout());
-
-    auto *grp = new QGroupBox(tr("Log Level"), page);
-    auto *grpLayout = new QHBoxLayout(grp);
-    comboLogLevel = new QComboBox(grp);
-    comboLogLevel->addItems({tr("Verbose"), tr("Debug"), tr("Info"), tr("Warn"), tr("Error"), tr("Off")});
-    grpLayout->addWidget(new QLabel(tr("Minimum level:"), grp));
-    grpLayout->addWidget(comboLogLevel);
-    grpLayout->addStretch();
-    layout->addWidget(grp);
-
-    auto *grp2 = new QGroupBox(tr("Log File"), page);
-    auto *grp2Layout = new QVBoxLayout(grp2);
-    checkLogToFile = new QCheckBox(tr("Write log to file"), grp2);
-    grp2Layout->addWidget(checkLogToFile);
-    auto *pathRow = new QHBoxLayout();
-    labelLogFilePath = new QLabel(Logger::instance().logFilePath(), grp2);
-    labelLogFilePath->setWordWrap(true);
-    pathRow->addWidget(new QLabel(tr("Path:"), grp2));
-    pathRow->addWidget(labelLogFilePath, 1);
-    auto *btnOpen = new QPushButton(tr("Open"), grp2);
-    pathRow->addWidget(btnOpen);
-    grp2Layout->addLayout(pathRow);
-    layout->addWidget(grp2);
-
-    connect(btnOpen, &QPushButton::clicked, this, [this]() {
-        const QString path = Logger::instance().logFilePath();
-        if (!path.isEmpty())
-            QDesktopServices::openUrl(QUrl::fromLocalFile(path));
-    });
-
-    layout->addStretch();
-    return page;
-}
-
-void DialogConfig::initLoggingTab()
-{
-    if (!comboLogLevel) return;
-    comboLogLevel->setCurrentIndex(static_cast<int>(Logger::instance().logLevel()));
-    checkLogToFile->setChecked(Logger::instance().isFileLoggingEnabled());
-    labelLogFilePath->setText(Logger::instance().logFilePath());
-}
-
-void DialogConfig::saveLoggingTab()
-{
-    if (!comboLogLevel) return;
-    Logger::instance().setLogLevel(static_cast<LogLevel>(comboLogLevel->currentIndex()));
-    Logger::instance().setFileLogging(checkLogToFile->isChecked());
-    labelLogFilePath->setText(Logger::instance().logFilePath());
-    Logger::instance().saveConfig();
-}
-
-// ─── Language tab (#132) ─────────────────────────────────────────────────────
-QWidget *DialogConfig::setupLanguageTab()
-{
-    QWidget *page = makeTabPage("page_language");
-    auto *layout = qobject_cast<QVBoxLayout*>(page->layout());
-
-    auto *grp = new QGroupBox(tr("Application Language"), page);
-    auto *grpLayout = new QVBoxLayout(grp);
-
-    comboLanguage = new QComboBox(grp);
-    comboLanguage->addItem(tr("English"),                     0);
-    comboLanguage->addItem(tr("French (Français)"),          1);
-    grpLayout->addWidget(comboLanguage);
-
-    labelRestartNote = new QLabel(tr("A restart is required to apply the language change."), grp);
-    labelRestartNote->setStyleSheet("color: #888; font-style: italic;");
-    labelRestartNote->setVisible(false);
-    grpLayout->addWidget(labelRestartNote);
-
-    layout->addWidget(grp);
-
-    // Theme group
-    auto *grpTheme = new QGroupBox(tr("Application Theme"), page);
-    auto *grpThemeLayout = new QVBoxLayout(grpTheme);
-
-    auto *themeRow = new QHBoxLayout();
-    themeRow->addWidget(new QLabel(tr("Theme:"), grpTheme));
-    comboTheme = new QComboBox(grpTheme);
-    comboTheme->addItem(tr("Light"),  0);
-    comboTheme->addItem(tr("Dark"),   1);
-    comboTheme->addItem(tr("System (follow OS)"), 2);
-    themeRow->addWidget(comboTheme, 1);
-    grpThemeLayout->addLayout(themeRow);
-
-    layout->addWidget(grpTheme);
-    layout->addStretch();
-
-    connect(comboLanguage, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
-        labelRestartNote->setVisible(true);
-    });
-
-    return page;
-}
-
-void DialogConfig::initLanguageTab()
-{
-    if (!comboLanguage) return;
-    QSettings s;
-    s.beginGroup("language_app");
-    const int langIdx = s.value("lang", 0).toInt();
-    s.endGroup();
-
-    // Block signals so the "restart required" note doesn't appear on init.
-    comboLanguage->blockSignals(true);
-    comboLanguage->setCurrentIndex(langIdx < comboLanguage->count() ? langIdx : 0);
-    comboLanguage->blockSignals(false);
-
-    if (comboTheme) {
-        auto *account = qApp->property("Account").value<Account*>();
-        const int theme = account ? account->app_theme : 2;
-        const int idx = comboTheme->findData(theme);
-        comboTheme->setCurrentIndex(idx >= 0 ? idx : 2);
-    }
-}
-
-void DialogConfig::saveLanguageTab()
-{
-    if (!comboLanguage) return;
-    QSettings s;
-    s.beginGroup("language_app");
-    s.setValue("lang", comboLanguage->currentData().toInt());
-    s.endGroup();
-
-    if (comboTheme) {
-        auto *account = qApp->property("Account").value<Account*>();
-        if (account) {
-            account->app_theme = comboTheme->currentData().toInt();
-            account->saveAppTheme();
-            AppTheme::apply(qApp, static_cast<AppTheme::Mode>(account->app_theme));
-        }
-    }
 }
 
 // ─── Studio tab (#134) ───────────────────────────────────────────────────────

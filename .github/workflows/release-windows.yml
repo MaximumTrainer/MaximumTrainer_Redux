@@ -244,11 +244,11 @@ jobs:
         $required = @(
           "MaximumTrainer.exe",
           "qwt.dll",
-          "Qt5Core.dll",
-          "Qt5Widgets.dll",
-          "Qt5OpenGL.dll",
-          "libssl-1_1-x64.dll",
-          "libcrypto-1_1-x64.dll",
+          "Qt6Core.dll",
+          "Qt6Widgets.dll",
+          "Qt6OpenGL.dll",
+          "libssl-3-x64.dll",
+          "libcrypto-3-x64.dll",
           "sfml-audio-2.dll",
           "sfml-system-2.dll",
           "openal32.dll"

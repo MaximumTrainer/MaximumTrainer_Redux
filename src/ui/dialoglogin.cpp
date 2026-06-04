@@ -198,7 +198,6 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     this->account  = qApp->property("Account").value<Account*>();
     this->settings = qApp->property("User_Settings").value<Settings*>();
 
-    ui->comboBox_language->setCurrentIndex(settings->language_index);
     ui->label_version->setText(Environnement::getVersion());
 
     // Restore the last "work offline" choice so users who always run offline
@@ -741,43 +740,6 @@ void DialogLogin::loginWithIntervalsIcuIdentity()
              + account->intervals_icu_athlete_id);
     completeLogin();
 }
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void DialogLogin::on_comboBox_language_currentIndexChanged(int index) {
-
-    Q_UNUSED(index);
-
-    QString languageToPut = ui->comboBox_language->currentText();
-
-    qApp->removeTranslator(&m_translator);
-
-    bool success;
-    if (languageToPut == "English") {
-        success = m_translator.load(":/language/language/powervelo_en.qm");
-        settings->language_index = 0;
-        settings->language = "en";
-        settings->saveLanguage();
-    }
-    else if (languageToPut == "Français") {
-        success = m_translator.load(":/language/language/powervelo_fr.qm");
-        settings->language_index = 1;
-        settings->language = "fr";
-        settings->saveLanguage();
-    }
-    else {
-        success = m_translator.load(":/language/language/powervelo_en.qm");
-        settings->language_index = 0;
-        settings->language = "en";
-    }
-
-    if(success) {
-        qApp->installTranslator(&m_translator);
-        ui->retranslateUi(this);
-        m_currLang = languageToPut;
-    }
-}
-
 
 
 // ─────────────────────────────────────────────────────────────────────────────

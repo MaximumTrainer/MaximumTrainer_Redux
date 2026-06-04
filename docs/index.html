@@ -289,9 +289,8 @@
           <h3>Windows</h3>
           <p class="download-desc">Windows 10/11 — 64-bit (MSVC build)</p>
           <ul class="download-deps">
-            <li>Qt 5.15.2 (win64_msvc2019_64)</li>
+            <li>Qt 6.x (win64_msvc2019_64)</li>
             <li>QWT 6.2.0</li>
-            <li>VLC-Qt 1.1.0 (pre-built MSVC)</li>
             <li>SFML 2.6.1</li>
           </ul>
           <a id="win-download-btn" class="btn btn-primary btn-disabled" href="#" aria-disabled="true" title="Not yet available — coming soon">
@@ -299,9 +298,8 @@
           </a>
           <details class="build-details">
             <summary>Build from source</summary>
-            <pre><code>$env:QMAKEFEATURES = "C:\qwt\features"
-qmake PowerVelo.pro `
-  "VLCQT_INSTALL=C:/vlcqt" `
+            <pre><code>qmake PowerVelo.pro `
+  "QWT_INSTALL=C:/qwt" `
   "SFML_INSTALL=C:/sfml/SFML-2.6.1"
 nmake</code></pre>
           </details>
@@ -311,11 +309,10 @@ nmake</code></pre>
         <div class="download-card">
           <div class="download-icon">🐧</div>
           <h3>Linux</h3>
-          <p class="download-desc">Ubuntu 22.04+ / Debian-based distros</p>
+          <p class="download-desc">Ubuntu 24.04+ / Debian-based distros</p>
           <ul class="download-deps">
-            <li>Qt 5.15.x (from apt)</li>
-            <li>libqwt-qt5-dev</li>
-            <li>VLC-Qt 1.1.1 (from source)</li>
+            <li>Qt 6.x (from apt)</li>
+            <li>QWT 6.2.0 (from source)</li>
             <li>libsfml-dev</li>
           </ul>
           <a id="linux-download-btn" class="btn btn-primary btn-disabled" href="#" aria-disabled="true" title="Not yet available — coming soon">
@@ -324,14 +321,13 @@ nmake</code></pre>
           <details class="build-details">
             <summary>Build from source</summary>
             <pre><code>sudo apt-get install -y \
-  qtbase5-dev qtwebengine5-dev \
-  qtconnectivity5-dev \
-  libqwt-qt5-dev libsfml-dev \
-  libvlc-dev vlc-plugin-base \
-  vlc-plugin-video-output \
+  qt6-base-dev qt6-webengine-dev \
+  qt6-connectivity-dev \
+  qt6-multimedia-dev \
+  libsfml-dev \
   cmake build-essential
 
-qmake PowerVelo.pro
+qmake6 PowerVelo.pro QWT_INSTALL=/tmp/qwt6
 make -j$(nproc)</code></pre>
           </details>
         </div>

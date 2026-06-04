@@ -77,8 +77,6 @@ QList<Achievement> Util::parseJsonAchievementList(QString data) {
     QString description;
     QString iconUrl;
 
-    Settings *mySettings = qApp->property("User_Settings").value<Settings*>();
-
 
     /// Loop on achievement
     for (int i=0; i<jsonArray.size(); i++)
@@ -89,15 +87,8 @@ QList<Achievement> Util::parseJsonAchievementList(QString data) {
 
         idDB = jsonObj["id"].toString().toInt();
 
-        if (mySettings->language == "en") {
-            name = jsonObj["name_en"].toString();
-            description = jsonObj["description_en"].toString();
-        }
-        //fr
-        else  {
-            name = jsonObj["name_fr"].toString();
-            description = jsonObj["description_fr"].toString();
-        }
+        name = jsonObj["name_en"].toString();
+        description = jsonObj["description_en"].toString();
 
         iconUrl= jsonObj["icon_url"].toString();
 
@@ -475,8 +466,6 @@ void Util::parseJsonObjectAccount(QString data) {
     account->show_power_curve  = jsonObj["show_power_curve"].toString().toInt();
     account->show_cadence_curve  = jsonObj["show_cadence_curve"].toString().toInt();
     account->show_speed_curve  = jsonObj["show_speed_curve"].toString().toInt();
-
-    account->display_video  = jsonObj["display_video"].toString().toInt();
 
 
     /* ----- */

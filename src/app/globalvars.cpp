@@ -16,9 +16,6 @@
 #include <QSettings>
 #include <QWebEngineSettings>
 #include <QWebEngineProfile>
-#ifdef GC_HAVE_VLCQT
-#include <VLCQtCore/Common.h>
-#endif
 
 
 
@@ -76,23 +73,6 @@ GlobalVars::GlobalVars(QObject *parent) :
     qRegisterMetaType<QList<Trackpoint> >( "QList<Trackpoint>" );
 
 
-
-
-    //plugin path using by libvlc
-#ifdef GC_HAVE_VLCQT
-    // Only override VLC_PLUGIN_PATH when the bundled plugins directory
-    // actually exists next to the executable.  If it doesn't (e.g. in CI or
-    // on a developer machine without a local VLC build), leave the variable
-    // unset so libvlc falls back to the system VLC plugin path, which is
-    // available when vlc-plugin-base (Linux) or VLC.app (macOS/Windows) is
-    // installed.  Overriding with a non-existent path causes libvlc_new() to
-    // return NULL, which subsequently triggers a null-pointer dereference.
-    {
-        const QString vlcPluginPath = QDir(qApp->applicationDirPath()).filePath(QStringLiteral("plugins"));
-        if (QDir(vlcPluginPath).exists())
-            VlcCommon::setPluginPath(vlcPluginPath);
-    }
-#endif
 
 
     ///-------- INIT GLOBAL VAR ---------------------------

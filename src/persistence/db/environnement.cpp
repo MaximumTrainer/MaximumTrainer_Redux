@@ -1,6 +1,5 @@
 #include "environnement.h"
 
-#include "settings.h"
 #include "credential_store.h"
 
 Environnement::Environnement()
@@ -57,71 +56,25 @@ QString Environnement::getDateBuilded() {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlLogin() {
-
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlLoginEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlLoginFr;
-    }
-    else {
-        return getURLEnvironnement() + urlLoginEn;
-    }
-
+    return getURLEnvironnement() + urlLoginEn;
 }
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlProfileOutsideMt() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlProfilEnOutsideMt;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlProfilFrOutsideMt;
-    }
-    else {
-        return getURLEnvironnement() + urlProfilEnOutsideMt;
-    }
+    return getURLEnvironnement() + urlProfilEnOutsideMt;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlChooseSub() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlChooseSubEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlChooseSubFr;
-    }
-    else {
-        return getURLEnvironnement() + urlChooseSubEn;
-    }
+    return getURLEnvironnement() + urlChooseSubEn;
 }
 
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlNews() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlNewsEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlNewsFr;
-    }
-    else {
-        return getURLEnvironnement() + urlNewsEn;
-    }
+    return getURLEnvironnement() + urlNewsEn;
 }
 
 
@@ -129,34 +82,12 @@ QString Environnement::getUrlNews() {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlZones() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlZonesEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlZonesFr;
-    }
-    else {
-        return getURLEnvironnement() + urlZonesEn;
-    }
+    return getURLEnvironnement() + urlZonesEn;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlStudio() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlStudioEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlStudioFr;
-    }
-    else {
-        return getURLEnvironnement() + urlStudioEn;
-    }
+    return getURLEnvironnement() + urlStudioEn;
 }
 
 
@@ -164,103 +95,33 @@ QString Environnement::getUrlStudio() {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlAchievement() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlAchievEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlAchievFr;
-    }
-    else {
-        return getURLEnvironnement() + urlAchievEn;
-    }
-
+    return getURLEnvironnement() + urlAchievEn;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlPlans() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlPlanEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlPlanFr;
-    }
-    else {
-        return getURLEnvironnement() + urlPlanEn;
-    }
-
+    return getURLEnvironnement() + urlPlanEn;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlSettings() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlSettingsEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlSettingsFr;
-    }
-    else {
-        return getURLEnvironnement() + urlSettingsEn;
-    }
+    return getURLEnvironnement() + urlSettingsEn;
 }
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlWorkout() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlWorkoutEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlWorkoutFr;
-    }
-    else {
-        return getURLEnvironnement() + urlWorkoutEn;
-    }
+    return getURLEnvironnement() + urlWorkoutEn;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlSupport() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlSupportEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlSupportFr;
-    }
-    else {
-        return getURLEnvironnement() + urlSupportEn;
-    }
-
+    return getURLEnvironnement() + urlSupportEn;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 QString  Environnement::getURLGoogleMap() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlGoogleMapEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlGoogleMapEn;
-    }
-    else {
-        return getURLEnvironnement() + urlGoogleMapEn;
-    }
-
+    return getURLEnvironnement() + urlGoogleMapEn;
 }
 
 
@@ -346,53 +207,19 @@ QString Environnement::getUrlIntervalsIcuRegister() {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlWorkoutCreator() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlWorkoutCreatorEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlWorkoutCreatorFr;
-    }
-    else {
-        return getURLEnvironnement() + urlWorkoutCreatorEn;
-    }
+    return getURLEnvironnement() + urlWorkoutCreatorEn;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlCourseCreator() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlCourseCreatorEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlCourseCreatorFr;
-    }
-    else {
-        return getURLEnvironnement() + urlCourseCreatorEn;
-    }
+    return getURLEnvironnement() + urlCourseCreatorEn;
 }
 
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlDownload() {
-
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    if (settings->language == "en") {
-        return getURLEnvironnement() + urlDownloadEn;
-    }
-    else if (settings->language == "fr") {
-        return getURLEnvironnement() + urlDownloadFr;
-    }
-    else {
-        return getURLEnvironnement() + urlDownloadEn;
-    }
-
+    return getURLEnvironnement() + urlDownloadEn;
 }
 
 

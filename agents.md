@@ -34,7 +34,7 @@ completed activities to the Garmin FIT format.
 | Plotting | QWT 6.2 |
 | Serialisation | Garmin FIT SDK, TCX, GPX, XML |
 | Hardware protocols | BLE (Qt Bluetooth) |
-| Audio/Video | VLC-Qt (desktop), SFML (audio), platform stubs for WASM |
+| Audio/Video | QtMultimedia (video + radio), SFML (sound effects), platform stubs for WASM |
 | Build system | qmake `.pro` / `.pri` |
 | CI/CD | GitHub Actions (Linux · Windows · macOS · WebAssembly) |
 
@@ -202,7 +202,7 @@ behind compile-time guards or swappable adapters"**.
      │           btle_hub_wasm.cpp    (WASM)           │
      │           webbluetooth_bridge  (WASM JS bridge) │
      │                                                 │
-     │  Audio:   myvlcplayer.cpp      (desktop+VLC)    │
+     │  Media:   myqtmediaplayer.cpp  (QtMultimedia)   │
      │           soundplayer.cpp      (SFML desktop)   │
      │           soundplayer_wasm.cpp (WASM stub)      │
      │                                                 │
@@ -216,7 +216,7 @@ behind compile-time guards or swappable adapters"**.
 
 Platform selection is controlled **at qmake time** using `.pro` / `.pri`
 scopes (`wasm`, `win32`, `macx`, `linux`) and optional defines
-(`GC_HAVE_VLCQT`).  No runtime `#ifdef` branching inside shared logic files.
+(`GC_HAVE_QTMULTIMEDIA`).  No runtime `#ifdef` branching inside shared logic files.
 
 ### 3.3 WASM-Specific Constraints
 
@@ -224,7 +224,7 @@ scopes (`wasm`, `win32`, `macx`, `linux`) and optional defines
 |---------|-----------|-----------|
 | No native BLE APIs | Web Bluetooth is promise-based | `BtleHubWasm` + `WebBluetoothBridge` (Emscripten embind + JS callbacks) |
 | No file-system access | `QFile` writes are in-memory | Persist via browser download prompt |
-| No VLC / SFML | Shared libs unavailable | `soundplayer_wasm.cpp` stub; no video |
+| No QtMultimedia / SFML | Shared libs unavailable | `soundplayer_wasm.cpp` stub; no video |
 | Single-threaded Emscripten | `pthread` unavailable (singlethread build) | No `QThread` use in WASM paths |
 | `QWebEngineWidgets` absent | Not ported to WASM | Stub headers in `src/ui/wasm_stubs/` |
 
@@ -534,7 +534,7 @@ responsibility:
 | `src/persistence/persistence.pri` | SQLite DAOs + file readers/writers | `model`, `fitness` |
 | `src/fitness/fitness.pri` | FIT SDK + Achievement logic | `model` |
 | `src/ui/ui.pri` | All UI: MainWindow, WorkoutDialog, plots, editors | All above |
-| `src/app/app.pri` | Entry point + global state (VLC, audio, utils) | `ui`, `btle`, `model` |
+| `src/app/app.pri` | Entry point + global state (media, audio, utils) | `ui`, `btle`, `model` |
 
 **Adding a new feature (TDD order):**
 
