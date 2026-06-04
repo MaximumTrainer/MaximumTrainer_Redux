@@ -15,6 +15,10 @@ on:
         required: false
         default: ''
 
+env:
+  QT_VERSION: '6.7.3'
+  QWT_DIR: /tmp/qwt6
+
 jobs:
 
   build_linux:
@@ -28,46 +32,50 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install Qt and system dependencies
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
+        cache: true
+        cache-key-prefix: qt-linux
+
+    - name: Install system dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          qtbase5-dev \
-          qtwebengine5-dev \
-          qtconnectivity5-dev \
-          libqwt-qt5-dev \
           libsfml-dev \
-          libvlc-dev \
-          libvlccore-dev \
           libusb-1.0-0-dev \
           libssl-dev \
+          libgl1-mesa-dev \
           cmake \
           build-essential
 
-    - name: Restore VLC-Qt cache
-      id: vlcqt-cache
+    - name: Restore QWT cache
+      id: qwt-cache
       uses: actions/cache@v4
       with:
-        path: /tmp/vlcqt-install
-        key: vlcqt-1.1.1-qt5-ubuntu22.04
+        path: ${{ env.QWT_DIR }}
+        key: qwt-6.2.0-qt-${{ env.QT_VERSION }}-linux
 
-    - name: Build and install VLC-Qt
+    - name: Build and install QWT
+      # No QWT apt package exists for Qt6, so build 6.2.0 from source against the
+      # installed Qt6 and stage it under QWT_DIR. PowerVelo.pro is pointed at it
+      # via QWT_INSTALL=... .
+      if: steps.qwt-cache.outputs.cache-hit != 'true'
       run: |
-        if [ "${{ steps.vlcqt-cache.outputs.cache-hit }}" != "true" ]; then
-          cd /tmp
-          git clone --branch 1.1.1 --depth 1 https://github.com/vlc-qt/vlc-qt
-          cd vlc-qt
-          mkdir build && cd build
-          cmake .. \
-            -DQT_VERSION=5 \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/tmp/vlcqt-install \
-            -DCMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu
-          make -j$(nproc)
-          make install
-        fi
-        sudo cp -r /tmp/vlcqt-install/. /usr/local/
-        sudo ldconfig
+        cd /tmp
+        curl -L -o qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.2.0/qwt-6.2.0.tar.bz2/download"
+        tar xf qwt.tar.bz2
+        cd qwt-6.2.0
+        qmake qwt.pro
+        make -j$(nproc)
+        make install INSTALL_ROOT=/tmp/qwt6-stage
+        mkdir -p "$QWT_DIR"
+        mv /tmp/qwt6-stage/usr/local/qwt-6.2.0/* "$QWT_DIR"/
 
     - name: Determine build version
       run: |
@@ -83,22 +91,17 @@ jobs:
 
     - name: Create Makefile
       run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
-        qmake PowerVelo.pro "INCLUDEPATH+=/usr/local/include" "LIBS+=-L/usr/local/lib"
+        qmake PowerVelo.pro "QWT_INSTALL=$QWT_DIR"
       env:
-        QMAKEFEATURES: /usr/share/qt5/mkspecs/features
         TP_CLIENT_SECRET:              ${{ secrets.TP_CLIENT_SECRET }}
         INTERVALS_OAUTH_CLIENT_ID:     ${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}
         INTERVALS_OAUTH_CLIENT_SECRET: ${{ secrets.INTERVALS_OAUTH_CLIENT_SECRET }}
 
     - name: Build
-      run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
-        make -j$(nproc)
+      run: make -j$(nproc)
 
     - name: Build integration tests
       run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
         mkdir -p build/tests
         cd tests/integration
         qmake btle_integration_tests.pro
@@ -111,28 +114,35 @@ jobs:
         make -j$(nproc)
         qmake online_mode_tests.pro
         make -j$(nproc)
-        qmake login_screen_tests.pro
+        qmake login_screen_tests.pro "QWT_INSTALL=$QWT_DIR"
         make -j$(nproc)
-        qmake workout_ui_tests.pro
+        qmake workout_ui_tests.pro "QWT_INSTALL=$QWT_DIR"
         make -j$(nproc)
         qmake workout_parsing_tests.pro
         make -j$(nproc)
-        qmake ui_navigation_tests.pro
+        qmake ui_navigation_tests.pro "QWT_INSTALL=$QWT_DIR"
         make -j$(nproc)
-        qmake ui_screens_tests.pro
+        qmake ui_screens_tests.pro "QWT_INSTALL=$QWT_DIR"
         make -j$(nproc)
-        qmake workout_io_tests.pro
+        qmake workout_io_tests.pro "QWT_INSTALL=$QWT_DIR"
         make -j$(nproc)
         qmake workout_creator_tests.pro
         make -j$(nproc)
 
     - name: Build BTLE unit tests
       run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
         mkdir -p build/tests
         cd tests/btle
         qmake btle_tests.pro
         make -j$(nproc)
+
+    - name: Bundle QWT shared library into artifact
+      # The test-runner jobs have no QWT installation. Carry the .so alongside
+      # the binaries so the runtime jobs can find it via LD_LIBRARY_PATH=build/qwtlib
+      # without depending on the QWT build cache.
+      run: |
+        mkdir -p build/qwtlib
+        cp -P "$QWT_DIR"/lib/libqwt.so* build/qwtlib/
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -158,16 +168,18 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install Qt and dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          qtbase5-dev \
-          build-essential
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
 
     - name: Build logger unit tests
       run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
         mkdir -p build/tests
         cd tests/logger
         qmake logger_tests.pro
@@ -196,16 +208,18 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install Qt and dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          qtbase5-dev \
-          build-essential
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
 
     - name: Build AppTheme unit tests
       run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
         mkdir -p build/tests
         cd tests/apptheme
         qmake apptheme_tests.pro
@@ -229,13 +243,16 @@ jobs:
       contents: read
 
     steps:
-    - name: Install runtime dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          libqt5core5a \
-          libqt5bluetooth5 \
-          libqt5test5
+    - name: Install Qt (with Bluetooth)
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        modules: 'qtconnectivity'
+        cache: true
+        cache-key-prefix: qt-linux
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -271,16 +288,18 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install Qt and dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          qtbase5-dev \
-          build-essential
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
 
     - name: Build Intervals.icu unit tests
       run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
         mkdir -p build/tests
         cd tests/intervals_icu
         qmake intervals_icu_tests.pro
@@ -310,15 +329,21 @@ jobs:
       contents: read
 
     steps:
-    - name: Install runtime dependencies
+    - name: Install Qt (with Bluetooth)
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        modules: 'qtconnectivity'
+        cache: true
+        cache-key-prefix: qt-linux
+
+    - name: Install X11 runtime dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          libqt5core5a \
-          libqt5gui5 \
-          libqt5widgets5 \
-          libqt5bluetooth5 \
-          libqt5test5 \
           xvfb \
           libfontconfig1 \
           libxrender1 \
@@ -364,13 +389,16 @@ jobs:
       contents: read
 
     steps:
-    - name: Install runtime dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          libqt5core5a \
-          libqt5bluetooth5 \
-          libqt5test5
+    - name: Install Qt (with Bluetooth)
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        modules: 'qtconnectivity'
+        cache: true
+        cache-key-prefix: qt-linux
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -399,15 +427,21 @@ jobs:
       contents: read
 
     steps:
-    - name: Install runtime dependencies
+    - name: Install Qt (with Bluetooth)
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        modules: 'qtconnectivity'
+        cache: true
+        cache-key-prefix: qt-linux
+
+    - name: Install X11 runtime dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          libqt5core5a \
-          libqt5gui5 \
-          libqt5widgets5 \
-          libqt5bluetooth5 \
-          libqt5test5 \
           xvfb \
           libfontconfig1 \
           libxrender1 \
@@ -457,14 +491,20 @@ jobs:
       contents: read
 
     steps:
-    - name: Install runtime dependencies
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
+
+    - name: Install X11 runtime dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          libqt5core5a \
-          libqt5gui5 \
-          libqt5widgets5 \
-          libqt5test5 \
           xvfb \
           libfontconfig1 \
           libxrender1 \
@@ -521,16 +561,18 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install Qt and dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          qtbase5-dev \
-          build-essential
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
 
     - name: Build integration tests
       run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
         mkdir -p build/tests
         cd tests/intervals_icu_integration
         qmake intervals_icu_integration_tests.pro
@@ -564,15 +606,20 @@ jobs:
       INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
 
     steps:
-    - name: Install runtime dependencies
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
+
+    - name: Install X11 runtime dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          libqt5core5a \
-          libqt5gui5 \
-          libqt5widgets5 \
-          libqt5network5 \
-          libqt5test5 \
           xvfb \
           libfontconfig1 \
           libxrender1 \
@@ -627,23 +674,32 @@ jobs:
       INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
 
     steps:
-    - name: Install runtime dependencies
+    - name: Install Qt (with WebEngine + Bluetooth)
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning'
+        cache: true
+        cache-key-prefix: qt-linux
+
+    - name: Install X11 runtime dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          libqt5core5a \
-          libqt5gui5 \
-          libqt5widgets5 \
-          libqt5network5 \
-          libqt5bluetooth5 \
-          libqt5test5 \
-          libqt5webenginewidgets5 \
-          libqt5webenginecore5 \
           xvfb \
           libfontconfig1 \
           libxrender1 \
           libxext6 \
-          libgl1-mesa-dev
+          libgl1-mesa-dev \
+          libnss3 \
+          libxcomposite1 \
+          libxdamage1 \
+          libxrandr2 \
+          libxkbcommon0 \
+          libasound2t64
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -656,6 +712,7 @@ jobs:
 
     - name: Run login screen test with Xvfb
       run: |
+        export LD_LIBRARY_PATH="$PWD/build/qwtlib:$LD_LIBRARY_PATH"
         Xvfb :99 -screen 0 1280x800x24 &
         sleep 1
         export DISPLAY=:99
@@ -700,17 +757,20 @@ jobs:
       INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
 
     steps:
-    - name: Install runtime dependencies
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
+
+    - name: Install X11 runtime dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          libqt5core5a \
-          libqt5gui5 \
-          libqt5widgets5 \
-          libqt5network5 \
-          libqt5sql5 \
-          libqt5test5 \
-          libqwt-qt5-6 \
           xvfb \
           libfontconfig1 \
           libxrender1 \
@@ -728,6 +788,7 @@ jobs:
 
     - name: Run workout UI test with Xvfb
       run: |
+        export LD_LIBRARY_PATH="$PWD/build/qwtlib:$LD_LIBRARY_PATH"
         Xvfb :99 -screen 0 1280x800x24 &
         sleep 1
         export DISPLAY=:99
@@ -763,14 +824,15 @@ jobs:
       INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
 
     steps:
-    - name: Install runtime dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          libqt5core5a \
-          libqt5network5 \
-          libqt5xml5 \
-          libqt5test5
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -804,47 +866,34 @@ jobs:
       contents: read
 
     steps:
+    - name: Install Qt (full app modules)
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
+        cache: true
+        cache-key-prefix: qt-linux
+
     - name: Install runtime dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          libqt5core5a \
-          libqt5gui5 \
-          libqt5widgets5 \
-          libqt5network5 \
-          libqt5sql5 \
-          libqt5test5 \
-          libqt5bluetooth5 \
-          libqt5webenginewidgets5 \
-          libqt5webenginecore5 \
-          libqwt-qt5-6 \
           libsfml-audio2.5 \
           libsfml-system2.5 \
-          libvlc5 \
-          libvlccore9 \
-          vlc-plugin-base \
           xvfb \
           libfontconfig1 \
           libxrender1 \
           libxext6 \
-          libgl1-mesa-dev
-
-    - name: Restore VLC-Qt cache
-      # The test runner needs libVLCQtCore.so.1.1 / libVLCQtWidgets.so.1.1 at
-      # runtime because MaximumTrainer (launched by testFullApplicationJourney)
-      # links against VLC-Qt unconditionally on Linux. Reuse the same pre-built
-      # cache that the build_linux job populated.
-      id: vlcqt-cache
-      uses: actions/cache@v4
-      with:
-        path: /tmp/vlcqt-install
-        key: vlcqt-1.1.1-qt5-ubuntu22.04
-
-    - name: Install VLC-Qt from cache
-      run: |
-        sudo cp -r /tmp/vlcqt-install/. /usr/local/
-        sudo ldconfig
-
+          libgl1-mesa-dev \
+          libnss3 \
+          libxcomposite1 \
+          libxdamage1 \
+          libxrandr2 \
+          libxkbcommon0 \
+          libasound2t64
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -870,6 +919,7 @@ jobs:
       env:
         MT_NO_NETWORK: "1"
       run: |
+        export LD_LIBRARY_PATH="$PWD/build/qwtlib:$LD_LIBRARY_PATH"
         Xvfb :99 -screen 0 1280x800x24 &
         sleep 1
         export DISPLAY=:99
@@ -903,17 +953,20 @@ jobs:
       contents: read
 
     steps:
-    - name: Install runtime dependencies
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
+
+    - name: Install X11 runtime dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          libqt5core5a \
-          libqt5gui5 \
-          libqt5widgets5 \
-          libqt5network5 \
-          libqt5sql5 \
-          libqt5test5 \
-          libqwt-qt5-6 \
           xvfb \
           libfontconfig1 \
           libxrender1 \
@@ -931,6 +984,7 @@ jobs:
 
     - name: Run UI screens test with Xvfb
       run: |
+        export LD_LIBRARY_PATH="$PWD/build/qwtlib:$LD_LIBRARY_PATH"
         Xvfb :99 -screen 0 1280x800x24 &
         sleep 1
         export DISPLAY=:99
@@ -960,17 +1014,20 @@ jobs:
       contents: read
 
     steps:
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
+
     - name: Install runtime dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          libqt5core5a \
-          libqt5gui5 \
-          libqt5widgets5 \
-          libqt5network5 \
-          libqt5sql5 \
-          libqt5test5 \
-          libqwt-qt5-6 \
           libfontconfig1 \
           libxrender1 \
           libxext6
@@ -985,7 +1042,9 @@ jobs:
       run: chmod +x build/tests/workout_io_tests
 
     - name: Run workout I/O tests
-      run: QT_QPA_PLATFORM=offscreen ./build/tests/workout_io_tests -v2
+      run: |
+        export LD_LIBRARY_PATH="$PWD/build/qwtlib:$LD_LIBRARY_PATH"
+        QT_QPA_PLATFORM=offscreen ./build/tests/workout_io_tests -v2
 
   # ──────────────────────────────────────────────────────────────────────────
   # Workout Creator Tests – Linux
@@ -1005,12 +1064,15 @@ jobs:
       contents: read
 
     steps:
-    - name: Install runtime dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          libqt5core5a \
-          libqt5test5
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -1052,16 +1114,18 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install Qt and dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          qtbase5-dev \
-          build-essential
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
 
     - name: Build Strava service tests
       run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
         mkdir -p build/tests
         cd tests/strava
         qmake strava_tests.pro
@@ -1069,14 +1133,12 @@ jobs:
 
     - name: Build TrainingPeaks service tests
       run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
         cd tests/trainingpeaks
         qmake trainingpeaks_tests.pro
         make -j$(nproc)
 
     - name: Build Selfloops service tests
       run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
         cd tests/selfloops
         qmake selfloops_tests.pro
         make -j$(nproc)
@@ -1096,7 +1158,7 @@ jobs:
   # Tests the AES-256-GCM CredentialStore backend (Linux only).
   # The roundtrip, overwrite, remove, missing-key, multi-service, empty-value,
   # and special-character tests all execute without any external dependencies.
-  # Requires libssl-dev (already available in the base Qt install step).
+  # Requires libssl-dev.
   # ──────────────────────────────────────────────────────────────────────────
   test_credential_store:
     runs-on: ubuntu-22.04
@@ -1109,17 +1171,23 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install Qt and dependencies
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
+
+    - name: Install build dependencies
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y \
-          qtbase5-dev \
-          libssl-dev \
-          build-essential
+        sudo apt-get install -y libssl-dev
 
     - name: Build CredentialStore tests
       run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
         mkdir -p build/tests
         cd tests/credential_store
         qmake credential_store_tests.pro
@@ -1139,16 +1207,18 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install Qt and dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          qtbase5-dev \
-          build-essential
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
 
     - name: Build PlanAdherence tests
       run: |
-        export PATH=/usr/lib/qt5/bin:$PATH
         mkdir -p build/tests
         cd tests/plan_adherence
         qmake plan_adherence_tests.pro
@@ -1156,4 +1226,3 @@ jobs:
 
     - name: Run PlanAdherence tests
       run: ./build/tests/plan_adherence_tests -v2
-

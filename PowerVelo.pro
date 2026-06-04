@@ -187,15 +187,29 @@ QMAKE_CFLAGS_ISYSTEM =
 # via file extensions .lib or .a in src.pro unless the section is
 # platform specific. Instead we use directives -Ldir and -llib
 win32 {
-    #QWT is configured to build 2 libs (release/debug) on win32 (see qwtbuild.pri)
-    INCLUDEPATH += ../qwt/include
-    INCLUDEPATH += ../qwt/include/qwt
+    # QWT: built from source against Qt6 and pointed at via QWT_INSTALL=... .
+    # Fall back to the legacy ../qwt sibling layout when QWT_INSTALL is empty.
+    !isEmpty(QWT_INSTALL) {
+        INCLUDEPATH += $${QWT_INSTALL}/include
+        INCLUDEPATH += $${QWT_INSTALL}/include/qwt
+        DEFINES += QWT_DLL
+        CONFIG(release, debug|release) {
+            LIBS += -L$${QWT_INSTALL}/lib -lqwt
+        }
+        CONFIG(debug, debug|release) {
+            LIBS += -L$${QWT_INSTALL}/lib -lqwtd
+        }
+    } else {
+        #QWT is configured to build 2 libs (release/debug) on win32 (see qwtbuild.pri)
+        INCLUDEPATH += ../qwt/include
+        INCLUDEPATH += ../qwt/include/qwt
 
-    CONFIG(release, debug|release){
-        LIBS += -L$${PWD}/../qwt/lib -lqwt
-    }
-    CONFIG(debug, debug|release) {
-        LIBS += -L$${PWD}/../qwt/lib -lqwtd
+        CONFIG(release, debug|release){
+            LIBS += -L$${PWD}/../qwt/lib -lqwt
+        }
+        CONFIG(debug, debug|release) {
+            LIBS += -L$${PWD}/../qwt/lib -lqwtd
+        }
     }
 }
 
