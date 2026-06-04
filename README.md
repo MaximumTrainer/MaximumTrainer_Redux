@@ -75,6 +75,8 @@ The simulator responds to ERG load commands from the workout player, making it a
 2. Select one or more `.erg` or `.mrc` files.
 3. MaximumTrainer converts them to its native format and adds them to your library.
 
+> `.zwo` workouts are imported automatically via Intervals.icu calendar sync; the manual File → Import dialog accepts `.erg` and `.mrc`.
+
 **Option C — Create your own**
 
 Use the built-in **Workout Creator** (toolbar → pencil icon) to build structured intervals with configurable power, cadence, or HR targets.
@@ -103,14 +105,13 @@ Completed workout data is saved as a FIT activity file and can be uploaded to **
 
 ## Screenshots
 
-> **Note:** Screenshots showing the cross-platform UI will be added here. Contributions of high-quality screenshots on each platform are welcome — please open a pull request.
+| Workout list | Workout in progress |
+|--------------|---------------------|
+| ![Main window — workout library with power graphs and metrics](docs/assets/screenshots/screenshot_main_window.png) | ![Workout player — video, interval graph, and live power, heart rate, and cadence](docs/assets/screenshots/screenshot_workout_running.png) |
 
-| Platform | Description |
-|----------|-------------|
-| Windows | Main workout player with power graph and metrics |
-| macOS | Intervals.icu calendar tab — syncing planned workouts |
-| Linux | App running on Ubuntu — proof of cross-platform build |
-| Device Manager | BTLE scanner with multiple sensors connected |
+| Studio mode | Activity history |
+|-------------|------------------|
+| ![Studio mode — multiple riders with live power, heart rate, and cadence](docs/assets/screenshots/screenshot_studio_mode.png) | ![Activity history with weekly totals and upload status](docs/assets/screenshots/screenshot_activity_history.png) |
 
 ## Linux — Bluetooth Setup
 
@@ -191,11 +192,11 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 |------------|---------|----------|-------|
 | Qt | 6.x (6.7+) | all | Core framework (incl. QtMultimedia, QtWebEngine, QtBluetooth) |
 | QWT | 6.2.0 | all | Plotting widgets (built from source against Qt 6) |
-| SFML | system / 2.6+ | all | Sound-effect feedback (interval beeps, etc.) |
 
-> **Media playback:** the embedded video + internet-radio player uses Qt's own
-> **QtMultimedia** (`QMediaPlayer` / `QVideoWidget` / `QAudioOutput`). There is no
-> VLC dependency.
+> **Audio & media playback:** both sound-effect feedback (interval beeps, etc.,
+> via `QSoundEffect`) and the embedded video + internet-radio player
+> (`QMediaPlayer` / `QVideoWidget` / `QAudioOutput`) use Qt's own
+> **QtMultimedia**. There are no SFML or VLC dependencies.
 
 ## Windows — Requirements
 
@@ -219,16 +220,13 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 **qmake invocation:**
 ```powershell
 qmake PowerVelo.pro `
-  "QWT_INSTALL=C:/qwt" `
-  "SFML_INSTALL=C:/sfml/SFML-2.6.1"
+  "QWT_INSTALL=C:/qwt"
 ```
 
-> `SFML_INSTALL` must point to the SFML root (the directory containing `include/` and `lib/`).
 > The Windows Kit libraries (`Gdi32`, `User32`) are resolved automatically by the MSVC linker.
 
 **Download links:**
 - Qt 6.x: https://www.qt.io/download
-- SFML (vc17 64-bit): https://github.com/SFML/SFML/releases
 - QWT 6.2.0: https://sourceforge.net/projects/qwt/files/qwt/6.2.0/
 
 ### Linux
@@ -240,7 +238,7 @@ exists), then build the app:
 sudo apt-get install -y \
   qt6-base-dev qt6-webengine-dev qt6-connectivity-dev \
   qt6-multimedia-dev qt6-webchannel-dev qt6-positioning-dev \
-  libsfml-dev cmake build-essential
+  cmake build-essential
 
 # Build QWT 6.2.0 from source against Qt 6 (installs to /tmp/qwt6 here)
 cd /tmp && curl -L -o qwt.tar.bz2 \
@@ -270,7 +268,6 @@ Uses Qt 6.7.3 with Clang. QWT is built from source (non-framework) against Qt 6.
 
 ```bash
 # Install Qt 6.7.3 via install-qt-action or the Qt Installer, then:
-brew install sfml
 
 # Build QWT 6.2.0 from source (non-framework, required for Qt 6)
 curl -L -o /tmp/qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.2.0/qwt-6.2.0.tar.bz2/download"
@@ -281,7 +278,6 @@ qmake qwt.pro && make -j$(sysctl -n hw.logicalcpu) && sudo make install
 # Build MaximumTrainer
 cd /path/to/MaximumTrainer_Redux
 qmake PowerVelo.pro \
-  "SFML_INSTALL=$(brew --prefix sfml)" \
   "QWT_INSTALL=/usr/local/qwt-6.2.0"
 make
 ```
@@ -316,11 +312,6 @@ make -j$(nproc)
 ```
 
 The BLE suite has **51 test cases** across HR parsing, CSC, Power, FTMS, trainer simulations, SimulatorHub, battery, and interval summary. See the [CI run status](https://github.com/MaximumTrainer/MaximumTrainer_Redux/actions) for pass/fail counts on Linux, Windows, and macOS.
-
-## Language
-
-Language files are used at runtime from the `/language` folder.
-You need Qt Linguist to open and generate a new language file (`.qm` file).
 
 ## Log Files
 

@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>615</width>
-    <height>314</height>
+    <width>760</width>
+    <height>460</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>700</width>
+    <height>420</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>Preferences</string>
@@ -896,6 +902,95 @@
        </item>
        <item>
         <spacer name="verticalSpacer_cloud">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="page_profile">
+      <layout class="QVBoxLayout" name="verticalLayout_profile">
+       <item>
+        <widget class="QGroupBox" name="groupBox_athleteProfile">
+         <property name="title">
+          <string>Athlete Profile</string>
+         </property>
+         <layout class="QFormLayout" name="formLayout_athleteProfile">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_ftp">
+            <property name="text">
+             <string>FTP:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QSpinBox" name="spinBox_ftp">
+            <property name="suffix">
+             <string> W</string>
+            </property>
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>2000</number>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_lthr">
+            <property name="text">
+             <string>LTHR:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="spinBox_lthr">
+            <property name="suffix">
+             <string> bpm</string>
+            </property>
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>250</number>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_weight">
+            <property name="text">
+             <string>Weight:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox_weight">
+            <property name="suffix">
+             <string> kg</string>
+            </property>
+            <property name="decimals">
+             <number>1</number>
+            </property>
+            <property name="minimum">
+             <double>20.000000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>300.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_profile">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
          </property>

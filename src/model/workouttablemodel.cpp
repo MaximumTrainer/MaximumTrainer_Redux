@@ -5,6 +5,7 @@
 #include <QBrush>
 
 #include "util.h"
+#include "apptheme.h"
 
 
 
@@ -124,11 +125,17 @@ QVariant WorkoutTableModel::data(const QModelIndex &index, int role) const {
     }
 
 
-    ///BlueName for UserCreatedWorkout
+    ///Highlight colour for user-created workout names
     if (role == Qt::ForegroundRole && index.column() == 0 && account->enable_studio_mode && work.getWorkoutNameEnum() == Workout::MAP_TEST)
         return QVariant::fromValue(QColor(Qt::lightGray));
     else if (role == Qt::ForegroundRole && index.column() == 0 && work.getWorkoutNameEnum() == Workout::USER_MADE) {
-        return QVariant::fromValue(QColor(Qt::blue));
+        // Pick a blue that stays legible on both themes: plain Qt::blue is too
+        // dark to read on the dark-mode background, so use a lighter azure there
+        // and a deeper blue on the light background.
+        const bool dark = AppTheme::resolveMode(
+                              static_cast<AppTheme::Mode>(account->app_theme)) == AppTheme::Dark;
+        return QVariant::fromValue(dark ? QColor(0x5C, 0x9C, 0xFF)   // #5C9CFF
+                                        : QColor(0x15, 0x4F, 0xC2)); // #154FC2
     }
 
 

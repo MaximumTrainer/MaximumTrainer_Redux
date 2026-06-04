@@ -174,21 +174,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ftb = new FancyTabBar(FancyTabBar::TabBarPosition::Left, ui->widget_fancyMenu);
     ftb->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
+    // Tab indices must stay in sync with the pages in stackedWidget_menu
+    // (see leftMenuChanged): 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio,
+    // 4 History. The former Profile and Settings web-view tabs were removed —
+    // FTP/LTHR/weight now live in the Preferences dialog, and the server-hosted
+    // settings page is superseded by it.
     ftb->insertTab(0, QIcon(":/image/icon/workoutMan"), tr("Workout"));
     ftb->insertTab(1, QIcon(":/image/icon/calendar"),   tr("Intervals.icu"));
     ftb->insertTab(2, QIcon(":/image/icon/calendar"),  tr("Plan"));
     ftb->insertTab(3, QIcon(":/image/icon/studio"), tr("Studio"));
-    ftb->insertTab(4, QIcon(":/image/icon/user"), tr("Profile"));
-    ftb->insertTab(5, QIcon(":/image/icon/gear"), tr("Settings"));
-    ftb->insertTab(6, QIcon(":/image/icon/chart"), tr("History"));
+    ftb->insertTab(4, QIcon(":/image/icon/chart"), tr("History"));
 
     ftb->setTabEnabled(0, true);
     ftb->setTabEnabled(1, true);
     ftb->setTabEnabled(2, true);
     ftb->setTabEnabled(3, true);
     ftb->setTabEnabled(4, true);
-    ftb->setTabEnabled(5, true);
-    ftb->setTabEnabled(6, true);
 
 
 
@@ -268,6 +269,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(dconfig, &DialogMainWindowConfig::intervalsIcuCredentialsChanged, this, &MainWindow::reloadPlanWebView);
     connect(dconfig, &DialogMainWindowConfig::intervalsIcuCredentialsChanged,
             ui->tab_intervals_icu, &TabIntervalsIcu::refreshCredentials);
+    // Athlete profile (FTP/LTHR/weight) edited in Preferences → recompute zones
+    // and workout targets, same as the old profile page's FTP-change path.
+    connect(dconfig, &DialogMainWindowConfig::profileChanged,
+            this, &MainWindow::ftpAndTabProfileChanged);
 
 
     leftMenuChanged(0);
@@ -298,6 +303,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     /// from the workout-dialog Settings → Radio tab.
     lstRadio = Util::loadLocalRadioList();
     this->setEnabled(true);
+    ui->widget_bottomMenu->removeGeneralMessage();
 
     qDebug() << "Test1";
 
@@ -775,7 +781,15 @@ void MainWindow::leftMenuChanged(int tabSelected) {
         ftpChanged = false;
     }
 
-    ui->stackedWidget_menu->setCurrentIndex(tabSelected);
+    // The Profile (page 4) and Settings (page 5) tabs were removed from the tab
+    // bar, but their stacked-widget pages remain so the existing web views keep
+    // working for code that still references them. Map the 5 visible tabs to
+    // their pages: 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio, 4 History(=page 6).
+    static const int tabToPage[] = {0, 1, 2, 3, 6};
+    const int pageIndex = (tabSelected >= 0 && tabSelected < 5)
+                              ? tabToPage[tabSelected]
+                              : tabSelected;
+    ui->stackedWidget_menu->setCurrentIndex(pageIndex);
     currentIndexLeftMenu = tabSelected;
 
 }
@@ -1177,9 +1191,9 @@ void MainWindow::enableStudioMode(bool enable) {
         this->setWindowTitle("MaximumTrainer");
     }
 
+    // Disable the History tab (now index 4) while in studio mode. The former
+    // Profile (4) and Settings (5) tabs were removed.
     ftb->setTabEnabled(4, !enable);
-    ftb->setTabEnabled(5, !enable);
-    ftb->setTabEnabled(6, !enable);
 
 }
 
@@ -1583,7 +1597,7 @@ void MainWindow::on_actionOpen_Course_Folder_triggered()
 //-----------------------------------------------
 void MainWindow::on_actionHistory_triggered()
 {
-    ftb->setCurrentIndex(6);
+    ftb->setCurrentIndex(4); // History (was index 6 before Profile/Settings removal)
 }
 
 
@@ -1654,35 +1668,45 @@ void MainWindow::executeWorkout(Workout workout) {
     if (connDlg.selectedMethod() == DialogConnectionMethod::Simulation) {
         SimulatorHub *simHub = new SimulatorHub(this);
 
-        WorkoutDialog w(workout, lstRadio, vecUserStudio);
+        // Show WorkoutDialog NON-MODALLY (window-modal via setWindowModality,
+        // run on the main event loop instead of QDialog::exec()). The embedded
+        // QWebEngine video player reparents widgets when it initialises, which
+        // destroys and recreates the dialog's native window; inside a nested
+        // exec() loop that window-destroy calls QEventLoop::exit() and tears the
+        // dialog down. Running on the main loop removes that hazard. Post-workout
+        // cleanup moves to the finished() handler below.
+        WorkoutDialog *w = new WorkoutDialog(workout, lstRadio, vecUserStudio);
+        w->setAttribute(Qt::WA_DeleteOnClose);
+        w->setWindowModality(Qt::ApplicationModal);
 
-        connect(simHub, SIGNAL(signal_hr(int,int)),               &w, SLOT(HrDataReceived(int,int)));
-        connect(simHub, SIGNAL(signal_cadence(int,int)),          &w, SLOT(CadenceDataReceived(int,int)));
-        connect(simHub, SIGNAL(signal_speed(int,double)),         &w, SLOT(TrainerSpeedDataReceived(int,double)));
-        connect(simHub, SIGNAL(signal_power(int,int)),            &w, SLOT(PowerDataReceived(int,int)));
-        connect(simHub, SIGNAL(signal_oxygen(int,double,double)), &w, SLOT(OxygenValueChanged(int,double,double)));
+        connect(simHub, SIGNAL(signal_hr(int,int)),               w, SLOT(HrDataReceived(int,int)));
+        connect(simHub, SIGNAL(signal_cadence(int,int)),          w, SLOT(CadenceDataReceived(int,int)));
+        connect(simHub, SIGNAL(signal_speed(int,double)),         w, SLOT(TrainerSpeedDataReceived(int,double)));
+        connect(simHub, SIGNAL(signal_power(int,int)),            w, SLOT(PowerDataReceived(int,int)));
+        connect(simHub, SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
 
-        connect(&w, SIGNAL(setLoad(int,double)),  simHub, SLOT(setLoad(int,double)));
-        connect(&w, SIGNAL(setSlope(int,double)), simHub, SLOT(setSlope(int,double)));
-        connect(&w, SIGNAL(stopDecodingMsgHub()), simHub, SLOT(stopDecodingMsg()));
+        connect(w, SIGNAL(setLoad(int,double)),  simHub, SLOT(setLoad(int,double)));
+        connect(w, SIGNAL(setSlope(int,double)), simHub, SLOT(setSlope(int,double)));
+        connect(w, SIGNAL(stopDecodingMsgHub()), simHub, SLOT(stopDecodingMsg()));
 
-        connect(&w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
-        connect(&w, SIGNAL(ftp_lthr_changed()), this, SLOT(updateZoneInterface()));
-        connect(&w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
-        connect(&w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
+        connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
+        connect(w, SIGNAL(ftp_lthr_changed()), this, SLOT(updateZoneInterface()));
+        connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
+        connect(w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
+
+        connect(w, &QDialog::finished, this, [this, simHub]() {
+            workoutOver();
+            simHub->stopDecodingMsg();
+            delete simHub;
+            ui->webView_achiev->reload();
+            // Auto-advance to next queued workout if one exists
+            tryAdvanceWorkoutQueue();
+        });
 
         simHub->start();
         workoutExecuting();
         QApplication::restoreOverrideCursor();
-        w.exec();
-        workoutOver();
-
-        simHub->stopDecodingMsg();
-        delete simHub;
-        ui->webView_achiev->reload();
-
-        // Auto-advance to next queued workout if one exists
-        tryAdvanceWorkoutQueue();
+        w->show();
         return;
     }
 
@@ -1728,48 +1752,54 @@ void MainWindow::executeWorkout(Workout workout) {
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
-    WorkoutDialog w(workout, lstRadio, vecUserStudio);
+    // Show WorkoutDialog NON-MODALLY (window-modal, run on the main event loop
+    // instead of QDialog::exec()) so the embedded QWebEngine video player does
+    // not tear down the dialog when it initialises. See the simulation path
+    // above for the full rationale. Post-workout cleanup moves to finished().
+    WorkoutDialog *w = new WorkoutDialog(workout, lstRadio, vecUserStudio);
+    w->setAttribute(Qt::WA_DeleteOnClose);
+    w->setWindowModality(Qt::ApplicationModal);
 
-    connect(btleHub, SIGNAL(signal_hr(int,int)),               &w, SLOT(HrDataReceived(int,int)));
-    connect(btleHub, SIGNAL(signal_cadence(int,int)),          &w, SLOT(CadenceDataReceived(int,int)));
-    connect(btleHub, SIGNAL(signal_speed(int,double)),         &w, SLOT(TrainerSpeedDataReceived(int,double)));
-    connect(btleHub, SIGNAL(signal_power(int,int)),            &w, SLOT(PowerDataReceived(int,int)));
-    connect(btleHub, SIGNAL(signal_oxygen(int,double,double)), &w, SLOT(OxygenValueChanged(int,double,double)));
-    connect(btleHub, &BtleHub::signal_battery, &w, &WorkoutDialog::batteryStatusReceived);
+    connect(btleHub, SIGNAL(signal_hr(int,int)),               w, SLOT(HrDataReceived(int,int)));
+    connect(btleHub, SIGNAL(signal_cadence(int,int)),          w, SLOT(CadenceDataReceived(int,int)));
+    connect(btleHub, SIGNAL(signal_speed(int,double)),         w, SLOT(TrainerSpeedDataReceived(int,double)));
+    connect(btleHub, SIGNAL(signal_power(int,int)),            w, SLOT(PowerDataReceived(int,int)));
+    connect(btleHub, SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
+    connect(btleHub, &BtleHub::signal_battery, w, &WorkoutDialog::batteryStatusReceived);
 
     // Surface BLE disconnections mid-workout so WorkoutDialog can pause and
     // the user sees the DOM reconnect overlay (WASM) or a status message.
-    connect(btleHub, &BtleHub::connectionError, &w, &WorkoutDialog::onBleConnectionError);
+    connect(btleHub, &BtleHub::connectionError, w, &WorkoutDialog::onBleConnectionError);
 
-    connect(&w, SIGNAL(setLoad(int,double)),  btleHub, SLOT(setLoad(int,double)));
-    connect(&w, SIGNAL(setSlope(int,double)), btleHub, SLOT(setSlope(int,double)));
-    connect(&w, SIGNAL(stopDecodingMsgHub()), btleHub, SLOT(stopDecodingMsg()));
+    connect(w, SIGNAL(setLoad(int,double)),  btleHub, SLOT(setLoad(int,double)));
+    connect(w, SIGNAL(setSlope(int,double)), btleHub, SLOT(setSlope(int,double)));
+    connect(w, SIGNAL(stopDecodingMsgHub()), btleHub, SLOT(stopDecodingMsg()));
 
 #ifdef Q_OS_WASM
     // On WASM, BtleHub is aliased to BtleHubWasm which exposes scanForDevice().
     // The DOM overlay's Reconnect button routes through bleReconnectRequestC →
     // BtleHubWasm::scanForDevice(), but WorkoutDialog can also emit reconnectDevice()
     // if needed from Qt-side logic.
-    connect(&w, &WorkoutDialog::reconnectDevice, btleHub, &BtleHub::scanForDevice);
+    connect(w, &WorkoutDialog::reconnectDevice, btleHub, &BtleHub::scanForDevice);
 #endif
 
-    connect(&w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
-    connect(&w, SIGNAL(ftp_lthr_changed()), this, SLOT(updateZoneInterface()));
-    connect(&w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
-    connect(&w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
+    connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
+    connect(w, SIGNAL(ftp_lthr_changed()), this, SLOT(updateZoneInterface()));
+    connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
+    connect(w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
+
+    connect(w, &QDialog::finished, this, [this, btleHub]() {
+        workoutOver();
+        btleHub->disconnectFromDevice();
+        delete btleHub;
+        ui->webView_achiev->reload();
+        // Auto-advance to next queued workout if one exists
+        tryAdvanceWorkoutQueue();
+    });
 
     workoutExecuting();
     QApplication::restoreOverrideCursor();
-    w.exec();
-    workoutOver();
-
-    btleHub->disconnectFromDevice();
-    delete btleHub;
-
-    ui->webView_achiev->reload();
-
-    // Auto-advance to next queued workout if one exists
-    tryAdvanceWorkoutQueue();
+    w->show();
 }
 
 
@@ -2181,25 +2211,19 @@ void MainWindow::updateTrainerCurve(int trainer_id, QString companyName, QString
 // Delays (ms) applied AFTER completing each step, before starting the next.
 // Indexed by the step index that just finished: ssDelays[step] → next step.
 static const int ssDelays[] = {
-    800,   // after step  0 (captured main window)      → switch to Settings
-    1000,  // after step  1 (switched to Settings)       → capture Settings
-    500,   // after step  2 (captured Settings)           → switch to WorkoutCreator
-    1000,  // after step  3 (loaded WorkoutCreator)       → capture WorkoutCreator
-    500,   // after step  4 (captured WorkoutCreator)     → launch WorkoutDialog
-    9000,  // after step  5 (launched WorkoutDialog)      → capture running workout
-    200,   // after step  6 (captured workout)            → close WorkoutDialog
-    600,   // after step  7 (closed WorkoutDialog)        → enable studio mode
-    2000,  // after step  8 (enabled studio mode)         → capture Studio
-    500,   // after step  9 (captured Studio)              → switch to Intervals.icu
-    1500,  // after step 10 (switched to Intervals.icu)    → capture Intervals.icu
-    500,   // after step 11 (captured Intervals.icu)       → switch to Plan
-    1500,  // after step 12 (switched to Plan)             → capture Plan
-    500,   // after step 13 (captured Plan)                → switch to Profile
-    1500,  // after step 14 (switched to Profile)          → capture Profile
-    500,   // after step 15 (captured Profile)             → switch to Achievements
-    1500,  // after step 16 (switched to Achievements)     → capture Achievements
-    500,   // after step 17 (captured Achievements)        → switch to History
-    1500,  // after step 18 (switched to History)          → capture History
+    800,   // after step  0 (captured main window)      → switch to WorkoutCreator
+    1000,  // after step  1 (loaded WorkoutCreator)     → capture WorkoutCreator
+    500,   // after step  2 (captured WorkoutCreator)   → launch WorkoutDialog
+    9000,  // after step  3 (launched WorkoutDialog)    → capture running workout
+    200,   // after step  4 (captured workout)          → close WorkoutDialog
+    600,   // after step  5 (closed WorkoutDialog)      → enable studio mode
+    2000,  // after step  6 (enabled studio mode)       → capture Studio
+    500,   // after step  7 (captured Studio)           → switch to Intervals.icu
+    1500,  // after step  8 (switched to Intervals.icu) → capture Intervals.icu
+    500,   // after step  9 (captured Intervals.icu)    → switch to Plan
+    1500,  // after step 10 (switched to Plan)          → capture Plan
+    500,   // after step 11 (captured Plan)             → switch to History
+    1500,  // after step 12 (switched to History)       → capture History
 };
 
 Workout MainWindow::makeDemoWorkout() const
@@ -2309,36 +2333,35 @@ void MainWindow::screenshotNextStep()
         QCoreApplication::processEvents();
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_main_window.png"), "PNG");
         qDebug() << "Screenshot: main_window";
+        // Capture the Preferences dialog as the "settings" screenshot. The
+        // former server-hosted Settings tab was removed; the native Preferences
+        // dialog (DialogMainWindowConfig) is now the settings surface.
+        if (dconfig) {
+            dconfig->show();
+            dconfig->raise();
+            QCoreApplication::processEvents();
+            dconfig->grab().save(m_ssOutputDir + QLatin1String("/screenshot_settings.png"), "PNG");
+            dconfig->hide();
+            qDebug() << "Screenshot: settings (Preferences dialog)";
+        }
         break;
 
-    // ── Step 1: switch to Settings tab (tab 5) ───────────────────────────
+    // ── Step 1: switch to WorkoutCreator and load demo workout ───────────
     case 1:
-        ftb->setCurrentIndex(5);
-        QCoreApplication::processEvents();
-        break;
-
-    // ── Step 2: capture Settings ─────────────────────────────────────────
-    case 2:
-        grab().save(m_ssOutputDir + QLatin1String("/screenshot_settings.png"), "PNG");
-        qDebug() << "Screenshot: settings";
-        break;
-
-    // ── Step 3: switch to WorkoutCreator and load demo workout ───────────
-    case 3:
         ftb->setCurrentIndex(0);
         ui->tabWidget_workout->setCurrentIndex(1);
         ui->tab_create->editWorkout(makeDemoWorkout());
         QCoreApplication::processEvents();
         break;
 
-    // ── Step 4: capture WorkoutCreator ───────────────────────────────────
-    case 4:
+    // ── Step 2: capture WorkoutCreator ───────────────────────────────────
+    case 2:
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_workout_editor.png"), "PNG");
         qDebug() << "Screenshot: workout_editor";
         break;
 
-    // ── Step 5: launch WorkoutDialog with SimulatorHub (non-modal) ───────
-    case 5: {
+    // ── Step 3: launch WorkoutDialog with SimulatorHub (non-modal) ───────
+    case 3: {
         ftb->setCurrentIndex(0);
         ui->tabWidget_workout->setCurrentIndex(0);
 
@@ -2365,8 +2388,8 @@ void MainWindow::screenshotNextStep()
         break;
     }
 
-    // ── Step 6: capture workout running ──────────────────────────────────
-    case 6:
+    // ── Step 4: capture workout running ──────────────────────────────────
+    case 4:
         if (m_ssWorkoutDlg) {
             m_ssWorkoutDlg->raise();
             QCoreApplication::processEvents();
@@ -2376,8 +2399,8 @@ void MainWindow::screenshotNextStep()
         }
         break;
 
-    // ── Step 7: close WorkoutDialog ───────────────────────────────────────
-    case 7:
+    // ── Step 5: close WorkoutDialog ───────────────────────────────────────
+    case 5:
         if (m_ssWorkoutDlg) {
             // Use hide() rather than close() to avoid triggering reject() →
             // sureYouWantToQuit() → start_or_pause_workout(), which would
@@ -2394,8 +2417,8 @@ void MainWindow::screenshotNextStep()
         QCoreApplication::processEvents();
         break;
 
-    // ── Step 8: enable studio mode and switch to Studio tab (tab 3) ──────
-    case 8:
+    // ── Step 6: enable studio mode and switch to Studio tab (tab 3) ──────
+    case 6:
         setNumberUserStudio(6);
         enableStudioMode(true);
         ftb->setCurrentIndex(3);
@@ -2404,29 +2427,29 @@ void MainWindow::screenshotNextStep()
         QCoreApplication::processEvents();
         break;
 
-    // ── Step 9: capture studio mode ───────────────────────────────────────
-    case 9:
+    // ── Step 7: capture studio mode ───────────────────────────────────────
+    case 7:
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_studio_mode.png"), "PNG");
         qDebug() << "Screenshot: studio_mode";
         enableStudioMode(false);
         break;
 
-    // ── Step 10: switch to Intervals.icu tab (tab 1) ─────────────────────
-    case 10:
+    // ── Step 8: switch to Intervals.icu tab (tab 1) ─────────────────────
+    case 8:
         ftb->setCurrentIndex(1);
         raise();
         activateWindow();
         QCoreApplication::processEvents();
         break;
 
-    // ── Step 11: capture Intervals.icu ────────────────────────────────────
-    case 11:
+    // ── Step 9: capture Intervals.icu ────────────────────────────────────
+    case 9:
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_activity_history.png"), "PNG");
         qDebug() << "Screenshot: activity_history (Intervals.icu tab)";
         break;
 
-    // ── Step 12: switch to Plan tab (tab 2) ───────────────────────────────
-    case 12:
+    // ── Step 10: switch to Plan tab (tab 2) ───────────────────────────────
+    case 10:
         ftb->setCurrentIndex(2);
         ui->tabWidget->setCurrentIndex(0);   // Plan sub-tab
         raise();
@@ -2434,49 +2457,22 @@ void MainWindow::screenshotNextStep()
         QCoreApplication::processEvents();
         break;
 
-    // ── Step 13: capture Plan ─────────────────────────────────────────────
-    case 13:
+    // ── Step 11: capture Plan ─────────────────────────────────────────────
+    case 11:
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_plan.png"), "PNG");
         qDebug() << "Screenshot: plan";
         break;
 
-    // ── Step 14: switch to Profile tab (tab 4) ────────────────────────────
-    case 14:
+    // ── Step 12: switch to History tab (tab 4) ────────────────────────────
+    case 12:
         ftb->setCurrentIndex(4);
-        ui->tabWidget_profile->setCurrentIndex(0);   // Profile sub-tab
         raise();
         activateWindow();
         QCoreApplication::processEvents();
         break;
 
-    // ── Step 15: capture Profile ──────────────────────────────────────────
-    case 15:
-        grab().save(m_ssOutputDir + QLatin1String("/screenshot_profile.png"), "PNG");
-        qDebug() << "Screenshot: profile";
-        break;
-
-    // ── Step 16: switch to Achievements sub-tab (still tab 4) ────────────
-    case 16:
-        ui->tabWidget_profile->setCurrentIndex(1);   // Achievements sub-tab
-        QCoreApplication::processEvents();
-        break;
-
-    // ── Step 17: capture Achievements ────────────────────────────────────
-    case 17:
-        grab().save(m_ssOutputDir + QLatin1String("/screenshot_achievements.png"), "PNG");
-        qDebug() << "Screenshot: achievements";
-        break;
-
-    // ── Step 18: switch to History tab (tab 6) ────────────────────────────
-    case 18:
-        ftb->setCurrentIndex(6);
-        raise();
-        activateWindow();
-        QCoreApplication::processEvents();
-        break;
-
-    // ── Step 19: capture History ─────────────────────────────────────────
-    case 19:
+    // ── Step 13: capture History ─────────────────────────────────────────
+    case 13:
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_history.png"), "PNG");
         qDebug() << "Screenshot: history";
         QTimer::singleShot(300, qApp, SLOT(quit()));

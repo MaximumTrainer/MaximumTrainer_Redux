@@ -87,13 +87,18 @@ DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent
     QListWidgetItem *item3 = new QListWidgetItem(QIcon(":/image/icon/folder"), tr("Folders"), ui->listWidget_settings);
     QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/upload"), tr("Auto Upload"), ui->listWidget_settings);
     QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/calendar"), tr("Cloud Sync"), ui->listWidget_settings);
-    QListWidgetItem *item6 = new QListWidgetItem(QIcon(":/image/icon/gear"), tr("Logging"), ui->listWidget_settings);
+    // "Profile" reuses the old main-page profile icon; its page (page_profile)
+    // is the last static page in the .ui, so it maps to stacked index 5 and the
+    // runtime-added Logging page lands at index 6 — keep this order in sync.
+    QListWidgetItem *item6 = new QListWidgetItem(QIcon(":/image/icon/user"), tr("Profile"), ui->listWidget_settings);
+    QListWidgetItem *item7 = new QListWidgetItem(QIcon(":/image/icon/gear"), tr("Logging"), ui->listWidget_settings);
     item1->setSizeHint(QSize(35,35));
     item2->setSizeHint(QSize(35,35));
     item3->setSizeHint(QSize(35,35));
     item4->setSizeHint(QSize(35,35));
     item5->setSizeHint(QSize(35,35));
     item6->setSizeHint(QSize(35,35));
+    item7->setSizeHint(QSize(35,35));
 
     ui->listWidget_settings->addItem(item1);
     ui->listWidget_settings->addItem(item2);
@@ -101,8 +106,10 @@ DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent
     ui->listWidget_settings->addItem(item4);
     ui->listWidget_settings->addItem(item5);
     ui->listWidget_settings->addItem(item6);
+    ui->listWidget_settings->addItem(item7);
 
-    // Add the logging page to the stacked widget
+    // Add the logging page to the stacked widget (lands at index 6, after the
+    // static page_profile at index 5)
     ui->stackedWidget->addWidget(createLoggingPage());
 
 
@@ -186,6 +193,11 @@ void DialogMainWindowConfig::initUI() {
     ui->lineEdit_intervalsAthleteId->setText(account->intervals_icu_athlete_id);
     ui->checkBox_intervalsAutoUpload->setChecked(account->intervals_icu_auto_upload);
     ui->label_intervalsTestResult->clear();
+
+    // Athlete profile (FTP / LTHR / weight) — edited here, persisted locally.
+    ui->spinBox_ftp->setValue(account->FTP);
+    ui->spinBox_lthr->setValue(account->LTHR);
+    ui->doubleSpinBox_weight->setValue(account->weight_kg);
 
 }
 
@@ -449,6 +461,16 @@ void DialogMainWindowConfig::accept() {
     settings->historyFolder = ui->lineEdit_historyDir->text();
     account->force_workout_window_on_top = ui->checkBox_forceOnTop->isChecked();
 
+    // Athlete profile (FTP / LTHR / weight) — persist locally and notify the
+    // main window so dependent metrics (zones, workout targets) recompute.
+    const bool profileChangedNow =
+        account->FTP       != ui->spinBox_ftp->value() ||
+        account->LTHR      != ui->spinBox_lthr->value() ||
+        account->weight_kg != ui->doubleSpinBox_weight->value();
+    account->saveProfileFields(ui->spinBox_ftp->value(),
+                               ui->spinBox_lthr->value(),
+                               ui->doubleSpinBox_weight->value());
+
     // Persist the theme choice but apply it on next launch only. Live
     // re-styling via qApp->setStyleSheet() does not reliably repolish widgets
     // that carry their own stylesheets (the workout table, message boxes,
@@ -504,10 +526,22 @@ void DialogMainWindowConfig::accept() {
 
     settings->saveGeneralSettings();
 
+    // Persist the preferences edited here locally (the maximumtrainer.com
+    // account endpoint is defunct): general/trainer/pairing/upload toggles via
+    // saveDisplayPrefs(), and the third-party credentials via their encrypted
+    // credential-store savers (covers Selfloops edits and Strava/TP disconnects).
+    account->saveDisplayPrefs();
+    account->saveSelfloopsCredentials();
+    account->saveStravaCredentials();
+    account->saveTrainingPeaksCredentials();
+
     if (intervalsChanged)
         emit intervalsIcuCredentialsChanged();
 
     saveLoggingSettings();
+
+    if (profileChangedNow)
+        emit profileChanged();
 
     QDialog::accept();
 

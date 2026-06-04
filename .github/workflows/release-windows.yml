@@ -247,11 +247,10 @@ jobs:
           "Qt6Core.dll",
           "Qt6Widgets.dll",
           "Qt6OpenGL.dll",
+          "Qt6OpenGLWidgets.dll",
           "libssl-3-x64.dll",
           "libcrypto-3-x64.dll",
-          "sfml-audio-2.dll",
-          "sfml-system-2.dll",
-          "openal32.dll"
+          "Qt6Multimedia.dll"
         )
         $failed = $false
         foreach ($file in $required) {

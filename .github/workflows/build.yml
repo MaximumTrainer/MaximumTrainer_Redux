@@ -11,6 +11,15 @@ on:
   pull_request:
     branches: [master]
 
+# Auto-cancel superseded runs: a new push to the same branch/PR cancels the
+# older in-flight run, so rapid iteration only pays for the latest commit's
+# full cross-platform matrix (Linux/Windows/macOS/WASM) instead of all of them.
+# head_ref (PR source branch) collapses the push + pull_request events for fork
+# PRs into one lane; master is never cancelled so every release build completes.
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
 jobs:
 
   # ──────────────────────────────────────────────────────────────────────────

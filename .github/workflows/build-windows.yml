@@ -87,19 +87,6 @@ jobs:
         Write-Host "OpenSSL DLLs at: $($dll.DirectoryName)"
       shell: powershell
 
-    - name: Restore SFML cache
-      id: sfml-cache
-      uses: actions/cache@v4
-      with:
-        path: C:\sfml
-        key: sfml-2.6.1-vc17-win64
-
-    - name: Download and install SFML
-      if: steps.sfml-cache.outputs.cache-hit != 'true'
-      run: |
-        curl.exe -L -o "$env:TEMP\sfml.zip" "https://github.com/SFML/SFML/releases/download/2.6.1/SFML-2.6.1-windows-vc17-64-bit.zip"
-        Expand-Archive -Path "$env:TEMP\sfml.zip" -DestinationPath "C:\sfml"
-      shell: powershell
 
     - name: Restore QWT cache
       id: qwt-cache
@@ -151,14 +138,11 @@ jobs:
     - name: Create Makefile
       run: |
         $qwtInstallDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
-        $sfmlDir = (Get-ChildItem "C:\sfml" -Directory | Select-Object -First 1).FullName
-        $sfmlDirFwd = $sfmlDir -replace '\\','/'
         $env:TP_CLIENT_SECRET = "${{ secrets.TP_CLIENT_SECRET }}"
         $env:INTERVALS_OAUTH_CLIENT_ID = "${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}"
         $env:INTERVALS_OAUTH_CLIENT_SECRET = "${{ secrets.INTERVALS_OAUTH_CLIENT_SECRET }}"
         qmake PowerVelo.pro `
-          "QWT_INSTALL=$qwtInstallDirFwd" `
-          "SFML_INSTALL=$sfmlDirFwd"
+          "QWT_INSTALL=$qwtInstallDirFwd"
       shell: powershell
 
     - name: Build
@@ -178,6 +162,19 @@ jobs:
         }
         Copy-Item $qwtDll "build\release\" -Force
         Write-Host "Copied qwt.dll to build\release\"
+
+        # qwt.dll itself depends on Qt6OpenGLWidgets.dll, but windeployqt only
+        # scans MaximumTrainer.exe's *direct* Qt imports — and the app links
+        # Qt6OpenGL / Qt6Svg directly but never Qt6OpenGLWidgets, so that DLL is
+        # never deployed. Loading qwt.dll then aborts the process before main()
+        # with STATUS_DLL_NOT_FOUND (0xC0000135). Copy it explicitly.
+        $openGlWidgets = "$env:QTDIR\bin\Qt6OpenGLWidgets.dll"
+        if (-not (Test-Path $openGlWidgets)) {
+          Write-Error "Qt6OpenGLWidgets.dll not found at expected path: $openGlWidgets"
+          exit 1
+        }
+        Copy-Item $openGlWidgets "build\release\" -Force
+        Write-Host "Copied Qt6OpenGLWidgets.dll to build\release\"
       shell: powershell
 
     - name: Copy OpenSSL DLLs
@@ -197,24 +194,6 @@ jobs:
           }
         } else {
           Write-Warning "OPENSSL_BIN directory not found: $opensslBin"
-        }
-      shell: powershell
-
-    - name: Copy SFML runtime DLLs
-      # sfml-audio-2.dll (and its dependencies sfml-system-2.dll, openal32.dll)
-      # are not discovered by windeployqt. Copy the release-mode DLLs from the
-      # SFML bin directory so the installed app can load them at runtime.
-      run: |
-        $sfmlDir = (Get-ChildItem "C:\sfml" -Directory | Select-Object -First 1).FullName
-        $sfmlBin = "$sfmlDir\bin"
-        foreach ($dll in @("sfml-audio-2.dll", "sfml-system-2.dll", "openal32.dll")) {
-          $src = "$sfmlBin\$dll"
-          if (Test-Path $src) {
-            Copy-Item $src "build\release\" -Force
-            Write-Host "Copied $dll"
-          } else {
-            Write-Warning "SFML DLL not found: $src"
-          }
         }
       shell: powershell
 
@@ -367,6 +346,17 @@ jobs:
           Write-Host "Copied qwt.dll to build\tests\"
         } else {
           Write-Warning "qwt.dll not found at $qwtDll - workout_ui_tests may fail to load"
+        }
+        # qwt.dll depends on Qt6OpenGLWidgets.dll, which windeployqt does not
+        # deploy for binaries that link qwt only transitively (it scans direct
+        # Qt imports only). Any test that pulls in qwt — or launches
+        # MaximumTrainer.exe — aborts at load with 0xC0000135 without it.
+        $openGlWidgets = "$env:QTDIR\bin\Qt6OpenGLWidgets.dll"
+        if (Test-Path $openGlWidgets) {
+          Copy-Item $openGlWidgets "build\tests\" -Force
+          Write-Host "Copied Qt6OpenGLWidgets.dll to build\tests\"
+        } else {
+          Write-Warning "Qt6OpenGLWidgets.dll not found at $openGlWidgets"
         }
         # FFmpeg DLLs for the QtMultimedia backend: tests that construct a
         # WorkoutDialog (workout_ui_tests) or launch MaximumTrainer.exe
@@ -746,19 +736,6 @@ jobs:
       contents: read
 
     steps:
-    - name: Configure OpenAL null audio driver for headless CI
-      # On headless Windows Server runners there is no audio endpoint device.
-      # SFML's OpenAL-Soft layer (openal32.dll) crashes with
-      # STATUS_STACK_BUFFER_OVERRUN when it can't find any mmdevapi endpoint.
-      # Pointing ALSOFT_CONF at a config that selects the built-in null driver
-      # lets OpenAL initialise cleanly without any audio hardware — no driver
-      # install or reboot required.
-      run: |
-        $confPath = "$env:TEMP\alsoft.conf"
-        "[general]`ndrivers=null" | Set-Content -Path $confPath -Encoding ASCII
-        Add-Content -Path $env:GITHUB_ENV -Value "ALSOFT_CONF=$confPath"
-      shell: powershell
-
     - name: Download build artifact
       uses: actions/download-artifact@v4
       with:

@@ -595,6 +595,7 @@ void Main_WorkoutPage::filterChangedWorkoutType(bool includedWorkout) {
 
 
     account->show_included_workout = includedWorkout;
+    account->saveDisplayPrefs(); // persist locally so the choice survives a restart
 }
 
 

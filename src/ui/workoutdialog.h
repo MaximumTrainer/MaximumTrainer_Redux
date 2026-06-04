@@ -34,6 +34,7 @@
 
 
 class DialogConfig;     // forward declaration
+class WebBrowserView;   // forward declaration (lazily created web video player)
 
 namespace Ui {
 class WorkoutDialog;
@@ -49,6 +50,8 @@ public:
     ~WorkoutDialog();
 
     void reject();
+
+    void showVideoPlayer(int choice);
 
     void showHeartRateDisplayWidget(int display);
     void showPowerDisplayWidget(int display);
@@ -198,7 +201,6 @@ private slots:
     void speedDataChosen(int userID, double value);
 
     void closeWindow();
-    void minimizeWindow();
     void expandWindow();
     void showConfig();
     void toggleTransparent();
@@ -294,6 +296,13 @@ private:
 #ifdef GC_HAVE_QTMULTIMEDIA
     MyVlcPlayer *radioPlayer;
 #endif
+
+    // Embedded web video player (QWebEngine-based). Created lazily the first
+    // time the user selects the WebView option, so the heavy Chromium process
+    // is not spun up when the default VLC player is in use.
+    WebBrowserView *webPlayer = nullptr;
+    /// Returns the web player, creating it (inside widget_webPlayer) on first use.
+    WebBrowserView *ensureWebPlayer();
 
     DialogConfig *dconfig;
     QList<Radio> lstRadio;

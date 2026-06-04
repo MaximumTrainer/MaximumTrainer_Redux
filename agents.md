@@ -16,6 +16,7 @@
 4. [Testing Approach & Quality Assurance](#4-testing-approach--quality-assurance)
 5. [Best Practices for Maintainability & Scalability](#5-best-practices-for-maintainability--scalability)
 6. [Performance & Safety](#6-performance--safety)
+7. [Deferred Work & Tracking](#7-deferred-work--tracking)
 
 ---
 
@@ -34,7 +35,7 @@ completed activities to the Garmin FIT format.
 | Plotting | QWT 6.2 |
 | Serialisation | Garmin FIT SDK, TCX, GPX, XML |
 | Hardware protocols | BLE (Qt Bluetooth) |
-| Audio/Video | QtMultimedia (video + radio), SFML (sound effects), platform stubs for WASM |
+| Audio/Video | QtMultimedia (`QMediaPlayer` video + radio, `QSoundEffect` sound effects), platform stubs for WASM |
 | Build system | qmake `.pro` / `.pri` |
 | CI/CD | GitHub Actions (Linux · Windows · macOS · WebAssembly) |
 
@@ -203,7 +204,7 @@ behind compile-time guards or swappable adapters"**.
      │           webbluetooth_bridge  (WASM JS bridge) │
      │                                                 │
      │  Media:   myqtmediaplayer.cpp  (QtMultimedia)   │
-     │           soundplayer.cpp      (SFML desktop)   │
+     │           soundplayer.cpp      (QSoundEffect)   │
      │           soundplayer_wasm.cpp (WASM stub)      │
      │                                                 │
      │  Scanner: btle_scanner_dialog.cpp   (desktop)   │
@@ -224,7 +225,7 @@ scopes (`wasm`, `win32`, `macx`, `linux`) and optional defines
 |---------|-----------|-----------|
 | No native BLE APIs | Web Bluetooth is promise-based | `BtleHubWasm` + `WebBluetoothBridge` (Emscripten embind + JS callbacks) |
 | No file-system access | `QFile` writes are in-memory | Persist via browser download prompt |
-| No QtMultimedia / SFML | Shared libs unavailable | `soundplayer_wasm.cpp` stub; no video |
+| No QtMultimedia | Module unavailable on WASM | `soundplayer_wasm.cpp` stub; no video |
 | Single-threaded Emscripten | `pthread` unavailable (singlethread build) | No `QThread` use in WASM paths |
 | `QWebEngineWidgets` absent | Not ported to WASM | Stub headers in `src/ui/wasm_stubs/` |
 
@@ -406,7 +407,7 @@ cd ../..
 |-----------|------|---------|
 | `SimulatorHub` | `src/btle/simulator_hub.cpp` | UI simulation mode, integration tests |
 | `BtleDeviceSimulator` | `tests/btle/btle_device_simulator.h` | Unit test byte-level fake device |
-| WASM audio stub | `src/app/soundplayer_wasm.cpp` | WASM build (no SFML) |
+| WASM audio stub | `src/app/soundplayer_wasm.cpp` | WASM build (no QtMultimedia) |
 | WASM WebEngine stub | `src/ui/wasm_stubs/` | WASM build (no QtWebEngineWidgets) |
 
 The design principle is: **no test should require physical hardware**.
@@ -640,6 +641,71 @@ onControllerDisconnected()
 
 ---
 
+## 7. Deferred Work & Tracking
+
+Known follow-up work and intentional technical decisions that are not obvious
+from the code alone.
+
+### 7.1 Deferred Tasks
+
+**Remove the PowerCurve feature entirely.** PowerCurve was removed from the
+product but still exists throughout the code (~20 files, 100+ references).
+Scrape it out as its own dedicated PR (large; touches plotting, studio users,
+and persistence):
+
+- `src/model/powercurve.{cpp,h}` (delete)
+- References across `account.{cpp,h}`, `userstudio.{cpp,h}`,
+  `workoutplot.{cpp,h}`, `mainwindow.{cpp,h}`, `dialogconfig.{cpp,h}`,
+  `workoutdialog.{cpp,h}`, `util.cpp`, `globalvars.cpp`, `zoneobject.cpp`,
+  `xmlutil.cpp`, `userdao.cpp`, `settings.h`
+- While at it, remove the orphaned profile-physio fields listed in §7.2.
+
+**Remove the Course feature entirely.** The Course feature is fully dormant —
+`main_coursepage.{cpp,h,ui}` is commented out of `ui.pri`, the `MainWindow`
+course references are commented out, and there is no Course tab. Remove it as
+its own PR:
+
+- `src/model/course.{cpp,h}`, `coursetablemodel.{cpp,h}`,
+  `sortfilterproxymodelcourse.{cpp,h}`, `src/ui/main_coursepage.{cpp,h,ui}`
+- Course tendrils in `xmlutil` (`parseCourseLstPath`, `createCourseXml`,
+  `getLstUserCourse`, `getLstCourseIncluded`), `googlemapwidget`,
+  `settings` (`courseFolder`), `dialogmainwindowconfig` (course-folder field),
+  `environnement`, and the course menu actions
+- **Exclude** the FIT-SDK "course" message types (`fit_profile`,
+  `fit_factory`, `fit_mesg_broadcaster`) and `gpxparser` — those are unrelated
+  to the app's Course feature.
+
+**Offline achievement tracking.** Achievements were a sub-tab of the
+(now-removed) main-page Profile tab, rendered by a server-hosted
+`QWebEngineView` (`webView_achiev` → `Environnement::getUrlAchievement()`), and
+were dropped from the UI. To bring them back offline: compute unlocks locally
+(`src/fitness/achievements/achievementchecker.*` and `managerachievement.*`
+already exist but currently round-trip through `AchievementDao` network calls),
+add local persistence for unlocked achievements, and build a native (non-web)
+achievements UI.
+
+### 7.2 Settings Persistence — Local Only
+
+The `maximumtrainer.com` account endpoint that historically stored user
+settings is **defunct**. All user-editable settings are persisted locally in
+the `displayPrefs` QSettings group via `Account::save/loadDisplayPrefs()` (with
+encrypted credential stores for third-party tokens). **When adding a new user
+setting, persist it there — do not rely on the server.**
+
+**Profile physio fields are intentionally NOT persisted.** These `Account`
+fields only ever came from the server JSON and have no remaining UI, so
+persisting them would just store hardcoded defaults. They are left unpersisted
+and should be **removed with the PowerCurve cleanup** (§7.1):
+`height_cm`, `bike_weight_kg`, `wheel_circ`, `bike_type`, `minutes_rode`,
+`powerCurve`.
+
+(`FTP`, `LTHR`, and `weight_kg` *are* persisted — still user-editable via
+**Preferences → Profile**.)
+
+---
+
 *This document should be updated alongside any architectural change.
 When adding a new hardware protocol, runtime target, or test tier, update the
 relevant section and add an entry to the layer diagram.*
+
+<!-- ci: validate concurrency auto-cancel -->

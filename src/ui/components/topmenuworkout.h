@@ -53,7 +53,6 @@ public:
 
 
 signals :
-    void minimize();
     void expand();
     void config();
     void exit();
@@ -83,7 +82,6 @@ public slots:
 
 
 private slots:
-    void on_pushButton_minimize_clicked();
     void on_pushButton_expand_clicked();
     void on_pushButton_config_clicked();
 

@@ -47,7 +47,6 @@ jobs:
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          libsfml-dev \
           libusb-1.0-0-dev \
           libssl-dev \
           libgl1-mesa-dev \
@@ -887,8 +886,6 @@ jobs:
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          libsfml-audio2.5 \
-          libsfml-system2.5 \
           xvfb \
           libxcb-cursor0 \
           libfontconfig1 \

@@ -45,10 +45,10 @@ jobs:
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
-        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
 
-    - name: Install SFML and OpenSSL
-      run: brew install sfml openssl@3
+    - name: Install OpenSSL
+      run: brew install openssl@3
 
     - name: Build and install QWT
       run: |
@@ -76,12 +76,10 @@ jobs:
         # install_name. Fix it so macdeployqt can match it to the corrected dylib.
         install_name_tool -change /usr/lib/libqwt.6.dylib "$QWT_LIB" "$APP" || true
 
-        # Add SFML rpath (belt-and-suspenders; SFML uses absolute install_names on
-        # Homebrew so macdeployqt typically resolves it without rpaths, but adding
-        # the rpath makes the .app self-contained when moved between machines).
-        # '|| true' tolerates duplicate rpaths already baked in at build time.
+        # Add QWT rpath so the .app stays self-contained when moved between
+        # machines. '|| true' tolerates a duplicate rpath already baked in at
+        # build time. (QtMultimedia frameworks are handled by macdeployqt.)
         install_name_tool -add_rpath /usr/local/qwt-6.2.0/lib "$APP" || true
-        install_name_tool -add_rpath $(brew --prefix sfml)/lib "$APP" || true
 
         macdeployqt build/release/MaximumTrainer.app -dmg
         mv build/release/MaximumTrainer.dmg MaximumTrainer-macos.dmg
@@ -92,8 +90,8 @@ jobs:
         ls build/release/MaximumTrainer.app/Contents/Frameworks/ 2>/dev/null || echo "(Frameworks directory not found)"
         echo "=== QWT check ==="
         find build/release/MaximumTrainer.app -name "libqwt*" 2>/dev/null || echo "WARN: libqwt not bundled"
-        echo "=== SFML check ==="
-        find build/release/MaximumTrainer.app -name "*sfml*" 2>/dev/null || echo "WARN: sfml not bundled"
+        echo "=== QtMultimedia check ==="
+        find build/release/MaximumTrainer.app -name "*QtMultimedia*" 2>/dev/null || echo "WARN: QtMultimedia not bundled"
         echo "=== QtOpenGL check ==="
         if find build/release/MaximumTrainer.app -name "QtOpenGL*" -print -quit 2>/dev/null | grep -q .; then
           echo "PASS: QtOpenGL found in .app bundle"

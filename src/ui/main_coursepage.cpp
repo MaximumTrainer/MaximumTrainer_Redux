@@ -316,6 +316,7 @@ void Main_CoursePage::filterChangedCourseType(bool includeCourse) {
 
 
     account->show_included_course = includeCourse;
+    account->saveDisplayPrefs(); // persist locally so the choice survives a restart
 }
 
 
