@@ -141,6 +141,16 @@ contains(QMAKE_PLATFORM, wasm) | wasm_emscripten | wasm_emscripten_singlethread 
     # Without this, wasm-ld reports undefined symbols _emval_new, _emval_call_void_method etc.
     LIBS += -lembind
 
+    # QWT for WASM is built from source and passed via QWT_INSTALL=... . The
+    # platform blocks below are guarded against wasm, so wire the include/lib
+    # paths here. (No qwt feature file exists for the from-source build, hence
+    # the QWT_INSTALL gate at the top skips "CONFIG += qwt".)
+    !isEmpty(QWT_INSTALL) {
+        INCLUDEPATH += $${QWT_INSTALL}/include
+        INCLUDEPATH += $${QWT_INSTALL}/include/qwt
+        LIBS += -L$${QWT_INSTALL}/lib -lqwt
+    }
+
     DEFINES += GC_WASM_BUILD
 }
 # ────────────────────────────────────────────────────────────────────────────
