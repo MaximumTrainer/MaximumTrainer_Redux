@@ -7,7 +7,7 @@ An open-source, high-performance indoor cycling training application built with 
 | Item | Details |
 |------|---------|
 | **Language** | C++17 (≈ 95 % C++) |
-| **Framework** | Qt 5.15.2 (Windows / Linux) · Qt 6.7.3 (macOS) |
+| **Framework** | Qt 6 (6.7+) on all platforms |
 | **Build file** | `PowerVelo.pro` (qmake) |
 | **Qt modules** | core · gui · widgets · network · bluetooth · webenginewidgets · printsupport · concurrent |
 | **Trainer protocol** | Bluetooth LE Fitness Machine Service (FTMS / 0x1826) for ERG resistance control |
@@ -99,7 +99,7 @@ Once a workout starts you will see:
 
 Completed workout data is saved as a FIT activity file and can be uploaded to **Strava**, **TrainingPeaks**, **SelfLoops**, or **Intervals.icu** from the post-workout screen.
 
-> **Video entertainment:** the workout view can show either the built-in VLC player (local files / internet radio) or an embedded web browser (**Preferences → Video Player → WebView**). The web browser is for YouTube and other DRM-free sites — DRM services such as Netflix require the proprietary Widevine module, which cannot be bundled in this open-source build, so they will not play.
+> **Video & radio:** the workout view has a built-in media player (QtMultimedia) for local video files and internet-radio audio streams. Right-click the video area to open a file or URL and to adjust volume.
 
 ## Screenshots
 
@@ -189,11 +189,13 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 
 | Dependency | Version | Platform | Notes |
 |------------|---------|----------|-------|
-| Qt | 5.15.2 | Windows · Linux | Core framework |
-| Qt | 6.7.3 | macOS | Core framework |
-| QWT | 6.2.0 | all | Plotting widgets (built from source) |
-| VLC-Qt | 1.1.0 (Win) · 1.1.1 from source (Linux) | Windows · Linux | Internet radio / video player |
-| SFML | 2.6.1 (Win) · system package (Linux/macOS) | all | Audio feedback |
+| Qt | 6.x (6.7+) | all | Core framework (incl. QtMultimedia, QtWebEngine, QtBluetooth) |
+| QWT | 6.2.0 | all | Plotting widgets (built from source against Qt 6) |
+| SFML | system / 2.6+ | all | Sound-effect feedback (interval beeps, etc.) |
+
+> **Media playback:** the embedded video + internet-radio player uses Qt's own
+> **QtMultimedia** (`QMediaPlayer` / `QVideoWidget` / `QAudioOutput`). There is no
+> VLC dependency.
 
 ## Windows — Requirements
 
@@ -204,65 +206,65 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 
 ### Windows
 
-**Required tools:** Qt 5.15.2 (msvc2019_64), Visual Studio 2019+ (MSVC), 7-Zip
+**Required tools:** Qt 6.x (msvc2019_64, with the `qtwebengine`, `qtconnectivity`,
+`qtmultimedia`, `qtwebchannel`, `qtpositioning` modules), Visual Studio 2019+ (MSVC).
 
 **Environment variables** — set before running `qmake`:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `QTDIR` | Qt installation root for the target arch | `C:\Qt\5.15.2\msvc2019_64` |
-| `VLCQT_DIR` | VLC-Qt installation root (forward slashes) | `C:/vlcqt` |
-| `QMAKEFEATURES` | Path to QWT features directory | `C:\qwt\features` |
+| `QTDIR` | Qt installation root for the target arch | `C:\Qt\6.7.3\msvc2019_64` |
+| `QWT_INSTALL` | QWT installation root (built against Qt 6) | `C:/qwt` |
 
 **qmake invocation:**
 ```powershell
-$env:QMAKEFEATURES = "C:\qwt\features"
 qmake PowerVelo.pro `
-  "VLCQT_INSTALL=C:/vlcqt" `
+  "QWT_INSTALL=C:/qwt" `
   "SFML_INSTALL=C:/sfml/SFML-2.6.1"
 ```
 
-> `VLCQT_INSTALL` must point to the VLC-Qt package root (containing `bin/`, `include/`, `lib/`). The pre-built 1.1.0 win64 MSVC package places import `.lib` files directly in `lib/`.  
-> `SFML_INSTALL` must point to the SFML root (the directory containing `include/` and `lib/`).  
-> The Windows Kit libraries (`Gdi32`, `User32`) are resolved automatically by the MSVC linker — no `WINKIT_INSTALL` is needed when building inside an MSVC developer command prompt.
+> `SFML_INSTALL` must point to the SFML root (the directory containing `include/` and `lib/`).
+> The Windows Kit libraries (`Gdi32`, `User32`) are resolved automatically by the MSVC linker.
 
 **Download links:**
-- Qt 5.15.2: https://www.qt.io/download
-- VLC-Qt 1.1.0 (win64 MSVC): https://github.com/vlc-qt/vlc-qt/releases/tag/1.1.0
-- SFML 2.6.1 (vc17 64-bit): https://github.com/SFML/SFML/releases/tag/2.6.1
+- Qt 6.x: https://www.qt.io/download
+- SFML (vc17 64-bit): https://github.com/SFML/SFML/releases
 - QWT 6.2.0: https://sourceforge.net/projects/qwt/files/qwt/6.2.0/
 
-### Linux (Ubuntu 22.04)
+### Linux
 
-Install system packages and build VLC-Qt from source, then build the app:
+Install Qt 6 + dependencies, build QWT 6 from source (no Qt6 `qwt` apt package
+exists), then build the app:
 
 ```bash
 sudo apt-get install -y \
-  qtbase5-dev qtwebengine5-dev qtconnectivity5-dev \
-  libqwt-qt5-dev libsfml-dev libvlc-dev libvlccore-dev \
-  vlc-plugin-base vlc-plugin-video-output \
-  cmake build-essential
+  qt6-base-dev qt6-webengine-dev qt6-connectivity-dev \
+  qt6-multimedia-dev qt6-webchannel-dev qt6-positioning-dev \
+  libsfml-dev cmake build-essential
 
-# Build VLC-Qt 1.1.1 from source
-cd /tmp && git clone --branch 1.1.1 --depth 1 https://github.com/vlc-qt/vlc-qt
-cd vlc-qt && mkdir build && cd build
-cmake .. -DQT_VERSION=5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local
-make -j$(nproc) && sudo make install && sudo ldconfig
+# Build QWT 6.2.0 from source against Qt 6 (installs to /tmp/qwt6 here)
+cd /tmp && curl -L -o qwt.tar.bz2 \
+  "https://sourceforge.net/projects/qwt/files/qwt/6.2.0/qwt-6.2.0.tar.bz2/download"
+tar xf qwt.tar.bz2 && cd qwt-6.2.0
+qmake6 qwt.pro && make -j$(nproc)
+make install INSTALL_ROOT=/tmp/qwt6-stage
+mv /tmp/qwt6-stage/usr/local/qwt-6.2.0 /tmp/qwt6
 
 # Build MaximumTrainer
 cd /path/to/MaximumTrainer_Redux
-export PATH=/usr/lib/qt5/bin:$PATH
-qmake PowerVelo.pro "INCLUDEPATH+=/usr/local/include" "LIBS+=-L/usr/local/lib"
+qmake6 PowerVelo.pro QWT_INSTALL=/tmp/qwt6
 make -j$(nproc)
+# Run (QWT in a non-standard prefix needs LD_LIBRARY_PATH):
+LD_LIBRARY_PATH=/tmp/qwt6/lib ./build/release/MaximumTrainer
 ```
 
-> `vlc-plugin-video-output` is required for libvlc to render video into the Workout dialog. Without it, libvlc loads but reports `failed to create video output` and the player shows only the timer.
-
-> **Wayland:** libvlc's Linux video output is X11/XCB-only (VLC 3.0.x ships no native Wayland output), so under a Wayland session it cannot embed video into the Qt widget and spawns a separate window. The app detects Wayland and automatically forces the `xcb` platform (via XWayland) so video stays in the workout frame. Set `QT_QPA_PLATFORM` yourself to override this.
+> **Wayland:** QtWebEngine and some embedded native widgets are more stable under
+> XWayland than the native Wayland QPA plugin, so on a Wayland session the app
+> forces the `xcb` platform automatically. Set `QT_QPA_PLATFORM` yourself to override.
 
 ### macOS
 
-Uses Qt 6.7.3 with Clang. QWT is built from source (non-framework) against Qt 6. VLC-Qt is optional on macOS.
+Uses Qt 6.7.3 with Clang. QWT is built from source (non-framework) against Qt 6.
 
 > **macOS Bluetooth permission:** The app's `mac/Info.plist` includes the `NSBluetoothAlwaysUsageDescription` key, which is required by macOS 10.15+ for any app that accesses BLE devices. The first time the app attempts to connect a sensor, macOS will prompt for Bluetooth permission. This permission can be reviewed or revoked in **System Settings → Privacy & Security → Bluetooth**.
 
