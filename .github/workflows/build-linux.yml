@@ -345,6 +345,7 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install -y \
           xvfb \
+          libxcb-cursor0 \
           libfontconfig1 \
           libxrender1 \
           libxext6 \
@@ -443,6 +444,7 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install -y \
           xvfb \
+          libxcb-cursor0 \
           libfontconfig1 \
           libxrender1 \
           libxext6 \
@@ -506,6 +508,7 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install -y \
           xvfb \
+          libxcb-cursor0 \
           libfontconfig1 \
           libxrender1 \
           libxext6 \
@@ -621,6 +624,7 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install -y \
           xvfb \
+          libxcb-cursor0 \
           libfontconfig1 \
           libxrender1 \
           libxext6 \
@@ -690,6 +694,7 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install -y \
           xvfb \
+          libxcb-cursor0 \
           libfontconfig1 \
           libxrender1 \
           libxext6 \
@@ -699,7 +704,7 @@ jobs:
           libxdamage1 \
           libxrandr2 \
           libxkbcommon0 \
-          libasound2t64
+          libasound2
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -772,6 +777,7 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install -y \
           xvfb \
+          libxcb-cursor0 \
           libfontconfig1 \
           libxrender1 \
           libxext6 \
@@ -884,6 +890,7 @@ jobs:
           libsfml-audio2.5 \
           libsfml-system2.5 \
           xvfb \
+          libxcb-cursor0 \
           libfontconfig1 \
           libxrender1 \
           libxext6 \
@@ -893,7 +900,7 @@ jobs:
           libxdamage1 \
           libxrandr2 \
           libxkbcommon0 \
-          libasound2t64
+          libasound2
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -968,6 +975,7 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install -y \
           xvfb \
+          libxcb-cursor0 \
           libfontconfig1 \
           libxrender1 \
           libxext6 \
