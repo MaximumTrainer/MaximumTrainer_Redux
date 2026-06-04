@@ -36,3 +36,10 @@ __pycache__/
 MaximumTrainer_Archived/
 tests/integration/ui_repeatwidget.h
 .copilot-specs-cache/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
