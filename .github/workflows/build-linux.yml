@@ -38,7 +38,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
         cache: true
         cache-key-prefix: qt-linux
@@ -174,7 +174,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -214,7 +214,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -249,7 +249,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         modules: 'qtconnectivity'
         cache: true
         cache-key-prefix: qt-linux
@@ -294,7 +294,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -335,7 +335,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         modules: 'qtconnectivity'
         cache: true
         cache-key-prefix: qt-linux
@@ -395,7 +395,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         modules: 'qtconnectivity'
         cache: true
         cache-key-prefix: qt-linux
@@ -433,7 +433,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         modules: 'qtconnectivity'
         cache: true
         cache-key-prefix: qt-linux
@@ -497,7 +497,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -567,7 +567,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -612,7 +612,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -680,7 +680,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning'
         cache: true
         cache-key-prefix: qt-linux
@@ -763,7 +763,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -830,7 +830,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -872,7 +872,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
         cache: true
         cache-key-prefix: qt-linux
@@ -959,7 +959,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -1020,7 +1020,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -1070,7 +1070,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -1120,7 +1120,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -1177,7 +1177,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -1213,7 +1213,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         cache: true
         cache-key-prefix: qt-linux
 
