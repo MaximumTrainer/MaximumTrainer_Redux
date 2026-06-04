@@ -78,17 +78,12 @@ public:
     }
 
     /// Extra light-mode rules for controls the base light sheet does not style.
+    /// No checkbox/radio indicator rules here on purpose: with the explicit
+    /// light palette set in apply(), Qt's native style draws proper checkboxes
+    /// (real checkmark). We only restyle the menu for consistent contrast.
     static QString lightControlsStylesheet()
     {
         return QStringLiteral(
-"QCheckBox::indicator, QRadioButton::indicator {"
-"  width: 14px; height: 14px; border: 1px solid #888; border-radius: 2px; background: #ffffff;"
-"}"
-"QCheckBox::indicator:checked {"
-"  background: #4a7ab5; border-color: #3a6aa5;"
-"}"
-"QRadioButton::indicator { border-radius: 7px; }"
-"QRadioButton::indicator:checked { background: #4a7ab5; border-color: #3a6aa5; }"
 "QMenu { background-color: #ffffff; color: #202020; border: 1px solid #b0b0b0; }"
 "QMenu::item:selected { background-color: #4a7ab5; color: white; }"
         );
@@ -240,8 +235,10 @@ public:
 "}"
 "QPushButton.boutonLogin:hover { background-color: #3a7f3a; }"
 "QCheckBox { color: #e0e0e0; }"
-"QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid #666; border-radius: 2px; background: #3a3a3a; }"
-"QCheckBox::indicator:checked { background: #5a9fd4; border-color: #4a8fc4; }"
+// No QCheckBox::indicator rule on purpose: with the explicit dark palette set
+// in apply(), Qt's native style draws a correct dark checkbox (real checkmark).
+// Styling the indicator here would force CSS box rendering app-wide — which is
+// what previously broke the light-mode checkbox.
 "QTabWidget::pane { border: 1px solid #444; background: #2b2b2b; }"
 "QTabBar::tab { background: #3a3a3a; color: #ccc; border: 1px solid #444; padding: 6px 12px; }"
 "QTabBar::tab:selected { background: #2b2b2b; color: white; border-bottom: none; }"
