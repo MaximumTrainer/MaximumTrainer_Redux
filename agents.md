@@ -16,6 +16,7 @@
 4. [Testing Approach & Quality Assurance](#4-testing-approach--quality-assurance)
 5. [Best Practices for Maintainability & Scalability](#5-best-practices-for-maintainability--scalability)
 6. [Performance & Safety](#6-performance--safety)
+7. [Deferred Work & Tracking](#7-deferred-work--tracking)
 
 ---
 
@@ -637,6 +638,54 @@ onControllerDisconnected()
 - Large synchronous operations (e.g., FIT file creation) must be kept
   **< 16 ms** per invocation to avoid blocking the browser's main thread.
   If ever they exceed this, split with `QTimer::singleShot(0, …)` to yield.
+
+---
+
+## 7. Deferred Work & Tracking
+
+Known follow-up work and intentional technical decisions that are not obvious
+from the code alone.
+
+### 7.1 Deferred Tasks
+
+**Remove the PowerCurve feature entirely.** PowerCurve was removed from the
+product but still exists throughout the code (~20 files, 100+ references).
+Scrape it out as its own dedicated PR (large; touches plotting, studio users,
+and persistence):
+
+- `src/model/powercurve.{cpp,h}` (delete)
+- References across `account.{cpp,h}`, `userstudio.{cpp,h}`,
+  `workoutplot.{cpp,h}`, `mainwindow.{cpp,h}`, `dialogconfig.{cpp,h}`,
+  `workoutdialog.{cpp,h}`, `util.cpp`, `globalvars.cpp`, `zoneobject.cpp`,
+  `xmlutil.cpp`, `userdao.cpp`, `settings.h`
+- While at it, remove the orphaned profile-physio fields listed in §7.2.
+
+**Offline achievement tracking.** Achievements were a sub-tab of the
+(now-removed) main-page Profile tab, rendered by a server-hosted
+`QWebEngineView` (`webView_achiev` → `Environnement::getUrlAchievement()`), and
+were dropped from the UI. To bring them back offline: compute unlocks locally
+(`src/fitness/achievements/achievementchecker.*` and `managerachievement.*`
+already exist but currently round-trip through `AchievementDao` network calls),
+add local persistence for unlocked achievements, and build a native (non-web)
+achievements UI.
+
+### 7.2 Settings Persistence — Local Only
+
+The `maximumtrainer.com` account endpoint that historically stored user
+settings is **defunct**. All user-editable settings are persisted locally in
+the `displayPrefs` QSettings group via `Account::save/loadDisplayPrefs()` (with
+encrypted credential stores for third-party tokens). **When adding a new user
+setting, persist it there — do not rely on the server.**
+
+**Profile physio fields are intentionally NOT persisted.** These `Account`
+fields only ever came from the server JSON and have no remaining UI, so
+persisting them would just store hardcoded defaults. They are left unpersisted
+and should be **removed with the PowerCurve cleanup** (§7.1):
+`height_cm`, `bike_weight_kg`, `wheel_circ`, `bike_type`, `minutes_rode`,
+`powerCurve`.
+
+(`FTP`, `LTHR`, and `weight_kg` *are* persisted — still user-editable via
+**Preferences → Profile**.)
 
 ---
 
