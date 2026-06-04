@@ -523,7 +523,10 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
 
 
-    ui->widgetVideo->setVisible(false);
+    // The embedded media player is now the only video option (the web player
+    // was removed), so always show it. It displays its own "right-click to open
+    // media" hint until a file/URL is loaded.
+    ui->widgetVideo->setVisible(true);
     ui->wid_1_infoBoxHr->setTypeInfoBox(InfoWidget::HEART_RATE);
     ui->wid_2_infoBoxPower->setTypeInfoBox(InfoWidget::POWER);
     ui->wid_3_infoBoxCadence->setTypeInfoBox(InfoWidget::CADENCE);

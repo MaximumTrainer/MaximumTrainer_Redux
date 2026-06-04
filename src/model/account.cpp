@@ -163,7 +163,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     show_power_curve = true;
     show_cadence_curve = true;
     show_speed_curve = true;
-    display_video = 0;
 
     /* ----- */
     sound_player_vol = 100;
@@ -297,9 +296,6 @@ void Account::loadDisplayPrefs() {
     show_cadence_curve      = settings.value("show_cadence_curve",      show_cadence_curve).toBool();
     show_speed_curve        = settings.value("show_speed_curve",        show_speed_curve).toBool();
 
-    // Video player (0 = VLC, 1 = WebView)
-    display_video = settings.value("display_video", display_video).toInt();
-
     // Sound
     sound_player_vol               = settings.value("sound_player_vol",               sound_player_vol).toInt();
     enable_sound                   = settings.value("enable_sound",                   enable_sound).toBool();
@@ -351,8 +347,6 @@ void Account::saveDisplayPrefs() {
     settings.setValue("show_power_curve",        show_power_curve);
     settings.setValue("show_cadence_curve",      show_cadence_curve);
     settings.setValue("show_speed_curve",        show_speed_curve);
-
-    settings.setValue("display_video", display_video);
 
     settings.setValue("sound_player_vol",               sound_player_vol);
     settings.setValue("enable_sound",                   enable_sound);

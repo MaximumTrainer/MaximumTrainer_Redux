@@ -145,8 +145,6 @@ QNetworkReply* UserDAO::putAccount(Account *account) {
     postData.addQueryItem("show_power_curve", QString::number(account->show_power_curve) );
     postData.addQueryItem("show_cadence_curve", QString::number(account->show_cadence_curve) );
     postData.addQueryItem("show_speed_curve", QString::number(account->show_speed_curve) );
-    postData.addQueryItem("display_video", QString::number(account->display_video) );
-
     /* ----- */
     postData.addQueryItem("sound_player_vol", QString::number(account->sound_player_vol) );
     postData.addQueryItem("enable_sound", QString::number(account->enable_sound) );

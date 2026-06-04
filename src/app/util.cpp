@@ -467,8 +467,6 @@ void Util::parseJsonObjectAccount(QString data) {
     account->show_cadence_curve  = jsonObj["show_cadence_curve"].toString().toInt();
     account->show_speed_curve  = jsonObj["show_speed_curve"].toString().toInt();
 
-    account->display_video  = jsonObj["display_video"].toString().toInt();
-
 
     /* ----- */
     account->sound_player_vol  = jsonObj["sound_player_vol"].toString().toInt();

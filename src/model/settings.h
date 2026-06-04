@@ -104,9 +104,6 @@ public:
 //    bool showCadenceCurve;
 //    bool showSpeedCurve;
 
-//    /// Video Player (0 = Vlc, 1=WebView)
-//    int displayVideo;
-
 
 
 //    //// -------------------------------- Sounds
