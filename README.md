@@ -75,6 +75,8 @@ The simulator responds to ERG load commands from the workout player, making it a
 2. Select one or more `.erg` or `.mrc` files.
 3. MaximumTrainer converts them to its native format and adds them to your library.
 
+> `.zwo` workouts are imported automatically via Intervals.icu calendar sync; the manual File → Import dialog accepts `.erg` and `.mrc`.
+
 **Option C — Create your own**
 
 Use the built-in **Workout Creator** (toolbar → pencil icon) to build structured intervals with configurable power, cadence, or HR targets.
@@ -103,14 +105,9 @@ Completed workout data is saved as a FIT activity file and can be uploaded to **
 
 ## Screenshots
 
-> **Note:** Screenshots showing the cross-platform UI will be added here. Contributions of high-quality screenshots on each platform are welcome — please open a pull request.
-
-| Platform | Description |
-|----------|-------------|
-| Windows | Main workout player with power graph and metrics |
-| macOS | Intervals.icu calendar tab — syncing planned workouts |
-| Linux | App running on Ubuntu — proof of cross-platform build |
-| Device Manager | BTLE scanner with multiple sensors connected |
+| Studio mode | Activity history |
+|-------------|------------------|
+| ![Studio mode — multiple riders with live power, heart rate, and cadence](docs/assets/screenshots/screenshot_studio_mode.png) | ![Activity history with weekly totals and upload status](docs/assets/screenshots/screenshot_activity_history.png) |
 
 ## Linux — Bluetooth Setup
 
@@ -316,11 +313,6 @@ make -j$(nproc)
 ```
 
 The BLE suite has **51 test cases** across HR parsing, CSC, Power, FTMS, trainer simulations, SimulatorHub, battery, and interval summary. See the [CI run status](https://github.com/MaximumTrainer/MaximumTrainer_Redux/actions) for pass/fail counts on Linux, Windows, and macOS.
-
-## Language
-
-Language files are used at runtime from the `/language` folder.
-You need Qt Linguist to open and generate a new language file (`.qm` file).
 
 ## Log Files
 

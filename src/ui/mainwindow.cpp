@@ -303,6 +303,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     /// from the workout-dialog Settings → Radio tab.
     lstRadio = Util::loadLocalRadioList();
     this->setEnabled(true);
+    ui->widget_bottomMenu->removeGeneralMessage();
 
     qDebug() << "Test1";
 
