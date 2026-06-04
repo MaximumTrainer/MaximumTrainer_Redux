@@ -2,7 +2,6 @@
 #define WEBBROWSERVIEW_H
 
 #include <QWidget>
-#include <QWebEngineFullScreenRequest>  // by-value slot param needs the complete type for moc
 
 class QWebEngineView;
 class QLineEdit;
@@ -42,14 +41,6 @@ private slots:
     void updateUrlOfLineEdit(const QUrl &url);
     void hideToolbar();
 
-    /// Honors fullscreen requests coming from the page itself (e.g. clicking
-    /// YouTube's fullscreen button). Keeps the view docked so the page's
-    /// fullscreen element fills the web-view widget rather than the whole screen.
-    void handleFullScreenRequested(QWebEngineFullScreenRequest request);
-
-protected:
-    void keyPressEvent(QKeyEvent *event) override;
-
 private:
     QWebEngineView *webEngineView = nullptr;
     QLineEdit      *locationEdit  = nullptr;
@@ -58,7 +49,6 @@ private:
     QTimer         *timerHideToolbar = nullptr;
 
     bool    homePageLoaded = false;
-    bool    isFullScreen   = false;
 };
 
 #endif // WEBBROWSERVIEW_H

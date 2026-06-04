@@ -3,7 +3,6 @@
 #include <QWebEngineView>
 #include <QWebEnginePage>
 #include <QWebEngineSettings>
-#include <QWebEngineFullScreenRequest>
 #include <QGridLayout>
 #include <QToolBar>
 #include <QLineEdit>
@@ -28,17 +27,12 @@ WebBrowserView::WebBrowserView(QWidget *parent) : QWidget(parent)
 
     webEngineView = new QWebEngineView(this);
     webEngineView->settings()->setAttribute(QWebEngineSettings::PluginsEnabled, true);
-    // QtWebEngine disables fullscreen by default; enable it and accept the
-    // page's fullscreen requests below so YouTube's fullscreen button works.
-    webEngineView->settings()->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, true);
 
 #ifndef GC_WASM_BUILD
     // On WASM the QWebEngineView stub opens URLs in a browser tab and emits none
     // of these signals, so the connections are desktop-only.
     connect(webEngineView, &QWebEngineView::loadFinished, this, &WebBrowserView::adjustLocation);
     connect(webEngineView, &QWebEngineView::urlChanged, this, &WebBrowserView::updateUrlOfLineEdit);
-    connect(webEngineView->page(), &QWebEnginePage::fullScreenRequested,
-            this, &WebBrowserView::handleFullScreenRequested);
 #endif
 
     toolBar = new QToolBar(this);
@@ -47,19 +41,6 @@ WebBrowserView::WebBrowserView(QWidget *parent) : QWidget(parent)
     toolBar->addAction(webEngineView->pageAction(QWebEnginePage::Reload));
     toolBar->addAction(webEngineView->pageAction(QWebEnginePage::Stop));
     toolBar->addSeparator();
-    QAction *actionFullScreen = toolBar->addAction(QIcon(QStringLiteral(":/image/icon/fullscreen")),
-                                                   tr("Toggle Fullscreen"));
-    // Toggle the web view's fullscreen via JS, which round-trips through the
-    // same fullScreenRequested path as YouTube's own button.
-    connect(actionFullScreen, &QAction::triggered, this, [this]() {
-        webEngineView->page()->runJavaScript(QStringLiteral(
-            "if (document.fullscreenElement) { document.exitFullscreen(); }"
-            "else {"
-            "  var v = document.getElementsByTagName('video');"
-            "  if (v.length > 0) { v[0].requestFullscreen(); }"
-            "  else { document.documentElement.requestFullscreen(); }"
-            "}"));
-    });
     toolBar->addWidget(locationEdit);
 
     gLayout->addWidget(toolBar, 0, 0, 1, 1);
@@ -100,37 +81,6 @@ void WebBrowserView::loadHomePageIfNeeded()
 
     webEngineView->load(QUrl::fromUserInput(urlSaved));
     homePageLoaded = true;
-}
-
-//----------------------------------------------------------------------------------------
-void WebBrowserView::handleFullScreenRequested(QWebEngineFullScreenRequest request)
-{
-    // Accept the request but keep the web view docked in our layout: the page's
-    // fullscreen element then fills the existing web-view widget (the video area
-    // within the workout dialog) rather than covering the whole screen.
-    request.accept();
-
-    isFullScreen = request.toggleOn();
-    // Give the video the full widget by hiding our chrome while fullscreen.
-    if (isFullScreen) {
-        hideToolbar();
-    } else {
-        toolBar->setVisible(true);
-        timerHideToolbar->start(kToolbarHideMs);
-    }
-}
-
-//----------------------------------------------------------------------------------------
-void WebBrowserView::keyPressEvent(QKeyEvent *event)
-{
-    // Esc leaves page fullscreen (mirrors a normal browser).
-    if (event->key() == Qt::Key_Escape && isFullScreen) {
-        webEngineView->page()->runJavaScript(QStringLiteral(
-            "if (document.fullscreenElement) document.exitFullscreen();"));
-        event->accept();
-        return;
-    }
-    QWidget::keyPressEvent(event);
 }
 
 //----------------------------------------------------------------------------------------
