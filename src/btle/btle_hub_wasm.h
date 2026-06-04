@@ -81,6 +81,10 @@ private:
     // far, mirroring BtleHub::determineSensorType() which checks service ptrs.
     QString determineSensorType() const;
 
+    // WorkoutDialog indexes arrDataWorkout[userID-1]; a single rider is userID 1
+    // (matching SimulatorHub and the native BtleHub). See btle_hub.h.
+    static constexpr int SOLO_USER_ID = 1;
+
     bool   m_connected         = false;
     bool   m_userDisconnect    = false; // true when disconnectFromDevice() was called intentionally
     int    m_wheelCircMm       = 2100;

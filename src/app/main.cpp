@@ -164,12 +164,6 @@ int main(int argc, char *argv[]) {
         splash.finish(mainWin);
 #endif
         mainWin->show();
-        // Bring the window to the front and give it focus. After the non-modal
-        // login dialog is dismissed some window managers (notably on Linux) leave
-        // the freshly-shown MainWindow stacked behind other windows; raise() +
-        // activateWindow() forces it on top and focused.
-        mainWin->raise();
-        mainWin->activateWindow();
         return mainWin;
     };
 

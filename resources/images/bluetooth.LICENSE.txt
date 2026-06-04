@@ -1,0 +1,9 @@
+bluetooth.png / bluetooth.svg
+-----------------------------
+Source : Font Awesome Free 6.7.2 — "bluetooth" (brands)
+URL    : https://fontawesome.com/icons/bluetooth
+License: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+Copyright 2024 Fonticons, Inc.
+
+bluetooth.png is rasterized from bluetooth.svg and tinted dark grey
+(#3C3C3C) to match the other sidebar tab icons.

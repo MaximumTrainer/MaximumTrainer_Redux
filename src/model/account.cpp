@@ -109,8 +109,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     training_peaks_public_upload = false;
     // intervals_icu_auto_upload is loaded from QSettings above; don't reset it here
     control_trainer_resistance = true;
-    stop_pairing_on_found = true;
-    nb_sec_pairing = 2;
     // Clamp the loaded value to the valid range (0–30 s)
     erg_smoothing_duration_s = qBound(0, erg_smoothing_duration_s, 30);
     /* ----- */
@@ -316,8 +314,6 @@ void Account::loadDisplayPrefs() {
     enable_studio_mode           = settings.value("enable_studio_mode",           enable_studio_mode).toBool();
     distance_in_km               = settings.value("distance_in_km",               distance_in_km).toBool();
     force_workout_window_on_top  = settings.value("force_workout_window_on_top",  force_workout_window_on_top).toBool();
-    stop_pairing_on_found        = settings.value("stop_pairing_on_found",        stop_pairing_on_found).toBool();
-    nb_sec_pairing               = settings.value("nb_sec_pairing",               nb_sec_pairing).toInt();
     strava_private_upload        = settings.value("strava_private_upload",        strava_private_upload).toBool();
     training_peaks_public_upload = settings.value("training_peaks_public_upload", training_peaks_public_upload).toBool();
 
@@ -403,8 +399,6 @@ void Account::saveDisplayPrefs() {
     settings.setValue("enable_studio_mode",          enable_studio_mode);
     settings.setValue("distance_in_km",              distance_in_km);
     settings.setValue("force_workout_window_on_top", force_workout_window_on_top);
-    settings.setValue("stop_pairing_on_found",       stop_pairing_on_found);
-    settings.setValue("nb_sec_pairing",              nb_sec_pairing);
     settings.setValue("strava_private_upload",       strava_private_upload);
     settings.setValue("training_peaks_public_upload", training_peaks_public_upload);
 

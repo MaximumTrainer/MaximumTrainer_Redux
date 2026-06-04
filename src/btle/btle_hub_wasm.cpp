@@ -145,7 +145,7 @@ void BtleHubWasm::parseHrMeasurement(const QByteArray &data)
         if (data.size() < 2) return;
         hr = static_cast<quint8>(data[1]);
     }
-    emit signal_hr(0, hr);
+    emit signal_hr(SOLO_USER_ID, hr);
 }
 
 void BtleHubWasm::parseCscMeasurement(const QByteArray &data)
@@ -194,8 +194,8 @@ void BtleHubWasm::parseCscMeasurement(const QByteArray &data)
     }
 
     m_firstCsc = false;
-    if (speed > 0.0) emit signal_speed(0, speed);
-    if (cadence > 0)  emit signal_cadence(0, cadence);
+    if (speed > 0.0) emit signal_speed(SOLO_USER_ID, speed);
+    if (cadence > 0)  emit signal_cadence(SOLO_USER_ID, cadence);
 }
 
 void BtleHubWasm::parsePowerMeasurement(const QByteArray &data)
@@ -203,7 +203,7 @@ void BtleHubWasm::parsePowerMeasurement(const QByteArray &data)
     if (data.size() < 4) return;
     qint16 power;
     std::memcpy(&power, data.constData() + 2, 2);
-    emit signal_power(0, static_cast<int>(power));
+    emit signal_power(SOLO_USER_ID, static_cast<int>(power));
 }
 
 void BtleHubWasm::parseFtmsIndoorBikeData(const QByteArray &data)
@@ -217,7 +217,7 @@ void BtleHubWasm::parseFtmsIndoorBikeData(const QByteArray &data)
     if (!(flags & 0x0001) && data.size() >= offset + 2) {
         quint16 speedRaw;
         std::memcpy(&speedRaw, data.constData() + offset, 2);
-        emit signal_speed(0, speedRaw * 0.01);
+        emit signal_speed(SOLO_USER_ID, speedRaw * 0.01);
         offset += 2;
     }
 
@@ -228,7 +228,7 @@ void BtleHubWasm::parseFtmsIndoorBikeData(const QByteArray &data)
     if (!(flags & 0x0004) && data.size() >= offset + 2) {
         quint16 cadenceRaw;
         std::memcpy(&cadenceRaw, data.constData() + offset, 2);
-        emit signal_cadence(0, static_cast<int>(cadenceRaw * 0.5));
+        emit signal_cadence(SOLO_USER_ID, static_cast<int>(cadenceRaw * 0.5));
         offset += 2;
     }
 
@@ -245,7 +245,7 @@ void BtleHubWasm::parseFtmsIndoorBikeData(const QByteArray &data)
     if (!(flags & 0x0040) && data.size() >= offset + 2) {
         qint16 powerRaw;
         std::memcpy(&powerRaw, data.constData() + offset, 2);
-        emit signal_power(0, static_cast<int>(powerRaw));
+        emit signal_power(SOLO_USER_ID, static_cast<int>(powerRaw));
     }
 }
 
@@ -268,7 +268,7 @@ void BtleHubWasm::parseMoxyMeasurement(const QByteArray &data)
     double smo2 = (flags & 0x01) ? rawSmo2 / 10.0  : 0.0;
     double thb  = (flags & 0x02) ? rawThb  / 100.0 : 0.0;
 
-    emit signal_oxygen(0, smo2, thb);
+    emit signal_oxygen(SOLO_USER_ID, smo2, thb);
 }
 
 // Battery Level (0x2A19)

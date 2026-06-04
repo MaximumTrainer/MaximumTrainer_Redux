@@ -124,6 +124,11 @@ private:
 
     static constexpr int DEFAULT_WHEEL_CIRC_MM  = 2100; // ~700c / 29" wheel
 
+    // WorkoutDialog indexes its per-user data arrays as arrDataWorkout[userID-1],
+    // so a single rider must be userID 1 (matching SimulatorHub). Emitting 0 here
+    // produces an out-of-bounds arrDataWorkout[-1] access on every live packet.
+    static constexpr int SOLO_USER_ID = 1;
+
     int m_wheelCircMm = DEFAULT_WHEEL_CIRC_MM;
 
     // CSC state – mirrors the cadence / speed controller logic

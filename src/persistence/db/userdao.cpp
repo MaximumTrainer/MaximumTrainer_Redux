@@ -90,8 +90,6 @@ QNetworkReply* UserDAO::putAccount(Account *account) {
     postData.addQueryItem("selfloops_user", account->selfloops_user);
     postData.addQueryItem("selfloops_pw", account->selfloops_pw);
     postData.addQueryItem("control_trainer_resistance", QString::number(account->control_trainer_resistance) );
-    postData.addQueryItem("stop_pairing_on_found", QString::number(account->stop_pairing_on_found) );
-    postData.addQueryItem("nb_sec_pairing", QString::number(account->nb_sec_pairing) );
 
     /* ----- */
     postData.addQueryItem("last_index_selected_config_workout", QString::number(account->last_index_selected_config_workout) );

@@ -3,6 +3,7 @@
 
 #include <QDebug>
 #include <QSettings>
+#include <QSet>
 #include <QDateTime>
 #include <QMessageBox>
 #include <QCloseEvent>
@@ -65,7 +66,10 @@
 #include "btle_scanner_dialog_wasm.h"
 #else
 #include "btle_scanner_dialog.h"
+#include "btle_sensor_store.h"
+#include "sensor_connect_dialog.h"
 #endif
+#include "sensorswidget.h"
 
 
 
@@ -176,20 +180,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Tab indices must stay in sync with the pages in stackedWidget_menu
     // (see leftMenuChanged): 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio,
-    // 4 History. The former Profile and Settings web-view tabs were removed —
-    // FTP/LTHR/weight now live in the Preferences dialog, and the server-hosted
-    // settings page is superseded by it.
+    // 4 History, 5 Sensors. The former Profile and Settings web-view tabs were
+    // removed — FTP/LTHR/weight now live in the Preferences dialog, and the
+    // server-hosted settings page is superseded by it.
     ftb->insertTab(0, QIcon(":/image/icon/workoutMan"), tr("Workout"));
     ftb->insertTab(1, QIcon(":/image/icon/calendar"),   tr("Intervals.icu"));
     ftb->insertTab(2, QIcon(":/image/icon/calendar"),  tr("Plan"));
     ftb->insertTab(3, QIcon(":/image/icon/studio"), tr("Studio"));
     ftb->insertTab(4, QIcon(":/image/icon/chart"), tr("History"));
+    ftb->insertTab(5, QIcon(":/image/icon/bluetooth"), tr("Sensors"));
 
     ftb->setTabEnabled(0, true);
     ftb->setTabEnabled(1, true);
     ftb->setTabEnabled(2, true);
     ftb->setTabEnabled(3, true);
     ftb->setTabEnabled(4, true);
+    ftb->setTabEnabled(5, true);
 
 
 
@@ -783,15 +789,21 @@ void MainWindow::leftMenuChanged(int tabSelected) {
 
     // The Profile (page 4) and Settings (page 5) tabs were removed from the tab
     // bar, but their stacked-widget pages remain so the existing web views keep
-    // working for code that still references them. Map the 5 visible tabs to
-    // their pages: 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio, 4 History(=page 6).
-    static const int tabToPage[] = {0, 1, 2, 3, 6};
-    const int pageIndex = (tabSelected >= 0 && tabSelected < 5)
+    // working for code that still references them. Map the visible tabs to their
+    // pages: 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio, 4 History(=page 6),
+    // 5 Sensors(=page 7).
+    static const int tabToPage[] = {0, 1, 2, 3, 6, 7};
+    const int pageIndex = (tabSelected >= 0 && tabSelected < 6)
                               ? tabToPage[tabSelected]
                               : tabSelected;
     ui->stackedWidget_menu->setCurrentIndex(pageIndex);
     currentIndexLeftMenu = tabSelected;
 
+    // Refresh saved sensors each time the Sensors tab is opened.
+    if (tabSelected == 5) {
+        if (auto *sw = qobject_cast<SensorsWidget*>(ui->sensorsWidget))
+            sw->reload();
+    }
 }
 
 
@@ -1711,6 +1723,36 @@ void MainWindow::executeWorkout(Workout workout) {
     }
 
     // ── BTLE Device path ─────────────────────────────────────────────────
+#ifndef GC_WASM_BUILD
+    // If the user has saved sensors (Sensors tab), connect to all of them at
+    // once via the connection-status dialog. With no saved sensors we fall
+    // through to the legacy single-device scanner below.
+    {
+        const QMap<BtleSensorRole, BtleSavedSensor> savedSensors = BtleSensorStore::loadAll();
+        if (!savedSensors.isEmpty()) {
+            SensorConnectDialog connectDlg(savedSensors, account->wheel_circ, this);
+            connect(&connectDlg, &SensorConnectDialog::openSensorPreferences,
+                    this, [this, &connectDlg]() {
+                        // "Manage Sensors" – cancel the connect flow and switch
+                        // to the Sensors tab so the user can edit their devices.
+                        connectDlg.reject();
+                        ftb->setCurrentIndex(5);
+                    });
+
+            if (connectDlg.exec() != QDialog::Accepted)
+                return;   // user cancelled / chose Manage Sensors
+
+            QMap<BtleSensorRole, BtleHub*> hubsByRole = connectDlg.connectedHubs();
+            if (!hubsByRole.isEmpty()) {
+                connectDlg.detachHubs();   // we now own the hubs
+                startWorkoutWithHubs(workout, hubsByRole);
+                return;
+            }
+            // Empty result = "Skip": drop through to the legacy manual scanner.
+        }
+    }
+#endif
+
     BtleScannerDialog scanner(this);
     if (scanner.exec() != QDialog::Accepted || !scanner.hasSelection())
         return;
@@ -1801,6 +1843,102 @@ void MainWindow::executeWorkout(Workout workout) {
     QApplication::restoreOverrideCursor();
     w->show();
 }
+
+
+#ifndef GC_WASM_BUILD
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void MainWindow::startWorkoutWithHubs(const Workout &workout,
+                                      const QMap<BtleSensorRole, BtleHub*> &hubsByRole)
+{
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+
+    // Show WorkoutDialog NON-MODALLY (window-modal, run on the main event loop)
+    // for the same QWebEngine reparenting reason as the single-device path above.
+    WorkoutDialog *w = new WorkoutDialog(workout, lstRadio, vecUserStudio);
+    w->setAttribute(Qt::WA_DeleteOnClose);
+    w->setWindowModality(Qt::ApplicationModal);
+
+    // One physical device may back several roles (e.g. Trainer + Power), so the
+    // map can hold the same hub under multiple keys. Collect the distinct hubs
+    // for lifecycle management and to wire shared signals (battery/error) once.
+    QSet<BtleHub*> uniqueHubs;
+    for (BtleHub *hub : hubsByRole)
+        uniqueHubs.insert(hub);
+
+    for (BtleHub *hub : uniqueHubs) {
+        connect(hub, &BtleHub::signal_battery,  w, &WorkoutDialog::batteryStatusReceived);
+        connect(hub, &BtleHub::connectionError, w, &WorkoutDialog::onBleConnectionError);
+        connect(w, SIGNAL(stopDecodingMsgHub()), hub, SLOT(stopDecodingMsg()));
+    }
+
+    // Track which hub already drives a metric so a trainer that also exposes
+    // power/cadence/speed is not double-wired alongside a dedicated sensor on
+    // the same physical device (which would double-count the rolling average).
+    BtleHub *powerHub   = nullptr;
+    BtleHub *cadenceHub = nullptr;
+    BtleHub *speedHub   = nullptr;
+
+    auto wirePower = [&](BtleHub *hub) {
+        if (powerHub == hub) return;          // already wired from this device
+        powerHub = hub;
+        connect(hub, SIGNAL(signal_power(int,int)), w, SLOT(PowerDataReceived(int,int)));
+    };
+    auto wireCadence = [&](BtleHub *hub) {
+        if (cadenceHub == hub) return;
+        cadenceHub = hub;
+        connect(hub, SIGNAL(signal_cadence(int,int)), w, SLOT(CadenceDataReceived(int,int)));
+    };
+    auto wireSpeed = [&](BtleHub *hub) {
+        if (speedHub == hub) return;
+        speedHub = hub;
+        connect(hub, SIGNAL(signal_speed(int,double)), w, SLOT(TrainerSpeedDataReceived(int,double)));
+    };
+
+    // Wire the trainer first so resistance control is set up and its data takes
+    // precedence; dedicated Power/CadenceSpeed sensors then fill any gaps.
+    if (hubsByRole.contains(BtleSensorRole::Trainer)) {
+        BtleHub *hub = hubsByRole.value(BtleSensorRole::Trainer);
+        wirePower(hub);
+        wireCadence(hub);
+        wireSpeed(hub);
+        connect(w, SIGNAL(setLoad(int,double)),  hub, SLOT(setLoad(int,double)));
+        connect(w, SIGNAL(setSlope(int,double)), hub, SLOT(setSlope(int,double)));
+    }
+    if (hubsByRole.contains(BtleSensorRole::Power))
+        wirePower(hubsByRole.value(BtleSensorRole::Power));
+    if (hubsByRole.contains(BtleSensorRole::CadenceSpeed)) {
+        BtleHub *hub = hubsByRole.value(BtleSensorRole::CadenceSpeed);
+        wireCadence(hub);
+        wireSpeed(hub);
+    }
+    if (hubsByRole.contains(BtleSensorRole::HeartRate))
+        connect(hubsByRole.value(BtleSensorRole::HeartRate),
+                SIGNAL(signal_hr(int,int)), w, SLOT(HrDataReceived(int,int)));
+    if (hubsByRole.contains(BtleSensorRole::Oxygen))
+        connect(hubsByRole.value(BtleSensorRole::Oxygen),
+                SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
+
+    connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
+    connect(w, SIGNAL(ftp_lthr_changed()), this, SLOT(updateZoneInterface()));
+    connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
+    connect(w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
+
+    connect(w, &QDialog::finished, this, [this, uniqueHubs]() {
+        workoutOver();
+        for (BtleHub *hub : uniqueHubs) {
+            hub->disconnectFromDevice();
+            delete hub;
+        }
+        ui->webView_achiev->reload();
+        // Auto-advance to next queued workout if one exists
+        tryAdvanceWorkoutQueue();
+    });
+
+    workoutExecuting();
+    QApplication::restoreOverrideCursor();
+    w->show();
+}
+#endif // GC_WASM_BUILD
 
 
 ////////////////////////////////////////////////////////////////////////
