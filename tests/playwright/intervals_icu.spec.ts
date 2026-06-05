@@ -26,31 +26,34 @@ async function setupIntervalsIcuMocking(
   events = '[]',
 ): Promise<IntervalsMockCapture[]> {
   const captured: IntervalsMockCapture[] = [];
-  await page.route('https://intervals.icu/**', async (route) => {
-    const req    = route.request();
-    const method = req.method();
-    const url    = req.url();
-    const corsHeaders = {
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'authorization, content-type',
-    };
-    if (method === 'OPTIONS') { await route.fulfill({ status: 204, headers: corsHeaders }); return; }
-    captured.push({ url, hasAuth: !!(req.headers()['authorization']) });
-    if (url.includes('/events')) {
-      await route.fulfill({
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        body: events,
-      });
-    } else {
-      await route.fulfill({
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        body: '{}',
-      });
-    }
-  });
+  await page.route(
+    /^https:\/\/(?:intervals\.icu|mt-intervals-proxy\.intervals-login\.workers\.dev)\/.*/,
+    async (route) => {
+      const req    = route.request();
+      const method = req.method();
+      const url    = req.url();
+      const corsHeaders = {
+        'Access-Control-Allow-Origin':  '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'authorization, content-type',
+      };
+      if (method === 'OPTIONS') { await route.fulfill({ status: 204, headers: corsHeaders }); return; }
+      captured.push({ url, hasAuth: !!(req.headers()['authorization']) });
+      if (url.includes('/events')) {
+        await route.fulfill({
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          body: events,
+        });
+      } else {
+        await route.fulfill({
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+      }
+    },
+  );
   return captured;
 }
 
@@ -157,7 +160,10 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
     // Register the response listener BEFORE triggering the refresh to avoid a
     // race where the response arrives before the listener is attached.
     const firstResponsePromise = page.waitForResponse(
-      (resp) => resp.url().includes('intervals.icu'),
+      (resp) =>
+        (resp.url().includes('intervals.icu')
+          || resp.url().includes('mt-intervals-proxy.intervals-login.workers.dev'))
+        && resp.url().includes('/events'),
       { timeout: 30_000 },
     );
     await wasmApp.triggerIntervalsRefresh();
@@ -209,7 +215,10 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
     await wasmApp.injectIntervalsCredentials(apiKey, athleteId);
 
     const calendarResponsePromise = page.waitForResponse(
-      (resp) => resp.url().includes('intervals.icu') && resp.url().includes('/events'),
+      (resp) =>
+        (resp.url().includes('intervals.icu')
+          || resp.url().includes('mt-intervals-proxy.intervals-login.workers.dev'))
+        && resp.url().includes('/events'),
       { timeout: 30_000 },
     );
     await wasmApp.triggerIntervalsRefresh();
