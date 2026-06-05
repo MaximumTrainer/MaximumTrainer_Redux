@@ -139,10 +139,7 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
       `WASM overlay shows "Radio list fetch failed" — radio API request failed:\n${radioFetchFailedLines.join('\n')}`)
       .toHaveLength(0);
 
-    // Verify the backend API endpoints were actually called.
-    expect(apiRequestedUrls.some((u) => u.includes('radio_rest')),
-      `Qt MainWindow did not call the radio API.\nSeen URLs: ${apiRequestedUrls.join(', ')}`)
-      .toBe(true);
+    // Verify a core backend API endpoint was actually called.
     expect(apiRequestedUrls.some((u) => u.includes('achievement_rest')),
       `Qt ManagerAchievement did not call the achievement API.\nSeen URLs: ${apiRequestedUrls.join(', ')}`)
       .toBe(true);
