@@ -389,16 +389,17 @@ QNetworkReply* ExtRequest::selfloopsUploadFile(QString email, QString password, 
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// POST https://intervals.icu/oauth/token
+/// POST <Cloudflare proxy>/proxy/oauth/token  (grant_type=authorization_code)
 /// Exchanges an authorization code for an OAuth2 access + refresh token pair.
-/// This is invoked when the MaximumTrainer.com backend proxy is unavailable and
-/// the app performs the token exchange directly (client-side fallback).
+/// Both desktop and WASM builds route this through the Cloudflare Worker
+/// CORS proxy (URL_TOKEN_ICV is the proxied URL).  On WASM the browser sets
+/// the Origin header automatically (https://maximumtrainer.github.io); on
+/// desktop we set INTERVALS_PROXY_DESKTOP_ORIGIN explicitly so the worker
+/// allow-list accepts the request.
 ///
 /// Note: A client_secret is omitted because Intervals.icu client 259 is
 /// registered as a public client (no client secret required).  This is a
-/// plain Authorization Code flow without PKCE.  The preferred production
-/// path is the MaximumTrainer.com backend proxy (/intervals_icu_token_exchange)
-/// which keeps any server-side secrets out of the distributed binary.
+/// plain Authorization Code flow without PKCE.
 QNetworkReply* ExtRequest::intervalsIcuOAuthExchange(const QString &code, const QString &redirectUri)
 {
     QNetworkAccessManager *managerWS = qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
@@ -419,13 +420,21 @@ QNetworkReply* ExtRequest::intervalsIcuOAuthExchange(const QString &code, const 
     QNetworkRequest request;
     request.setUrl(QUrl(URL_TOKEN_ICV));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+#ifndef Q_OS_WASM
+    // Desktop: identify ourselves to the Cloudflare proxy's allow-list.
+    // (On WASM the browser sets Origin automatically and refuses to let
+    // application code override it, so this no-op'd setter would be ignored.)
+    request.setRawHeader("Origin", INTERVALS_PROXY_DESKTOP_ORIGIN.toUtf8());
+#endif
 
     return managerWS->post(request, postData.toString(QUrl::FullyEncoded).toUtf8());
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// POST https://intervals.icu/oauth/token  (grant_type=refresh_token)
+/// POST <Cloudflare proxy>/proxy/oauth/token  (grant_type=refresh_token)
 /// Exchanges a stored refresh token for a new access + refresh token pair.
+/// Routed through the Cloudflare Worker CORS proxy (see
+/// intervalsIcuOAuthExchange above for the Origin-header rationale).
 /// The caller must connect finished() and parse the response with
 /// Util::parseJsonIntervalsIcuOAuthToken(), then call
 /// account->saveIntervalsIcuCredentials().
@@ -448,6 +457,9 @@ QNetworkReply* ExtRequest::intervalsIcuOAuthRefresh(const QString &refreshToken)
     QNetworkRequest request;
     request.setUrl(QUrl(URL_TOKEN_ICV));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+#ifndef Q_OS_WASM
+    request.setRawHeader("Origin", INTERVALS_PROXY_DESKTOP_ORIGIN.toUtf8());
+#endif
 
     LOG_INFO("ExtRequest", QStringLiteral("intervalsIcuOAuthRefresh: refreshing access token"));
     return managerWS->post(request, postData.toString(QUrl::FullyEncoded).toUtf8());

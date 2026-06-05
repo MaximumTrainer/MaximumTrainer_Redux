@@ -68,7 +68,29 @@ const static QString urlIntervalsIcuOAuthAuthorize(
 #endif
 const static QString CLIENT_ID_ICV     = QStringLiteral(INTERVALS_OAUTH_CLIENT_ID);
 const static QString CLIENT_SECRET_ICV = QStringLiteral(INTERVALS_OAUTH_CLIENT_SECRET);
-const static QString URL_TOKEN_ICV  = "https://intervals.icu/oauth/token";
+
+/// Cloudflare CORS proxy that fronts intervals.icu for both desktop and WASM
+/// builds.  All OAuth token exchange / refresh POSTs (and, in WASM, all API
+/// requests via the index.html XHR/fetch interceptor) go through this proxy.
+/// See workers/intervals-cors-proxy/ and docs/app/index.html.
+const static QString INTERVALS_PROXY_BASE =
+    QStringLiteral("https://mt-intervals-proxy.intervals-login.workers.dev");
+
+/// Sentinel Origin header value sent by the native desktop client on requests
+/// to the Cloudflare proxy.  Must match an entry in the worker's
+/// ALLOWED_ORIGINS list (workers/intervals-cors-proxy/worker.js).
+/// QNetworkAccessManager is not bound by CORS, so this header is not a
+/// security boundary — it just marks the request as coming from our own
+/// desktop client rather than a random third-party fetch.
+const static QString INTERVALS_PROXY_DESKTOP_ORIGIN =
+    QStringLiteral("https://maximumtrainer-desktop.invalid");
+
+/// OAuth2 token endpoint, proxied through the Cloudflare Worker.  Used for
+/// both the authorization-code exchange and refresh-token requests in
+/// ExtRequest::intervalsIcuOAuthExchange/Refresh.  Desktop and WASM use the
+/// same URL; WASM browsers set Origin automatically (github.io), desktop
+/// sets INTERVALS_PROXY_DESKTOP_ORIGIN manually.
+const static QString URL_TOKEN_ICV  = INTERVALS_PROXY_BASE + "/proxy/oauth/token";
 
 /// Sentinel athlete ID meaning "the currently authenticated OAuth2 user".
 /// Pass this to Bearer-token API calls when the real athlete ID is not yet known.

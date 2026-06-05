@@ -85,6 +85,12 @@ is made.
 
 - Only `https://maximumtrainer.github.io` (and localhost for development)
   can read proxied responses via the browser's CORS policy.
+- The native desktop client identifies itself with a sentinel
+  `Origin: https://maximumtrainer-desktop.invalid` header (see
+  `INTERVALS_PROXY_DESKTOP_ORIGIN` in `src/persistence/db/environnement.h`).
+  This is **not** a security boundary — anyone can forge an `Origin` header
+  from a non-browser HTTP client — it just keeps the worker's allow-list
+  honest about which clients are expected.
 - Requests from other origins receive `HTTP 403`.
 - Only the headers the API actually needs (`Authorization`, `Content-Type`,
   `Accept`) are forwarded upstream.

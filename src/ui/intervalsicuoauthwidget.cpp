@@ -11,6 +11,11 @@
 #include "logger.h"
 #include "myqwebenginepage.h"
 
+// Substring uniquely identifying the unified OAuth callback page (served
+// from GitHub Pages — see Environnement::getWasmOAuthRedirectUri).  Used by
+// onPageLoaded() to recognise the post-authorization redirect.
+static const QLatin1String kIntervalsCallbackMarker("/oauth_callback.html");
+
 IntervalsIcuOAuthWidget::IntervalsIcuOAuthWidget(QWidget *parent)
     : QWidget(parent)
 {
@@ -80,7 +85,7 @@ void IntervalsIcuOAuthWidget::onPageLoaded(bool /*ok*/)
 
     const QString urlStr = m_webView->url().toDisplayString();
 
-    if (!urlStr.contains(QLatin1String("/intervals_icu_token_exchange")))
+    if (!urlStr.contains(kIntervalsCallbackMarker))
         return;
 
     LOG_INFO("IntervalsIcuOAuthWidget", QStringLiteral("OAuth2 callback received"));
@@ -162,9 +167,8 @@ void IntervalsIcuOAuthWidget::onPageLoaded(bool /*ok*/)
     }
 
     LOG_INFO("IntervalsIcuOAuthWidget",
-             QStringLiteral("Client-side token exchange"));
-    const QString redirectUri =
-        Environnement::getURLEnvironnement() + "intervals_icu_token_exchange";
+             QStringLiteral("Client-side token exchange (via Cloudflare proxy)"));
+    const QString redirectUri = Environnement::getWasmOAuthRedirectUri();
     m_tokenReply = ExtRequest::intervalsIcuOAuthExchange(code, redirectUri);
     if (!m_tokenReply) {
         LOG_WARN("IntervalsIcuOAuthWidget",

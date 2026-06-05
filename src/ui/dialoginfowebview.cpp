@@ -215,7 +215,7 @@ void DialogInfoWebView::pageLoaded(bool ok){
     }
     /// ------ Intervals.icu OAuth2 callback ------------------------------------------------
     else if (usedForIntervalsIcu
-             && ui->webView->url().toDisplayString().contains("/intervals_icu_token_exchange"))  {
+             && ui->webView->url().toDisplayString().contains("/oauth_callback.html"))  {
 
         const QString urlStr = ui->webView->url().toDisplayString();
         LOG_INFO("DialogInfoWebView", QStringLiteral("Intervals.icu OAuth2 callback received"));
@@ -312,8 +312,8 @@ void DialogInfoWebView::pageLoaded(bool ok){
         }
 
         LOG_INFO("DialogInfoWebView",
-                 QStringLiteral("Intervals.icu OAuth: exchanging authorization code client-side"));
-        const QString redirectUri = Environnement::getURLEnvironnement() + "intervals_icu_token_exchange";
+                 QStringLiteral("Intervals.icu OAuth: exchanging authorization code via Cloudflare proxy"));
+        const QString redirectUri = Environnement::getWasmOAuthRedirectUri();
         m_intervalsTokenReply = ExtRequest::intervalsIcuOAuthExchange(code, redirectUri);
         if (!m_intervalsTokenReply) {
             LOG_WARN("DialogInfoWebView",

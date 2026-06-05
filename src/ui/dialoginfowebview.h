@@ -23,8 +23,9 @@ public:
     void setUsedForStrava(bool used);
     void setUsedForTrainingPeaks(bool used);
     /// Configure this dialog as an Intervals.icu OAuth2 flow.
-    /// When set, the dialog watches for an /intervals_icu_token_exchange
-    /// redirect and parses the returned token JSON.
+    /// When set, the dialog watches for the unified github.io
+    /// /oauth_callback.html redirect and exchanges the authorization code
+    /// for a token pair via the Cloudflare CORS proxy.
     void setUsedForIntervalsIcu(bool used);
     /// Store the CSRF state token that was included in the authorization URL.
     /// When set, the state is validated against the value returned in the

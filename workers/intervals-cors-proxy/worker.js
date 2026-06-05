@@ -31,6 +31,13 @@
 
 const ALLOWED_ORIGINS = [
   'https://maximumtrainer.github.io',
+  // Sentinel origin used by the native desktop client (Qt Widgets build).
+  // QNetworkAccessManager is not bound by CORS so this origin is set
+  // explicitly by ExtRequest::intervalsIcuOAuthExchange/Refresh; it is not
+  // a security boundary, only a marker that distinguishes our own desktop
+  // traffic from random third-party fetches.  Must match the C++ constant
+  // INTERVALS_PROXY_DESKTOP_ORIGIN in src/persistence/db/environnement.h.
+  'https://maximumtrainer-desktop.invalid',
   'http://localhost:8080',
   'http://localhost:5500',
   'http://127.0.0.1:8080',

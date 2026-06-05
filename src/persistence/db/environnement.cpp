@@ -147,20 +147,23 @@ QString Environnement::getURLTrainingPeaksAuthorize() {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-/// Build the full Intervals.icu OAuth2 authorization URL, including the
-/// redirect_uri that points back to the MaximumTrainer.com backend proxy so
-/// it can exchange the authorization code for an access token securely.
+/// Build the full Intervals.icu OAuth2 authorization URL.
+///
+/// Both desktop and WASM builds use the same redirect_uri — the GitHub Pages
+/// callback page (Environnement::getWasmOAuthRedirectUri).  On WASM the page
+/// is loaded in a popup that posts the authorization code back via
+/// window.opener.postMessage.  On desktop the embedded QWebEngineView
+/// (IntervalsIcuOAuthWidget / DialogInfoWebView) detects the redirect to
+/// oauth_callback.html and extracts the code from its query string.
+///
+/// In both cases the subsequent /oauth/token POST goes through the
+/// Cloudflare Worker proxy (see URL_TOKEN_ICV in environnement.h).
+///
 /// @param state  A per-request random token for CSRF protection.  The caller
 ///               must store this value and validate it matches the state
 ///               parameter on the redirect callback.
 QString Environnement::getURLIntervalsIcuAuthorize(const QString &state) {
-
-    QString myURL = urlIntervalsIcuOAuthAuthorize;
-    myURL += "&client_id=" + getIntervalsIcuClientId();
-    myURL += "&redirect_uri=" + getURLEnvironnement() + "intervals_icu_token_exchange";
-    if (!state.isEmpty())
-        myURL += "&state=" + state;
-    return myURL;
+    return getURLIntervalsIcuAuthorizeWasm(state);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
