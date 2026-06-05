@@ -41,6 +41,20 @@ int main(int argc, char *argv[]) {
         if (isWayland)
             qputenv("QT_QPA_PLATFORM", "xcb");
     }
+
+    // Select the xdg-desktop-portal platform theme so the app tracks the
+    // desktop's light/dark preference. Under xcb (which we force above on
+    // Wayland) Qt does not auto-select a platform theme that exposes the
+    // GNOME/KDE colour scheme, so QStyleHints::colorScheme() — read by
+    // AppTheme::resolveMode() for "System" mode — reports Light regardless of
+    // the desktop being in dark mode. The xdgdesktopportal theme reads the
+    // standard org.freedesktop.appearance color-scheme over D-Bus and works
+    // across desktops. Only set it when the user has not pinned a theme; with
+    // no portal running it harmlessly falls back (System resolves to Light,
+    // same as before). The plugin (and libQt6DBus) must be bundled in the
+    // AppImage — see release-linux.yml.
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORMTHEME"))
+        qputenv("QT_QPA_PLATFORMTHEME", "xdgdesktopportal");
 #endif
 
     // QtWebEngine requires the GUI thread and Chromium's GPU process to share
