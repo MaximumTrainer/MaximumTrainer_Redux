@@ -215,10 +215,10 @@ test.describe('BLE GATT ready callback', () => {
       `WASM overlay shows "Radio list fetch failed" — radio API request failed:\n${radioFetchFailedLines.join('\n')}`,
     ).toHaveLength(0);
 
-    // Verify the Qt backend API calls were actually made
+    // Verify a Qt backend API call was actually made
     expect(
-      apiRequestedUrls.some((u) => u.includes('radio_rest')),
-      `Qt MainWindow did not call the radio API — app may not have reached init phase.\nSeen URLs: ${apiRequestedUrls.join(', ')}`,
+      apiRequestedUrls.some((u) => u.includes('achievement_rest')),
+      `Qt app did not call the achievement API — app may not have reached init phase.\nSeen URLs: ${apiRequestedUrls.join(', ')}`,
     ).toBe(true);
 
     const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
