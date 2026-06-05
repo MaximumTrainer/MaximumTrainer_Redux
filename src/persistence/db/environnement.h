@@ -34,10 +34,12 @@ const static QString urlIntervalsIcuCalendar = "https://intervals.icu/athlete/%1
 /// Client ID 259 is registered for MaximumTrainer.
 ///
 /// Required scopes and their purpose:
-///   ACTIVITY:READ   — fetch completed activities for history and data sync
-///   WELLNESS:READ   — fetch wellness metrics (weight, HRV, sleep, etc.)
-///   CALENDAR:READ   — fetch planned workouts from the athlete calendar
-///   SETTINGS:READ   — read training zones (HR zones, power zones)
+///   CALENDAR:CALENDAR_UPDATED       — receive notifications when planned workouts change
+///   ACTIVITY:ACTIVITY_UPLOADED      — receive notifications when an activity is uploaded
+///   ACTIVITY:ACTIVITY_ACHIEVEMENTS  — receive notifications about achievements on activities
+///   WELLNESS:WELLNESS_UPDATED       — receive notifications when wellness metrics change
+///   WELLNESS:FITNESS_UPDATED        — receive notifications when fitness/CTL/ATL values change
+///   SETTINGS:SPORT_SETTINGS_UPDATED — receive notifications when sport-specific settings (zones) change
 ///
 /// The redirect_uri is appended at runtime by Environnement::getURLIntervalsIcuAuthorize().
 /// Note: client_id is substituted at runtime via getIntervalsIcuClientId() so the
@@ -46,7 +48,12 @@ const static QString urlIntervalsIcuCalendar = "https://intervals.icu/athlete/%1
 const static QString urlIntervalsIcuOAuthAuthorize(
     "https://intervals.icu/oauth/authorize?"
     "response_type=code"
-    "&scope=ACTIVITY:READ+WELLNESS:READ+CALENDAR:READ+SETTINGS:READ");
+    "&scope=CALENDAR:CALENDAR_UPDATED"
+    "+ACTIVITY:ACTIVITY_UPLOADED"
+    "+ACTIVITY:ACTIVITY_ACHIEVEMENTS"
+    "+WELLNESS:WELLNESS_UPDATED"
+    "+WELLNESS:FITNESS_UPDATED"
+    "+SETTINGS:SPORT_SETTINGS_UPDATED");
 
 /// Intervals.icu OAuth2 client credentials.
 /// client_id and client_secret are injected at build time via environment variables
