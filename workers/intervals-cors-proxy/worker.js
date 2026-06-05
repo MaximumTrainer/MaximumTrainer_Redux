@@ -29,19 +29,27 @@
  * that pages.yml injects it into docs/app/index.html.
  */
 
+// Browser origins (real web origins) that are allowed to read responses
+// through the browser's CORS policy.  Requests from these origins receive
+// Access-Control-Allow-Origin headers echoing the request Origin.
 const ALLOWED_ORIGINS = [
   'https://maximumtrainer.github.io',
-  // Sentinel origin used by the native desktop client (Qt Widgets build).
-  // QNetworkAccessManager is not bound by CORS so this origin is set
-  // explicitly by ExtRequest::intervalsIcuOAuthExchange/Refresh; it is not
-  // a security boundary, only a marker that distinguishes our own desktop
-  // traffic from random third-party fetches.  Must match the C++ constant
-  // INTERVALS_PROXY_DESKTOP_ORIGIN in src/persistence/db/environnement.h.
-  'https://maximumtrainer-desktop.invalid',
   'http://localhost:8080',
   'http://localhost:5500',
   'http://127.0.0.1:8080',
 ];
+
+// Native desktop clients (Qt Widgets build) are not browsers and are not
+// subject to CORS.  They identify themselves by sending an X-MT-Client
+// header instead of an Origin.  Accepted values are listed here so the
+// worker can distinguish "our own desktop traffic" from random server-side
+// callers without abusing the Origin header.  This is not a security
+// boundary — any HTTP client can set the header — it just keeps the
+// allow-list honest about which clients are expected.  Must match the C++
+// constants INTERVALS_PROXY_CLIENT_HEADER /
+// INTERVALS_PROXY_DESKTOP_CLIENT_VALUE in src/persistence/db/environnement.h.
+const CLIENT_HEADER = 'x-mt-client';
+const ALLOWED_CLIENTS = ['desktop'];
 
 const ICU_BASE = 'https://intervals.icu';
 
@@ -71,13 +79,18 @@ function forbidden() {
 export default {
   async fetch(request, _env, _ctx) {
     const origin = request.headers.get('Origin') || '';
+    const client = (request.headers.get(CLIENT_HEADER) || '').toLowerCase();
+    const hasOrigin = origin !== '';
+    const isBrowser = hasOrigin && ALLOWED_ORIGINS.includes(origin);
+    const isDesktop = !hasOrigin && ALLOWED_CLIENTS.includes(client);
 
-    // Reject requests from unknown origins to prevent open-proxy abuse.
-    if (!ALLOWED_ORIGINS.includes(origin)) {
+    // Reject anything that's neither a known browser origin nor a known
+    // desktop client to prevent open-proxy abuse.
+    if (!isBrowser && !isDesktop) {
       return forbidden();
     }
 
-    // CORS preflight.
+    // CORS preflight (browsers only — desktop clients don't preflight).
     if (request.method === 'OPTIONS') {
       const reqHeaders = request.headers.get('Access-Control-Request-Headers') ||
                          'authorization, content-type, accept';
@@ -93,7 +106,10 @@ export default {
     const url = new URL(request.url);
 
     if (!url.pathname.startsWith('/proxy/')) {
-      return new Response('Not Found', { status: 404, headers: corsHeaders(origin) });
+      return new Response('Not Found', {
+        status: 404,
+        headers: isBrowser ? corsHeaders(origin) : {},
+      });
     }
 
     // Strip /proxy prefix, keep the rest of the path and query string.
@@ -101,6 +117,8 @@ export default {
     const targetUrl  = ICU_BASE + targetPath + url.search;
 
     // Build a clean forwarded request with only the necessary headers.
+    // The X-MT-Client marker is intentionally NOT forwarded upstream — it
+    // is purely a worker-side allow-list signal.
     const forwardHeaders = new Headers();
     for (const name of FORWARD_HEADERS) {
       const value = request.headers.get(name);
@@ -117,10 +135,13 @@ export default {
 
     const response = await fetch(proxyReq);
 
-    // Merge CORS headers into the upstream response headers.
+    // Merge CORS headers into the upstream response headers (browsers only;
+    // desktop clients ignore CORS and don't need them).
     const responseHeaders = new Headers(response.headers);
-    for (const [k, v] of Object.entries(corsHeaders(origin))) {
-      responseHeaders.set(k, v);
+    if (isBrowser) {
+      for (const [k, v] of Object.entries(corsHeaders(origin))) {
+        responseHeaders.set(k, v);
+      }
     }
     // Prevent Cloudflare or the browser from caching authenticated responses.
     responseHeaders.set('Cache-Control', 'no-store');

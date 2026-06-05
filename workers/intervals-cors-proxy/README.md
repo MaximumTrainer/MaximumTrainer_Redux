@@ -85,15 +85,18 @@ is made.
 
 - Only `https://maximumtrainer.github.io` (and localhost for development)
   can read proxied responses via the browser's CORS policy.
-- The native desktop client identifies itself with a sentinel
-  `Origin: https://maximumtrainer-desktop.invalid` header (see
-  `INTERVALS_PROXY_DESKTOP_ORIGIN` in `src/persistence/db/environnement.h`).
-  This is **not** a security boundary — anyone can forge an `Origin` header
-  from a non-browser HTTP client — it just keeps the worker's allow-list
-  honest about which clients are expected.
-- Requests from other origins receive `HTTP 403`.
+- The native desktop client is not a browser and does not send an `Origin`
+  header.  Instead it identifies itself with `X-MT-Client: desktop` (see
+  `INTERVALS_PROXY_CLIENT_HEADER` / `INTERVALS_PROXY_DESKTOP_CLIENT_VALUE`
+  in `src/persistence/db/environnement.h`).  The worker accepts a request
+  if it has either a known `Origin` (browser) **or** a known `X-MT-Client`
+  value (desktop), and rejects everything else with `HTTP 403`.
+  This is **not** a security boundary — anyone can forge an `X-MT-Client`
+  header from a non-browser HTTP client — it just keeps the worker from
+  acting as a fully open relay.
 - Only the headers the API actually needs (`Authorization`, `Content-Type`,
-  `Accept`) are forwarded upstream.
+  `Accept`) are forwarded upstream.  `X-MT-Client` is consumed by the
+  worker and not forwarded to intervals.icu.
 
 ---
 

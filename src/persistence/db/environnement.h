@@ -76,20 +76,24 @@ const static QString CLIENT_SECRET_ICV = QStringLiteral(INTERVALS_OAUTH_CLIENT_S
 const static QString INTERVALS_PROXY_BASE =
     QStringLiteral("https://mt-intervals-proxy.intervals-login.workers.dev");
 
-/// Sentinel Origin header value sent by the native desktop client on requests
-/// to the Cloudflare proxy.  Must match an entry in the worker's
-/// ALLOWED_ORIGINS list (workers/intervals-cors-proxy/worker.js).
-/// QNetworkAccessManager is not bound by CORS, so this header is not a
-/// security boundary — it just marks the request as coming from our own
-/// desktop client rather than a random third-party fetch.
-const static QString INTERVALS_PROXY_DESKTOP_ORIGIN =
-    QStringLiteral("https://maximumtrainer-desktop.invalid");
+/// Header name + value used by the native desktop client to identify itself
+/// to the Cloudflare proxy's allow-list.  The desktop build is not a browser
+/// and is not subject to CORS, so it does NOT send an Origin header; instead
+/// it sends `X-MT-Client: desktop`, which the worker checks against its
+/// ALLOWED_CLIENTS list (workers/intervals-cors-proxy/worker.js).
+/// This is not a security boundary — any HTTP client can forge the header —
+/// it just keeps the proxy from acting as a fully open relay.
+const static QString INTERVALS_PROXY_CLIENT_HEADER =
+    QStringLiteral("X-MT-Client");
+const static QString INTERVALS_PROXY_DESKTOP_CLIENT_VALUE =
+    QStringLiteral("desktop");
 
 /// OAuth2 token endpoint, proxied through the Cloudflare Worker.  Used for
 /// both the authorization-code exchange and refresh-token requests in
 /// ExtRequest::intervalsIcuOAuthExchange/Refresh.  Desktop and WASM use the
-/// same URL; WASM browsers set Origin automatically (github.io), desktop
-/// sets INTERVALS_PROXY_DESKTOP_ORIGIN manually.
+/// same URL; WASM browsers set Origin automatically (github.io) and the
+/// worker enforces CORS, while desktop sets INTERVALS_PROXY_CLIENT_HEADER
+/// instead.
 const static QString URL_TOKEN_ICV  = INTERVALS_PROXY_BASE + "/proxy/oauth/token";
 
 /// Sentinel athlete ID meaning "the currently authenticated OAuth2 user".

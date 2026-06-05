@@ -394,8 +394,8 @@ QNetworkReply* ExtRequest::selfloopsUploadFile(QString email, QString password, 
 /// Both desktop and WASM builds route this through the Cloudflare Worker
 /// CORS proxy (URL_TOKEN_ICV is the proxied URL).  On WASM the browser sets
 /// the Origin header automatically (https://maximumtrainer.github.io); on
-/// desktop we set INTERVALS_PROXY_DESKTOP_ORIGIN explicitly so the worker
-/// allow-list accepts the request.
+/// desktop we send INTERVALS_PROXY_CLIENT_HEADER instead (the desktop build
+/// is not a browser and is not subject to CORS — see worker.js).
 ///
 /// Note: A client_secret is omitted because Intervals.icu client 259 is
 /// registered as a public client (no client secret required).  This is a
@@ -422,9 +422,14 @@ QNetworkReply* ExtRequest::intervalsIcuOAuthExchange(const QString &code, const 
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 #ifndef Q_OS_WASM
     // Desktop: identify ourselves to the Cloudflare proxy's allow-list.
-    // (On WASM the browser sets Origin automatically and refuses to let
-    // application code override it, so this no-op'd setter would be ignored.)
-    request.setRawHeader("Origin", INTERVALS_PROXY_DESKTOP_ORIGIN.toUtf8());
+    // We deliberately do NOT set Origin here: the desktop build is not a
+    // browser, has no web origin, and is not subject to CORS.  Instead we
+    // send X-MT-Client so the worker can distinguish our own desktop
+    // traffic from random third-party callers.  (On WASM the browser sets
+    // Origin automatically and refuses to let application code override
+    // it, so this header would be ignored there.)
+    request.setRawHeader(INTERVALS_PROXY_CLIENT_HEADER.toUtf8(),
+                         INTERVALS_PROXY_DESKTOP_CLIENT_VALUE.toUtf8());
 #endif
 
     return managerWS->post(request, postData.toString(QUrl::FullyEncoded).toUtf8());
@@ -458,7 +463,8 @@ QNetworkReply* ExtRequest::intervalsIcuOAuthRefresh(const QString &refreshToken)
     request.setUrl(QUrl(URL_TOKEN_ICV));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 #ifndef Q_OS_WASM
-    request.setRawHeader("Origin", INTERVALS_PROXY_DESKTOP_ORIGIN.toUtf8());
+    request.setRawHeader(INTERVALS_PROXY_CLIENT_HEADER.toUtf8(),
+                         INTERVALS_PROXY_DESKTOP_CLIENT_VALUE.toUtf8());
 #endif
 
     LOG_INFO("ExtRequest", QStringLiteral("intervalsIcuOAuthRefresh: refreshing access token"));
