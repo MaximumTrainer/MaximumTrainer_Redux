@@ -35,6 +35,7 @@
         <file alias="general">resources/images/general.png</file>
         <file alias="calendar">resources/images/calendar.png</file>
         <file alias="gear">resources/images/gear.png</file>
+        <file alias="bluetooth">resources/images/bluetooth.png</file>
         <file alias="user">resources/images/user.png</file>
         <file alias="road">resources/images/road.png</file>
         <file alias="radio">resources/images/radio.png</file>

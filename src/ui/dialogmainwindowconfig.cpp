@@ -180,10 +180,6 @@ void DialogMainWindowConfig::initUI() {
 
     ui->checkBox_controlTrainer->setChecked(account->control_trainer_resistance);
 
-    ui->checkBox_stopPairingOnFound->setChecked(account->stop_pairing_on_found);
-    ui->checkBox_pairNbOfSeconds->setChecked(!account->stop_pairing_on_found);
-    ui->comboBox_timePairingSec->setCurrentText(QString::number(account->nb_sec_pairing));
-
 
     ui->lineEdit_userSelfloops->setText(account->selfloops_user);
     ui->lineEdit_pwSelfloops->setText(account->selfloops_pw);
@@ -435,6 +431,7 @@ void DialogMainWindowConfig::reject() {
     qDebug() << "rejected, put back settings value!";
 
     initUI();
+
     QDialog::reject();
 }
 
@@ -485,8 +482,6 @@ void DialogMainWindowConfig::accept() {
     }
 
     account->control_trainer_resistance = ui->checkBox_controlTrainer->isChecked();
-    account->stop_pairing_on_found = ui->checkBox_stopPairingOnFound->isChecked();
-    account->nb_sec_pairing = ui->comboBox_timePairingSec->currentText().toInt();
 
 
 

@@ -427,7 +427,7 @@ void BtleHub::parseHrMeasurement(const QByteArray &data)
         hr = static_cast<quint8>(data[1]);
     }
 
-    emit signal_hr(0, hr);
+    emit signal_hr(SOLO_USER_ID, hr);
 }
 
 // CSC Measurement (0x2A5B) – speed/cadence computation
@@ -491,9 +491,9 @@ void BtleHub::parseCscMeasurement(const QByteArray &data)
             const quint64 numerator = static_cast<quint64>(deltaCrankRevs) * 60ULL * 1024ULL;
             const quint64 raw = numerator / static_cast<quint64>(deltaCrankTime);
             const int cadence = static_cast<int>(qMin(raw, static_cast<quint64>(std::numeric_limits<int>::max())));
-            emit signal_cadence(0, cadence);
+            emit signal_cadence(SOLO_USER_ID, cadence);
         } else if (deltaCrankRevs == 0) {
-            emit signal_cadence(0, 0);
+            emit signal_cadence(SOLO_USER_ID, 0);
         }
 
         m_lastCrankRevolutions = crankRevs;
@@ -512,9 +512,9 @@ void BtleHub::parseCscMeasurement(const QByteArray &data)
                            * 1024.0
                            / deltaWheelTime;
             double speedKmh = speedMs * 3.6;
-            emit signal_speed(0, speedKmh);
+            emit signal_speed(SOLO_USER_ID, speedKmh);
         } else if (deltaWheelRevs == 0) {
-            emit signal_speed(0, 0.0);
+            emit signal_speed(SOLO_USER_ID, 0.0);
         }
 
         m_lastWheelRevolutions = wheelRevs;
@@ -536,7 +536,7 @@ void BtleHub::parsePowerMeasurement(const QByteArray &data)
     qint16 power = static_cast<qint16>(
         static_cast<quint8>(data[2]) | (static_cast<quint8>(data[3]) << 8));
 
-    emit signal_power(0, static_cast<int>(power));
+    emit signal_power(SOLO_USER_ID, static_cast<int>(power));
 }
 
 // FTMS Indoor Bike Data (0x2AD2)
@@ -576,7 +576,7 @@ void BtleHub::parseFtmsIndoorBikeData(const QByteArray &data)
 
     // Bit 0: More Data (Instantaneous Speed NOT present when set)
     if (!(flags & 0x0001)) {
-        emit signal_speed(0, readU16() * 0.01);
+        emit signal_speed(SOLO_USER_ID, readU16() * 0.01);
     }
 
     // Bit 1: Average Speed present
@@ -584,7 +584,7 @@ void BtleHub::parseFtmsIndoorBikeData(const QByteArray &data)
 
     // Bit 2: Instantaneous Cadence NOT present when set
     if (!(flags & 0x0004)) {
-        emit signal_cadence(0, static_cast<int>(readU16() * 0.5));
+        emit signal_cadence(SOLO_USER_ID, static_cast<int>(readU16() * 0.5));
     }
 
     // Bit 3: Average Cadence present
@@ -599,7 +599,7 @@ void BtleHub::parseFtmsIndoorBikeData(const QByteArray &data)
     // Bit 6: Instantaneous Power NOT present when set
     if (!(flags & 0x0040)) {
         qint16 power = static_cast<qint16>(readU16());
-        emit signal_power(0, static_cast<int>(power));
+        emit signal_power(SOLO_USER_ID, static_cast<int>(power));
     }
 }
 
@@ -608,8 +608,8 @@ void BtleHub::parseFtmsIndoorBikeData(const QByteArray &data)
 // ─────────────────────────────────────────────────────────────────────────────
 void BtleHub::onCscStopTimer()
 {
-    emit signal_cadence(0, 0);
-    emit signal_speed(0, 0.0);
+    emit signal_cadence(SOLO_USER_ID, 0);
+    emit signal_speed(SOLO_USER_ID, 0.0);
 }
 
 // Moxy Muscle Oxygen Measurement (0xAAB2)
@@ -631,7 +631,7 @@ void BtleHub::parseMoxyMeasurement(const QByteArray &data)
     double smo2 = (flags & 0x01) ? rawSmo2 / 10.0  : 0.0;
     double thb  = (flags & 0x02) ? rawThb  / 100.0 : 0.0;
 
-    emit signal_oxygen(0, smo2, thb);
+    emit signal_oxygen(SOLO_USER_ID, smo2, thb);
 }
 
 // Battery Level (0x2A19)

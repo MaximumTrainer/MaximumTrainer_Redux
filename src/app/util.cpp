@@ -410,8 +410,6 @@ void Util::parseJsonObjectAccount(QString data) {
     account->selfloops_user = jsonObj["selfloops_user"].toString();
     account->selfloops_pw = jsonObj["selfloops_pw"].toString();
     account->control_trainer_resistance = jsonObj["control_trainer_resistance"].toString().toInt();
-    account->stop_pairing_on_found = jsonObj["stop_pairing_on_found"].toString().toInt();
-    account->nb_sec_pairing = jsonObj["nb_sec_pairing"].toString().toInt();
     /* ----- */
 
 

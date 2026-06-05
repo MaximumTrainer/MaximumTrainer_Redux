@@ -54,6 +54,12 @@ $$PWD/workoutdialog.h \
     $$PWD/intervalsicuoauthwidget.h \
     #$$PWD/main_coursepage.h
 
+# Sensors main-window page. Compiled on all platforms (the .cpp guards its
+# BLE-scanner use with GC_WASM_BUILD) so the promoted widget in mainwindow.ui
+# always links.
+SOURCES += $$PWD/sensorswidget.cpp
+HEADERS += $$PWD/sensorswidget.h
+
 FORMS    += $$PWD/mainwindow.ui \
     $$PWD/workoutdialog.ui \
     $$PWD/main_workoutpage.ui \

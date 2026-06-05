@@ -18,11 +18,16 @@ contains(QMAKE_PLATFORM, wasm) {
     SOURCES += \
         $$PWD/btle_hub.cpp \
         $$PWD/btle_scanner_dialog.cpp \
+        $$PWD/btle_sensor_store.cpp \
+        $$PWD/sensor_connect_dialog.cpp \
         $$PWD/simulator_hub.cpp
 
     HEADERS += \
         $$PWD/btle_hub.h \
         $$PWD/btle_scanner_dialog.h \
+        $$PWD/btle_sensor_config.h \
+        $$PWD/btle_sensor_store.h \
+        $$PWD/sensor_connect_dialog.h \
         $$PWD/btle_uuids.h \
         $$PWD/simulator_hub.h
 }

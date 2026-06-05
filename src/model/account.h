@@ -118,8 +118,6 @@ public:
     bool training_peaks_public_upload;
 
     bool control_trainer_resistance;
-    bool stop_pairing_on_found;
-    int nb_sec_pairing;
     int erg_smoothing_duration_s;  ///< Ramp duration (seconds) for ERG setpoint transitions; 0 = disabled.
 
     /// Battery warning threshold (issue #156): warn when a sensor's battery

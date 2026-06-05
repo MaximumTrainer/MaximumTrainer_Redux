@@ -97,43 +97,16 @@ jobs:
 
     - name: Package AppImage
       env:
+        QMAKE: ${{ env.QT_ROOT_DIR }}/bin/qmake
         # linuxdeploy-plugin-qt also bundles the QWT .so and any extra libs found
         # on LD_LIBRARY_PATH that the binary links against.
         LD_LIBRARY_PATH: ${{ env.QWT_DIR }}/lib
       run: |
-        # linuxdeploy-plugin-qt locates Qt via $QMAKE. Resolve it from PATH
-        # (install-qt-action puts the Qt6 bin dir on PATH, same as the build job
-        # uses bare `qmake`) rather than a pre-evaluated ${QT_ROOT_DIR} path,
-        # which can expand empty and leave the plugin with "Could not find qmake".
-        QMAKE="$(command -v qmake || command -v qmake6)"
-        if [ -z "$QMAKE" ]; then
-          echo "Error: qmake not found on PATH — cannot run linuxdeploy-plugin-qt"
-          exit 1
-        fi
-        export QMAKE
-        echo "Using QMAKE=$QMAKE"
-
         # Create AppDir structure
         mkdir -p AppDir/usr/bin AppDir/usr/lib AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
         cp build/release/MaximumTrainer AppDir/usr/bin/
         # Bundle the QWT shared library so the qt plugin / patchelf can resolve it
         cp -P "$QWT_DIR"/lib/libqwt.so* AppDir/usr/lib/
-        # QtWebEngine dlopen()s these NSS modules at runtime, so they are not
-        # picked up as DT_NEEDED dependencies and linuxdeploy omits them. Without
-        # them, NSS loads the host's (newer) libsoftokn3 against the bundled
-        # (older) libnssutil3, causing a fatal "NSSUTIL_3.x not found" crash on
-        # the first HTTPS request (e.g. Intervals.icu login). Pre-copy the whole
-        # NSS module family into AppDir so linuxdeploy bundles a self-consistent
-        # set. Best-effort: a missing module warns rather than failing the build.
-        for nss_lib in libsoftokn3.so libfreebl3.so libfreeblpriv3.so \
-                       libnssckbi.so libnssdbm3.so; do
-          nss_src=$(find /usr/lib/x86_64-linux-gnu -name "$nss_lib" | head -1)
-          if [ -n "$nss_src" ]; then
-            cp -vL "$nss_src" AppDir/usr/lib/
-          else
-            echo "WARN: NSS module $nss_lib not found on build host"
-          fi
-        done
         # Desktop entry required by linuxdeploy
         cat > AppDir/usr/share/applications/maximumtrainer.desktop << 'EOF'
         [Desktop Entry]
@@ -173,19 +146,6 @@ jobs:
           echo "PASS: libqwt found in AppDir"
         else
           echo "WARN: libqwt not found in AppDir"
-        fi
-
-    - name: Verify NSS runtime modules bundled
-      # libsoftokn3 is the critical one — its absence (or a version skew against
-      # the bundled libnssutil3) crashes QtWebEngine on the first HTTPS request.
-      # Fail the build if it is missing so a broken AppImage is never published.
-      run: |
-        echo "=== NSS module check ==="
-        if find AppDir -name "libsoftokn3.so" -print -quit 2>/dev/null | grep -q .; then
-          echo "PASS: libsoftokn3 bundled in AppDir"
-        else
-          echo "FAIL: libsoftokn3 missing from AppDir — QtWebEngine will crash on HTTPS"
-          exit 1
         fi
 
     - name: Upload artifact

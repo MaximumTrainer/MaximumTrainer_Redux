@@ -1,7 +1,6 @@
 name            = "mt-intervals-proxy"
 main            = "worker.js"
 compatibility_date = "2024-01-01"
-account_id = "61e33c14e3d5857d9a5c50fe789d2bbc"
 
 # Workers are deployed to:
 #   https://mt-intervals-proxy.<account-subdomain>.workers.dev

@@ -30,6 +30,7 @@
 #include "btle_hub_wasm.h"
 #else
 #include "btle_hub.h"
+#include "btle_sensor_config.h"
 #endif
 
 
@@ -68,6 +69,15 @@ public slots:
     void executeWorkout(Workout workout);
 
     void startScreenshotMode(const QString &outputDir);
+
+#ifndef GC_WASM_BUILD
+private:
+    /// Launch the workout dialog wired to multiple already-connected BLE hubs,
+    /// one per saved sensor role. Used by the multi-device pairing flow.
+    void startWorkoutWithHubs(const Workout &workout,
+                              const QMap<BtleSensorRole, BtleHub*> &hubsByRole);
+public slots:
+#endif
 
     //Coming from Studio QWebView ----------
     void enableStudioMode(bool enable);
