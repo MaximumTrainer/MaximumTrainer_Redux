@@ -34,10 +34,12 @@ const static QString urlIntervalsIcuCalendar = "https://intervals.icu/athlete/%1
 /// Client ID 259 is registered for MaximumTrainer.
 ///
 /// Required scopes and their purpose:
-///   ACTIVITY:READ   — fetch completed activities for history and data sync
-///   WELLNESS:READ   — fetch wellness metrics (weight, HRV, sleep, etc.)
-///   CALENDAR:READ   — fetch planned workouts from the athlete calendar
-///   SETTINGS:READ   — read training zones (HR zones, power zones)
+///   CALENDAR:CALENDAR_UPDATED       — receive notifications when planned workouts change
+///   ACTIVITY:ACTIVITY_UPLOADED      — receive notifications when an activity is uploaded
+///   ACTIVITY:ACTIVITY_ACHIEVEMENTS  — receive notifications about achievements on activities
+///   WELLNESS:WELLNESS_UPDATED       — receive notifications when wellness metrics change
+///   WELLNESS:FITNESS_UPDATED        — receive notifications when fitness/CTL/ATL values change
+///   SETTINGS:SPORT_SETTINGS_UPDATED — receive notifications when sport-specific settings (zones) change
 ///
 /// The redirect_uri is appended at runtime by Environnement::getURLIntervalsIcuAuthorize().
 /// Note: client_id is substituted at runtime via getIntervalsIcuClientId() so the
@@ -46,7 +48,12 @@ const static QString urlIntervalsIcuCalendar = "https://intervals.icu/athlete/%1
 const static QString urlIntervalsIcuOAuthAuthorize(
     "https://intervals.icu/oauth/authorize?"
     "response_type=code"
-    "&scope=ACTIVITY:READ+WELLNESS:READ+CALENDAR:READ+SETTINGS:READ");
+    "&scope=CALENDAR:CALENDAR_UPDATED"
+    "+ACTIVITY:ACTIVITY_UPLOADED"
+    "+ACTIVITY:ACTIVITY_ACHIEVEMENTS"
+    "+WELLNESS:WELLNESS_UPDATED"
+    "+WELLNESS:FITNESS_UPDATED"
+    "+SETTINGS:SPORT_SETTINGS_UPDATED");
 
 /// Intervals.icu OAuth2 client credentials.
 /// client_id and client_secret are injected at build time via environment variables
@@ -61,7 +68,33 @@ const static QString urlIntervalsIcuOAuthAuthorize(
 #endif
 const static QString CLIENT_ID_ICV     = QStringLiteral(INTERVALS_OAUTH_CLIENT_ID);
 const static QString CLIENT_SECRET_ICV = QStringLiteral(INTERVALS_OAUTH_CLIENT_SECRET);
-const static QString URL_TOKEN_ICV  = "https://intervals.icu/oauth/token";
+
+/// Cloudflare CORS proxy that fronts intervals.icu for both desktop and WASM
+/// builds.  All OAuth token exchange / refresh POSTs (and, in WASM, all API
+/// requests via the index.html XHR/fetch interceptor) go through this proxy.
+/// See workers/intervals-cors-proxy/ and docs/app/index.html.
+const static QString INTERVALS_PROXY_BASE =
+    QStringLiteral("https://mt-intervals-proxy.intervals-login.workers.dev");
+
+/// Header name + value used by the native desktop client to identify itself
+/// to the Cloudflare proxy's allow-list.  The desktop build is not a browser
+/// and is not subject to CORS, so it does NOT send an Origin header; instead
+/// it sends `X-MT-Client: desktop`, which the worker checks against its
+/// ALLOWED_CLIENTS list (workers/intervals-cors-proxy/worker.js).
+/// This is not a security boundary — any HTTP client can forge the header —
+/// it just keeps the proxy from acting as a fully open relay.
+const static QString INTERVALS_PROXY_CLIENT_HEADER =
+    QStringLiteral("X-MT-Client");
+const static QString INTERVALS_PROXY_DESKTOP_CLIENT_VALUE =
+    QStringLiteral("desktop");
+
+/// OAuth2 token endpoint, proxied through the Cloudflare Worker.  Used for
+/// both the authorization-code exchange and refresh-token requests in
+/// ExtRequest::intervalsIcuOAuthExchange/Refresh.  Desktop and WASM use the
+/// same URL; WASM browsers set Origin automatically (github.io) and the
+/// worker enforces CORS, while desktop sets INTERVALS_PROXY_CLIENT_HEADER
+/// instead.
+const static QString URL_TOKEN_ICV  = INTERVALS_PROXY_BASE + "/proxy/oauth/token";
 
 /// Sentinel athlete ID meaning "the currently authenticated OAuth2 user".
 /// Pass this to Bearer-token API calls when the real athlete ID is not yet known.

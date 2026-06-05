@@ -42,7 +42,7 @@ public:
     static QNetworkReply* intervalsIcuOAuthExchange(const QString &code, const QString &redirectUri);
 
     /// Exchange a refresh token for a new access + refresh token pair.
-    /// POST https://intervals.icu/oauth/token  (grant_type=refresh_token)
+    /// POST <Cloudflare proxy>/proxy/oauth/token  (grant_type=refresh_token)
     /// On success, the caller should parse the response with
     /// Util::parseJsonIntervalsIcuOAuthToken() and call
     /// account->saveIntervalsIcuCredentials().

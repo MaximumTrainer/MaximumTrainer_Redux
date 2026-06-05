@@ -568,7 +568,8 @@ private slots:
     //   • Path starts with "/oauth/authorize".
     //   • Query contains client_id, response_type, scope, redirect_uri,
     //     and state (the per-login CSRF token passed by the caller).
-    //   • redirect_uri contains "intervals_icu_token_exchange".
+    //   • redirect_uri contains "oauth_callback.html" (unified github.io
+    //     callback used by both desktop and WASM flows).
     //   • state matches the value passed to the function.
     // -----------------------------------------------------------------------
     void testIntervalsIcuOAuthUrlGeneration()
@@ -610,10 +611,10 @@ private slots:
         QVERIFY2(q.hasQueryItem(QStringLiteral("redirect_uri")),
                  "OAuth URL must contain redirect_uri parameter");
         QVERIFY2(q.queryItemValue(QStringLiteral("redirect_uri"))
-                     .contains(QLatin1String("intervals_icu_token_exchange")),
+                     .contains(QLatin1String("oauth_callback.html")),
                  qPrintable(
                      QString("OAuth URL redirect_uri must contain "
-                             "'intervals_icu_token_exchange', got: %1")
+                             "'oauth_callback.html', got: %1")
                          .arg(q.queryItemValue(QStringLiteral("redirect_uri")))));
         QVERIFY2(q.hasQueryItem(QStringLiteral("state")),
                  "OAuth URL must contain state parameter for CSRF protection");
