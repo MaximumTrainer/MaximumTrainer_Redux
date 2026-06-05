@@ -97,7 +97,7 @@ jobs:
 
     - name: Package AppImage
       env:
-        QMAKE: ${{ env.QT_ROOT_DIR }}/bin/qmake
+        QMAKE: ${{ env.Qt6_DIR }}/bin/qmake
         # linuxdeploy-plugin-qt also bundles the QWT .so and any extra libs found
         # on LD_LIBRARY_PATH that the binary links against.
         LD_LIBRARY_PATH: ${{ env.QWT_DIR }}/lib
