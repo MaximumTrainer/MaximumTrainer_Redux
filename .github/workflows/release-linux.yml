@@ -107,6 +107,22 @@ jobs:
         cp build/release/MaximumTrainer AppDir/usr/bin/
         # Bundle the QWT shared library so the qt plugin / patchelf can resolve it
         cp -P "$QWT_DIR"/lib/libqwt.so* AppDir/usr/lib/
+        # QtWebEngine dlopen()s these NSS modules at runtime, so linuxdeploy's
+        # static dependency scan never sees them and leaves them out. Without
+        # them, NSS loads the host's (newer) libsoftokn3 against the bundled
+        # (older) libnssutil3, causing a fatal "NSSUTIL_3.x not found" crash on
+        # the first HTTPS request (e.g. the Intervals.icu login). Pre-copy the
+        # NSS module family into AppDir so linuxdeploy bundles a self-consistent
+        # set alongside the libnss3/libnssutil3 it already pulls in.
+        for nss_lib in libsoftokn3.so libfreebl3.so libfreeblpriv3.so \
+                       libnssckbi.so libnssdbm3.so; do
+          nss_src=$(find /usr/lib/x86_64-linux-gnu -name "$nss_lib" | head -1)
+          if [ -n "$nss_src" ]; then
+            cp -vL "$nss_src" AppDir/usr/lib/
+          else
+            echo "WARN: NSS module $nss_lib not found on build host"
+          fi
+        done
         # Desktop entry required by linuxdeploy
         cat > AppDir/usr/share/applications/maximumtrainer.desktop << 'EOF'
         [Desktop Entry]
@@ -146,6 +162,18 @@ jobs:
           echo "PASS: libqwt found in AppDir"
         else
           echo "WARN: libqwt not found in AppDir"
+        fi
+
+    - name: Verify NSS runtime modules bundled
+      # libsoftokn3 is the critical one — its absence (or a version skew against
+      # the bundled libnssutil3) crashes QtWebEngine on the first HTTPS request.
+      run: |
+        echo "=== NSS module check ==="
+        if find AppDir -name "libsoftokn3.so" -print -quit 2>/dev/null | grep -q .; then
+          echo "PASS: libsoftokn3 bundled in AppDir"
+        else
+          echo "FAIL: libsoftokn3 missing from AppDir — QtWebEngine will crash on HTTPS"
+          exit 1
         fi
 
     - name: Upload artifact
