@@ -35,6 +35,7 @@
 const ALLOWED_ORIGINS = [
   'https://maximumtrainer.github.io',
   'http://localhost:8080',
+  'http://localhost:5173',
   'http://localhost:5500',
   'http://127.0.0.1:8080',
 ];
