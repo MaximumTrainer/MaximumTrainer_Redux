@@ -123,6 +123,23 @@ jobs:
             echo "WARN: NSS module $nss_lib not found on build host"
           fi
         done
+        # Qt's OpenSSL TLS backend (tls/libqopensslbackend.so) dlopen()s libssl
+        # and libcrypto at runtime, so linuxdeploy's static scan bundles neither
+        # reliably — in practice only libcrypto.so.3 gets pulled in. With the
+        # AppImage RUNPATH ($ORIGIN/../lib) the bundled libcrypto wins, but libssl
+        # is then resolved from the user's host. OpenSSL enforces a libssl<->
+        # libcrypto build-version match, so on any host whose OpenSSL 3.0.x point
+        # release differs from the build host's, the pair mismatches and every
+        # HTTPS connection logs "QSslSocket: TLS initialization failed". Bundle the
+        # matched pair so the backend always loads a self-consistent OpenSSL.
+        for ssl_lib in libssl.so.3 libcrypto.so.3; do
+          ssl_src=$(find /usr/lib/x86_64-linux-gnu -name "$ssl_lib" | head -1)
+          if [ -n "$ssl_src" ]; then
+            cp -vL "$ssl_src" AppDir/usr/lib/
+          else
+            echo "WARN: OpenSSL library $ssl_lib not found on build host"
+          fi
+        done
         # Desktop entry required by linuxdeploy
         cat > AppDir/usr/share/applications/maximumtrainer.desktop << 'EOF'
         [Desktop Entry]
@@ -173,6 +190,35 @@ jobs:
           echo "PASS: libsoftokn3 bundled in AppDir"
         else
           echo "FAIL: libsoftokn3 missing from AppDir — QtWebEngine will crash on HTTPS"
+          exit 1
+        fi
+
+    - name: Verify OpenSSL pair bundled
+      # Both libssl and libcrypto must be present so Qt's TLS backend loads a
+      # self-consistent OpenSSL — a lone libcrypto causes a libssl<->libcrypto
+      # version mismatch and "TLS initialization failed" on hosts with a
+      # different OpenSSL 3.0.x point release.
+      run: |
+        echo "=== OpenSSL check ==="
+        for ssl_lib in libssl.so.3 libcrypto.so.3; do
+          if find AppDir -name "$ssl_lib" -print -quit 2>/dev/null | grep -q .; then
+            echo "PASS: $ssl_lib bundled in AppDir"
+          else
+            echo "FAIL: $ssl_lib missing from AppDir — HTTPS/TLS will fail"
+            exit 1
+          fi
+        done
+
+    - name: Verify xdg-desktop-portal theme plugin bundled
+      # main.cpp sets QT_QPA_PLATFORMTHEME=xdgdesktopportal so the app tracks the
+      # desktop light/dark preference under xcb. The plugin must be bundled or
+      # the app silently falls back to Light.
+      run: |
+        echo "=== platform theme check ==="
+        if find AppDir -name "libqxdgdesktopportal.so" -print -quit 2>/dev/null | grep -q .; then
+          echo "PASS: libqxdgdesktopportal bundled in AppDir"
+        else
+          echo "FAIL: libqxdgdesktopportal missing — dark-mode detection will not work"
           exit 1
         fi
 
