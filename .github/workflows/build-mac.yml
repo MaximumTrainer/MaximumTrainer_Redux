@@ -47,14 +47,14 @@ jobs:
       uses: actions/cache@v4
       with:
         # Cache only the directories needed to compile and link against QWT.
-        # Excluding qwt-6.2.0/doc avoids a gtar extraction failure on macOS
+        # Excluding qwt-6.3.0/doc avoids a gtar extraction failure on macOS
         # runners where that subtree contains paths that confuse GNU tar.
         path: |
-          /usr/local/qwt-6.2.0/lib
-          /usr/local/qwt-6.2.0/include
-          /usr/local/qwt-6.2.0/features
-          /usr/local/qwt-6.2.0/mkspecs
-        key: qwt-6.2.0-qt-6.7.3-macos-nodoc
+          /usr/local/qwt-6.3.0/lib
+          /usr/local/qwt-6.3.0/include
+          /usr/local/qwt-6.3.0/features
+          /usr/local/qwt-6.3.0/mkspecs
+        key: qwt-6.3.0-qt-6.7.3-macos-nodoc
 
     - name: Build and install QWT
       if: steps.qwt-cache.outputs.cache-hit != 'true'
@@ -62,22 +62,22 @@ jobs:
         # Remove any pre-installed Homebrew qwt that could shadow our headers
         brew uninstall qwt --force --ignore-dependencies 2>/dev/null || true
         cd /tmp
-        curl -L -o qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.2.0/qwt-6.2.0.tar.bz2/download"
+        curl -L -o qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.3.0/qwt-6.3.0.tar.bz2/download"
         tar -xjf qwt.tar.bz2
-        cd qwt-6.2.0
+        cd qwt-6.3.0
         sed -i.bak 's/QwtFramework//' qwtconfig.pri
         qmake qwt.pro
         make -j$(sysctl -n hw.logicalcpu)
         sudo make install
 
     - name: Fix QWT install_name for macdeployqt compatibility
-      # QWT 6.2.0 default LC_ID_DYLIB is /usr/lib/libqwt.6.dylib but the actual
-      # file is at /usr/local/qwt-6.2.0/lib/.  macdeployqt resolves dependencies
+      # QWT 6.3.0 default LC_ID_DYLIB is /usr/lib/libqwt.6.dylib but the actual
+      # file is at /usr/local/qwt-6.3.0/lib/.  macdeployqt resolves dependencies
       # by following LC_ID_DYLIB, so it errors "no file at /usr/lib/..." if the
       # install_name is wrong.  Fix it before the app is linked so the app binary's
       # LC_LOAD_DYLIB also records the correct path.
       run: |
-        QWT_LIB=/usr/local/qwt-6.2.0/lib/libqwt.6.dylib
+        QWT_LIB=/usr/local/qwt-6.3.0/lib/libqwt.6.dylib
         sudo install_name_tool -id "$QWT_LIB" "$QWT_LIB"
         echo "QWT install_name: $(otool -D $QWT_LIB | tail -1)"
 
@@ -97,7 +97,7 @@ jobs:
     - name: Create Makefile
       run: |
         qmake PowerVelo.pro \
-          "QWT_INSTALL=/usr/local/qwt-6.2.0"
+          "QWT_INSTALL=/usr/local/qwt-6.3.0"
       env:
         TP_CLIENT_SECRET:              ${{ secrets.TP_CLIENT_SECRET }}
         INTERVALS_OAUTH_CLIENT_ID:     ${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}
@@ -108,7 +108,7 @@ jobs:
         echo "=== All qwt_plot.h on system ==="
         find /opt/homebrew /usr/local -name "qwt_plot.h" 2>/dev/null || true
         echo "=== Installed qwtconfig.pri ==="
-        cat /usr/local/qwt-6.2.0/features/qwtconfig.pri 2>/dev/null || true
+        cat /usr/local/qwt-6.3.0/features/qwtconfig.pri 2>/dev/null || true
 
     - name: Run MakeFile
       run: make -j$(sysctl -n hw.logicalcpu)
@@ -147,14 +147,14 @@ jobs:
       run: |
         mkdir -p build/tests
         cd tests/integration
-        qmake login_screen_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0"
+        qmake login_screen_tests.pro "QWT_INSTALL=/usr/local/qwt-6.3.0"
         make -j$(sysctl -n hw.logicalcpu)
 
     - name: Build workout UI test
       run: |
         mkdir -p build/tests
         cd tests/integration
-        qmake workout_ui_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0" \
+        qmake workout_ui_tests.pro "QWT_INSTALL=/usr/local/qwt-6.3.0" \
           QMAKE_LFLAGS+="-L$(brew --prefix openssl@3)/lib" \
           QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
         make -j$(sysctl -n hw.logicalcpu)
@@ -172,7 +172,7 @@ jobs:
       run: |
         mkdir -p build/tests
         cd tests/integration
-        qmake ui_navigation_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0" \
+        qmake ui_navigation_tests.pro "QWT_INSTALL=/usr/local/qwt-6.3.0" \
           QMAKE_LFLAGS+="-L$(brew --prefix openssl@3)/lib" \
           QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
         make -j$(sysctl -n hw.logicalcpu)
@@ -181,14 +181,14 @@ jobs:
       run: |
         mkdir -p build/tests
         cd tests/integration
-        qmake ui_screens_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0"
+        qmake ui_screens_tests.pro "QWT_INSTALL=/usr/local/qwt-6.3.0"
         make -j$(sysctl -n hw.logicalcpu)
 
     - name: Build workout I/O test
       run: |
         mkdir -p build/tests
         cd tests/integration
-        qmake workout_io_tests.pro "QWT_INSTALL=/usr/local/qwt-6.2.0"
+        qmake workout_io_tests.pro "QWT_INSTALL=/usr/local/qwt-6.3.0"
         make -j$(sysctl -n hw.logicalcpu)
 
     - name: Build workout creator test
@@ -205,23 +205,23 @@ jobs:
       # MaximumTrainer.app is also bundled so that testFullApplicationJourney()
       # can launch the real application without needing QWT installed on the runner.
       run: |
-        cp /usr/local/qwt-6.2.0/lib/libqwt.6.dylib build/tests/
+        cp /usr/local/qwt-6.3.0/lib/libqwt.6.dylib build/tests/
         install_name_tool \
-          -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+          -change /usr/local/qwt-6.3.0/lib/libqwt.6.dylib \
           @loader_path/libqwt.6.dylib \
           build/tests/login_screen_tests
         install_name_tool \
-          -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+          -change /usr/local/qwt-6.3.0/lib/libqwt.6.dylib \
           @loader_path/libqwt.6.dylib \
           build/tests/workout_ui_tests
         install_name_tool \
-          -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+          -change /usr/local/qwt-6.3.0/lib/libqwt.6.dylib \
           @loader_path/libqwt.6.dylib \
           build/tests/ui_navigation_tests
         for bin in ui_screens_tests workout_io_tests; do
           if [ -f "build/tests/$bin" ]; then
             install_name_tool \
-              -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+              -change /usr/local/qwt-6.3.0/lib/libqwt.6.dylib \
               @loader_path/libqwt.6.dylib \
               "build/tests/$bin"
           fi
@@ -231,10 +231,10 @@ jobs:
         # Guard: verify the app binary exists before attempting to patch it.
         test -f build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
         mkdir -p build/release/MaximumTrainer.app/Contents/MacOS
-        cp /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+        cp /usr/local/qwt-6.3.0/lib/libqwt.6.dylib \
            build/release/MaximumTrainer.app/Contents/MacOS/
         install_name_tool \
-          -change /usr/local/qwt-6.2.0/lib/libqwt.6.dylib \
+          -change /usr/local/qwt-6.3.0/lib/libqwt.6.dylib \
           @loader_path/libqwt.6.dylib \
           build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
 

@@ -69,20 +69,20 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ env.QWT_DIR }}
-        key: qwt-6.2.0-qt-${{ env.QT_VERSION }}-linux
+        key: qwt-6.3.0-qt-${{ env.QT_VERSION }}-linux
 
     - name: Build and install QWT
       if: steps.qwt-cache.outputs.cache-hit != 'true'
       run: |
         cd /tmp
-        curl -L -o qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.2.0/qwt-6.2.0.tar.bz2/download"
+        curl -L -o qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.3.0/qwt-6.3.0.tar.bz2/download"
         tar xf qwt.tar.bz2
-        cd qwt-6.2.0
+        cd qwt-6.3.0
         qmake qwt.pro
         make -j$(nproc)
         make install INSTALL_ROOT=/tmp/qwt6-stage
         mkdir -p "$QWT_DIR"
-        mv /tmp/qwt6-stage/usr/local/qwt-6.2.0/* "$QWT_DIR"/
+        mv /tmp/qwt6-stage/usr/local/qwt-6.3.0/* "$QWT_DIR"/
 
     - name: Download linuxdeploy and the Qt plugin
       # linuxdeploy + linuxdeploy-plugin-qt support Qt6; the classic

@@ -290,7 +290,7 @@
           <p class="download-desc">Windows 10/11 — 64-bit (MSVC build)</p>
           <ul class="download-deps">
             <li>Qt 6.x (win64_msvc2019_64)</li>
-            <li>QWT 6.2.0</li>
+            <li>QWT 6.3.0</li>
             <li>SFML 2.6.1</li>
           </ul>
           <a id="win-download-btn" class="btn btn-primary btn-disabled" href="#" aria-disabled="true" title="Not yet available — coming soon">
@@ -312,7 +312,7 @@ nmake</code></pre>
           <p class="download-desc">Ubuntu 24.04+ / Debian-based distros</p>
           <ul class="download-deps">
             <li>Qt 6.x (from apt)</li>
-            <li>QWT 6.2.0 (from source)</li>
+            <li>QWT 6.3.0 (from source)</li>
             <li>libsfml-dev</li>
           </ul>
           <a id="linux-download-btn" class="btn btn-primary btn-disabled" href="#" aria-disabled="true" title="Not yet available — coming soon">
@@ -339,7 +339,7 @@ make -j$(nproc)</code></pre>
           <p class="download-desc">macOS 12+ (Apple Silicon &amp; Intel)</p>
           <ul class="download-deps">
             <li>Qt 6.7.3 (via Qt Installer)</li>
-            <li>QWT 6.2.0 (from source)</li>
+            <li>QWT 6.3.0 (from source)</li>
             <li>SFML (brew install sfml)</li>
           </ul>
           <a id="mac-download-btn" class="btn btn-primary btn-disabled" href="#" aria-disabled="true" title="Not yet available — coming soon">
@@ -350,7 +350,7 @@ make -j$(nproc)</code></pre>
             <pre><code>brew install sfml
 qmake PowerVelo.pro \
   "SFML_INSTALL=$(brew --prefix sfml)" \
-  "QWT_INSTALL=/usr/local/qwt-6.2.0"
+  "QWT_INSTALL=/usr/local/qwt-6.3.0"
 make -j$(sysctl -n hw.logicalcpu)</code></pre>
           </details>
         </div>

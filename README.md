@@ -191,7 +191,7 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 | Dependency | Version | Platform | Notes |
 |------------|---------|----------|-------|
 | Qt | 6.x (6.7+) | all | Core framework (incl. QtMultimedia, QtWebEngine, QtBluetooth) |
-| QWT | 6.2.0 | all | Plotting widgets (built from source against Qt 6) |
+| QWT | 6.3.0 | all | Plotting widgets (built from source against Qt 6) |
 
 > **Audio & media playback:** both sound-effect feedback (interval beeps, etc.,
 > via `QSoundEffect`) and the embedded video + internet-radio player
@@ -227,7 +227,7 @@ qmake PowerVelo.pro `
 
 **Download links:**
 - Qt 6.x: https://www.qt.io/download
-- QWT 6.2.0: https://sourceforge.net/projects/qwt/files/qwt/6.2.0/
+- QWT 6.3.0: https://sourceforge.net/projects/qwt/files/qwt/6.3.0/
 
 ### Linux
 
@@ -240,13 +240,13 @@ sudo apt-get install -y \
   qt6-multimedia-dev qt6-webchannel-dev qt6-positioning-dev \
   cmake build-essential
 
-# Build QWT 6.2.0 from source against Qt 6 (installs to /tmp/qwt6 here)
+# Build QWT 6.3.0 from source against Qt 6 (installs to /tmp/qwt6 here)
 cd /tmp && curl -L -o qwt.tar.bz2 \
-  "https://sourceforge.net/projects/qwt/files/qwt/6.2.0/qwt-6.2.0.tar.bz2/download"
-tar xf qwt.tar.bz2 && cd qwt-6.2.0
+  "https://sourceforge.net/projects/qwt/files/qwt/6.3.0/qwt-6.3.0.tar.bz2/download"
+tar xf qwt.tar.bz2 && cd qwt-6.3.0
 qmake6 qwt.pro && make -j$(nproc)
 make install INSTALL_ROOT=/tmp/qwt6-stage
-mv /tmp/qwt6-stage/usr/local/qwt-6.2.0 /tmp/qwt6
+mv /tmp/qwt6-stage/usr/local/qwt-6.3.0 /tmp/qwt6
 
 # Build MaximumTrainer
 cd /path/to/MaximumTrainer_Redux
@@ -269,16 +269,16 @@ Uses Qt 6.7.3 with Clang. QWT is built from source (non-framework) against Qt 6.
 ```bash
 # Install Qt 6.7.3 via install-qt-action or the Qt Installer, then:
 
-# Build QWT 6.2.0 from source (non-framework, required for Qt 6)
-curl -L -o /tmp/qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.2.0/qwt-6.2.0.tar.bz2/download"
-tar -xjf /tmp/qwt.tar.bz2 -C /tmp && cd /tmp/qwt-6.2.0
+# Build QWT 6.3.0 from source (non-framework, required for Qt 6)
+curl -L -o /tmp/qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.3.0/qwt-6.3.0.tar.bz2/download"
+tar -xjf /tmp/qwt.tar.bz2 -C /tmp && cd /tmp/qwt-6.3.0
 sed -i.bak 's/QwtFramework//' qwtconfig.pri
 qmake qwt.pro && make -j$(sysctl -n hw.logicalcpu) && sudo make install
 
 # Build MaximumTrainer
 cd /path/to/MaximumTrainer_Redux
 qmake PowerVelo.pro \
-  "QWT_INSTALL=/usr/local/qwt-6.2.0"
+  "QWT_INSTALL=/usr/local/qwt-6.3.0"
 make
 ```
 

@@ -32,7 +32,7 @@ completed activities to the Garmin FIT format.
 |-----------|-------|
 | Language | C++17 |
 | UI Toolkit | Qt 6 (Widgets + WebEngineWidgets) |
-| Plotting | QWT 6.2 |
+| Plotting | QWT 6.3 |
 | Serialisation | Garmin FIT SDK, TCX, GPX, XML |
 | Hardware protocols | BLE (Qt Bluetooth) |
 | Audio/Video | QtMultimedia (`QMediaPlayer` video + radio, `QSoundEffect` sound effects), platform stubs for WASM |

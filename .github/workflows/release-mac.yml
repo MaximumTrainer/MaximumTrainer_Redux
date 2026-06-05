@@ -54,9 +54,9 @@ jobs:
       run: |
         brew uninstall qwt --force --ignore-dependencies 2>/dev/null || true
         cd /tmp
-        curl -L -o qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.2.0/qwt-6.2.0.tar.bz2/download"
+        curl -L -o qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.3.0/qwt-6.3.0.tar.bz2/download"
         tar -xjf qwt.tar.bz2
-        cd qwt-6.2.0
+        cd qwt-6.3.0
         sed -i.bak 's/QwtFramework//' qwtconfig.pri
         qmake qwt.pro
         make -j$(sysctl -n hw.logicalcpu)
@@ -65,9 +65,9 @@ jobs:
     - name: Package with macdeployqt
       run: |
         APP=build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
-        QWT_LIB=/usr/local/qwt-6.2.0/lib/libqwt.6.dylib
+        QWT_LIB=/usr/local/qwt-6.3.0/lib/libqwt.6.dylib
 
-        # QWT 6.2.0 default LC_ID_DYLIB is /usr/lib/libqwt.6.dylib but the actual
+        # QWT 6.3.0 default LC_ID_DYLIB is /usr/lib/libqwt.6.dylib but the actual
         # file is at $QWT_LIB. macdeployqt follows LC_ID_DYLIB to locate a library,
         # so it cannot find QWT unless we fix the install_name first.
         sudo install_name_tool -id "$QWT_LIB" "$QWT_LIB"
@@ -79,7 +79,7 @@ jobs:
         # Add QWT rpath so the .app stays self-contained when moved between
         # machines. '|| true' tolerates a duplicate rpath already baked in at
         # build time. (QtMultimedia frameworks are handled by macdeployqt.)
-        install_name_tool -add_rpath /usr/local/qwt-6.2.0/lib "$APP" || true
+        install_name_tool -add_rpath /usr/local/qwt-6.3.0/lib "$APP" || true
 
         macdeployqt build/release/MaximumTrainer.app -dmg
         mv build/release/MaximumTrainer.dmg MaximumTrainer-macos.dmg
