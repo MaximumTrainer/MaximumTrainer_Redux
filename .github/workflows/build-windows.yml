@@ -93,10 +93,10 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ env.QWT_INSTALL_DIR }}
-        key: qwt-6.2.0-qt-${{ env.QT_VERSION }}-msvc2019-win64
+        key: qwt-6.3.0-qt-${{ env.QT_VERSION }}-msvc2019-win64
 
     - name: Build QWT
-      # No QWT apt/Qt6 binary package exists, so build 6.2.0 from source against
+      # No QWT apt/Qt6 binary package exists, so build 6.3.0 from source against
       # the installed Qt6 and install it to QWT_INSTALL_DIR. PowerVelo.pro is
       # pointed at this location via QWT_INSTALL=... .
       if: steps.qwt-cache.outputs.cache-hit != 'true'
@@ -104,10 +104,10 @@ jobs:
         $qwtInstallDirFwd = $env:QWT_INSTALL_DIR -replace '\\', '/'
         Set-Location ..
         # Use curl.exe -L to follow SourceForge redirects reliably
-        curl.exe -L -o "$env:TEMP\qwt.tar.bz2" "https://sourceforge.net/projects/qwt/files/qwt/6.2.0/qwt-6.2.0.tar.bz2/download"
+        curl.exe -L -o "$env:TEMP\qwt.tar.bz2" "https://sourceforge.net/projects/qwt/files/qwt/6.3.0/qwt-6.3.0.tar.bz2/download"
         7z x "$env:TEMP\qwt.tar.bz2" -o"$env:TEMP" -y
         7z x "$env:TEMP\qwt.tar" -o"." -y
-        Rename-Item "qwt-6.2.0" "qwt-src"
+        Rename-Item "qwt-6.3.0" "qwt-src"
         Set-Location "qwt-src"
         # Patch every QWT_INSTALL_PREFIX assignment to use the new path
         (Get-Content "qwtconfig.pri") | ForEach-Object {
