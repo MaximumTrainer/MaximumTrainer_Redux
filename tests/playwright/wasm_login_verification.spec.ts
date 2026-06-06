@@ -48,12 +48,15 @@ test.describe('Login verification – Layer A: pre-authentication state', () => 
     await wasmApp.mockBackendApis();
 
     // Track any intervals.icu requests made before credentials are injected.
-    await wasmApp.page.route('https://intervals.icu/**', async (route) => {
-      earlyIntervalRequests.push(
-        `${route.request().method()} ${route.request().url()}`,
-      );
-      await route.continue();
-    });
+    await wasmApp.page.route(
+      /^https:\/\/(?:intervals\.icu|mt-intervals-proxy\.intervals-login\.workers\.dev)\/.*/,
+      async (route) => {
+        earlyIntervalRequests.push(
+          `${route.request().method()} ${route.request().url()}`,
+        );
+        await route.continue();
+      },
+    );
 
     await wasmApp.goto();
     await wasmApp.waitForFullyLoaded(300_000);
@@ -252,7 +255,9 @@ test.describe('Login verification – Layer B: OAuth popup flow', () => {
     // ── Step 5: Trigger a calendar refresh and wait for an /events response ───
     const calendarResponsePromise = wasmApp.page.waitForResponse(
       (resp) =>
-        resp.url().includes('intervals.icu') && resp.url().includes('/events'),
+        (resp.url().includes('intervals.icu')
+          || resp.url().includes('mt-intervals-proxy.intervals-login.workers.dev'))
+        && resp.url().includes('/events'),
       { timeout: 30_000 },
     );
 
@@ -356,4 +361,3 @@ test.describe('Login verification – Layer B: OAuth popup flow', () => {
     ).toHaveLength(0);
   });
 });
-

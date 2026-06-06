@@ -299,52 +299,55 @@ export class WasmAppPage {
 
     const requestedUrls: string[] = [];
 
-    await this.page.route('https://intervals.icu/**', async (route) => {
-      const url    = route.request().url();
-      const method = route.request().method();
-      requestedUrls.push(`${method} ${url}`);
+    await this.page.route(
+      /^https:\/\/(?:intervals\.icu|mt-intervals-proxy\.intervals-login\.workers\.dev)\/.*/,
+      async (route) => {
+        const url    = route.request().url();
+        const method = route.request().method();
+        requestedUrls.push(`${method} ${url}`);
 
-      const corsHeaders = {
-        'Access-Control-Allow-Origin':  '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, content-type',
-      };
+        const corsHeaders = {
+          'Access-Control-Allow-Origin':  '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'authorization, content-type',
+        };
 
-      if (method === 'OPTIONS') {
-        await route.fulfill({ status: 204, headers: corsHeaders });
-        return;
-      }
+        if (method === 'OPTIONS') {
+          await route.fulfill({ status: 204, headers: corsHeaders });
+          return;
+        }
 
-      if (url.includes('/events')) {
-        await route.fulfill({
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          body: JSON.stringify([
-            {
-              id:               'evt001',
-              name:             'Playwright Test Workout',
-              start_date_local: new Date().toISOString().split('T')[0],
-              type:             'Ride',
-              moving_time:      3600,
-              workout_id:       'wk001',
-              description:      'Test workout for Playwright',
-            },
-          ]),
-        });
-      } else if (url.includes('/workouts/') && url.endsWith('.zwo')) {
-        await route.fulfill({
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/xml' },
-          body: '<?xml version="1.0"?><workout_file><name>Playwright Test</name><workout><SteadyState Duration="60" Power="0.5"/></workout></workout_file>',
-        });
-      } else {
-        await route.fulfill({
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          body: '{}',
-        });
-      }
-    });
+        if (url.includes('/events')) {
+          await route.fulfill({
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            body: JSON.stringify([
+              {
+                id:               'evt001',
+                name:             'Playwright Test Workout',
+                start_date_local: new Date().toISOString().split('T')[0],
+                type:             'Ride',
+                moving_time:      3600,
+                workout_id:       'wk001',
+                description:      'Test workout for Playwright',
+              },
+            ]),
+          });
+        } else if (url.includes('/workouts/') && url.endsWith('.zwo')) {
+          await route.fulfill({
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/xml' },
+            body: '<?xml version="1.0"?><workout_file><name>Playwright Test</name><workout><SteadyState Duration="60" Power="0.5"/></workout></workout_file>',
+          });
+        } else {
+          await route.fulfill({
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            body: '{}',
+          });
+        }
+      },
+    );
 
     return requestedUrls;
   }
@@ -566,23 +569,26 @@ export class WasmAppPage {
       'Access-Control-Allow-Headers': 'authorization, content-type',
     };
 
-    await this.page.route('https://intervals.icu/oauth/token', async (route) => {
-      if (route.request().method() === 'OPTIONS') {
-        await route.fulfill({ status: 204, headers: corsHeaders });
-        return;
-      }
-      await route.fulfill({
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          access_token:  WasmAppPage.FAKE_ACCESS_TOKEN,
-          refresh_token: 'playwright_mock_refresh',
-          token_type:    'Bearer',
-          expires_in:    3600,
-          athlete_id:    WasmAppPage.FAKE_ATHLETE_ID,
-        }),
-      });
-    });
+    await this.page.route(
+      /^https:\/\/(?:intervals\.icu\/oauth\/token|mt-intervals-proxy\.intervals-login\.workers\.dev\/proxy\/oauth\/token)(?:\?.*)?$/,
+      async (route) => {
+        if (route.request().method() === 'OPTIONS') {
+          await route.fulfill({ status: 204, headers: corsHeaders });
+          return;
+        }
+        await route.fulfill({
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            access_token:  WasmAppPage.FAKE_ACCESS_TOKEN,
+            refresh_token: 'playwright_mock_refresh',
+            token_type:    'Bearer',
+            expires_in:    3600,
+            athlete_id:    WasmAppPage.FAKE_ATHLETE_ID,
+          }),
+        });
+      },
+    );
 
     // Mock the athlete profile and settings endpoints that DialogLogin calls
     // after the token exchange to verify the login and populate the account.
@@ -591,7 +597,7 @@ export class WasmAppPage {
     // Use a regex to match ONLY /athlete/{id} and /athlete/{id}/settings —
     // NOT calendar/event sub-paths — to avoid intercepting functional test routes.
     await this.page.route(
-      /^https:\/\/intervals\.icu\/api\/v1\/athlete\/[^/]+(?:\/settings)?$/,
+      /^https:\/\/(?:intervals\.icu\/api\/v1\/athlete\/[^/]+(?:\/settings)?|mt-intervals-proxy\.intervals-login\.workers\.dev\/proxy\/api\/v1\/athlete\/[^/]+(?:\/settings)?)(?:\?.*)?$/,
       async (route) => {
         if (route.request().method() === 'OPTIONS') {
           await route.fulfill({ status: 204, headers: corsHeaders });
