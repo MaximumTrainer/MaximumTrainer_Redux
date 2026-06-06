@@ -1,7 +1,7 @@
 /*
  * tst_intervals_icu_integration.cpp
  *
- * Live integration tests for IntervalsIcuService.
+ * Live integration tests for IntervalsIcuApi.
  *
  * These tests make REAL HTTP requests to https://intervals.icu/api/v1 using
  * a dedicated test account.  Credentials are read from environment variables:
@@ -13,7 +13,7 @@
  * gracefully in local development and fork PRs that cannot access GitHub Secrets.
  *
  * A real QNetworkAccessManager is registered as the "NetworkManagerWS" application
- * property — the same pattern used by IntervalsIcuService in production.
+ * property — the same pattern used by IntervalsIcuApi in production.
  *
  * Test groups
  * ──────────────────────────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@
 #include <QEventLoop>
 #include <QTimer>
 
-#include "intervals_icu_service.h"
+#include "intervals_icu_api.h"
 
 static constexpr int TIMEOUT_MS = 30'000;  // 30 s per request
 
@@ -77,7 +77,7 @@ void TstIntervalsIcuIntegration::cleanupTestCase()
 
 void TstIntervalsIcuIntegration::testGetAthlete()
 {
-    QNetworkReply *reply = IntervalsIcuService::getAthlete(m_athleteId, m_apiKey);
+    QNetworkReply *reply = IntervalsIcuApi::getAthlete(m_athleteId, m_apiKey);
     QVERIFY2(reply, "getAthlete returned nullptr — NetworkManagerWS not registered");
 
     QVERIFY2(waitForReply(reply), "getAthlete timed out after 30 s");
@@ -96,7 +96,7 @@ void TstIntervalsIcuIntegration::testGetAthlete()
 void TstIntervalsIcuIntegration::testGetEvents()
 {
     const QDate today = QDate::currentDate();
-    QNetworkReply *reply = IntervalsIcuService::getEvents(
+    QNetworkReply *reply = IntervalsIcuApi::getEvents(
         m_athleteId, m_apiKey,
         today.addDays(-7),
         today.addDays(7));
@@ -116,7 +116,7 @@ void TstIntervalsIcuIntegration::testGetEvents()
 
 void TstIntervalsIcuIntegration::testGetWorkouts()
 {
-    QNetworkReply *reply = IntervalsIcuService::getWorkouts(m_athleteId, m_apiKey);
+    QNetworkReply *reply = IntervalsIcuApi::getWorkouts(m_athleteId, m_apiKey);
     QVERIFY2(reply, "getWorkouts returned nullptr — NetworkManagerWS not registered");
 
     QVERIFY2(waitForReply(reply), "getWorkouts timed out after 30 s");
@@ -133,7 +133,7 @@ void TstIntervalsIcuIntegration::testGetWorkouts()
 
 void TstIntervalsIcuIntegration::testBadApiKey()
 {
-    QNetworkReply *reply = IntervalsIcuService::getAthlete(
+    QNetworkReply *reply = IntervalsIcuApi::getAthlete(
         m_athleteId, QStringLiteral("invalid-key-xyz"));
     QVERIFY2(reply, "getAthlete(bad key) returned nullptr — NetworkManagerWS not registered");
 

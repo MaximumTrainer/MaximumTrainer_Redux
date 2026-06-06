@@ -345,7 +345,7 @@ requires no display or hardware:
 
 | Test project | Location | What is tested |
 |-------------|----------|----------------|
-| `intervals_icu_tests.pro` | `tests/intervals_icu/` | `IntervalsIcuService` — auth headers, URL construction, query params, null-manager guard |
+| `intervals_icu_tests.pro` | `tests/intervals_icu/` | `IntervalsIcuApi` (static REST helper) — auth headers, URL construction, query params, null-manager guard |
 | `importer_workout_zwo_tests.pro` | `tests/intervals_icu/` | ZWO XML parser — SteadyState, Ramp, IntervalsT, FreeRide, mixed, malformed input |
 | `intervals_icu_dao_bearer_tests.pro` | `tests/intervals_icu/` | OAuth2 Bearer-token DAO methods |
 | `strava_tests.pro` | `tests/strava/` | Strava upload/status/deauthorize headers, URLs, null-manager guard |

@@ -1,5 +1,5 @@
-#ifndef INTERVALS_ICU_SERVICE_H
-#define INTERVALS_ICU_SERVICE_H
+#ifndef INTERVALS_ICU_API_H
+#define INTERVALS_ICU_API_H
 
 #include <QDate>
 #include <QHttpMultiPart>
@@ -16,7 +16,7 @@
 /// All methods return the pending QNetworkReply; the caller must connect
 /// &QNetworkReply::finished to its own slot and call reply->readAll() inside
 /// it — identical to the existing ExtRequest pattern.
-class IntervalsIcuService
+class IntervalsIcuApi
 {
 public:
     /// Validate credentials / fetch athlete profile.
@@ -124,4 +124,4 @@ private:
     static constexpr const char BASE_URL[] = "https://intervals.icu/api/v1";
 };
 
-#endif // INTERVALS_ICU_SERVICE_H
+#endif // INTERVALS_ICU_API_H

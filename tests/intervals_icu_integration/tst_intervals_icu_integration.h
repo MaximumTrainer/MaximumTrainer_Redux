@@ -4,7 +4,7 @@
 #include <QNetworkAccessManager>
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Live integration test class for IntervalsIcuService.
+// Live integration test class for IntervalsIcuApi.
 // Q_OBJECT declared here (in the header) so qmake reliably runs moc on it.
 // ─────────────────────────────────────────────────────────────────────────────
 class TstIntervalsIcuIntegration : public QObject

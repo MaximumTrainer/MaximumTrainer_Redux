@@ -43,20 +43,20 @@ INCLUDEPATH += \
     ../../src/app \
     ../../src/btle
 
-# ── Logger (required by intervals_icu_service.cpp) ───────────────────────────
+# ── Logger (required by intervals_icu_api.cpp) ───────────────────────────
 SOURCES += \
     ../../src/app/logger.cpp
 
 HEADERS += \
     ../../src/app/logger.h
 
-# ── IntervalsIcuService (static helper used for live API calls) ───────────────
+# ── IntervalsIcuApi (static helper used for live API calls) ───────────────
 SOURCES += \
-    ../../src/persistence/db/intervals_icu_service.cpp \
+    ../../src/persistence/db/intervals_icu_api.cpp \
     ../../src/btle/simulator_hub.cpp \
     tst_online_mode.cpp
 
 HEADERS += \
-    ../../src/persistence/db/intervals_icu_service.h \
+    ../../src/persistence/db/intervals_icu_api.h \
     ../../src/btle/simulator_hub.h \
     tst_online_mode.h
