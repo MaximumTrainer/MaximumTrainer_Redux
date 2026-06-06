@@ -663,24 +663,45 @@ void WorkoutPlotZoomer::updateTextLabelValue(int value) {
     int diff = value - target;
 
     if (isStopped) {
-        canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(35, 35, 35); }");
+        setCanvasColor(CANVAS_NEUTRAL);
         replot();
     }
     else {
         if (target < 0) {  /// no target
-            canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(35, 35, 35); }");;
+            setCanvasColor(CANVAS_NEUTRAL);
         }
         /// Change background QwtText
         else if ( (diff < (-targetRange)) ) {
-            canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(14, 61, 170); }");
+            setCanvasColor(CANVAS_BELOW);
         }
         else if( (diff > targetRange) ) {
-            canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(128, 0, 0); }");
+            setCanvasColor(CANVAS_ABOVE);
         }
         else if ( ((diff < targetRange) && (diff > (-targetRange)))) {
-            canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(35, 35, 35); }");
+            setCanvasColor(CANVAS_NEUTRAL);
         }
 
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+void WorkoutPlotZoomer::setCanvasColor(CanvasColor color) {
+
+    if (m_canvasColor == color)
+        return;
+    m_canvasColor = color;
+
+    switch (color) {
+    case CANVAS_BELOW:
+        canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(14, 61, 170); }");
+        break;
+    case CANVAS_ABOVE:
+        canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(128, 0, 0); }");
+        break;
+    case CANVAS_NEUTRAL:
+    default:
+        canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(35, 35, 35); }");
+        break;
     }
 }
 

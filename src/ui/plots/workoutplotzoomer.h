@@ -65,6 +65,13 @@ public slots:
 private :
     void moveIntervalTarget(double target, int range);
 
+    // Apply a canvas background colour only when it actually changes — this is
+    // called on every sensor packet, and setStyleSheet() forces a full style
+    // recompute, so guarding on the colour state avoids needless restyles.
+    enum CanvasColor { CANVAS_NEUTRAL, CANVAS_BELOW, CANVAS_ABOVE };
+    void setCanvasColor(CanvasColor color);
+    int m_canvasColor = -1;
+
     void init(GRAPH_TYPE graph, bool firstInit);
     void clearPlot();
     void drawGraphIntervalsCadence();

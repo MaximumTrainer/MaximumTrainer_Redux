@@ -100,7 +100,7 @@ void MinimalistWidget::setValue(int value) {
 
     if (target < 0) {
         ui->horizontalSlider->setVisible(false);
-        ui->frame->setStyleSheet("QFrame#frame { background-color :"+ Util::getColor(Util::DONE).name() + "; }");
+        applyFrameColor(Util::DONE);
         ui->label_value->setText(QString::number(value));
         return;
     }
@@ -144,26 +144,32 @@ void MinimalistWidget::setValue(int value) {
 
     if (isStopped || diffAbs <= range)
     {
-        ui->frame->setStyleSheet("QFrame#frame { background-color :"+ Util::getColor(Util::DONE).name() + "; }");
+        applyFrameColor(Util::DONE);
     }
     else
     {
         /// Too Strong
         if (diff > range) {
-            ui->frame->setStyleSheet("QFrame#frame { background-color :"+ Util::getColor(Util::TOO_HIGH).name() + "; }");
-            //            qDebug() << "SHOULD DRAW RED COLOR BG**************";
-
+            applyFrameColor(Util::TOO_HIGH);
         }
         /// Too Soft
         else {
-            ui->frame->setStyleSheet("QFrame#frame { background-color :"+ Util::getColor(Util::TOO_LOW).name() + "; }");
-            //            qDebug() << "SHOULD DRAW BLUE COLOR BG**************";
+            applyFrameColor(Util::TOO_LOW);
         }
     }
+}
 
+////////////////////////////////////////////////////////////////////////////////
+// setValue() runs on every sensor packet; setStyleSheet() forces a full style
+// recompute. Skip it when the frame colour has not actually changed.
+void MinimalistWidget::applyFrameColor(Util::Color colorId) {
 
+    if (currentColor == colorId)
+        return;
+    currentColor = colorId;
 
-
+    ui->frame->setStyleSheet("QFrame#frame { background-color :"
+                             + Util::getColor(colorId).name() + "; }");
 }
 
 
