@@ -799,12 +799,18 @@ QByteArray Util::zipFileHelperConvertToGzip(const QByteArray& data) {
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Util::zipFileToDisk(QString filename, QString zipFilename, bool useGzip) {
+bool Util::zipFileToDisk(QString filename, QString zipFilename, bool useGzip) {
 
     QFile infile(filename);
     QFile outfile(zipFilename);
-    infile.open(QIODevice::ReadOnly);
-    outfile.open(QIODevice::WriteOnly);
+    if (!infile.open(QIODevice::ReadOnly)) {
+        qWarning() << "zipFileToDisk: cannot read" << filename << infile.errorString();
+        return false;
+    }
+    if (!outfile.open(QIODevice::WriteOnly)) {
+        qWarning() << "zipFileToDisk: cannot write" << zipFilename << outfile.errorString();
+        return false;
+    }
     QByteArray uncompressedData = infile.readAll();
     QByteArray compressedData;
 
@@ -818,20 +824,28 @@ void Util::zipFileToDisk(QString filename, QString zipFilename, bool useGzip) {
     outfile.write(compressedData);
     infile.close();
     outfile.close();
+    return true;
 }
 
 
-void Util::unzipFile(QString zipFilename , QString filename) {
+bool Util::unzipFile(QString zipFilename , QString filename) {
 
     QFile infile(zipFilename);
     QFile outfile(filename);
-    infile.open(QIODevice::ReadOnly);
-    outfile.open(QIODevice::WriteOnly);
+    if (!infile.open(QIODevice::ReadOnly)) {
+        qWarning() << "unzipFile: cannot read" << zipFilename << infile.errorString();
+        return false;
+    }
+    if (!outfile.open(QIODevice::WriteOnly)) {
+        qWarning() << "unzipFile: cannot write" << filename << outfile.errorString();
+        return false;
+    }
     QByteArray uncompressedData = infile.readAll();
     QByteArray compressedData = qUncompress(uncompressedData);
     outfile.write(compressedData);
     infile.close();
     outfile.close();
+    return true;
 }
 
 

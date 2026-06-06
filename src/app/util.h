@@ -85,8 +85,8 @@ public:
 
 
     // Zip, Unzip
-    static void zipFileToDisk(QString filename, QString zipFilename, bool useGzip);
-    static void unzipFile(QString zipFilename , QString filename);
+    static bool zipFileToDisk(QString filename, QString zipFilename, bool useGzip);
+    static bool unzipFile(QString zipFilename , QString filename);
     // used for Gzip convert
     static QByteArray zipFileHelperConvertToGzip(const QByteArray& data);
     static quint32 crc32buf(const QByteArray& data);
