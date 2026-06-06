@@ -57,7 +57,7 @@ const static QString urlIntervalsIcuOAuthAuthorize(
 
 /// Intervals.icu OAuth2 client credentials.
 /// client_id and client_secret are injected at build time via environment variables
-/// INTERVALS_OAUTH_CLIENT_ID and INTERVALS_OAUTH_CLIENT_SECRET (see PowerVelo.pro).
+/// INTERVALS_OAUTH_CLIENT_ID and INTERVALS_OAUTH_CLIENT_SECRET (see MaximumTrainer.pro).
 /// The macros default to "259" (existing public client) and "" (no secret) when
 /// the environment variables are not set.
 #ifndef INTERVALS_OAUTH_CLIENT_ID
@@ -136,7 +136,7 @@ const static QString urlTrainingPeaksAuthorize("https://oauth.trainingpeaks.com/
 
 const static QString CLIENT_ID_TP = "maximumtrainer";
 // CLIENT_SECRET_TP is injected at build time via the TP_CLIENT_SECRET env var
-// (see PowerVelo.pro).  The macro expands to an empty string when the secret
+// (see MaximumTrainer.pro).  The macro expands to an empty string when the secret
 // has not been configured, which disables the token-refresh flow.
 #ifndef TP_CLIENT_SECRET
 #define TP_CLIENT_SECRET ""

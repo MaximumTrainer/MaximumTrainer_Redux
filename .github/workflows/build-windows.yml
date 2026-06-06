@@ -97,7 +97,7 @@ jobs:
 
     - name: Build QWT
       # No QWT apt/Qt6 binary package exists, so build 6.3.0 from source against
-      # the installed Qt6 and install it to QWT_INSTALL_DIR. PowerVelo.pro is
+      # the installed Qt6 and install it to QWT_INSTALL_DIR. MaximumTrainer.pro is
       # pointed at this location via QWT_INSTALL=... .
       if: steps.qwt-cache.outputs.cache-hit != 'true'
       run: |
@@ -141,7 +141,7 @@ jobs:
         $env:TP_CLIENT_SECRET = "${{ secrets.TP_CLIENT_SECRET }}"
         $env:INTERVALS_OAUTH_CLIENT_ID = "${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}"
         $env:INTERVALS_OAUTH_CLIENT_SECRET = "${{ secrets.INTERVALS_OAUTH_CLIENT_SECRET }}"
-        qmake PowerVelo.pro `
+        qmake MaximumTrainer.pro `
           "QWT_INSTALL=$qwtInstallDirFwd"
       shell: powershell
 

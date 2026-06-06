@@ -8,7 +8,7 @@ An open-source, high-performance indoor cycling training application built with 
 |------|---------|
 | **Language** | C++17 (≈ 95 % C++) |
 | **Framework** | Qt 6 (6.7+) on all platforms |
-| **Build file** | `PowerVelo.pro` (qmake) |
+| **Build file** | `MaximumTrainer.pro` (qmake) |
 | **Qt modules** | core · gui · widgets · network · bluetooth · webenginewidgets · printsupport · concurrent |
 | **Trainer protocol** | Bluetooth LE Fitness Machine Service (FTMS / 0x1826) for ERG resistance control |
 | **Sensor profiles** | Heart Rate (0x180D) · Cycling Speed & Cadence (0x1816) · Cycling Power (0x1818) · Moxy Muscle Oxygen (0xAAB0) |
@@ -184,7 +184,7 @@ On most modern distributions (Ubuntu 20.04+, Fedora 36+) these modules load auto
 
 ## Building
 
-All three platforms are built and tested automatically via GitHub Actions CI (see `.github/workflows/build.yml`). Use `PowerVelo.pro` with `qmake` and a standard C++ compiler.
+All three platforms are built and tested automatically via GitHub Actions CI (see `.github/workflows/build.yml`). Use `MaximumTrainer.pro` with `qmake` and a standard C++ compiler.
 
 ### Dependencies
 
@@ -219,7 +219,7 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 
 **qmake invocation:**
 ```powershell
-qmake PowerVelo.pro `
+qmake MaximumTrainer.pro `
   "QWT_INSTALL=C:/qwt"
 ```
 
@@ -250,7 +250,7 @@ mv /tmp/qwt6-stage/usr/local/qwt-6.3.0 /tmp/qwt6
 
 # Build MaximumTrainer
 cd /path/to/MaximumTrainer_Redux
-qmake6 PowerVelo.pro QWT_INSTALL=/tmp/qwt6
+qmake6 MaximumTrainer.pro QWT_INSTALL=/tmp/qwt6
 make -j$(nproc)
 # Run (QWT in a non-standard prefix needs LD_LIBRARY_PATH):
 LD_LIBRARY_PATH=/tmp/qwt6/lib ./build/release/MaximumTrainer
@@ -277,7 +277,7 @@ qmake qwt.pro && make -j$(sysctl -n hw.logicalcpu) && sudo make install
 
 # Build MaximumTrainer
 cd /path/to/MaximumTrainer_Redux
-qmake PowerVelo.pro \
+qmake MaximumTrainer.pro \
   "QWT_INSTALL=/usr/local/qwt-6.3.0"
 make
 ```

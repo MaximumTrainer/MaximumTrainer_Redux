@@ -62,7 +62,7 @@ jobs:
 
     - name: Build and install QWT
       # No QWT apt package exists for Qt6, so build 6.3.0 from source against the
-      # installed Qt6 and stage it under QWT_DIR. PowerVelo.pro is pointed at it
+      # installed Qt6 and stage it under QWT_DIR. MaximumTrainer.pro is pointed at it
       # via QWT_INSTALL=... .
       if: steps.qwt-cache.outputs.cache-hit != 'true'
       run: |
@@ -90,7 +90,7 @@ jobs:
 
     - name: Create Makefile
       run: |
-        qmake PowerVelo.pro "QWT_INSTALL=$QWT_DIR"
+        qmake MaximumTrainer.pro "QWT_INSTALL=$QWT_DIR"
       env:
         TP_CLIENT_SECRET:              ${{ secrets.TP_CLIENT_SECRET }}
         INTERVALS_OAUTH_CLIENT_ID:     ${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}

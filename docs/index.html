@@ -194,7 +194,7 @@
           <tbody>
             <tr><td>Language</td><td>C++17 (≈ 95 %)</td></tr>
             <tr><td>Framework</td><td>Qt 5.15.2 (Windows · Linux) &nbsp;·&nbsp; Qt 6.7.3 (macOS) &nbsp;·&nbsp; Qt 6.6.3 (WebAssembly / browser)</td></tr>
-            <tr><td>Build file</td><td><code>PowerVelo.pro</code> (qmake)</td></tr>
+            <tr><td>Build file</td><td><code>MaximumTrainer.pro</code> (qmake)</td></tr>
             <tr><td>Trainer protocol</td><td>Bluetooth LE FTMS (0x1826) — ERG automatic resistance control</td></tr>
             <tr><td>Sensor profiles</td><td>Heart Rate (0x180D) · CSC (0x1816) · Power (0x1818) · Moxy NIRS (0xAAB0)</td></tr>
             <tr><td>Workout formats</td><td><code>.erg</code> · <code>.mrc</code> · <code>.zwo</code> · <code>.fit</code> (native XML) · Intervals.icu calendar sync</td></tr>
@@ -298,7 +298,7 @@
           </a>
           <details class="build-details">
             <summary>Build from source</summary>
-            <pre><code>qmake PowerVelo.pro `
+            <pre><code>qmake MaximumTrainer.pro `
   "QWT_INSTALL=C:/qwt" `
   "SFML_INSTALL=C:/sfml/SFML-2.6.1"
 nmake</code></pre>
@@ -327,7 +327,7 @@ nmake</code></pre>
   libsfml-dev \
   cmake build-essential
 
-qmake6 PowerVelo.pro QWT_INSTALL=/tmp/qwt6
+qmake6 MaximumTrainer.pro QWT_INSTALL=/tmp/qwt6
 make -j$(nproc)</code></pre>
           </details>
         </div>
@@ -348,7 +348,7 @@ make -j$(nproc)</code></pre>
           <details class="build-details">
             <summary>Build from source</summary>
             <pre><code>brew install sfml
-qmake PowerVelo.pro \
+qmake MaximumTrainer.pro \
   "SFML_INSTALL=$(brew --prefix sfml)" \
   "QWT_INSTALL=/usr/local/qwt-6.3.0"
 make -j$(sysctl -n hw.logicalcpu)</code></pre>

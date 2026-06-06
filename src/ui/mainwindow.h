@@ -136,9 +136,7 @@ private slots:
     void slotVersionCheckFinished();
     void on_actionPreferences_triggered();
     void on_actionWorkout_triggered();
-    void on_actionOpen_Course_Folder_triggered();
     void on_actionHistory_triggered();
-    void on_actionToggleQueue_triggered();
     void addWorkoutToQueue(const Workout &workout);
 
 
@@ -164,8 +162,6 @@ private slots:
     void slotIntervalsIcuUploadFinished();
 
     void onNetworkOnlineChanged(bool isOnline);
-
-    void on_actionImportCourse_triggered();
 
     void createWebChannelPlan();
     void createWebChannelZone();

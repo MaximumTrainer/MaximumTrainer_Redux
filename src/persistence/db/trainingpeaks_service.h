@@ -14,7 +14,7 @@
 /// access token when the current one expires.
 ///
 /// The client_id and client_secret for the token exchange are taken from
-/// the TP_CLIENT_SECRET compile-time define (see PowerVelo.pro).
+/// the TP_CLIENT_SECRET compile-time define (see MaximumTrainer.pro).
 ///
 /// All methods are non-blocking and return a pending QNetworkReply*.
 /// The caller must connect QNetworkReply::finished to a slot.

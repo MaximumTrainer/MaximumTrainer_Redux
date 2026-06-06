@@ -96,7 +96,7 @@ jobs:
 
     - name: Create Makefile
       run: |
-        qmake PowerVelo.pro \
+        qmake MaximumTrainer.pro \
           "QWT_INSTALL=/usr/local/qwt-6.3.0"
       env:
         TP_CLIENT_SECRET:              ${{ secrets.TP_CLIENT_SECRET }}
