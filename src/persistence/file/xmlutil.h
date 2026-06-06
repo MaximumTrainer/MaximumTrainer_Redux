@@ -9,8 +9,8 @@
 #include "repeatwidget.h"
 #include "account.h"
 #include "settings.h"
-#include "course.h"
 #include "userstudio.h"
+#include "trackpoint.h"
 
 
 
@@ -23,11 +23,9 @@ public:
 
 
     QList<Workout> parseWorkoutLstPath(QStringList lstPath, Workout::WORKOUT_NAME workoutType);
-    QList<Course> parseCourseLstPath(QStringList lstPath, Course::COURSE_TYPE courseType);
 
 
     static bool createWorkoutXml(Workout workout, QString destinationPath);
-    static bool createCourseXml(Course course, QString destinationPath);
 
 
     QString parseFileNameFromPath(QString filePath);
@@ -42,16 +40,9 @@ public:
     QList<Workout> getLstUserWorkout();
 
 
-    //Courses
-    QList<Course> getLstUserCourse();
-    //Courses from ressources
-    QList<Course> getLstCourseIncluded();
-
-
     //parse .save file and load data in Settings and Account
     static void parseLocalSaveFile(Account *account);
     static void parseWorkoutDone(Account *account, QXmlStreamReader&);
-    static void parseCourseDone(Account *account, QXmlStreamReader&);
 
     //Save data from Settings and Account to .save file
     static bool saveLocalSaveFile(Account *account);
@@ -70,7 +61,6 @@ public:
     RepeatData parseRepeat(QXmlStreamReader&);
 
 
-    //    Course parseSingleCourseXml(QString filePath);
     Trackpoint parseTrackpoint(QXmlStreamReader&);
 
 

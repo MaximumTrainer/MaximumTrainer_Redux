@@ -7,7 +7,6 @@
 #include "datapower.h"
 #include "dataheartrate.h"
 #include "dataspeed.h"
-#include "xmlstreamwritertcx.h"
 #include "util.h"
 #include "myconstants.h"
 

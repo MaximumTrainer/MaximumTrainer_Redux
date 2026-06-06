@@ -164,7 +164,6 @@ All list data exposed in the UI follows Qt's **Model/View** pattern:
 |-------------|------|---------|
 | `WorkoutTableModel` | `QList<Workout>` | MainWindow workout browser |
 | `IntervalTableModel` | `QList<Interval>` | WorkoutCreator interval editor |
-| `CourseTableModel` | `QList<Course>` | Course browser |
 | `RadioTableModel` | `QList<Radio>` | Sensor configuration dialog |
 | `SortFilterProxyModel` | Wraps any above | Search boxes |
 
@@ -529,7 +528,7 @@ responsibility:
 
 | Module (`.pri`) | Responsibility | Internal dependencies |
 |-----------------|----------------|----------------------|
-| `src/model/model.pri` | Pure domain model (Workout, Interval, Course, …) | None |
+| `src/model/model.pri` | Pure domain model (Workout, Interval, …) | None |
 | `src/workout/workout.pri` | Workout file conversion utilities | `model` |
 | `src/btle/btle.pri` | BLE HAL (hub + scanner + simulator) | `model` |
 | `src/persistence/persistence.pri` | SQLite DAOs + file readers/writers | `model`, `fitness` |
@@ -659,21 +658,6 @@ and persistence):
   `workoutdialog.{cpp,h}`, `util.cpp`, `globalvars.cpp`, `zoneobject.cpp`,
   `xmlutil.cpp`, `userdao.cpp`, `settings.h`
 - While at it, remove the orphaned profile-physio fields listed in §7.2.
-
-**Remove the Course feature entirely.** The Course feature is fully dormant —
-`main_coursepage.{cpp,h,ui}` is commented out of `ui.pri`, the `MainWindow`
-course references are commented out, and there is no Course tab. Remove it as
-its own PR:
-
-- `src/model/course.{cpp,h}`, `coursetablemodel.{cpp,h}`,
-  `sortfilterproxymodelcourse.{cpp,h}`, `src/ui/main_coursepage.{cpp,h,ui}`
-- Course tendrils in `xmlutil` (`parseCourseLstPath`, `createCourseXml`,
-  `getLstUserCourse`, `getLstCourseIncluded`), `googlemapwidget`,
-  `settings` (`courseFolder`), `dialogmainwindowconfig` (course-folder field),
-  `environnement`, and the course menu actions
-- **Exclude** the FIT-SDK "course" message types (`fit_profile`,
-  `fit_factory`, `fit_mesg_broadcaster`) and `gpxparser` — those are unrelated
-  to the app's Course feature.
 
 **Offline achievement tracking.** Achievements were a sub-tab of the
 (now-removed) main-page Profile tab, rendered by a server-hosted
