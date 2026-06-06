@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QVector>
-#include "qwt_system_clock.h"
+#include <QElapsedTimer>
 
 class Clock : public QObject
 {
@@ -59,8 +59,8 @@ private :
 
     QTimer *timerClock;
     const int timerClockMs = 25;
-    QwtSystemClock d_clock;
-    QwtSystemClock d_clock_speed;
+    QElapsedTimer d_clock;
+    QElapsedTimer d_clock_speed;
 
     double totalTimeElapsed_msec;
     int lastSecond;
