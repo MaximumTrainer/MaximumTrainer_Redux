@@ -42,6 +42,10 @@ RepeatWidget::RepeatWidget(RepeatData *data, QWidget *parent) :
 
     ui->comboBox_repeat->setCurrentText(QString::number(data->getNumberRepeat()));
 
+    // Connect after setCurrentText() so seeding the initial value does not emit.
+    connect(ui->comboBox_repeat, &QComboBox::currentTextChanged,
+            this, &RepeatWidget::onRepeatCountChanged);
+
     ui->comboBox_repeat->installEventFilter(this);
     ui->widget_right->installEventFilter(this);
 }
@@ -90,7 +94,7 @@ void RepeatWidget::on_pushButton_delete_clicked()
     emit deleteSignal(data->getId());
 }
 
-void RepeatWidget::on_comboBox_repeat_currentIndexChanged(const QString &arg1)
+void RepeatWidget::onRepeatCountChanged(const QString &arg1)
 {
     this->data->setNumberRepeat(arg1.toInt());
     emit updateSignal(this->data->getId());

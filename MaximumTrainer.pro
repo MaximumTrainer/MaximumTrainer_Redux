@@ -14,7 +14,7 @@
 #
 # The CI fix: each workflow exports GIT_TAG to the environment before running
 # qmake (using a "Determine build version" step that calls git describe in
-# bash, where it works reliably).  PowerVelo.pro reads that env-var first and
+# bash, where it works reliably).  MaximumTrainer.pro reads that env-var first and
 # only falls back to $$system(git describe ...) for local development builds
 # where GIT_TAG is not set.
 GIT_VERSION = $$(GIT_TAG)

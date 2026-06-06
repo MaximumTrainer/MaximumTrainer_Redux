@@ -470,6 +470,13 @@ private:
     double timeElapsed_sec;
     //    double skippedTime_sec;
 
+    // The clock thread ticks every 25ms (40Hz) so virtual-speed physics stays
+    // smooth, but the three scrolling mini-graphs only need a fraction of that
+    // to look fluid (their data changes at the ~1-4Hz sensor rate). Coalesce
+    // their replot() calls to this cadence instead of replotting 40x/sec.
+    static constexpr double kMiniGraphRefreshMs = 50.0; // ~20 fps
+    double lastMiniGraphReplot_msec = -kMiniGraphRefreshMs;
+
     int nbUpdate1Sec;
     QTime timeWorkoutRemaining;
     QTime timeElapsedTotal;

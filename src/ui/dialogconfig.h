@@ -115,7 +115,10 @@ private slots:
     void on_checkBox_showIntervalRemainingTime_clicked(bool checked);
     void on_checkBox_showWorkoutRemainingTime_clicked(bool checked);
     void on_checkBox_showElapsedTime_clicked(bool checked);
-    void on_comboBox_fontSizeTimer_currentIndexChanged(const QString &arg1);
+    // Connected explicitly (see initUi): Qt6 removed
+    // QComboBox::currentIndexChanged(const QString&), so the old
+    // connectSlotsByName auto-connection silently no longer fired.
+    void onTimerFontSizeChanged(const QString &arg1);
 
 
 

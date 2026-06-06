@@ -229,7 +229,7 @@ jobs:
         source "$EMSDK/emsdk_env.sh"
         export QMAKEFEATURES="$HOME/qwt-wasm/features"
         mkdir -p build-wasm && cd build-wasm
-        qmake ../PowerVelo.pro \
+        qmake ../MaximumTrainer.pro \
           "QWT_INSTALL=$HOME/qwt-wasm"
         emmake make -j$(nproc)
 

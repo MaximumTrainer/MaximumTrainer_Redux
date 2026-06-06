@@ -2,6 +2,7 @@
 #define MINIMALISTWIDGET_H
 
 #include <QWidget>
+#include "util.h"
 
 namespace Ui {
 class MinimalistWidget;
@@ -41,6 +42,10 @@ public slots:
 
 
 private:
+    // Applies the frame background only when the colour changes (setValue runs
+    // per sensor packet; setStyleSheet forces a full style recompute).
+    void applyFrameColor(Util::Color colorId);
+
     Ui::MinimalistWidget *ui;
 
     TypeMinimalist type;
@@ -56,7 +61,7 @@ private:
     int range;
 
     bool isStopped;
-    QString currentColor;
+    int currentColor = -1;
 };
 
 #endif // MINIMALISTWIDGET_H

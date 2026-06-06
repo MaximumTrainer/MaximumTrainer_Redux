@@ -68,7 +68,7 @@ public:
 
 
 
-    QList<Interval> getLstInterval() const;
+    const QList<Interval> &getLstInterval() const;
     QList<Interval> getLstIntervalSource() const;
     QList<RepeatData> getLstRepeat() const;
 

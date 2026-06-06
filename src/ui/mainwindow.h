@@ -137,7 +137,6 @@ private slots:
     void on_actionPreferences_triggered();
     void on_actionWorkout_triggered();
     void on_actionHistory_triggered();
-    void on_actionToggleQueue_triggered();
     void addWorkoutToQueue(const Workout &workout);
 
 

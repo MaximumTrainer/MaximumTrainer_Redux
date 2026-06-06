@@ -1606,16 +1606,6 @@ void MainWindow::on_actionHistory_triggered()
 
 
 //------------------------------------------------------
-void MainWindow::on_actionToggleQueue_triggered()
-{
-    if (m_queueDock->isVisible())
-        m_queueDock->hide();
-    else
-        m_queueDock->show();
-}
-
-
-//------------------------------------------------------
 void MainWindow::addWorkoutToQueue(const Workout &workout)
 {
     m_workoutQueue->addWorkout(workout.getFilePath(), workout.getName());
@@ -1931,6 +1921,7 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
     w->show();
 }
 #endif // GC_WASM_BUILD
+
 
 
 //-------------------------------------------------------

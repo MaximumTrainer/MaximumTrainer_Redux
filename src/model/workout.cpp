@@ -439,7 +439,7 @@ QString Workout::getMaxPowerPourcentQString() const {
 int Workout::getNbInterval() const {
     return this->lstInterval.size();
 }
-QList<Interval> Workout::getLstInterval() const {
+const QList<Interval> &Workout::getLstInterval() const {
     return this->lstInterval;
 }
 

@@ -39,7 +39,10 @@ signals:
 
 private slots:
     void on_pushButton_delete_clicked();
-    void on_comboBox_repeat_currentIndexChanged(const QString &arg1);
+    // Connected explicitly (see constructor): Qt6 removed
+    // QComboBox::currentIndexChanged(const QString&), so the old
+    // connectSlotsByName auto-connection silently no longer fired.
+    void onRepeatCountChanged(const QString &arg1);
 
 
 private:

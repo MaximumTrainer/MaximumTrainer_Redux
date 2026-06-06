@@ -372,6 +372,9 @@ void DialogConfig::initUi() {
     ui->checkBox_showWorkoutRemainingTime->setChecked(account->show_workout_remaining);
     ui->checkBox_showElapsedTime->setChecked(account->show_elapsed);
     ui->comboBox_fontSizeTimer->setCurrentText(QString::number(account->font_size_timer) );
+    // Connect after setCurrentText() so seeding the initial value does not emit.
+    connect(ui->comboBox_fontSizeTimer, &QComboBox::currentTextChanged,
+            this, &DialogConfig::onTimerFontSizeChanged);
 
     int startTrigger = account->start_trigger;
     /// 0 - Cadence
@@ -580,7 +583,7 @@ void DialogConfig::on_checkBox_showElapsedTime_clicked(bool checked)
     parentDialog->showTimerWorkoutElapsed(checked);
 }
 
-void DialogConfig::on_comboBox_fontSizeTimer_currentIndexChanged(const QString &arg1)
+void DialogConfig::onTimerFontSizeChanged(const QString &arg1)
 {
     parentDialog->setTimerFontSize(arg1.toInt());
 }
