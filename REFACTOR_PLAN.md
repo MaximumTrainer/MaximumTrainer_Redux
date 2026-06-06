@@ -28,7 +28,7 @@ Pure deletion, zero behavioural risk. Each target verified unreferenced first.
 
 - ☑ `fitactivitycreator.cpp` `build_FIT_file()` — dead method, never called, contained a hardcoded developer path `/Users/tourlou2/test2.fit`. Removed (+ commented `decode_FIT_file`).
 - ☑ `xmlstreamwritertcx.{h,cpp}` — entirely commented out, not in any `.pri`. Removed both files + the dead `#include` in `dataworkout.cpp`.
-- ☑ Course feature removed end to end (~2,200 lines): `course.*`, `coursetablemodel.*`, `sortfilterproxymodelcourse.*`, `main_coursepage.*`, `googlemapwidget.*`, plus surgical edits to util / account / settings / environnement / userdao / xmlutil / mainwindow / dialogmainwindowconfig / apptheme / z_stylesheet and the 5 integration-test `.pro` files. Kept: FIT-SDK course messages, gpxparser, the `.workout`-format "COURSE DATA" parser.
+- ☑ Course feature removed end to end (~2,200 lines): `course.*`, `coursetablemodel.*`, `sortfilterproxymodelcourse.*`, `main_coursepage.*`, `googlemapwidget.*`, plus surgical edits to util / account / settings / environnement / userdao / xmlutil / mainwindow / dialogmainwindowconfig / apptheme / z_stylesheet and the 5 integration-test `.pro` files. Also removed `gpxparser.{cpp,h}` (Course-only route parser, no longer called once the course code was gone). Kept: FIT-SDK course messages and the `.workout`-format "COURSE DATA" parser.
 
 ## Group 2 — Hot-path guards (perf during a workout)  ☑  (PR #227)
 Built on the mini-graph throttle. Shipped the two real wins; the other two
