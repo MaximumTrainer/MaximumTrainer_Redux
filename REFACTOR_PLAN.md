@@ -7,6 +7,20 @@ acting — line numbers drift as the tree changes.
 
 Status legend: ☐ todo · ◐ in progress · ☑ done
 
+## Progress snapshot (2026-06-06)
+
+| Group | Status | PR |
+|-------|--------|----|
+| 1 — Dead-code sweep | ☑ done | #230 |
+| 2 — Hot-path guards | ☑ done (2 of 4 items; 2 evaluated and intentionally skipped) | #227 |
+| 3 — De-duplication via templates | ☐ todo (deferred) | — |
+| 4 — Latent naming hazard | ☐ todo (deferred) | — |
+| 5 — Quick correctness fixes | ☐ todo | — |
+| 6 — Large mechanical modernization | ☐ todo | — |
+
+Related work already merged/open: QWT 6.3 bump, AppImage dark-mode + OpenSSL
+fixes, `QwtSystemClock` → `QElapsedTimer` (#228), `CLAUDE.md` (#229).
+
 ---
 
 ## Group 1 — Dead-code sweep  ☑
@@ -16,19 +30,21 @@ Pure deletion, zero behavioural risk. Each target verified unreferenced first.
 - ☑ `xmlstreamwritertcx.{h,cpp}` — entirely commented out, not in any `.pri`. Removed both files + the dead `#include` in `dataworkout.cpp`.
 - ☑ Course feature removed end to end (~2,200 lines): `course.*`, `coursetablemodel.*`, `sortfilterproxymodelcourse.*`, `main_coursepage.*`, `googlemapwidget.*`, plus surgical edits to util / account / settings / environnement / userdao / xmlutil / mainwindow / dialogmainwindowconfig / apptheme / z_stylesheet and the 5 integration-test `.pro` files. Kept: FIT-SDK course messages, gpxparser, the `.workout`-format "COURSE DATA" parser.
 
-## Group 2 — Hot-path guards (perf during a workout)  ☐
-Small, measurable, builds on the mini-graph throttle (PR #227).
+## Group 2 — Hot-path guards (perf during a workout)  ☑  (PR #227)
+Built on the mini-graph throttle. Shipped the two real wins; the other two
+audit items were evaluated against the actual data bounds and intentionally
+skipped (risk to core data paths for no measurable gain).
 
-- ☐ `workoutplotzoomer.cpp:~664` & `minimalistwidget.cpp:~147` — `setStyleSheet()` on every BLE packet forces a full style recompute. Add the same change-guard `InfoWidget::setValue` already uses (only restyle when the colour category actually changes).
-- ☐ `workoutdialog.cpp:~2141` — rolling power average re-sums the whole queue every packet → maintain a running sum (O(1)).
-- ☐ `workoutdialog.cpp:~1175,~1511` — `workout.getLstInterval()` returns a `QList` by value in hot/loop paths (the `:1511` one is inside a loop → O(n²) copies). Return `const&`.
-- ☐ `workoutplotzoomer.cpp:~540` `updateCurve` — `pop_front` + full `setSamples` deep-copy per packet → ring buffer. (Redundant `attach` already removed in #227.)
+- ☑ `WorkoutPlotZoomer::updateTextLabelValue` & `MinimalistWidget::setValue` — `setStyleSheet()` was called on every BLE packet (full style recompute) even when the colour was unchanged. Both now guard on the current colour, mirroring `InfoWidget::currentColor`.
+- ☑ `Workout::getLstInterval()` now returns `const QList<Interval>&` instead of by value (was copying the whole interval list in several hot/loop paths). Mutating callers copy locally (COW), so safe.
+- ⏭ **Skipped — rolling power running-sum** (`workoutdialog.cpp`): the averaging window is capped at **5** (combobox None/1-5 sec), so the "O(n) re-sum" is ≤5 elements. A running sum would add risk to a core averaging path for no gain.
+- ⏭ **Skipped — `updateCurve` ring buffer** (`workoutplotzoomer.cpp`): the sample buffer is capped at **90** at 1-4 Hz, and Qwt's `setSamples` copies internally regardless. The original #1 audit ranking conflated this with the 40 Hz replot, which #227 already fixed.
 
-## Group 3 — De-duplication via templates  ☐
+## Group 3 — De-duplication via templates  ☐  (deferred — do later)
 - ☐ `DataPower/DataHeartRate/DataCadence/DataSpeed` (+ `CurveData*` wrappers) — ~708 lines that are 99% identical → one `template<typename Tag> class DataMetric` (~150 lines).
 - ☐ `PowerEditor/HrEditor/CadenceEditor` — identical NONE/FLAT/PROGRESSIVE show-hide structure → a parameterised `MetricEditor`.
 
-## Group 4 — Latent naming hazard  ☐
+## Group 4 — Latent naming hazard  ☐  (deferred — do later)
 - ☐ Two classes both named `IntervalsIcuService` — `intervals_icu_service.h` (static, plain) and `intervalsicuservice.h` (QObject) — **both compiled** in `db.pri`. Links today only because their symbols happen not to collide; it's an ODR/confusion trap. Rename one (e.g. static → `IntervalsIcuApi`) or consolidate.
 
 ## Group 5 — Quick correctness fixes  ☐
