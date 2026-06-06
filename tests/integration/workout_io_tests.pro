@@ -94,7 +94,6 @@ SOURCES += \
     ../../src/persistence/db/intervalsicudao.cpp \
     ../../src/persistence/file/importerworkoutzwo.cpp \
     ../../src/persistence/file/xmlutil.cpp \
-    ../../src/persistence/file/gpxparser.cpp \
     ../../src/ui/workout_editor/repeatwidget.cpp \
     ../intervals_icu/credential_store_stub.cpp \
     tst_workout_io.cpp

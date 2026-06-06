@@ -107,7 +107,6 @@ SOURCES += \
     ../../src/persistence/db/versiondao.cpp \
     ../../src/persistence/db/intervalsicudao.cpp \
     ../../src/persistence/file/xmlutil.cpp \
-    ../../src/persistence/file/gpxparser.cpp \
     ../../src/ui/dialoglogin.cpp \
     ../../src/ui/updatedialog.cpp \
     ../../src/ui/intervalsicuoauthwidget.cpp \

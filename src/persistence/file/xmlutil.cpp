@@ -3,7 +3,6 @@
 #include "account.h"
 #include "util.h"
 #include "environnement.h"
-#include "gpxparser.h"
 #include "simplecrypt.h"
 
 
