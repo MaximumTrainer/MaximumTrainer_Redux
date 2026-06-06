@@ -80,7 +80,6 @@ public:
 
     QString email_clean; //"blais.maxime@gmail.com --> blaismaxime"
     QSet<QString> hashWorkoutDone;
-    QSet<QString> hashCourseDone;
 
     int nb_sec_show_interval;
     int nb_sec_show_interval_before;
@@ -96,7 +95,6 @@ public:
 
     bool force_workout_window_on_top;
     bool show_included_workout;
-    bool show_included_course;
     bool distance_in_km;
     QString strava_access_token;
     QString strava_refresh_token;    ///< OAuth2 refresh token for Strava.

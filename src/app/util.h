@@ -64,21 +64,19 @@ public:
     static bool checkFolderPathIsValidForWrite(QString path);
     static QString getMaximumTrainerDocumentPath();
     static QString getSystemPathWorkout();
-    static QString getSystemPathCourse();
     static QString getSystemPathHistory();
 
 
 
-    static QString getSystemPathHelperReturnDefaultLoc(QString docType); //workout, history, course
+    static QString getSystemPathHelperReturnDefaultLoc(QString docType); //workout, history
 
 
 
     /// --------
 
 
-    static QStringList getListFiles(QString fileType); //.workout or //.course
+    static QStringList getListFiles(QString fileType); //.workout
     static void openWorkoutFolder(QString workoutPath);
-    static void openCourseFolder(QString workoutPath);
     static void openHistoryFolder();
 
 

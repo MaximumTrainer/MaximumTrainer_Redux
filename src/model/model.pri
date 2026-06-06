@@ -18,9 +18,6 @@ SOURCES += src/model/interval.cpp\
     $$PWD/radiotablemodel.cpp \
     $$PWD/radio.cpp \
     $$PWD/trackpoint.cpp \
-    $$PWD/course.cpp \
-    $$PWD/coursetablemodel.cpp \
-    $$PWD/sortfilterproxymodelcourse.cpp \
     $$PWD/userstudio.cpp \
     $$PWD/planadherencestore.cpp \
     $$PWD/workoutqueue.cpp
@@ -43,9 +40,6 @@ HEADERS += src/model/interval.h\
     $$PWD/radiotablemodel.h \
     $$PWD/radio.h \
     $$PWD/trackpoint.h \
-    $$PWD/course.h \
-    $$PWD/coursetablemodel.h \
-    $$PWD/sortfilterproxymodelcourse.h \
     $$PWD/userstudio.h \
     $$PWD/workouthistorysummary.h \
     $$PWD/planadherence.h \

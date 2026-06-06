@@ -97,7 +97,6 @@ SOURCES += \
     ../../src/model/sensor.cpp \
     ../../src/model/radio.cpp \
     ../../src/model/repeatdata.cpp \
-    ../../src/model/course.cpp \
     ../../src/model/userstudio.cpp \
     ../../src/model/trackpoint.cpp \
     ../../src/model/powercurve.cpp \

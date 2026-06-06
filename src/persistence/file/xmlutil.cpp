@@ -23,33 +23,6 @@ XmlUtil::XmlUtil(QObject *parent) :QObject(parent) {
 
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void XmlUtil::parseCourseDone(Account *account, QXmlStreamReader& xml) {
-
-    qDebug() << "parseCourseDone";
-
-    while (true) {
-
-        if (xml.hasError()) {
-            qDebug() << "Error in XML, parseWorkoutDone method" << xml.error();
-            return;
-        }
-        xml.readNextStartElement();
-        qDebug() << "name now:" << xml.name();
-
-        //stop condition
-        if (xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QLatin1String("CourseDone"))
-            return;
-
-        ///-------------------------------------------------------------------------------
-        if(xml.name() == QLatin1String("Course")) {
-            QString courseName  = xml.readElementText();
-            qDebug() << "courseName XML is:" << courseName;
-            if (courseName.size() > 0)
-                account->hashCourseDone.insert(courseName);
-        }
-    }
-}
 
 
 
@@ -115,10 +88,6 @@ void XmlUtil::parseLocalSaveFile(Account *account) {
 
             if (xml.name() == QLatin1String("WorkoutDone") && xml.isStartElement()) {
                 parseWorkoutDone(account, xml);
-            }
-
-            else if (xml.name() == QLatin1String("CourseDone") && xml.isStartElement()) {
-                parseCourseDone(account, xml);
             }
 
             else if (xml.name() == QLatin1String("IntervalsIcu") && xml.isStartElement()) {
@@ -372,7 +341,6 @@ bool XmlUtil::saveLocalSaveFile(Account *account) {
 
 
         //        writer.writeTextElement("workoutFolder", settings->workoutFolder);
-        //        writer.writeTextElement("courseFolder", settings->courseFolder);
         //        writer.writeTextElement("historyFolder", settings->historyFolder);
 
         //        writer.writeEndElement();  // ProgramSettings
@@ -386,15 +354,6 @@ bool XmlUtil::saveLocalSaveFile(Account *account) {
                 writer.writeTextElement("Workout", value);
         }
         writer.writeEndElement();  // WorkoutDone
-
-        ///-------------------------------------------------------------------------------------------------------
-        writer.writeStartElement("CourseDone");
-
-        foreach (const QString value, account->hashCourseDone) {
-            if (value.size() > 1)
-                writer.writeTextElement("Course", value);
-        }
-        writer.writeEndElement();  // CourseDone
 
         ///-------------------------------------------------------------------------------------------------------
         // Intervals.icu credentials — stored locally so they survive re-login.
@@ -500,33 +459,6 @@ QList<Workout> XmlUtil::parseWorkoutLstPath(QStringList lstPath, Workout::WORKOU
 }
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-QList<Course> XmlUtil::parseCourseLstPath(QStringList lstPath, Course::COURSE_TYPE courseType) {
-
-
-    QList<Course> lstCourse;
-    Course course;
-
-    foreach (QString filePath, lstPath)
-    {
-
-        //TODO:
-        //        course = parseSingleCourseXml(filePath);
-
-        //        qDebug() << "ok workout has been parsed!" << workout.getName() <<"WorkoutNameEnum:" << workout.getWorkoutNameEnum() << "size source" << workout.getLstIntervalSource().size() <<
-        //                    "lst repeat:" << workout.getLstRepeat().size();
-
-        if (courseType == Course::INCLUDED)
-            course.setCourseType(Course::INCLUDED);
-        else if(courseType == Course::USER_MADE)
-            course.setCourseType(Course::USER_MADE);
-
-        lstCourse.append(course);
-
-    }
-    return lstCourse;
-
-}
 
 
 //---------------------------------------------------------------------------------------------
@@ -667,26 +599,6 @@ QList<Workout> XmlUtil::getLstUserWorkout() {
     return parseWorkoutLstPath(lstWorkoutPat, Workout::USER_MADE);
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-QList<Course> XmlUtil::getLstCourseIncluded() {
-//todo remove dropbox ref
-    QStringList lstWorkoutPat;
-    //    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Opt-Phase-Prep-wkB-wo4.workout");
-    lstWorkoutPat.append("C:/Dropbox/MT/3a.tcx");
-    lstWorkoutPat.append("C:/Dropbox/MT/Boucle_Brebeuf_Mont-Tremblant.tcx");
-
-    return parseCourseLstPath(lstWorkoutPat, Course::COURSE_TYPE::INCLUDED);
-
-}
-
-//---------------------------------------------------------------------------------------------
-QList<Course> XmlUtil::getLstUserCourse() {
-
-    QStringList lstFile = Util::getListFiles("course");
-    return parseCourseLstPath(lstFile, Course::COURSE_TYPE::USER_MADE);
-}
-
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 QString XmlUtil::parseFileNameFromPath(QString filePath) {
 
@@ -694,34 +606,6 @@ QString XmlUtil::parseFileNameFromPath(QString filePath) {
     return fileInfo.baseName();
 
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Course XmlUtil::parseSingleCourseXml(QString filePath) {
-
-//    qDebug() << "parseSingleCourseXml..." << filePath;
-
-
-//    Course course;
-//    QList<Trackpoint> lstTrkptCondensed;
-//    QString name = parseFileNameFromPath(filePath);
-//    QString location = "testLocation";
-//    QString description = "testDescription";
-
-
-
-//    GpxParser gpxParser;
-//    lstTrkptCondensed = gpxParser.parseFile(filePath, 50);
-//    if (lstTrkptCondensed.size() < 4) {
-//        qDebug() << "problem parsing file inside gpxParser...leave";
-//        return Course(filePath + "_Invalid Trackpoints", Course::USER_MADE, name, location, description, lstTrkptCondensed);
-//    }
-
-
-//    course = Course(filePath, Course::COURSE_TYPE::USER_MADE, name, location, description, lstTrkptCondensed);
-//    qDebug() << "course added!" << lstTrkptCondensed.size() << " distance is:" << course.getDistanceMeters();
-//    return course;
-//}
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Trackpoint XmlUtil::parseTrackpoint(QXmlStreamReader &xml) {
@@ -1017,67 +901,6 @@ RepeatData XmlUtil::parseRepeat(QXmlStreamReader &xml) {
 
 }
 
-
-///////////////////////////////////////////////////////////////////////////////////////////
-bool XmlUtil::createCourseXml(Course course, QString destinationPath) {
-
-    QXmlStreamWriter stream;
-    stream.setAutoFormatting(true);
-
-
-    QString nameFile;
-    if (destinationPath == "") {
-        nameFile = course.getFilePath();
-    }
-    else {
-        nameFile = destinationPath;
-    }
-    qDebug() << "name of File should be" << nameFile;
-    QFile fileMt(nameFile);
-
-    if (!fileMt.open(QIODevice::WriteOnly)) {
-        qDebug() << "problem writing to file tcx";
-        return false;
-    }
-    ///----------------------------------- WRITE TO MT FILE ------------------------------------------------
-    else {
-        stream.setDevice(&fileMt);
-
-        stream.writeStartDocument();
-        stream.writeStartElement("Course");
-        stream.writeTextElement("Version", Environnement::getVersion());
-        stream.writeTextElement("Location", course.getLocation());
-        stream.writeTextElement("Description", course.getDescription());
-
-
-
-        ///---------------------- TRACKPOINTS -----------------------------
-        stream.writeStartElement("Trackpoints");
-        foreach (Trackpoint tp, course.getLstTrack())
-        {
-            stream.writeStartElement("Trackpoint");
-            stream.writeTextElement("Lon", QString::number(tp.getLon(), 'f', 6));
-            stream.writeTextElement("Lat", QString::number(tp.getLat(), 'f', 6));
-            stream.writeTextElement("ElevationMeters", QString::number(tp.getElevation(), 'f', 3));
-
-            stream.writeTextElement("SlopePercentage", QString::number(tp.getSlopePercentage(), 'f', 2));
-            stream.writeTextElement("Distance", QString::number(tp.getDistanceAtThisPoint(), 'f', 3));
-
-            stream.writeEndElement();  /// Trackpoint
-        }
-        stream.writeEndElement();  /// Trackpoints
-
-
-        stream.writeEndElement();  /// Course
-        stream.writeEndDocument();
-        fileMt.close();
-
-
-        qDebug() << "SAVING Course FILE DONE";
-        return true;
-    }
-
-}
 
 //-------------------------------------------------------------------------------------
 bool XmlUtil::createWorkoutXml(Workout workout, QString destinationPath) {

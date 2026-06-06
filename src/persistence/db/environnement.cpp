@@ -119,10 +119,6 @@ QString Environnement::getUrlSupport() {
     return getURLEnvironnement() + urlSupportEn;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-QString  Environnement::getURLGoogleMap() {
-    return getURLEnvironnement() + urlGoogleMapEn;
-}
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -213,10 +209,6 @@ QString Environnement::getUrlWorkoutCreator() {
     return getURLEnvironnement() + urlWorkoutCreatorEn;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-QString Environnement::getUrlCourseCreator() {
-    return getURLEnvironnement() + urlCourseCreatorEn;
-}
 
 
 

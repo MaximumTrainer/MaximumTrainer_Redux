@@ -26,8 +26,7 @@ $$PWD/workoutdialog.cpp \
     $$PWD/pmcdialog.cpp \
     $$PWD/workoutcountdowndialog.cpp \
     $$PWD/queuepanelwidget.cpp \
-    $$PWD/intervalsicuoauthwidget.cpp \
-    #$$PWD/main_coursepage.cpp
+    $$PWD/intervalsicuoauthwidget.cpp
 
 HEADERS += $$PWD/mainwindow.h\
 $$PWD/workoutdialog.h \
@@ -51,8 +50,7 @@ $$PWD/workoutdialog.h \
     $$PWD/queuepanelwidget.h \
     $$PWD/apptheme.h \
     $$PWD/planadherencewidget.h \
-    $$PWD/intervalsicuoauthwidget.h \
-    #$$PWD/main_coursepage.h
+    $$PWD/intervalsicuoauthwidget.h
 
 # Sensors main-window page. Compiled on all platforms (the .cpp guards its
 # BLE-scanner use with GC_WASM_BUILD) so the promoted widget in mainwindow.ui
@@ -70,7 +68,6 @@ FORMS    += $$PWD/mainwindow.ui \
     $$PWD/savingwindow.ui \
     $$PWD/dialogmainwindowconfig.ui \
     $$PWD/dialoginfowebview.ui \
-    $$PWD/tab_intervals_icu.ui \
-    #$$PWD/main_coursepage.ui
+    $$PWD/tab_intervals_icu.ui
 
 
