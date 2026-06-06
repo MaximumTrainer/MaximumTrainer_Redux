@@ -13,9 +13,9 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 |-------|--------|----|
 | 1 — Dead-code sweep | ☑ done | #230 |
 | 2 — Hot-path guards | ☑ done (2 of 4 items; 2 evaluated and intentionally skipped) | #227 |
-| 3 — De-duplication via templates | ☐ todo (deferred) | — |
-| 4 — Latent naming hazard | ☐ todo (deferred) | — |
-| 5 — Quick correctness fixes | ☐ todo | — |
+| 3 — De-duplication via templates | ◐ partial (DataMetric done; editor trilogy todo) | (this PR) |
+| 4 — Latent naming hazard | ☑ done | #235 |
+| 5 — Quick correctness fixes | ☑ done (1 of 3; 2 dropped after inspection) | #234 |
 | 6 — Large mechanical modernization | ☐ todo | — |
 
 Related work already merged/open: QWT 6.3 bump, AppImage dark-mode + OpenSSL
@@ -40,9 +40,9 @@ skipped (risk to core data paths for no measurable gain).
 - ⏭ **Skipped — rolling power running-sum** (`workoutdialog.cpp`): the averaging window is capped at **5** (combobox None/1-5 sec), so the "O(n) re-sum" is ≤5 elements. A running sum would add risk to a core averaging path for no gain.
 - ⏭ **Skipped — `updateCurve` ring buffer** (`workoutplotzoomer.cpp`): the sample buffer is capped at **90** at 1-4 Hz, and Qwt's `setSamples` copies internally regardless. The original #1 audit ranking conflated this with the 40 Hz replot, which #227 already fixed.
 
-## Group 3 — De-duplication via templates  ☐  (deferred — do later)
-- ☐ `DataPower/DataHeartRate/DataCadence/DataSpeed` (+ `CurveData*` wrappers) — ~708 lines that are 99% identical → one `template<typename Tag> class DataMetric` (~150 lines).
-- ☐ `PowerEditor/HrEditor/CadenceEditor` — identical NONE/FLAT/PROGRESSIVE show-hide structure → a parameterised `MetricEditor`.
+## Group 3 — De-duplication via templates  ◐  (partial)
+- ☑ `DataPower/DataHeartRate/DataCadence/DataSpeed` — the four byte-identical singleton `.cpp` files (~590 lines) replaced by one CRTP base `DataMetricSingleton<Derived>` in `datametric.h`; each metric is now an ~11-line `final` subclass. Net −598 lines. Public API (`DataPower::instance().append()` etc.) unchanged; verified app builds + workout plots render live data. (The `CurveData*` wrappers were left as-is — they differ more than the audit implied and aren't pure boilerplate.)
+- ☐ `PowerEditor/HrEditor/CadenceEditor` — identical NONE/FLAT/PROGRESSIVE show-hide structure → a parameterised `MetricEditor`. (Still todo — separate change.)
 
 ## Group 4 — Latent naming hazard  ☐  (deferred — do later)
 - ☐ Two classes both named `IntervalsIcuService` — `intervals_icu_service.h` (static, plain) and `intervalsicuservice.h` (QObject) — **both compiled** in `db.pri`. Links today only because their symbols happen not to collide; it's an ODR/confusion trap. Rename one (e.g. static → `IntervalsIcuApi`) or consolidate.
