@@ -29,7 +29,6 @@ public:
 
 
     QString workoutFolder;
-    QString courseFolder;
     QString historyFolder;
 
 
@@ -37,7 +36,6 @@ public:
     /// --------------- Program Settings Saved in XML
 //    bool forceWorkoutWindowOnTop;
 //    bool showIncludedWorkout;
-//    bool showIncludedCourse;
 //    bool distanceInKM;
 //    QString strava_access_token;
 //    bool stravaPrivateUpload;

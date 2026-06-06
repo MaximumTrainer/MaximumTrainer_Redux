@@ -778,9 +778,6 @@ void MainWindow::leftMenuChanged(int tabSelected) {
 
 
 
-    ///Keyword: RemoveCOURSE Temp
-    /// to change index is different with course added..
-
     if (currentIndexLeftMenu == 3 && ftpChanged) { ///Also check that FTP has changed..
         qDebug() << "-*-*-*-OK FTP CHANGED, RECALCULATE!";
         emit ftpAndTabProfileChanged();
@@ -1602,11 +1599,6 @@ void MainWindow::on_actionWorkout_triggered()
     Util::openWorkoutFolder("null");
 }
 //-----------------------------------------------
-void MainWindow::on_actionOpen_Course_Folder_triggered()
-{
-    Util::openCourseFolder("null");
-}
-//-----------------------------------------------
 void MainWindow::on_actionHistory_triggered()
 {
     ftb->setCurrentIndex(4); // History (was index 6 before Profile/Settings removal)
@@ -1939,21 +1931,6 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
     w->show();
 }
 #endif // GC_WASM_BUILD
-
-
-////////////////////////////////////////////////////////////////////////
-void MainWindow::on_actionImportCourse_triggered()
-{
-    //    bool result = ui->tab_edit_course->loadCourseTrigger();
-
-    //    if (result) {
-    //        ui->tabWidget_course->setCurrentIndex(1);
-    //        ftb->setCurrentIndex(1);
-    //    }
-
-}
-
-
 
 
 //-------------------------------------------------------

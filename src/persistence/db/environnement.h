@@ -109,9 +109,6 @@ const static QString indexPage = "index.php/";
 
 
 
-/// GoogleMap
-const static QString urlGoogleMapEn = "google-map";
-
 
 const static QString urlStravaAuthorize("https://www.strava.com/oauth/authorize?"
                                         "client_id=7252"
@@ -175,9 +172,6 @@ const static QString urlWorkoutEn = "workouts";
 /// Workout-creator
 const static QString urlWorkoutCreatorEn = "workout-creator";
 
-/// Course-creator
-const static QString urlCourseCreatorEn = "course-creator";
-
 /// Training-Plans
 const static QString urlPlanEn = "training-plans/insideMT";
 
@@ -205,7 +199,6 @@ public:
     static QString getDateBuilded();
 
 
-    static QString getURLGoogleMap();
     static QString getURLStravaAuthorize();
     static QString getURLTrainingPeaksAuthorize();
     /// Build the Intervals.icu OAuth2 authorization URL (desktop — redirect to maximumtrainer.com backend).
@@ -242,7 +235,6 @@ public:
 
     static QString getUrlWorkout();
     static QString getUrlWorkoutCreator();
-    static QString getUrlCourseCreator();
     static QString getUrlDownload();
     static QString getUrlPlans();
 

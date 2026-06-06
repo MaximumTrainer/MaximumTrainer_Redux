@@ -39,7 +39,6 @@ Settings::Settings(QObject *parent) : QObject(parent)  {
     settings.beginGroup("SettingsFolders");
     historyFolder = settings.value("historyFolder", "").toString();
     workoutFolder = settings.value("workoutFolder", "").toString();
-    courseFolder = settings.value("courseFolder", "").toString();
     settings.endGroup();
 
 }
@@ -73,7 +72,6 @@ void Settings::saveGeneralSettings() {
     settings.beginGroup("SettingsFolders");
     settings.setValue("historyFolder", historyFolder );
     settings.setValue("workoutFolder", workoutFolder );
-    settings.setValue("courseFolder", courseFolder );
     settings.endGroup();
 
 

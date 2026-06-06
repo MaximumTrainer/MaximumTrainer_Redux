@@ -398,7 +398,6 @@ void Util::parseJsonObjectAccount(QString data) {
 
     account->force_workout_window_on_top = jsonObj["force_workout_window_on_top"].toString().toInt();
     account->show_included_workout = jsonObj["show_included_workout"].toString().toInt();
-    account->show_included_course = jsonObj["show_included_course"].toString().toInt();
     account->distance_in_km = jsonObj["distance_in_km"].toString().toInt();
     account->strava_access_token = jsonObj["strava_access_token"].toString();
     account->strava_private_upload = jsonObj["strava_private_upload"].toString().toInt();
@@ -551,36 +550,23 @@ QTime Util::convertMinutesToQTime(double minutes) {
 
 
 
-//static QStringList getListFiles(QString fileType); //.workout or //.course
+//static QStringList getListFiles(QString fileType); //.workout
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 QStringList Util::getListFiles(QString fileType) {
 
     QStringList lstPath;
     QString pathToLook;
 
-    bool checkCourseFiles = false;
-
     if (fileType == "workout") {
         pathToLook = getSystemPathWorkout() + QDir::separator();
-    }
-    else if (fileType == "course") {
-        pathToLook = getSystemPathCourse() + QDir::separator();
-        checkCourseFiles = true;
     }
 
     QDirIterator dirIt(pathToLook, QDirIterator::Subdirectories);
     while (dirIt.hasNext()) {
         dirIt.next();
         if (QFileInfo(dirIt.filePath()).isFile())
-            if (checkCourseFiles) {
-                if (QFileInfo(dirIt.filePath()).suffix() == "tcx") {
-                    lstPath << dirIt.filePath();
-                }
-            }
-            else {
-                if (QFileInfo(dirIt.filePath()).suffix() == fileType) {
-                    lstPath << dirIt.filePath();
-                }
+            if (QFileInfo(dirIt.filePath()).suffix() == fileType) {
+                lstPath << dirIt.filePath();
             }
 
     }
@@ -610,22 +596,6 @@ void Util::openWorkoutFolder(QString workoutPath) {
 
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Util::openCourseFolder(QString coursePath) {
-
-    qDebug() << "openCourseFolder";
-    if (coursePath == "null")
-    {
-        QString path = getSystemPathCourse() + QDir::separator();
-        QDesktopServices::openUrl(QUrl("file:///" + path));
-    }
-    else {
-        QFileInfo fileInfo(coursePath);
-        //        qDebug() << "ABSOULTE DIR IS:" << fileInfo.absolutePath();
-        QDesktopServices::openUrl(QUrl("file:///" + fileInfo.absolutePath()));
-    }
-
-}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Util::openHistoryFolder() {
@@ -719,26 +689,6 @@ QString Util::getSystemPathWorkout() {
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-QString Util::getSystemPathCourse() {
-
-    QString folderName = "course";
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    // Return default courseFolder
-    if (settings->courseFolder == "") {
-        return Util::getSystemPathHelperReturnDefaultLoc(folderName);
-    }
-    // Return custom path, check if still valid
-    else {
-        if (checkFolderPathIsValidForWrite(settings->courseFolder) )
-            return settings->courseFolder;
-        else
-            return Util::getSystemPathHelperReturnDefaultLoc(folderName);
-    }
-
-}
-
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Util::getSystemPathHelperReturnDefaultLoc(QString docType) {
 
@@ -747,11 +697,8 @@ QString Util::getSystemPathHelperReturnDefaultLoc(QString docType) {
     if (docType == "workout") {
         folderName = "Workouts";
     }
-    else if (docType == "history") {
-        folderName = "History";
-    }
     else {
-        folderName = "Courses";
+        folderName = "History";
     }
 
     ///---
