@@ -231,6 +231,7 @@ void WorkoutPlotZoomer::init(GRAPH_TYPE graph, bool firstInit) {
         curve->setPen( QPen( colorCurve, 2.5 ) );
         curve->setRenderHint( QwtPlotItem::RenderAntialiased, true );
         curve->setPaintAttribute(QwtPlotCurve::FilterPoints, true);
+        curve->attach(this); // attach once; updateCurve() only refreshes samples
     }
 
 
@@ -544,7 +545,7 @@ void WorkoutPlotZoomer::updateCurve(double timeNow, int value) {
 
     samples.append(QPointF( timeNow, value ));
     curve->setSamples(samples);
-    curve->attach(this);
+    // curve is attached once in init(); no need to re-attach on every sample.
 
 }
 

@@ -1029,11 +1029,22 @@ void WorkoutDialog::updateRealTimeGraph(double totalTimeElapsed_msec) {
 
     timeElapsed_sec = totalTimeElapsed_msec /1000;
 
-    if (!account->enable_studio_mode) {
-        ui->wid_1_workoutPlot_HeartrateZoom->moveIntervalTime(totalTimeElapsed_msec);
-        ui->wid_2_workoutPlot_PowerZoom->moveIntervalTime(totalTimeElapsed_msec);
-        ui->wid_3_workoutPlot_CadenceZoom->moveIntervalTime(totalTimeElapsed_msec);
-    }
+    if (account->enable_studio_mode)
+        return;
+
+    // The clock ticks at 40Hz, but each replot() is a full QWT canvas repaint of
+    // three plots — 120 repaints/sec for data that only changes a few times a
+    // second. Coalesce to kMiniGraphRefreshMs (~20fps): smooth scrolling at half
+    // the original work. Throttling on elapsed time (not a wall-clock read) keeps
+    // this pause-aware, and the curve samples appended by the sensor callbacks are
+    // picked up by the next replot regardless.
+    if (totalTimeElapsed_msec - lastMiniGraphReplot_msec < kMiniGraphRefreshMs)
+        return;
+    lastMiniGraphReplot_msec = totalTimeElapsed_msec;
+
+    ui->wid_1_workoutPlot_HeartrateZoom->moveIntervalTime(totalTimeElapsed_msec);
+    ui->wid_2_workoutPlot_PowerZoom->moveIntervalTime(totalTimeElapsed_msec);
+    ui->wid_3_workoutPlot_CadenceZoom->moveIntervalTime(totalTimeElapsed_msec);
 }
 
 
