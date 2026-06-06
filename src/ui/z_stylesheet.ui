@@ -39,11 +39,7 @@ QWidget#widget_fancyMenu {
 
 
 
-QWidget#tab_workout1, #tab_workout2, #tab_profile1, #tab_achiev1, #tableView_workout, #tab_create, #tableView_course, #tab_course, #tab_edit_course {
-  background-color: #f0f0f0;
-}
-
-QWidget#tabWidget_course, #tab_course, #tab_edit_course #tab_edit_course {
+QWidget#tab_workout1, #tab_workout2, #tab_profile1, #tab_achiev1, #tableView_workout, #tab_create {
   background-color: #f0f0f0;
 }
 
@@ -54,8 +50,8 @@ QWidget.mainPage{
 */
 
 
-QTableView#tableView_workout, QTableView#tableView_course {
-	gridline-color: gray; 
+QTableView#tableView_workout {
+	gridline-color: gray;
 }
 
 

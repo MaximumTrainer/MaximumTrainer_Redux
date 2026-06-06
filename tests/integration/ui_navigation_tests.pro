@@ -93,7 +93,6 @@ SOURCES += \
     ../../src/model/sensor.cpp \
     ../../src/model/radio.cpp \
     ../../src/model/repeatdata.cpp \
-    ../../src/model/course.cpp \
     ../../src/model/userstudio.cpp \
     ../../src/model/trackpoint.cpp \
     ../../src/model/powercurve.cpp \
@@ -104,7 +103,6 @@ SOURCES += \
     ../../src/persistence/db/versiondao.cpp \
     ../../src/persistence/db/intervalsicudao.cpp \
     ../../src/persistence/file/xmlutil.cpp \
-    ../../src/persistence/file/gpxparser.cpp \
     ../intervals_icu/credential_store_stub.cpp \
     tst_ui_navigation.cpp
 

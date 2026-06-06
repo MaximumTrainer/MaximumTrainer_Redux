@@ -103,7 +103,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
 
     force_workout_window_on_top = false;
     show_included_workout = true;
-    show_included_course = true;
     distance_in_km = true;
     strava_private_upload = false;
     training_peaks_public_upload = false;
@@ -214,7 +213,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
 
     email_clean = "user1";
     hashWorkoutDone = QSet<QString>();
-    hashCourseDone = QSet<QString>();
     //------------------------------
 
     // Override the display/sound defaults above with any locally-persisted
@@ -323,7 +321,6 @@ void Account::loadDisplayPrefs() {
     use_pm_for_speed      = settings.value("use_pm_for_speed",      use_pm_for_speed).toBool();
     use_virtual_speed     = settings.value("use_virtual_speed",     use_virtual_speed).toBool();
     show_included_workout = settings.value("show_included_workout", show_included_workout).toBool();
-    show_included_course  = settings.value("show_included_course",  show_included_course).toBool();
 
     // Timer display
     show_timer_on_top       = settings.value("show_timer_on_top",       show_timer_on_top).toBool();
@@ -409,7 +406,6 @@ void Account::saveDisplayPrefs() {
     settings.setValue("use_pm_for_speed",      use_pm_for_speed);
     settings.setValue("use_virtual_speed",     use_virtual_speed);
     settings.setValue("show_included_workout", show_included_workout);
-    settings.setValue("show_included_course",  show_included_course);
 
     settings.setValue("show_timer_on_top",       show_timer_on_top);
     settings.setValue("show_interval_remaining", show_interval_remaining);

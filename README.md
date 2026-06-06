@@ -71,7 +71,7 @@ The simulator responds to ERG load commands from the workout player, making it a
 
 **Option B — Import a custom file**
 
-1. Go to **File → Import Workout** (or **File → Import Course Folder** for batch import).
+1. Go to **File → Import Workout**.
 2. Select one or more `.erg` or `.mrc` files.
 3. MaximumTrainer converts them to its native format and adds them to your library.
 

@@ -29,10 +29,6 @@ public:
 
 
 
-//    void decode_FIT_file();
-    void build_FIT_file();
-
-
     //-------------
     void initialize_FIT_File(bool createDir, QString username, QString name, QDateTime startTimeWorkout);
     void close_FIT_File();

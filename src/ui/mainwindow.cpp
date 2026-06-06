@@ -778,9 +778,6 @@ void MainWindow::leftMenuChanged(int tabSelected) {
 
 
 
-    ///Keyword: RemoveCOURSE Temp
-    /// to change index is different with course added..
-
     if (currentIndexLeftMenu == 3 && ftpChanged) { ///Also check that FTP has changed..
         qDebug() << "-*-*-*-OK FTP CHANGED, RECALCULATE!";
         emit ftpAndTabProfileChanged();

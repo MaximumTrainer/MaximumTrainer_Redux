@@ -120,11 +120,6 @@ DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent
     initUI();
 
 
-    ///Keyword: RemoveCOURSE Temp
-    ui->lineEdit_courseDir->setVisible(false);
-    ui->pushButton_browseCourseDir->setVisible(false);
-    ui->label_courseTxt->setVisible(false);
-
     ui->checkBox_trainingPeaksPrivate->setVisible(false);
 
     connect(ui->pushButton_testIntervalsConnection, &QPushButton::clicked,
@@ -164,10 +159,8 @@ void DialogMainWindowConfig::initUI() {
     ui->checkBox_trainingPeaksPrivate->setChecked(!account->training_peaks_public_upload);
     ui->lineEdit_historyDir->setText(Util::getSystemPathHistory());
     ui->lineEdit_workoutDir->setText(Util::getSystemPathWorkout());
-    ui->lineEdit_courseDir->setText(Util::getSystemPathCourse());
     ui->lineEdit_historyDir->setReadOnly(true);
     ui->lineEdit_workoutDir->setReadOnly(true);
-    ui->lineEdit_courseDir->setReadOnly(true);
 
     if (account->distance_in_km)
         ui->comboBox_distance->setCurrentIndex(0);
@@ -406,25 +399,6 @@ void DialogMainWindowConfig::on_pushButton_browseHistoryDir_clicked()
 }
 
 
-//----------------------------------------------------------------------------------------
-void DialogMainWindowConfig::on_pushButton_browseCourseDir_clicked()
-{
-    QString path = QFileDialog::getExistingDirectory(this, tr("Select Course Folder"), Util::getSystemPathCourse(), QFileDialog::ShowDirsOnly);
-    if (path == "")
-        return;
-
-    if (Util::checkFolderPathIsValidForWrite(path)) {
-        ui->lineEdit_courseDir->setText(path);
-    }
-    else {
-        QMessageBox msgBox(this);
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setText(tr("The specified folder could not be used to write files in"));
-        msgBox.setStandardButtons(QMessageBox::Close);
-        msgBox.exec();
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////
 void DialogMainWindowConfig::reject() {
 
@@ -447,12 +421,6 @@ void DialogMainWindowConfig::accept() {
     if (settings->workoutFolder != ui->lineEdit_workoutDir->text()) {
         settings->workoutFolder = ui->lineEdit_workoutDir->text();
         emit folderWorkoutChanged();
-    }
-
-    //Folder changed
-    if (settings->courseFolder != ui->lineEdit_courseDir->text()) {
-        settings->courseFolder = ui->lineEdit_courseDir->text();
-        emit folderCourseChanged();
     }
 
     settings->historyFolder = ui->lineEdit_historyDir->text();
