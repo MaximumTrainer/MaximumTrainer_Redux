@@ -176,64 +176,68 @@ test.describe('Login verification – Layer B: OAuth popup flow', () => {
       };
     });
 
-    // Intercept all intervals.icu requests: handle token exchange and data APIs.
+    // Intercept all intervals.icu requests (direct host + Cloudflare proxy):
+    // handle token exchange and data APIs.
     const corsHeaders = {
       'Access-Control-Allow-Origin':  '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'authorization, content-type',
     };
 
-    await wasmApp.page.route('https://intervals.icu/**', async (route) => {
-      const req    = route.request();
-      const method = req.method();
-      const url    = req.url();
-      const auth   = req.headers()['authorization'] ?? '';
+    await wasmApp.page.route(
+      /^https:\/\/(?:intervals\.icu|mt-intervals-proxy\.intervals-login\.workers\.dev)\/.*/,
+      async (route) => {
+        const req    = route.request();
+        const method = req.method();
+        const url    = req.url();
+        const auth   = req.headers()['authorization'] ?? '';
 
-      if (method === 'OPTIONS') {
-        await route.fulfill({ status: 204, headers: corsHeaders });
-        return;
-      }
+        if (method === 'OPTIONS') {
+          await route.fulfill({ status: 204, headers: corsHeaders });
+          return;
+        }
 
-      // OAuth token exchange — must be handled before the general API catch-all.
-      if (url === 'https://intervals.icu/oauth/token' || url.includes('/oauth/token')) {
-        await route.fulfill({
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            access_token:  FAKE_ACCESS_TOKEN,
-            refresh_token: FAKE_REFRESH_TOKEN,
-            token_type:    'Bearer',
-            expires_in:    3600,
-            athlete_id:    athleteId,
-          }),
-        });
-        return;
-      }
+        // OAuth token exchange — must be handled before the general API catch-all.
+        if (url === 'https://intervals.icu/oauth/token' || url.includes('/oauth/token')) {
+          await route.fulfill({
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              access_token:  FAKE_ACCESS_TOKEN,
+              refresh_token: FAKE_REFRESH_TOKEN,
+              token_type:    'Bearer',
+              expires_in:    3600,
+              athlete_id:    athleteId,
+            }),
+          });
+          return;
+        }
 
-      capturedRequests.push({ method, url, auth });
+        capturedRequests.push({ method, url, auth });
 
-      if (url.includes('/events')) {
-        await route.fulfill({
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          body: JSON.stringify([
-            {
-              id:               'evt001',
-              name:             'Login Verification Test Workout',
-              start_date_local: new Date().toISOString().split('T')[0],
-              type:             'Ride',
-              moving_time:      3600,
-            },
-          ]),
-        });
-      } else {
-        await route.fulfill({
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: athleteId, name: 'Test Athlete' }),
-        });
-      }
-    });
+        if (url.includes('/events')) {
+          await route.fulfill({
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            body: JSON.stringify([
+              {
+                id:               'evt001',
+                name:             'Login Verification Test Workout',
+                start_date_local: new Date().toISOString().split('T')[0],
+                type:             'Ride',
+                moving_time:      3600,
+              },
+            ]),
+          });
+        } else {
+          await route.fulfill({
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: athleteId, name: 'Test Athlete' }),
+          });
+        }
+      },
+    );
 
     await wasmApp.goto();
     await wasmApp.waitForFullyLoaded(300_000);
