@@ -176,13 +176,10 @@ private :
     void moveElement(QString widgetIdentifier, bool moveRight); //moveRight false = moveLeft
 
     // Group C: preference tab setup helpers
-    QWidget *setupStudioTab();
     QWidget *setupTrainerTab();
 
-    void initStudioTab();
     void initTrainerTab();
 
-    void saveStudioTab();
     void saveTrainerTab();
 
 private:
@@ -202,15 +199,6 @@ private:
 
     bool isPlayingRadio;
     bool isConnecting = false;
-
-    // Studio tab controls
-    QCheckBox    *checkStudioMode   = nullptr;
-    QSpinBox     *spinNbRiders      = nullptr;
-
-    // Workout tab controls (trainer model, ERG ramp, sensor dropout and battery
-    // warning moved to the main-window Bluetooth Sensors page — single home for
-    // sensor/trainer config).
-    QCheckBox    *checkIntervalsIcuAutoUpload = nullptr;
 
     // Interval Summary overlay controls
     QCheckBox    *checkIntervalSummary         = nullptr;

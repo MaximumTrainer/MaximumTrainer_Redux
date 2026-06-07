@@ -53,7 +53,6 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/sound"),   tr("Sounds"), ui->listWidget_settings);
     QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/movie"),   tr("Video Player"), ui->listWidget_settings);
     QListWidgetItem *item6 = new QListWidgetItem(QIcon(":/image/icon/radio"),   tr("Radio"), ui->listWidget_settings);
-    QListWidgetItem *item7 = new QListWidgetItem(tr("Studio"), ui->listWidget_settings);
     QListWidgetItem *item8 = new QListWidgetItem(tr("Workout"), ui->listWidget_settings);
     item1->setSizeHint(QSize(35,35));
     item2->setSizeHint(QSize(35,35));
@@ -61,7 +60,6 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     item4->setSizeHint(QSize(35,35));
     item5->setSizeHint(QSize(35,35));
     item6->setSizeHint(QSize(35,35));
-    item7->setSizeHint(QSize(35,35));
     item8->setSizeHint(QSize(35,35));
 
     ui->listWidget_settings->addItem(item1);
@@ -70,11 +68,10 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     ui->listWidget_settings->addItem(item4);
     ui->listWidget_settings->addItem(item5);
     ui->listWidget_settings->addItem(item6);
-    ui->listWidget_settings->addItem(item7);
     ui->listWidget_settings->addItem(item8);
 
-    // Logging settings live only in the main-window Preferences dialog.
-    ui->stackedWidget->addWidget(setupStudioTab());
+    // Studio mode is configured on the main-window Studio page; this dialog no
+    // longer duplicates it. Logging lives only in the Preferences dialog.
     ui->stackedWidget->addWidget(setupTrainerTab());
 
 
@@ -367,7 +364,6 @@ void DialogConfig::initUi() {
         myTab->setCurrentIndex(account->last_tab_sub_config_selected);
 
     // Init the programmatic tabs
-    initStudioTab();
     initTrainerTab();
 
 
@@ -951,7 +947,6 @@ void DialogConfig::saveSettings() {
     account->saveDisplayPrefs();
 
     // Save the new preference tabs
-    saveStudioTab();
     saveTrainerTab();
 
     parentDialog->setMessagePlot(); //update message start workout
@@ -1119,53 +1114,6 @@ static QWidget *makeTabPage(const QString &objectName)
     return page;
 }
 
-// ─── Studio tab (#134) ───────────────────────────────────────────────────────
-QWidget *DialogConfig::setupStudioTab()
-{
-    QWidget *page = makeTabPage("page_studio");
-    auto *layout = qobject_cast<QVBoxLayout*>(page->layout());
-
-    auto *grp = new QGroupBox(tr("Studio Mode"), page);
-    auto *grpLayout = new QVBoxLayout(grp);
-
-    checkStudioMode = new QCheckBox(tr("Enable Studio Mode"), grp);
-    grpLayout->addWidget(checkStudioMode);
-
-    auto *riderRow = new QHBoxLayout();
-    riderRow->addWidget(new QLabel(tr("Number of riders:"), grp));
-    spinNbRiders = new QSpinBox(grp);
-    spinNbRiders->setMinimum(1);
-    spinNbRiders->setMaximum(6);
-    riderRow->addWidget(spinNbRiders);
-    riderRow->addStretch();
-    grpLayout->addLayout(riderRow);
-
-    auto *note = new QLabel(tr("Studio mode allows multiple riders to train simultaneously.\n"
-                               "Each rider requires a separate BLE sensor slot.\n"
-                               "Changes take effect after restarting the application."), grp);
-    note->setStyleSheet("color: #888; font-style: italic;");
-    note->setWordWrap(true);
-    grpLayout->addWidget(note);
-
-    layout->addWidget(grp);
-    layout->addStretch();
-    return page;
-}
-
-void DialogConfig::initStudioTab()
-{
-    if (!checkStudioMode) return;
-    checkStudioMode->setChecked(account->enable_studio_mode);
-    spinNbRiders->setValue(qMax(1, account->nb_user_studio));
-}
-
-void DialogConfig::saveStudioTab()
-{
-    if (!checkStudioMode) return;
-    account->enable_studio_mode = checkStudioMode->isChecked();
-    account->nb_user_studio     = spinNbRiders->value();
-}
-
 // ─── Trainer tab (#131) ──────────────────────────────────────────────────────
 QWidget *DialogConfig::setupTrainerTab()
 {
@@ -1173,20 +1121,9 @@ QWidget *DialogConfig::setupTrainerTab()
     auto *layout = qobject_cast<QVBoxLayout*>(page->layout());
 
     // Trainer model (virtual power), ERG ramp, sensor dropout and battery
-    // warning now live on the main-window Bluetooth Sensors page so all
-    // sensor/trainer settings sit in one place. This tab keeps the
-    // workout-time concerns: uploads and the interval-summary overlay.
-
-    auto *grpUploads = new QGroupBox(tr("Uploads"), page);
-    auto *grpUploadsLayout = new QVBoxLayout(grpUploads);
-    checkIntervalsIcuAutoUpload = new QCheckBox(
-        tr("Auto-upload completed activities to Intervals.icu"), grpUploads);
-    grpUploadsLayout->addWidget(checkIntervalsIcuAutoUpload);
-    auto *uploadNote = new QLabel(
-        tr("Requires Intervals.icu credentials to be configured."), grpUploads);
-    uploadNote->setStyleSheet("color: #888; font-style: italic;");
-    grpUploadsLayout->addWidget(uploadNote);
-    layout->addWidget(grpUploads);
+    // warning moved to the main-window Bluetooth Sensors page; Intervals.icu
+    // auto-upload moved to the Preferences -> Intervals.icu page. This tab now
+    // holds only the interval-summary overlay (a workout-time display concern).
 
     // Interval Summary Overlay group
     auto *grpSummary = new QGroupBox(tr("Interval Summary Overlay"), page);
@@ -1211,28 +1148,19 @@ QWidget *DialogConfig::setupTrainerTab()
 
 void DialogConfig::initTrainerTab()
 {
-    if (!checkIntervalsIcuAutoUpload) return;
+    if (!checkIntervalSummary) return;
 
-    checkIntervalsIcuAutoUpload->setChecked(account->intervals_icu_auto_upload);
-
-    if (checkIntervalSummary) {
-        checkIntervalSummary->setChecked(account->interval_summary_enabled);
-        spinIntervalSummaryDuration->setValue(account->interval_summary_duration_s);
-    }
+    checkIntervalSummary->setChecked(account->interval_summary_enabled);
+    spinIntervalSummaryDuration->setValue(account->interval_summary_duration_s);
 }
 
 void DialogConfig::saveTrainerTab()
 {
-    if (!checkIntervalsIcuAutoUpload) return;
+    if (!checkIntervalSummary) return;
 
-    account->intervals_icu_auto_upload = checkIntervalsIcuAutoUpload->isChecked();
-    account->saveIntervalsIcuCredentials();
-
-    if (checkIntervalSummary) {
-        account->interval_summary_enabled    = checkIntervalSummary->isChecked();
-        account->interval_summary_duration_s = spinIntervalSummaryDuration->value();
-        account->saveIntervalSummarySettings();
-    }
+    account->interval_summary_enabled    = checkIntervalSummary->isChecked();
+    account->interval_summary_duration_s = spinIntervalSummaryDuration->value();
+    account->saveIntervalSummarySettings();
 }
 
 
