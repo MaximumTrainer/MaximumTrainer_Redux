@@ -40,9 +40,9 @@ skipped (risk to core data paths for no measurable gain).
 - ⏭ **Skipped — rolling power running-sum** (`workoutdialog.cpp`): the averaging window is capped at **5** (combobox None/1-5 sec), so the "O(n) re-sum" is ≤5 elements. A running sum would add risk to a core averaging path for no gain.
 - ⏭ **Skipped — `updateCurve` ring buffer** (`workoutplotzoomer.cpp`): the sample buffer is capped at **90** at 1-4 Hz, and Qwt's `setSamples` copies internally regardless. The original #1 audit ranking conflated this with the 40 Hz replot, which #227 already fixed.
 
-## Group 3 — De-duplication via templates  ☐  (deferred — do later)
-- ☐ `DataPower/DataHeartRate/DataCadence/DataSpeed` (+ `CurveData*` wrappers) — ~708 lines that are 99% identical → one `template<typename Tag> class DataMetric` (~150 lines).
-- ☐ `PowerEditor/HrEditor/CadenceEditor` — identical NONE/FLAT/PROGRESSIVE show-hide structure → a parameterised `MetricEditor`.
+## Group 3 — De-duplication via templates  ◐  (partial)
+- ☑ `DataPower/DataHeartRate/DataCadence/DataSpeed` — the four byte-identical singleton `.cpp` files (~590 lines) replaced by one CRTP base `DataMetricSingleton<Derived>` in `datametric.h`; each metric is now an ~11-line `final` subclass. Net −598 lines. Public API (`DataPower::instance().append()` etc.) unchanged; verified app builds + workout plots render live data. (The `CurveData*` wrappers were left as-is — they differ more than the audit implied and aren't pure boilerplate.)
+- ☐ `PowerEditor/HrEditor/CadenceEditor` — identical NONE/FLAT/PROGRESSIVE show-hide structure → a parameterised `MetricEditor`. (Still todo — separate change.)
 
 ## Group 4 — Latent naming hazard  ☑
 - ☑ Two classes were both named `IntervalsIcuService` (static `intervals_icu_service.*` + QObject `intervalsicuservice.*`), both compiled in `db.pri` — an ODR/confusion trap. Renamed the static one to **`IntervalsIcuApi`** and its files to `intervals_icu_api.{h,cpp}`; updated `db.pri` and the 3 test projects that use it. The QObject `IntervalsIcuService` (used by the UI) is unchanged. Verified: app builds + the `intervals_icu_tests` unit suite passes (19/19).

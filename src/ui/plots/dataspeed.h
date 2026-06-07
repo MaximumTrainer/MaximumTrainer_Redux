@@ -1,46 +1,12 @@
 #ifndef DATASPEED_H
 #define DATASPEED_H
 
-#include <qrect.h>
+#include "datametric.h"
 
-class DataSpeed
+class DataSpeed final : public DataMetricSingleton<DataSpeed>
 {
-public:
-    static DataSpeed &instance();
-
-    void append( const QPointF &pos );
-    void clearStaleValues( double min );
-
-    int size() const;
-    QPointF value( int index ) const;
-
-    QRectF boundingRect() const;
-
-    void lock();
-    void unlock();
-
-    void clearData();
-
-
-private:
-    DataSpeed();
-    DataSpeed( const DataSpeed & );
-    DataSpeed &operator=( const DataSpeed & );
-
-    virtual ~DataSpeed();
-
-    class PrivateData;
-    PrivateData *d_data;
+    friend class DataMetricSingleton<DataSpeed>;
+    DataSpeed() {}
 };
 
 #endif // DATASPEED_H
-
-
-
-
-
-
-
-
-
-
