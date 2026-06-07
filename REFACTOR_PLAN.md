@@ -13,8 +13,8 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 |-------|--------|----|
 | 1 — Dead-code sweep | ☑ done | #230 |
 | 2 — Hot-path guards | ☑ done (2 of 4 items; 2 evaluated and intentionally skipped) | #227 |
-| 3 — De-duplication via templates | ◐ partial (DataMetric done; editor trilogy todo) | (this PR) |
-| 4 — Latent naming hazard | ☑ done | #235 |
+| 3 — De-duplication via templates | ☐ todo (deferred) | — |
+| 4 — Latent naming hazard | ☑ done | (this PR) |
 | 5 — Quick correctness fixes | ☑ done (1 of 3; 2 dropped after inspection) | #234 |
 | 6 — Large mechanical modernization | ☐ todo | — |
 
@@ -44,8 +44,8 @@ skipped (risk to core data paths for no measurable gain).
 - ☑ `DataPower/DataHeartRate/DataCadence/DataSpeed` — the four byte-identical singleton `.cpp` files (~590 lines) replaced by one CRTP base `DataMetricSingleton<Derived>` in `datametric.h`; each metric is now an ~11-line `final` subclass. Net −598 lines. Public API (`DataPower::instance().append()` etc.) unchanged; verified app builds + workout plots render live data. (The `CurveData*` wrappers were left as-is — they differ more than the audit implied and aren't pure boilerplate.)
 - ☐ `PowerEditor/HrEditor/CadenceEditor` — identical NONE/FLAT/PROGRESSIVE show-hide structure → a parameterised `MetricEditor`. (Still todo — separate change.)
 
-## Group 4 — Latent naming hazard  ☐  (deferred — do later)
-- ☐ Two classes both named `IntervalsIcuService` — `intervals_icu_service.h` (static, plain) and `intervalsicuservice.h` (QObject) — **both compiled** in `db.pri`. Links today only because their symbols happen not to collide; it's an ODR/confusion trap. Rename one (e.g. static → `IntervalsIcuApi`) or consolidate.
+## Group 4 — Latent naming hazard  ☑
+- ☑ Two classes were both named `IntervalsIcuService` (static `intervals_icu_service.*` + QObject `intervalsicuservice.*`), both compiled in `db.pri` — an ODR/confusion trap. Renamed the static one to **`IntervalsIcuApi`** and its files to `intervals_icu_api.{h,cpp}`; updated `db.pri` and the 3 test projects that use it. The QObject `IntervalsIcuService` (used by the UI) is unchanged. Verified: app builds + the `intervals_icu_tests` unit suite passes (19/19).
 
 ## Group 5 — Quick correctness fixes  ☐
 - ☐ `simplecrypt.cpp:~130` — unguarded `qrand()` (removed in Qt6) → `QRandomGenerator`. (Confirm it even compiles on Qt6 CI.)

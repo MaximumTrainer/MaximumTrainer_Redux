@@ -1,4 +1,4 @@
-#include "intervals_icu_service.h"
+#include "intervals_icu_api.h"
 
 #include <QCoreApplication>
 #include <QByteArray>
@@ -10,7 +10,7 @@
 #include "logger.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
-QNetworkRequest IntervalsIcuService::buildRequest(const QString &url, const QString &apiKey)
+QNetworkRequest IntervalsIcuApi::buildRequest(const QString &url, const QString &apiKey)
 {
     QNetworkRequest request;
     request.setUrl(QUrl(url));
@@ -26,12 +26,12 @@ QNetworkRequest IntervalsIcuService::buildRequest(const QString &url, const QStr
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/v1/athlete/{id}
-QNetworkReply* IntervalsIcuService::getAthlete(const QString &athleteId, const QString &apiKey)
+QNetworkReply* IntervalsIcuApi::getAthlete(const QString &athleteId, const QString &apiKey)
 {
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("getAthlete: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("getAthlete: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -41,13 +41,13 @@ QNetworkReply* IntervalsIcuService::getAthlete(const QString &athleteId, const Q
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/v1/athlete/{id}/events?oldest=YYYY-MM-DD&newest=YYYY-MM-DD
-QNetworkReply* IntervalsIcuService::getEvents(const QString &athleteId, const QString &apiKey,
+QNetworkReply* IntervalsIcuApi::getEvents(const QString &athleteId, const QString &apiKey,
                                               const QDate &startDate, const QDate &endDate)
 {
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("getEvents: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("getEvents: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -63,12 +63,12 @@ QNetworkReply* IntervalsIcuService::getEvents(const QString &athleteId, const QS
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/v1/athlete/{id}/workouts
-QNetworkReply* IntervalsIcuService::getWorkouts(const QString &athleteId, const QString &apiKey)
+QNetworkReply* IntervalsIcuApi::getWorkouts(const QString &athleteId, const QString &apiKey)
 {
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("getWorkouts: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("getWorkouts: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -79,14 +79,14 @@ QNetworkReply* IntervalsIcuService::getWorkouts(const QString &athleteId, const 
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/v1/athlete/{id}/workouts/{workoutId}
-QNetworkReply* IntervalsIcuService::getWorkout(const QString &athleteId,
+QNetworkReply* IntervalsIcuApi::getWorkout(const QString &athleteId,
                                                const QString &workoutId,
                                                const QString &apiKey)
 {
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("getWorkout: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("getWorkout: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -97,14 +97,14 @@ QNetworkReply* IntervalsIcuService::getWorkout(const QString &athleteId,
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/v1/athlete/{id}/download-workout.zwo
-QNetworkReply* IntervalsIcuService::convertWorkoutToZwo(const QString &athleteId,
+QNetworkReply* IntervalsIcuApi::convertWorkoutToZwo(const QString &athleteId,
                                                         const QString &apiKey,
                                                         const QByteArray &workoutJson)
 {
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("convertWorkoutToZwo: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("convertWorkoutToZwo: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -117,14 +117,14 @@ QNetworkReply* IntervalsIcuService::convertWorkoutToZwo(const QString &athleteId
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/v1/athlete/{id}/workouts/{workoutId}.zwo
-QNetworkReply* IntervalsIcuService::downloadWorkoutZwo(const QString &athleteId,
+QNetworkReply* IntervalsIcuApi::downloadWorkoutZwo(const QString &athleteId,
                                                        const QString &workoutId,
                                                        const QString &apiKey)
 {
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("downloadWorkoutZwo: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("downloadWorkoutZwo: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -136,14 +136,14 @@ QNetworkReply* IntervalsIcuService::downloadWorkoutZwo(const QString &athleteId,
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/v1/athlete/{id}/workouts/{workoutId}.mrc
-QNetworkReply* IntervalsIcuService::downloadWorkoutMrc(const QString &athleteId,
+QNetworkReply* IntervalsIcuApi::downloadWorkoutMrc(const QString &athleteId,
                                                        const QString &workoutId,
                                                        const QString &apiKey)
 {
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("downloadWorkoutMrc: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("downloadWorkoutMrc: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -155,14 +155,14 @@ QNetworkReply* IntervalsIcuService::downloadWorkoutMrc(const QString &athleteId,
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/v1/athlete/{id}/workouts
-QNetworkReply* IntervalsIcuService::createWorkout(const QString &athleteId,
+QNetworkReply* IntervalsIcuApi::createWorkout(const QString &athleteId,
                                                    const QString &apiKey,
                                                    const QByteArray &json)
 {
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("createWorkout: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("createWorkout: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -175,14 +175,14 @@ QNetworkReply* IntervalsIcuService::createWorkout(const QString &athleteId,
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DELETE /api/v1/athlete/{id}/workouts/{workoutId}
-QNetworkReply* IntervalsIcuService::deleteWorkout(const QString &athleteId,
+QNetworkReply* IntervalsIcuApi::deleteWorkout(const QString &athleteId,
                                                    const QString &workoutId,
                                                    const QString &apiKey)
 {
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("deleteWorkout: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("deleteWorkout: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -193,13 +193,13 @@ QNetworkReply* IntervalsIcuService::deleteWorkout(const QString &athleteId,
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/v1/athlete/{id}/folders
-QNetworkReply* IntervalsIcuService::listFolders(const QString &athleteId,
+QNetworkReply* IntervalsIcuApi::listFolders(const QString &athleteId,
                                                 const QString &apiKey)
 {
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("listFolders: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("listFolders: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -210,7 +210,7 @@ QNetworkReply* IntervalsIcuService::listFolders(const QString &athleteId,
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/v1/athlete/{id}/activities  (multipart/form-data)
-QNetworkReply* IntervalsIcuService::uploadActivity(const QString &athleteId,
+QNetworkReply* IntervalsIcuApi::uploadActivity(const QString &athleteId,
                                                     const QString &apiKey,
                                                     const QByteArray &data,
                                                     const QString &filename)
@@ -218,7 +218,7 @@ QNetworkReply* IntervalsIcuService::uploadActivity(const QString &athleteId,
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("uploadActivity: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("uploadActivity: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -250,7 +250,7 @@ QNetworkReply* IntervalsIcuService::uploadActivity(const QString &athleteId,
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/v1/athlete/{id}/activities?oldest=YYYY-MM-DD&newest=YYYY-MM-DD
-QNetworkReply* IntervalsIcuService::getActivities(const QString &athleteId,
+QNetworkReply* IntervalsIcuApi::getActivities(const QString &athleteId,
                                                    const QString &apiKey,
                                                    const QDate &startDate,
                                                    const QDate &endDate)
@@ -258,7 +258,7 @@ QNetworkReply* IntervalsIcuService::getActivities(const QString &athleteId,
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("getActivities: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("getActivities: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -274,14 +274,14 @@ QNetworkReply* IntervalsIcuService::getActivities(const QString &athleteId,
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DELETE /api/v1/athlete/{id}/activities/{activityId}
-QNetworkReply* IntervalsIcuService::deleteActivity(const QString &athleteId,
+QNetworkReply* IntervalsIcuApi::deleteActivity(const QString &athleteId,
                                                     const QString &activityId,
                                                     const QString &apiKey)
 {
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("deleteActivity: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("deleteActivity: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -292,14 +292,14 @@ QNetworkReply* IntervalsIcuService::deleteActivity(const QString &athleteId,
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/v1/athlete/{id}/events
-QNetworkReply* IntervalsIcuService::createEvent(const QString &athleteId,
+QNetworkReply* IntervalsIcuApi::createEvent(const QString &athleteId,
                                                  const QString &apiKey,
                                                  const QByteArray &json)
 {
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("createEvent: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("createEvent: NetworkManagerWS not available"));
         return nullptr;
     }
 
@@ -312,14 +312,14 @@ QNetworkReply* IntervalsIcuService::createEvent(const QString &athleteId,
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DELETE /api/v1/athlete/{id}/events/{eventId}
-QNetworkReply* IntervalsIcuService::deleteEvent(const QString &athleteId,
+QNetworkReply* IntervalsIcuApi::deleteEvent(const QString &athleteId,
                                                  const QString &eventId,
                                                  const QString &apiKey)
 {
     QNetworkAccessManager *manager =
         qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!manager) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("deleteEvent: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("deleteEvent: NetworkManagerWS not available"));
         return nullptr;
     }
 

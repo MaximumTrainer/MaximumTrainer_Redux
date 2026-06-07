@@ -1,7 +1,7 @@
 /*
  * tst_intervals_icu_service.cpp
  *
- * Qt Test suite for IntervalsIcuService.
+ * Qt Test suite for IntervalsIcuApi.
  *
  * Tests run without making real network connections by injecting a
  * MockNetworkAccessManager that captures every QNetworkRequest and returns
@@ -28,7 +28,7 @@
 #include <QDate>
 #include <QTimer>
 
-#include "intervals_icu_service.h"
+#include "intervals_icu_api.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FinishedReply — a stub QNetworkReply that is immediately finished and never
@@ -173,7 +173,7 @@ void TstIntervalsIcuService::init()
 
 void TstIntervalsIcuService::testGetAthlete_authHeader()
 {
-    QNetworkReply *reply = IntervalsIcuService::getAthlete(ATHLETE_ID, API_KEY);
+    QNetworkReply *reply = IntervalsIcuApi::getAthlete(ATHLETE_ID, API_KEY);
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
     reply->deleteLater();
@@ -184,7 +184,7 @@ void TstIntervalsIcuService::testGetAthlete_authHeader()
 
 void TstIntervalsIcuService::testGetEvents_authHeader()
 {
-    QNetworkReply *reply = IntervalsIcuService::getEvents(
+    QNetworkReply *reply = IntervalsIcuApi::getEvents(
         ATHLETE_ID, API_KEY,
         QDate(2024, 1, 1), QDate(2024, 1, 31));
     QVERIFY(reply != nullptr);
@@ -197,7 +197,7 @@ void TstIntervalsIcuService::testGetEvents_authHeader()
 
 void TstIntervalsIcuService::testGetWorkouts_authHeader()
 {
-    QNetworkReply *reply = IntervalsIcuService::getWorkouts(ATHLETE_ID, API_KEY);
+    QNetworkReply *reply = IntervalsIcuApi::getWorkouts(ATHLETE_ID, API_KEY);
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
     reply->deleteLater();
@@ -208,7 +208,7 @@ void TstIntervalsIcuService::testGetWorkouts_authHeader()
 
 void TstIntervalsIcuService::testGetWorkout_authHeader()
 {
-    QNetworkReply *reply = IntervalsIcuService::getWorkout(ATHLETE_ID, WORKOUT_ID, API_KEY);
+    QNetworkReply *reply = IntervalsIcuApi::getWorkout(ATHLETE_ID, WORKOUT_ID, API_KEY);
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
     reply->deleteLater();
@@ -219,7 +219,7 @@ void TstIntervalsIcuService::testGetWorkout_authHeader()
 
 void TstIntervalsIcuService::testConvertWorkoutToZwo_authHeader()
 {
-    QNetworkReply *reply = IntervalsIcuService::convertWorkoutToZwo(
+    QNetworkReply *reply = IntervalsIcuApi::convertWorkoutToZwo(
         ATHLETE_ID, API_KEY, QByteArrayLiteral("{}"));
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
@@ -231,7 +231,7 @@ void TstIntervalsIcuService::testConvertWorkoutToZwo_authHeader()
 
 void TstIntervalsIcuService::testDownloadZwo_authHeader()
 {
-    QNetworkReply *reply = IntervalsIcuService::downloadWorkoutZwo(
+    QNetworkReply *reply = IntervalsIcuApi::downloadWorkoutZwo(
         ATHLETE_ID, WORKOUT_ID, API_KEY);
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
@@ -243,7 +243,7 @@ void TstIntervalsIcuService::testDownloadZwo_authHeader()
 
 void TstIntervalsIcuService::testDownloadMrc_authHeader()
 {
-    QNetworkReply *reply = IntervalsIcuService::downloadWorkoutMrc(
+    QNetworkReply *reply = IntervalsIcuApi::downloadWorkoutMrc(
         ATHLETE_ID, WORKOUT_ID, API_KEY);
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
@@ -259,7 +259,7 @@ void TstIntervalsIcuService::testDownloadMrc_authHeader()
 
 void TstIntervalsIcuService::testGetAthlete_acceptHeader()
 {
-    QNetworkReply *reply = IntervalsIcuService::getAthlete(ATHLETE_ID, API_KEY);
+    QNetworkReply *reply = IntervalsIcuApi::getAthlete(ATHLETE_ID, API_KEY);
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
     reply->deleteLater();
@@ -274,7 +274,7 @@ void TstIntervalsIcuService::testGetAthlete_acceptHeader()
 
 void TstIntervalsIcuService::testGetAthlete_url()
 {
-    QNetworkReply *reply = IntervalsIcuService::getAthlete(ATHLETE_ID, API_KEY);
+    QNetworkReply *reply = IntervalsIcuApi::getAthlete(ATHLETE_ID, API_KEY);
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
     reply->deleteLater();
@@ -286,7 +286,7 @@ void TstIntervalsIcuService::testGetAthlete_url()
 
 void TstIntervalsIcuService::testGetEvents_url()
 {
-    QNetworkReply *reply = IntervalsIcuService::getEvents(
+    QNetworkReply *reply = IntervalsIcuApi::getEvents(
         ATHLETE_ID, API_KEY,
         QDate(2024, 1, 1), QDate(2024, 1, 31));
     QVERIFY(reply != nullptr);
@@ -299,7 +299,7 @@ void TstIntervalsIcuService::testGetEvents_url()
 
 void TstIntervalsIcuService::testGetWorkouts_url()
 {
-    QNetworkReply *reply = IntervalsIcuService::getWorkouts(ATHLETE_ID, API_KEY);
+    QNetworkReply *reply = IntervalsIcuApi::getWorkouts(ATHLETE_ID, API_KEY);
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
     reply->deleteLater();
@@ -311,7 +311,7 @@ void TstIntervalsIcuService::testGetWorkouts_url()
 
 void TstIntervalsIcuService::testGetWorkout_url()
 {
-    QNetworkReply *reply = IntervalsIcuService::getWorkout(ATHLETE_ID, WORKOUT_ID, API_KEY);
+    QNetworkReply *reply = IntervalsIcuApi::getWorkout(ATHLETE_ID, WORKOUT_ID, API_KEY);
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
     reply->deleteLater();
@@ -324,7 +324,7 @@ void TstIntervalsIcuService::testGetWorkout_url()
 
 void TstIntervalsIcuService::testConvertWorkoutToZwo_url()
 {
-    QNetworkReply *reply = IntervalsIcuService::convertWorkoutToZwo(
+    QNetworkReply *reply = IntervalsIcuApi::convertWorkoutToZwo(
         ATHLETE_ID, API_KEY, QByteArrayLiteral("{}"));
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
@@ -337,7 +337,7 @@ void TstIntervalsIcuService::testConvertWorkoutToZwo_url()
 
 void TstIntervalsIcuService::testDownloadZwo_url()
 {
-    QNetworkReply *reply = IntervalsIcuService::downloadWorkoutZwo(
+    QNetworkReply *reply = IntervalsIcuApi::downloadWorkoutZwo(
         ATHLETE_ID, WORKOUT_ID, API_KEY);
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
@@ -349,7 +349,7 @@ void TstIntervalsIcuService::testDownloadZwo_url()
 
 void TstIntervalsIcuService::testDownloadMrc_url()
 {
-    QNetworkReply *reply = IntervalsIcuService::downloadWorkoutMrc(
+    QNetworkReply *reply = IntervalsIcuApi::downloadWorkoutMrc(
         ATHLETE_ID, WORKOUT_ID, API_KEY);
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
@@ -368,7 +368,7 @@ void TstIntervalsIcuService::testGetEvents_queryParams()
     const QDate start(2024, 3, 1);
     const QDate end(2024, 3, 31);
 
-    QNetworkReply *reply = IntervalsIcuService::getEvents(ATHLETE_ID, API_KEY, start, end);
+    QNetworkReply *reply = IntervalsIcuApi::getEvents(ATHLETE_ID, API_KEY, start, end);
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
     reply->deleteLater();
@@ -388,14 +388,14 @@ void TstIntervalsIcuService::testNullManager_returnsNullptr()
     // Temporarily clear the property
     qApp->setProperty("NetworkManagerWS", QVariant());
 
-    QCOMPARE(IntervalsIcuService::getAthlete(ATHLETE_ID, API_KEY), nullptr);
-    QCOMPARE(IntervalsIcuService::getEvents(ATHLETE_ID, API_KEY,
+    QCOMPARE(IntervalsIcuApi::getAthlete(ATHLETE_ID, API_KEY), nullptr);
+    QCOMPARE(IntervalsIcuApi::getEvents(ATHLETE_ID, API_KEY,
                                             QDate(2024,1,1), QDate(2024,1,31)), nullptr);
-    QCOMPARE(IntervalsIcuService::getWorkouts(ATHLETE_ID, API_KEY), nullptr);
-    QCOMPARE(IntervalsIcuService::getWorkout(ATHLETE_ID, WORKOUT_ID, API_KEY), nullptr);
-    QCOMPARE(IntervalsIcuService::convertWorkoutToZwo(ATHLETE_ID, API_KEY, QByteArrayLiteral("{}")), nullptr);
-    QCOMPARE(IntervalsIcuService::downloadWorkoutZwo(ATHLETE_ID, WORKOUT_ID, API_KEY), nullptr);
-    QCOMPARE(IntervalsIcuService::downloadWorkoutMrc(ATHLETE_ID, WORKOUT_ID, API_KEY), nullptr);
+    QCOMPARE(IntervalsIcuApi::getWorkouts(ATHLETE_ID, API_KEY), nullptr);
+    QCOMPARE(IntervalsIcuApi::getWorkout(ATHLETE_ID, WORKOUT_ID, API_KEY), nullptr);
+    QCOMPARE(IntervalsIcuApi::convertWorkoutToZwo(ATHLETE_ID, API_KEY, QByteArrayLiteral("{}")), nullptr);
+    QCOMPARE(IntervalsIcuApi::downloadWorkoutZwo(ATHLETE_ID, WORKOUT_ID, API_KEY), nullptr);
+    QCOMPARE(IntervalsIcuApi::downloadWorkoutMrc(ATHLETE_ID, WORKOUT_ID, API_KEY), nullptr);
 
     // Restore
     qApp->setProperty("NetworkManagerWS",

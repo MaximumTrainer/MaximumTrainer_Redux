@@ -26,8 +26,8 @@
  * -------------------------------------------------------------------------
  * 1. OnlineModeWindow shown with "[ AUTHENTICATING... ]" status badge.
  * 2. QNetworkAccessManager registered as "NetworkManagerWS" app property
- *    (same pattern used by IntervalsIcuService in production).
- * 3. IntervalsIcuService::getAthlete() called with credentials from env vars.
+ *    (same pattern used by IntervalsIcuApi in production).
+ * 3. IntervalsIcuApi::getAthlete() called with credentials from env vars.
  * 4. QEventLoop spins until the reply finishes or 30 s timeout.
  * 5. Window badge updated: "[ CONNECTED ]" on HTTP 200, "[ AUTH FAILED ]" otherwise.
  * 6. Athlete name and ID populated in the window.
@@ -67,7 +67,7 @@
 #include <QEventLoop>
 #include <QTimer>
 
-#include "intervals_icu_service.h"
+#include "intervals_icu_api.h"
 #include "simulator_hub.h"
 #include <QtTest/QSignalSpy>
 
@@ -435,7 +435,7 @@ void TstOnlineMode::cleanupTestCase()
         if (!m_pushedWorkoutId.isEmpty()) {
             qDebug().noquote() << "[Cleanup] Deleting test workout:" << m_pushedWorkoutId;
             QNetworkReply *del =
-                IntervalsIcuService::deleteWorkout(m_athleteId, m_pushedWorkoutId, m_apiKey);
+                IntervalsIcuApi::deleteWorkout(m_athleteId, m_pushedWorkoutId, m_apiKey);
             if (del) { waitForReply(del, 15'000); del->deleteLater(); }
             m_pushedWorkoutId.clear();
         }
@@ -444,7 +444,7 @@ void TstOnlineMode::cleanupTestCase()
         if (!m_uploadedActivityId.isEmpty()) {
             qDebug().noquote() << "[Cleanup] Deleting test activity:" << m_uploadedActivityId;
             QNetworkReply *del =
-                IntervalsIcuService::deleteActivity(m_athleteId, m_uploadedActivityId, m_apiKey);
+                IntervalsIcuApi::deleteActivity(m_athleteId, m_uploadedActivityId, m_apiKey);
             if (del) { waitForReply(del, 15'000); del->deleteLater(); }
             m_uploadedActivityId.clear();
         }
@@ -453,7 +453,7 @@ void TstOnlineMode::cleanupTestCase()
         if (!m_createdEventId.isEmpty()) {
             qDebug().noquote() << "[Cleanup] Deleting test event:" << m_createdEventId;
             QNetworkReply *del =
-                IntervalsIcuService::deleteEvent(m_athleteId, m_createdEventId, m_apiKey);
+                IntervalsIcuApi::deleteEvent(m_athleteId, m_createdEventId, m_apiKey);
             if (del) { waitForReply(del, 15'000); del->deleteLater(); }
             m_createdEventId.clear();
         }
@@ -488,7 +488,7 @@ void TstOnlineMode::testOnlineModeAuthentication()
 
         // ── 2. Make the live auth request ─────────────────────────────────────
         QNetworkReply *reply =
-            IntervalsIcuService::getAthlete(m_athleteId, m_apiKey);
+            IntervalsIcuApi::getAthlete(m_athleteId, m_apiKey);
 
         if (!reply) {
             window.markFailed(0, "getAthlete() returned nullptr");
@@ -597,7 +597,7 @@ void TstOnlineMode::testCalendar()
     };
 
     QNetworkReply *reply =
-        IntervalsIcuService::getEvents(m_athleteId, m_apiKey, startDate, endDate);
+        IntervalsIcuApi::getEvents(m_athleteId, m_apiKey, startDate, endDate);
 
     if (!reply) {
         window.markFailed("getEvents() returned nullptr");
@@ -678,7 +678,7 @@ void TstOnlineMode::testWorkoutPush()
 
     // ── 1. Fetch folders to get a valid folder_id ─────────────────────────────
     // WorkoutEx requires folder_id (integer) — there is no "folder" string field.
-    QNetworkReply *foldersReply = IntervalsIcuService::listFolders(m_athleteId, m_apiKey);
+    QNetworkReply *foldersReply = IntervalsIcuApi::listFolders(m_athleteId, m_apiKey);
     if (!foldersReply) {
         window.markFailed("listFolders() returned nullptr");
         grabScreenshot();
@@ -754,7 +754,7 @@ void TstOnlineMode::testWorkoutPush()
         }).toJson(QJsonDocument::Compact);
 
     QNetworkReply *reply =
-        IntervalsIcuService::createWorkout(m_athleteId, m_apiKey, json);
+        IntervalsIcuApi::createWorkout(m_athleteId, m_apiKey, json);
 
     if (!reply) {
         window.markFailed("createWorkout() returned nullptr");
@@ -849,7 +849,7 @@ void TstOnlineMode::testWorkoutPull()
 
     // ── Step 1: GET /athlete/{id}/workouts/{workoutId} ───────────────────────
     QNetworkReply *getReply =
-        IntervalsIcuService::getWorkout(m_athleteId, m_pushedWorkoutId, m_apiKey);
+        IntervalsIcuApi::getWorkout(m_athleteId, m_pushedWorkoutId, m_apiKey);
 
     if (!getReply) {
         window.markFailed("getWorkout() returned nullptr");
@@ -884,7 +884,7 @@ void TstOnlineMode::testWorkoutPull()
 
     // ── Step 2: POST /athlete/{id}/download-workout.zwo ─────────────────────
     QNetworkReply *zwoReply =
-        IntervalsIcuService::convertWorkoutToZwo(m_athleteId, m_apiKey, getBody);
+        IntervalsIcuApi::convertWorkoutToZwo(m_athleteId, m_apiKey, getBody);
 
     if (!zwoReply) {
         window.markFailed("convertWorkoutToZwo() returned nullptr");
@@ -1013,7 +1013,7 @@ void TstOnlineMode::testActivityUpload()
     const QString filename = QString("MaximumTrainer_CI_%1.tcx")
         .arg(QDateTime::currentDateTimeUtc().toString("yyyyMMdd_HHmmss"));
 
-    QNetworkReply *reply = IntervalsIcuService::uploadActivity(
+    QNetworkReply *reply = IntervalsIcuApi::uploadActivity(
         m_athleteId, m_apiKey, m_generatedTcx, filename);
     QVERIFY2(reply, "uploadActivity returned null reply");
 
@@ -1066,7 +1066,7 @@ void TstOnlineMode::testWorkoutHistory()
     for (int attempt = 1; attempt <= 12 && !found; ++attempt) {
         qDebug().noquote() << "[testWorkoutHistory] Polling attempt" << attempt << "of 12...";
 
-        QNetworkReply *reply = IntervalsIcuService::getActivities(
+        QNetworkReply *reply = IntervalsIcuApi::getActivities(
             m_athleteId, m_apiKey, start, end);
         QVERIFY2(reply, "getActivities returned null reply");
         waitForReply(reply, 30'000);
@@ -1125,7 +1125,7 @@ void TstOnlineMode::testCalendarPlan()
     const QByteArray eventBody = QJsonDocument(eventJson).toJson(QJsonDocument::Compact);
 
     // Create the calendar event
-    QNetworkReply *createReply = IntervalsIcuService::createEvent(
+    QNetworkReply *createReply = IntervalsIcuApi::createEvent(
         m_athleteId, m_apiKey, eventBody);
     QVERIFY2(createReply, "createEvent returned null reply");
     waitForReply(createReply, 30'000);
@@ -1152,7 +1152,7 @@ void TstOnlineMode::testCalendarPlan()
              qPrintable(QString("Could not extract event id from: %1").arg(QString(createBody))));
 
     // Verify the event appears in a getEvents query for tomorrow ± 1 day
-    QNetworkReply *listReply = IntervalsIcuService::getEvents(
+    QNetworkReply *listReply = IntervalsIcuApi::getEvents(
         m_athleteId, m_apiKey,
         tomorrow.addDays(-1), tomorrow.addDays(1));
     QVERIFY2(listReply, "getEvents returned null reply");
