@@ -392,7 +392,7 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     widgetBattery->setAttribute(Qt::WA_TransparentForMouseEvents,true);
     widgetBattery->setFocusPolicy(Qt::NoFocus);
     QHBoxLayout *hLayout = new QHBoxLayout(widgetBattery);
-    QVBoxLayout *vLayoutSub = new QVBoxLayout(widgetBattery);
+    QVBoxLayout *vLayoutSub = new QVBoxLayout();
     hLayout->setContentsMargins(0, 0, 0, 0);
     hLayout->setSpacing(0);
     vLayoutSub->setContentsMargins(0, 0, 0, 0);

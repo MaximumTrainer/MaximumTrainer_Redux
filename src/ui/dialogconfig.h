@@ -201,6 +201,7 @@ private:
     bool playOnNextSliderRelease;
 
     bool isPlayingRadio;
+    bool isConnecting = false;
 
     // Studio tab controls
     QCheckBox    *checkStudioMode   = nullptr;

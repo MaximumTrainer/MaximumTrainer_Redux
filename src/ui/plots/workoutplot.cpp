@@ -368,7 +368,7 @@ void WorkoutPlot::init(bool firstInit) {
 
         //------------------------------
         widgetCanvas = this->canvas();
-        QGridLayout *gridLayout = new QGridLayout(this);
+        QGridLayout *gridLayout = new QGridLayout();
         gridLayout->setContentsMargins(0, 0, 0, 0);
         gridLayout->setSpacing(0);
         gridLayout->setContentsMargins(0,0,0,0);

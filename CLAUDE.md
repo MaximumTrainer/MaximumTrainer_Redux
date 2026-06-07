@@ -31,7 +31,7 @@ make install INSTALL_ROOT=/tmp/qwt6-stage
 mkdir -p /tmp/qwt6 && mv /tmp/qwt6-stage/usr/local/qwt-6.3.0/* /tmp/qwt6/
 
 # 2. Build the app (from repo root):
-qmake6 PowerVelo.pro QWT_INSTALL=/tmp/qwt6
+qmake6 MaximumTrainer.pro QWT_INSTALL=/tmp/qwt6
 make -j$(nproc)
 
 # 3. Run (QWT in a non-standard prefix needs LD_LIBRARY_PATH):
@@ -39,7 +39,7 @@ LD_LIBRARY_PATH=/tmp/qwt6/lib ./build/release/MaximumTrainer
 ```
 
 - **qmake binary is `qmake6`** here (Qt 6.10 system install on Linux). CI pins Qt **6.7.3 LTS** — local Qt may be newer.
-- **The `.pro` file:** currently **`PowerVelo.pro`**. A rename to `MaximumTrainer.pro` is in flight (see In-flight work). If `PowerVelo.pro` is gone, use `MaximumTrainer.pro` — same file. The binary `TARGET` is always `MaximumTrainer`.
+- **The `.pro` file:** **`MaximumTrainer.pro`** (renamed from `PowerVelo.pro` in PR #227). The binary `TARGET` is always `MaximumTrainer`.
 - **Incremental builds:** after `qmake6`, just `make -j$(nproc)`. **A clean build needs `make clean` first** — stale `.obj` files can make `make` a silent no-op (`Nothing to be done for 'first'`) when only config changed.
 
 ### Verifying a change without a GUI session
@@ -143,14 +143,12 @@ Per `agents.md §7`:
 
 ---
 
-## In-flight work (as of 2026-06-06 — verify with `gh pr list` before relying on this)
+## In-flight work (as of 2026-06-07 — verify with `gh pr list` before relying on this)
 
-Open PRs (author maximus321, against upstream master):
-- **#227** — Qt6 combobox-slot fixes + dead-slot cleanup + `PowerVelo.pro` →
-  `MaximumTrainer.pro` rename + workout mini-graph perf throttle.
-- **#228** — swap `QwtSystemClock` → Qt's `QElapsedTimer` in the workout clock.
-
-Recently merged: dark-mode + OpenSSL AppImage fixes; QWT 6.2 → 6.3 bump.
+Recently merged: #227 (Qt6 combobox fixes + `MaximumTrainer.pro` rename + mini-graph throttle),
+#228 (`QwtSystemClock` → `QElapsedTimer`), #230 (dead-code sweep), #234 (zip error handling),
+#235 (`IntervalsIcuService` → `IntervalsIcuApi` rename), #236 (DataMetric CRTP template),
+#237 (Intervals OAuth URL fix), dark-mode + OpenSSL AppImage fixes, QWT 6.2 → 6.3 bump.
 
 The **workout dialog timer** is driven by a `Clock` QObject on a worker
 `QThread` ticking every 25ms; it derives elapsed seconds from a monotonic

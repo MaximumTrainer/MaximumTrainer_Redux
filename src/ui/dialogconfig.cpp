@@ -224,6 +224,7 @@ void DialogConfig::RadioDoubleClicked(QModelIndex index) {
     qDebug() << "Radio url is" << radio.getUrl();
 
 
+    isConnecting = true;
     QString status = tr("Connecting to ") + currentRadioName + "...";
     ui->label_statusRadio->setText(status);
     ui->label_statusRadio->fadeIn(400);
@@ -245,6 +246,7 @@ void DialogConfig::RadioDoubleClicked(QModelIndex index) {
 //---------------------------------------------------------------------------------------------
 void DialogConfig::radioStartedPlaying() {
 
+    isConnecting = false;
     QString status =  "<b>" + currentRadioName + "</b>";
     ui->label_statusRadio->setText(status);
     ui->label_statusRadio->fadeIn(400);
@@ -256,6 +258,14 @@ void DialogConfig::radioStartedPlaying() {
 }
 
 void DialogConfig::radioStoppedPlaying() {
+    // When switching stations the player briefly stops to change source.
+    // Re-emit the "Connecting to..." status so the top bar doesn't lose it.
+    if (isConnecting) {
+        QString status = tr("Connecting to ") + currentRadioName + "...";
+        emit radioStatus(status);
+        isPlayingRadio = false;
+        return;
+    }
     ui->label_statusRadio->setText("");
     emit radioStatus("");
 

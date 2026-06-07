@@ -56,7 +56,6 @@ QGroupBox
 QGroupBox::title
 {
     subcontrol-origin: margin;	
-    background:url(:/assets/subWindowBackground);
     border-top-left-radius: 3px;
     border-top-right-radius: 3px;
     border: 1px solid #0b477b;
