@@ -8,6 +8,8 @@
 
 class QLabel;
 class QPushButton;
+class QCheckBox;
+class Account;
 
 /*
  * SensorsWidget
@@ -32,6 +34,7 @@ public:
 private slots:
     void onScanClicked(int rowIndex);
     void onClearClicked(int rowIndex);
+    void onControlResistanceToggled(bool checked);
 
 private:
     struct SlotRow {
@@ -46,6 +49,8 @@ private:
     void refreshRow(int rowIndex);
 
     QVector<SlotRow> m_rows;
+    QCheckBox *m_controlResistanceCheck = nullptr;
+    Account   *m_account = nullptr;
 };
 
 #endif // SENSORSWIDGET_H

@@ -83,17 +83,15 @@ DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent
     ui->listWidget_settings->setIconSize(QSize(24, 24));
 
     QListWidgetItem *item1 = new QListWidgetItem(QIcon(":/image/icon/general"), tr("General"), ui->listWidget_settings);
-    QListWidgetItem *item2 = new QListWidgetItem(QIcon(":/image/icon/gear"), tr("Connectivity"), ui->listWidget_settings);
     QListWidgetItem *item3 = new QListWidgetItem(QIcon(":/image/icon/folder"), tr("Folders"), ui->listWidget_settings);
     QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/upload"), tr("Auto Upload"), ui->listWidget_settings);
     QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/calendar"), tr("Cloud Sync"), ui->listWidget_settings);
     // "Profile" reuses the old main-page profile icon; its page (page_profile)
-    // is the last static page in the .ui, so it maps to stacked index 5 and the
-    // runtime-added Logging page lands at index 6 — keep this order in sync.
+    // is the last static page in the .ui, so it maps to stacked index 4 and the
+    // runtime-added Logging page lands at index 5 — keep this order in sync.
     QListWidgetItem *item6 = new QListWidgetItem(QIcon(":/image/icon/user"), tr("Profile"), ui->listWidget_settings);
     QListWidgetItem *item7 = new QListWidgetItem(QIcon(":/image/icon/gear"), tr("Logging"), ui->listWidget_settings);
     item1->setSizeHint(QSize(35,35));
-    item2->setSizeHint(QSize(35,35));
     item3->setSizeHint(QSize(35,35));
     item4->setSizeHint(QSize(35,35));
     item5->setSizeHint(QSize(35,35));
@@ -101,15 +99,14 @@ DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent
     item7->setSizeHint(QSize(35,35));
 
     ui->listWidget_settings->addItem(item1);
-    ui->listWidget_settings->addItem(item2);
     ui->listWidget_settings->addItem(item3);
     ui->listWidget_settings->addItem(item4);
     ui->listWidget_settings->addItem(item5);
     ui->listWidget_settings->addItem(item6);
     ui->listWidget_settings->addItem(item7);
 
-    // Add the logging page to the stacked widget (lands at index 6, after the
-    // static page_profile at index 5)
+    // Add the logging page to the stacked widget (lands at index 5, after the
+    // static page_profile at index 4)
     ui->stackedWidget->addWidget(createLoggingPage());
 
 
@@ -170,9 +167,6 @@ void DialogMainWindowConfig::initUI() {
     ui->checkBox_forceOnTop->setChecked(account->force_workout_window_on_top);
 
     ui->comboBox_theme->setCurrentIndex(themeComboIndexFromMode(account->app_theme));
-
-    ui->checkBox_controlTrainer->setChecked(account->control_trainer_resistance);
-
 
     ui->lineEdit_userSelfloops->setText(account->selfloops_user);
     ui->lineEdit_pwSelfloops->setText(account->selfloops_pw);
@@ -448,11 +442,6 @@ void DialogMainWindowConfig::accept() {
         account->saveAppTheme();
         themeChanged = true;
     }
-
-    account->control_trainer_resistance = ui->checkBox_controlTrainer->isChecked();
-
-
-
 
     if (ui->comboBox_distance->currentIndex() == 0)
         account->distance_in_km = true;
