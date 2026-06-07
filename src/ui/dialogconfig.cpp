@@ -54,7 +54,7 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/movie"),   tr("Video Player"), ui->listWidget_settings);
     QListWidgetItem *item6 = new QListWidgetItem(QIcon(":/image/icon/radio"),   tr("Radio"), ui->listWidget_settings);
     QListWidgetItem *item7 = new QListWidgetItem(tr("Studio"), ui->listWidget_settings);
-    QListWidgetItem *item8 = new QListWidgetItem(tr("Trainer"), ui->listWidget_settings);
+    QListWidgetItem *item8 = new QListWidgetItem(tr("Workout"), ui->listWidget_settings);
     item1->setSizeHint(QSize(35,35));
     item2->setSizeHint(QSize(35,35));
     item3->setSizeHint(QSize(35,35));
@@ -1172,47 +1172,10 @@ QWidget *DialogConfig::setupTrainerTab()
     QWidget *page = makeTabPage("page_trainer");
     auto *layout = qobject_cast<QVBoxLayout*>(page->layout());
 
-    auto *grp = new QGroupBox(tr("Trainer Settings"), page);
-    auto *grpLayout = new QVBoxLayout(grp);
-
-    auto *modelRow = new QHBoxLayout();
-    modelRow->addWidget(new QLabel(tr("Trainer model (virtual power):"), grp));
-    comboTrainerModel = new QComboBox(grp);
-    comboTrainerModel->addItem(tr("None / Direct power meter"), 0);
-    comboTrainerModel->addItem(tr("Tacx Blue Motion"),          1);
-    comboTrainerModel->addItem(tr("Tacx Antares"),              2);
-    comboTrainerModel->addItem(tr("Tacx Satori"),               3);
-    comboTrainerModel->addItem(tr("Elite Qubo Digital"),        4);
-    comboTrainerModel->addItem(tr("Elite Novo Force"),          5);
-    comboTrainerModel->addItem(tr("Wahoo KICKR SNAP"),          6);
-    comboTrainerModel->addItem(tr("CycleOps Fluid 2"),          7);
-    modelRow->addWidget(comboTrainerModel, 1);
-    grpLayout->addLayout(modelRow);
-
-    auto *note = new QLabel(tr("Select your trainer to enable virtual power estimation\n"
-                               "when no power meter is paired."), grp);
-    note->setStyleSheet("color: #888; font-style: italic;");
-    note->setWordWrap(true);
-    grpLayout->addWidget(note);
-
-    // ERG smoothing
-    auto *smoothRow = new QHBoxLayout();
-    smoothRow->addWidget(new QLabel(tr("ERG transition ramp duration (s):"), grp));
-    spinErgSmoothing = new QSpinBox(grp);
-    spinErgSmoothing->setRange(0, 30);
-    spinErgSmoothing->setSuffix(tr(" s"));
-    spinErgSmoothing->setToolTip(tr("Number of seconds to linearly ramp ERG resistance between intervals.\n"
-                                    "Set to 0 to disable smoothing (instant resistance changes)."));
-    smoothRow->addWidget(spinErgSmoothing, 1);
-    grpLayout->addLayout(smoothRow);
-
-    auto *smoothNote = new QLabel(tr("Ramps resistance gradually when transitioning between interval targets,\n"
-                                     "reducing mechanical jolt on the trainer."), grp);
-    smoothNote->setStyleSheet("color: #888; font-style: italic;");
-    smoothNote->setWordWrap(true);
-    grpLayout->addWidget(smoothNote);
-
-    layout->addWidget(grp);
+    // Trainer model (virtual power), ERG ramp, sensor dropout and battery
+    // warning now live on the main-window Bluetooth Sensors page so all
+    // sensor/trainer settings sit in one place. This tab keeps the
+    // workout-time concerns: uploads and the interval-summary overlay.
 
     auto *grpUploads = new QGroupBox(tr("Uploads"), page);
     auto *grpUploadsLayout = new QVBoxLayout(grpUploads);
@@ -1224,52 +1187,6 @@ QWidget *DialogConfig::setupTrainerTab()
     uploadNote->setStyleSheet("color: #888; font-style: italic;");
     grpUploadsLayout->addWidget(uploadNote);
     layout->addWidget(grpUploads);
-
-    // ── Sensor Dropout ──────────────────────────────────────────────────────
-    auto *grpDropout = new QGroupBox(tr("Sensor Dropout"), page);
-    auto *dropoutLayout = new QVBoxLayout(grpDropout);
-
-    checkDropoutEnabled = new QCheckBox(tr("Auto-pause workout when sensor signal is lost"), grpDropout);
-    dropoutLayout->addWidget(checkDropoutEnabled);
-
-    auto *timeoutRow = new QHBoxLayout();
-    timeoutRow->addWidget(new QLabel(tr("Dropout timeout (seconds):"), grpDropout));
-    spinDropoutTimeout = new QSpinBox(grpDropout);
-    spinDropoutTimeout->setRange(2, 30);
-    spinDropoutTimeout->setSuffix(tr(" s"));
-    timeoutRow->addWidget(spinDropoutTimeout);
-    timeoutRow->addStretch();
-    dropoutLayout->addLayout(timeoutRow);
-
-    auto *dropoutNote = new QLabel(
-        tr("Workout resumes automatically 3 seconds after the signal is restored."), grpDropout);
-    dropoutNote->setStyleSheet("color: #888; font-style: italic;");
-    dropoutNote->setWordWrap(true);
-    dropoutLayout->addWidget(dropoutNote);
-
-    layout->addWidget(grpDropout);
-
-    // ── Battery Warning ─────────────────────────────────────────────────────
-    auto *grpBatt = new QGroupBox(tr("Battery Warning"), page);
-    auto *battLayout = new QVBoxLayout(grpBatt);
-
-    auto *battRow = new QHBoxLayout();
-    battRow->addWidget(new QLabel(tr("Warn when battery drops below:"), grpBatt));
-    spinBatteryThreshold = new QSpinBox(grpBatt);
-    spinBatteryThreshold->setRange(5, 50);
-    spinBatteryThreshold->setSuffix(tr(" %"));
-    battRow->addWidget(spinBatteryThreshold);
-    battRow->addStretch();
-    battLayout->addLayout(battRow);
-
-    auto *battNote = new QLabel(
-        tr("A toast notification is shown when a sensor reports a battery level "
-           "at or below this threshold."), grpBatt);
-    battNote->setStyleSheet("color: #888; font-style: italic;");
-    battNote->setWordWrap(true);
-    battLayout->addWidget(battNote);
-
-    layout->addWidget(grpBatt);
 
     // Interval Summary Overlay group
     auto *grpSummary = new QGroupBox(tr("Interval Summary Overlay"), page);
@@ -1294,26 +1211,9 @@ QWidget *DialogConfig::setupTrainerTab()
 
 void DialogConfig::initTrainerTab()
 {
-    if (!comboTrainerModel) return;
+    if (!checkIntervalsIcuAutoUpload) return;
 
-    const int modelId = account->powerCurve.getId();
-    for (int i = 0; i < comboTrainerModel->count(); ++i) {
-        if (comboTrainerModel->itemData(i).toInt() == modelId) {
-            comboTrainerModel->setCurrentIndex(i);
-            break;
-        }
-    }
-
-    if (spinErgSmoothing)
-        spinErgSmoothing->setValue(account->erg_smoothing_duration_s);
-
-    if (checkIntervalsIcuAutoUpload)
-        checkIntervalsIcuAutoUpload->setChecked(account->intervals_icu_auto_upload);
-
-    if (checkDropoutEnabled) checkDropoutEnabled->setChecked(account->sensor_dropout_enabled);
-    if (spinDropoutTimeout)  spinDropoutTimeout->setValue(account->sensor_dropout_timeout_s);
-
-    if (spinBatteryThreshold) spinBatteryThreshold->setValue(account->battery_warning_threshold);
+    checkIntervalsIcuAutoUpload->setChecked(account->intervals_icu_auto_upload);
 
     if (checkIntervalSummary) {
         checkIntervalSummary->setChecked(account->interval_summary_enabled);
@@ -1323,25 +1223,10 @@ void DialogConfig::initTrainerTab()
 
 void DialogConfig::saveTrainerTab()
 {
-    if (!comboTrainerModel) return;
-    account->powerCurve.setId(comboTrainerModel->currentData().toInt());
+    if (!checkIntervalsIcuAutoUpload) return;
 
-    if (spinErgSmoothing)
-        account->saveErgSmoothingDuration(spinErgSmoothing->value());
-
-    if (checkIntervalsIcuAutoUpload) {
-        account->intervals_icu_auto_upload = checkIntervalsIcuAutoUpload->isChecked();
-        account->saveIntervalsIcuCredentials();
-    }
-
-    if (checkDropoutEnabled) account->sensor_dropout_enabled  = checkDropoutEnabled->isChecked();
-    if (spinDropoutTimeout)  account->sensor_dropout_timeout_s = spinDropoutTimeout->value();
-    account->saveSensorDropoutSettings();
-
-    if (spinBatteryThreshold) {
-        account->battery_warning_threshold = spinBatteryThreshold->value();
-        account->saveBatteryWarningThreshold();
-    }
+    account->intervals_icu_auto_upload = checkIntervalsIcuAutoUpload->isChecked();
+    account->saveIntervalsIcuCredentials();
 
     if (checkIntervalSummary) {
         account->interval_summary_enabled    = checkIntervalSummary->isChecked();

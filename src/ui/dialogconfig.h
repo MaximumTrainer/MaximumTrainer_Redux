@@ -207,17 +207,10 @@ private:
     QCheckBox    *checkStudioMode   = nullptr;
     QSpinBox     *spinNbRiders      = nullptr;
 
-    // Trainer tab controls
-    QComboBox    *comboTrainerModel      = nullptr;
-    QSpinBox     *spinErgSmoothing       = nullptr;
+    // Workout tab controls (trainer model, ERG ramp, sensor dropout and battery
+    // warning moved to the main-window Bluetooth Sensors page — single home for
+    // sensor/trainer config).
     QCheckBox    *checkIntervalsIcuAutoUpload = nullptr;
-
-    // Trainer tab — Sensor dropout (issue #148)
-    QCheckBox    *checkDropoutEnabled    = nullptr;
-    QSpinBox     *spinDropoutTimeout     = nullptr;
-
-    // Trainer tab — Battery warning threshold (issue #156)
-    QSpinBox     *spinBatteryThreshold   = nullptr;
 
     // Interval Summary overlay controls
     QCheckBox    *checkIntervalSummary         = nullptr;

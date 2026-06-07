@@ -2450,6 +2450,14 @@ void MainWindow::screenshotNextStep()
             dconfig->hide();
             qDebug() << "Screenshot: settings (Preferences dialog)";
         }
+        // Capture the Bluetooth Sensors page (FancyTabBar index 5), which hosts
+        // sensor pairing plus the trainer/sensor settings.
+        ftb->setCurrentIndex(5);
+        QCoreApplication::processEvents();
+        grab().save(m_ssOutputDir + QLatin1String("/screenshot_sensors.png"), "PNG");
+        qDebug() << "Screenshot: sensors";
+        ftb->setCurrentIndex(0);
+        QCoreApplication::processEvents();
         break;
 
     // ── Step 1: switch to WorkoutCreator and load demo workout ───────────

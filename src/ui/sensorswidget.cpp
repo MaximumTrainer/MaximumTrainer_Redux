@@ -2,10 +2,12 @@
 
 #include <QVBoxLayout>
 #include <QGridLayout>
+#include <QHBoxLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QPushButton>
 #include <QCheckBox>
+#include <QSpinBox>
 #include <QApplication>
 
 #include "account.h"
@@ -109,7 +111,83 @@ void SensorsWidget::buildUi()
     trainerHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
     trainerLayout->addWidget(trainerHint);
 
+    QHBoxLayout *ergRampRow = new QHBoxLayout();
+    ergRampRow->addWidget(new QLabel(tr("ERG transition ramp duration:"), trainerGroup));
+    m_ergRampSpin = new QSpinBox(trainerGroup);
+    m_ergRampSpin->setRange(0, 30);
+    m_ergRampSpin->setSuffix(tr(" s"));
+    m_ergRampSpin->setToolTip(tr("Seconds to linearly ramp ERG resistance between intervals.\n"
+                                 "Set to 0 to disable smoothing (instant resistance changes)."));
+    connect(m_ergRampSpin, qOverload<int>(&QSpinBox::valueChanged),
+            this, &SensorsWidget::onErgRampChanged);
+    ergRampRow->addWidget(m_ergRampSpin);
+    ergRampRow->addStretch();
+    trainerLayout->addLayout(ergRampRow);
+
+    QLabel *ergRampHint = new QLabel(
+        tr("Ramps resistance gradually when transitioning between interval "
+           "targets, reducing mechanical jolt on the trainer."), trainerGroup);
+    ergRampHint->setWordWrap(true);
+    ergRampHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
+    trainerLayout->addWidget(ergRampHint);
+
     mainLayout->addWidget(trainerGroup);
+
+    // Sensor dropout auto-pause.
+    QGroupBox *dropoutGroup = new QGroupBox(tr("Sensor Dropout"), this);
+    QVBoxLayout *dropoutLayout = new QVBoxLayout(dropoutGroup);
+    dropoutLayout->setSpacing(4);
+
+    m_dropoutEnabledCheck =
+        new QCheckBox(tr("Auto-pause workout when sensor signal is lost"), dropoutGroup);
+    connect(m_dropoutEnabledCheck, &QCheckBox::toggled,
+            this, &SensorsWidget::onSensorDropoutChanged);
+    dropoutLayout->addWidget(m_dropoutEnabledCheck);
+
+    QHBoxLayout *dropoutRow = new QHBoxLayout();
+    dropoutRow->addWidget(new QLabel(tr("Dropout timeout:"), dropoutGroup));
+    m_dropoutTimeoutSpin = new QSpinBox(dropoutGroup);
+    m_dropoutTimeoutSpin->setRange(2, 30);
+    m_dropoutTimeoutSpin->setSuffix(tr(" s"));
+    connect(m_dropoutTimeoutSpin, qOverload<int>(&QSpinBox::valueChanged),
+            this, &SensorsWidget::onSensorDropoutChanged);
+    dropoutRow->addWidget(m_dropoutTimeoutSpin);
+    dropoutRow->addStretch();
+    dropoutLayout->addLayout(dropoutRow);
+
+    QLabel *dropoutHint = new QLabel(
+        tr("Workout resumes automatically 3 seconds after the signal is restored."),
+        dropoutGroup);
+    dropoutHint->setWordWrap(true);
+    dropoutHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
+    dropoutLayout->addWidget(dropoutHint);
+
+    mainLayout->addWidget(dropoutGroup);
+
+    // Low-battery warning threshold.
+    QGroupBox *batteryGroup = new QGroupBox(tr("Battery Warning"), this);
+    QVBoxLayout *batteryLayout = new QVBoxLayout(batteryGroup);
+    batteryLayout->setSpacing(4);
+
+    QHBoxLayout *batteryRow = new QHBoxLayout();
+    batteryRow->addWidget(new QLabel(tr("Warn when battery drops below:"), batteryGroup));
+    m_batteryThresholdSpin = new QSpinBox(batteryGroup);
+    m_batteryThresholdSpin->setRange(5, 50);
+    m_batteryThresholdSpin->setSuffix(tr(" %"));
+    connect(m_batteryThresholdSpin, qOverload<int>(&QSpinBox::valueChanged),
+            this, &SensorsWidget::onBatteryThresholdChanged);
+    batteryRow->addWidget(m_batteryThresholdSpin);
+    batteryRow->addStretch();
+    batteryLayout->addLayout(batteryRow);
+
+    QLabel *batteryHint = new QLabel(
+        tr("A notification is shown when a sensor reports a battery level at or "
+           "below this threshold."), batteryGroup);
+    batteryHint->setWordWrap(true);
+    batteryHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
+    batteryLayout->addWidget(batteryHint);
+
+    mainLayout->addWidget(batteryGroup);
 
     QLabel *hint = new QLabel(
         tr("Saved sensors are connected automatically when you start a workout."), this);
@@ -131,9 +209,27 @@ void SensorsWidget::reload()
         refreshRow(i);
     }
 
-    if (m_controlResistanceCheck && m_account) {
-        QSignalBlocker blocker(m_controlResistanceCheck);
-        m_controlResistanceCheck->setChecked(m_account->control_trainer_resistance);
+    if (m_account) {
+        if (m_controlResistanceCheck) {
+            QSignalBlocker b(m_controlResistanceCheck);
+            m_controlResistanceCheck->setChecked(m_account->control_trainer_resistance);
+        }
+        if (m_ergRampSpin) {
+            QSignalBlocker b(m_ergRampSpin);
+            m_ergRampSpin->setValue(m_account->erg_smoothing_duration_s);
+        }
+        if (m_dropoutEnabledCheck) {
+            QSignalBlocker b(m_dropoutEnabledCheck);
+            m_dropoutEnabledCheck->setChecked(m_account->sensor_dropout_enabled);
+        }
+        if (m_dropoutTimeoutSpin) {
+            QSignalBlocker b(m_dropoutTimeoutSpin);
+            m_dropoutTimeoutSpin->setValue(m_account->sensor_dropout_timeout_s);
+        }
+        if (m_batteryThresholdSpin) {
+            QSignalBlocker b(m_batteryThresholdSpin);
+            m_batteryThresholdSpin->setValue(m_account->battery_warning_threshold);
+        }
     }
 #endif
 }
@@ -144,6 +240,32 @@ void SensorsWidget::onControlResistanceToggled(bool checked)
         return;
     m_account->control_trainer_resistance = checked;
     m_account->saveDisplayPrefs();
+}
+
+void SensorsWidget::onErgRampChanged(int seconds)
+{
+    if (!m_account)
+        return;
+    m_account->saveErgSmoothingDuration(seconds);
+}
+
+void SensorsWidget::onSensorDropoutChanged()
+{
+    if (!m_account)
+        return;
+    if (m_dropoutEnabledCheck)
+        m_account->sensor_dropout_enabled = m_dropoutEnabledCheck->isChecked();
+    if (m_dropoutTimeoutSpin)
+        m_account->sensor_dropout_timeout_s = m_dropoutTimeoutSpin->value();
+    m_account->saveSensorDropoutSettings();
+}
+
+void SensorsWidget::onBatteryThresholdChanged(int percent)
+{
+    if (!m_account)
+        return;
+    m_account->battery_warning_threshold = percent;
+    m_account->saveBatteryWarningThreshold();
 }
 
 void SensorsWidget::refreshRow(int rowIndex)
