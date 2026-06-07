@@ -1,5 +1,6 @@
 #include "cadenceeditor.h"
 #include "ui_cadenceeditor.h"
+#include "metriceditorvisibility.h"
 #include <QDebug>
 
 CadenceEditor::~CadenceEditor()
@@ -59,36 +60,15 @@ void CadenceEditor::on_comboBox_cadence_currentIndexChanged(int index)
     Interval::StepType typeStep = static_cast<Interval::StepType>(index);
     myInterval.setCadenceStepType(typeStep);
 
-
-    /// change interface (hide/show widgets)
-    if (index == 0) { ///None
-        ui->spinBox_cadenceStart->setVisible(false);
-        ui->label_toCadenceTxt->setVisible(false);
-        ui->spinBox_cadenceEnd->setVisible(false);
-        ui->label_cadenceRpmTxt->setVisible(false);
-        ui->label_acceptedCadence->setVisible(false);
-        ui->spinBox_rangeCadence->setVisible(false);
-        ui->label_accptedRpmTxt->setVisible(false);
-    }
-    else if (index == 1) { ///FLAT
-        ui->spinBox_cadenceEnd->setVisible(false);
-        ui->label_toCadenceTxt->setVisible(false);
-
-        ui->spinBox_cadenceStart->setVisible(true);
-        ui->label_cadenceRpmTxt->setVisible(true);
-        ui->label_acceptedCadence->setVisible(true);
-        ui->spinBox_rangeCadence->setVisible(true);
-        ui->label_accptedRpmTxt->setVisible(true);
-    }
-    else { ///2- Progressive
-        ui->spinBox_cadenceStart->setVisible(true);
-        ui->label_toCadenceTxt->setVisible(true);
-        ui->spinBox_cadenceEnd->setVisible(true);
-        ui->label_cadenceRpmTxt->setVisible(true);
-        ui->label_acceptedCadence->setVisible(true);
-        ui->spinBox_rangeCadence->setVisible(true);
-        ui->label_accptedRpmTxt->setVisible(true);
-    }
+    MetricEditorVisibility::applyStepTypeVisibility(
+        index,
+        ui->spinBox_cadenceStart,
+        ui->label_toCadenceTxt,
+        ui->spinBox_cadenceEnd,
+        ui->label_cadenceRpmTxt,
+        ui->label_acceptedCadence,
+        ui->spinBox_rangeCadence,
+        ui->label_accptedRpmTxt);
 }
 
 

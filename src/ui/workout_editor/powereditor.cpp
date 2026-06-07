@@ -1,5 +1,6 @@
 #include "powereditor.h"
 #include "ui_powereditor.h"
+#include "metriceditorvisibility.h"
 
 #include <QDebug>
 #include <QPainter>
@@ -82,39 +83,15 @@ void PowerEditor::on_comboBox_power_currentIndexChanged(int index)
     Interval::StepType typeStep = static_cast<Interval::StepType>(index);
     myInterval.setPowerStepType(typeStep);
 
-
-    /// change interface (hide/show widgets)
-    //////////////////////////////////////////////////////////////////////////////////////////
-
-    if (index == 0) { ///None
-        ui->spinBox_ftpStart->setVisible(false);
-        ui->label_toFtpTxt->setVisible(false);
-        ui->spinBox_ftpEnd->setVisible(false);
-        ui->comboBox_FTPorWatts->setVisible(false);
-        ui->label_acceptedPower->setVisible(false);
-        ui->spinBox_rangePower->setVisible(false);
-        ui->label_accptedWattsTxt->setVisible(false);
-
-    }
-    else if (index == 1) { ///FLAT
-        ui->spinBox_ftpEnd->setVisible(false);
-        ui->label_toFtpTxt->setVisible(false);
-
-        ui->spinBox_ftpStart->setVisible(true);
-        ui->comboBox_FTPorWatts->setVisible(true);
-        ui->label_acceptedPower->setVisible(true);
-        ui->spinBox_rangePower->setVisible(true);
-        ui->label_accptedWattsTxt->setVisible(true);
-    }
-    else { ///2- Progressive
-        ui->spinBox_ftpStart->setVisible(true);
-        ui->label_toFtpTxt->setVisible(true);
-        ui->spinBox_ftpEnd->setVisible(true);
-        ui->comboBox_FTPorWatts->setVisible(true);
-        ui->label_acceptedPower->setVisible(true);
-        ui->spinBox_rangePower->setVisible(true);
-        ui->label_accptedWattsTxt->setVisible(true);
-    }
+    MetricEditorVisibility::applyStepTypeVisibility(
+        index,
+        ui->spinBox_ftpStart,
+        ui->label_toFtpTxt,
+        ui->spinBox_ftpEnd,
+        ui->comboBox_FTPorWatts,
+        ui->label_acceptedPower,
+        ui->spinBox_rangePower,
+        ui->label_accptedWattsTxt);
 }
 
 
