@@ -94,7 +94,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
 
 
     // -----------------------------------  Settings ----------------------------------------------------------------------
-    nb_ant_stick = 1;
     nb_user_studio = 3;
     enable_studio_mode = false;
     use_pm_for_cadence = false;
