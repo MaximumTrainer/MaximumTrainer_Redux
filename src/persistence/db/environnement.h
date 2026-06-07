@@ -40,18 +40,13 @@ const static QString urlIntervalsIcuCalendar = "https://intervals.icu/athlete/%1
 ///   CALENDAR:WRITE
 ///   LIBRARY:READ
 ///
-/// The redirect_uri is appended at runtime by Environnement::getURLIntervalsIcuAuthorize().
-/// Note: client_id is substituted at runtime via getIntervalsIcuClientId() so the
-/// compile-time constant here is only a documentation reference; the actual URL is
-/// built dynamically in getURLIntervalsIcuAuthorize().
-const static QString urlIntervalsIcuOAuthAuthorize(
-    "https://intervals.icu/oauth/authorize?"
-    "response_type=code"
-    "&scope=ACTIVITY:WRITE"
-    "+WELLNESS:READ"
-    "+SETTINGS:WRITE"
-    "+CALENDAR:WRITE"
-    "+LIBRARY:READ");
+/// OAuth2 authorize endpoint + canonical decoded scope string.
+/// Query parameters are appended safely via QUrlQuery in
+/// Environnement::getURLIntervalsIcuAuthorizeWasm().
+const static QString urlIntervalsIcuOAuthAuthorize =
+    QStringLiteral("https://intervals.icu/oauth/authorize");
+const static QString intervalsIcuOAuthScope =
+    QStringLiteral("ACTIVITY:WRITE WELLNESS:READ SETTINGS:WRITE CALENDAR:WRITE LIBRARY:READ");
 
 /// Intervals.icu OAuth2 client credentials.
 /// client_id and client_secret are injected at build time via environment variables

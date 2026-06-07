@@ -608,6 +608,8 @@ private slots:
                  "OAuth URL must contain scope parameter");
         QVERIFY2(!q.queryItemValue(QStringLiteral("scope")).isEmpty(),
                  "OAuth URL scope must not be empty");
+        QCOMPARE(q.queryItemValue(QStringLiteral("scope")),
+                 intervalsIcuOAuthScope);
         QVERIFY2(q.hasQueryItem(QStringLiteral("redirect_uri")),
                  "OAuth URL must contain redirect_uri parameter");
         QVERIFY2(q.queryItemValue(QStringLiteral("redirect_uri"))
