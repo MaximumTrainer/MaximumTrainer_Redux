@@ -11,12 +11,8 @@ $$PWD/workoutplot.cpp\
     $$PWD/zoneitem.cpp \
     $$PWD/workoutplotzoomer.cpp \
     $$PWD/curvedatacadence.cpp \
-    $$PWD/datacadence.cpp \
-    $$PWD/datapower.cpp \
     $$PWD/curvedatapower.cpp \
     $$PWD/curvedataheartrate.cpp \
-    $$PWD/dataheartrate.cpp \
-    $$PWD/dataspeed.cpp \
     $$PWD/curvedataspeed.cpp
 
 
@@ -30,6 +26,7 @@ $$PWD/workoutplot.h\
     $$PWD/zoneitem.h \
     $$PWD/workoutplotzoomer.h \
     $$PWD/curvedatacadence.h \
+    $$PWD/datametric.h \
     $$PWD/datacadence.h \
     $$PWD/datapower.h \
     $$PWD/curvedatapower.h \
