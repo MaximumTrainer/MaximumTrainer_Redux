@@ -1,6 +1,8 @@
 #include "environnement.h"
 
 #include "credential_store.h"
+#include <QUrl>
+#include <QUrlQuery>
 
 Environnement::Environnement()
 {  
@@ -168,12 +170,16 @@ QString Environnement::getURLIntervalsIcuAuthorize(const QString &state) {
 /// sends the authorization code back to the main window via window.opener.postMessage.
 /// @param state  A per-request random token for CSRF protection.
 QString Environnement::getURLIntervalsIcuAuthorizeWasm(const QString &state) {
-    QString myURL = urlIntervalsIcuOAuthAuthorize;
-    myURL += "&client_id=" + getIntervalsIcuClientId();
-    myURL += "&redirect_uri=" + getWasmOAuthRedirectUri();
+    QUrl url(urlIntervalsIcuOAuthAuthorize);
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("response_type"), QStringLiteral("code"));
+    query.addQueryItem(QStringLiteral("scope"), intervalsIcuOAuthScope);
+    query.addQueryItem(QStringLiteral("client_id"), getIntervalsIcuClientId());
+    query.addQueryItem(QStringLiteral("redirect_uri"), getWasmOAuthRedirectUri());
     if (!state.isEmpty())
-        myURL += "&state=" + state;
-    return myURL;
+        query.addQueryItem(QStringLiteral("state"), state);
+    url.setQuery(query);
+    return url.toString(QUrl::FullyEncoded);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -216,5 +222,4 @@ QString Environnement::getUrlWorkoutCreator() {
 QString Environnement::getUrlDownload() {
     return getURLEnvironnement() + urlDownloadEn;
 }
-
 
