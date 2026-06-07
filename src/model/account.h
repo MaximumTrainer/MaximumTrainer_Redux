@@ -2,7 +2,6 @@
 #define ACCOUNT_H
 
 #include <QtCore>
-#include <powercurve.h>
 
 
 //We use same syntax as mySql, so no camel-case here
@@ -67,7 +66,6 @@ public:
     bool weight_in_kg;
     int height_cm;
 
-    PowerCurve powerCurve;
     int wheel_circ;
     double bike_weight_kg;
     int bike_type;

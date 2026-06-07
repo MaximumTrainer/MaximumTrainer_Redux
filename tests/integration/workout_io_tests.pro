@@ -85,7 +85,6 @@ SOURCES += \
     ../../src/model/repeatdata.cpp \
     ../../src/model/userstudio.cpp \
     ../../src/model/trackpoint.cpp \
-    ../../src/model/powercurve.cpp \
     ../../src/fitness/achievements/achievement.cpp \
     ../../src/persistence/db/environnement.cpp \
     ../../src/persistence/db/extrequest.cpp \

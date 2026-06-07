@@ -31,7 +31,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     weight_in_kg = true;
     height_cm = 170;
 
-    powerCurve = PowerCurve();
     wheel_circ = 2100;
     bike_weight_kg = 9;
     bike_type = 2;

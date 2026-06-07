@@ -92,8 +92,6 @@ public slots:
                               double coef0, double coef1, double coef2, double coef3, int formulaInCode);
     void disablePowerCurveForUser(int riderID);
     void updateFieldForUser(int riderID, int fieldNumber, QVariant value);
-    void updateTrainerCurve(int trainer_id, QString companyName, QString trainerName,
-                            double coef0, double coef1, double coef2, double coef3, int formulaInCode);
 
 
 

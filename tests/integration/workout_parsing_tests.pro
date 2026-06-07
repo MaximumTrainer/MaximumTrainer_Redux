@@ -60,7 +60,6 @@ SOURCES += \
     ../../src/model/interval.cpp \
     ../../src/model/account.cpp \
     ../../src/model/repeatdata.cpp \
-    ../../src/model/powercurve.cpp \
     ../intervals_icu/credential_store_stub.cpp \
     tst_workout_parsing.cpp
 
@@ -70,5 +69,4 @@ HEADERS += \
     ../../src/model/interval.h \
     ../../src/model/account.h \
     ../../src/model/repeatdata.h \
-    ../../src/model/powercurve.h \
     ../intervals_icu/util.h

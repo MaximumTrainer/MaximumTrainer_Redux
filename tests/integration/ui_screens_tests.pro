@@ -85,7 +85,6 @@ SOURCES += \
     ../../src/model/repeatdata.cpp \
     ../../src/model/userstudio.cpp \
     ../../src/model/trackpoint.cpp \
-    ../../src/model/powercurve.cpp \
     ../../src/fitness/achievements/achievement.cpp \
     ../../src/ui/dialog_connection_method.cpp \
     ../../src/ui/workout_editor/repeatwidget.cpp \

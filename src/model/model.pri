@@ -13,7 +13,6 @@ SOURCES += src/model/interval.cpp\
     src/model/repeatdata.cpp \
     src/model/account.cpp \
     src/model/zoneobject.cpp \
-    src/model/powercurve.cpp \
     src/model/planobject.cpp \
     $$PWD/radiotablemodel.cpp \
     $$PWD/radio.cpp \
@@ -34,7 +33,6 @@ HEADERS += src/model/interval.h\
     src/model/repeatdata.h \
     src/model/account.h \
     src/model/zoneobject.h \
-    src/model/powercurve.h \
     src/model/planobject.h \
     src/model/intervalsummaryutil.h \
     $$PWD/radiotablemodel.h \

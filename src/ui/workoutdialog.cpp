@@ -3135,11 +3135,6 @@ void WorkoutDialog::slotGetSensorListFinished() {
         labelPower->setText(pairingMsgPower);
         labelPower->setVisible(true);
     }
-    else if (account->powerCurve.getId() > 0 && (usingSpeedCadence || usingSpeed) ) {
-        labelPower->setText(tr(" Using Trainer Power Curve:") + account->powerCurve.getFullName());
-        labelPower->setStyleSheet("background-color : rgba(1,1,1,220); color : green;");
-        labelPower->setVisible(true);
-    }
 
 
     labelPairHr->fadeIn(500);
@@ -3153,7 +3148,7 @@ void WorkoutDialog::slotGetSensorListFinished() {
 
 
     qDebug() << "Ok start sensors now !";
-    sendSoloData(account->powerCurve, account->wheel_circ, lstSensor, account->use_pm_for_cadence, account->use_pm_for_speed);
+    sendSoloData(account->wheel_circ, lstSensor, account->use_pm_for_cadence, account->use_pm_for_speed);
 
 
 
@@ -4014,7 +4009,7 @@ void WorkoutDialog::createUserStudioWidget() {
             if (myUserStudio.getHrID() < 1 && myUserStudio.getFecID() < 1) {
                 arrUserStudioWidget[i]->setHrSectionHidden();
             }
-            if (myUserStudio.getPowerID() < 1 && myUserStudio.getPowerCurve().getId() < 1 && myUserStudio.getFecID() < 1) {
+            if (myUserStudio.getPowerID() < 1 && myUserStudio.getFecID() < 1) {
                 arrUserStudioWidget[i]->setPowerSectionHidden();
             }
 

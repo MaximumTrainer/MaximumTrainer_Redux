@@ -972,12 +972,6 @@ void MainWindow::fillSettingPage()  {
     QString jsCode = QString("$('#switch-pm-cadence').bootstrapSwitch('state', %1);").arg(account->use_pm_for_cadence);
     jsCode += QString("$('#switch-pm-speed').bootstrapSwitch('state', %1);").arg(account->use_pm_for_speed);
 
-    //using trainer curve?
-    if (account->powerCurve.getId() > 0) {
-        jsCode += QString("$('#power-data-source').trigger('change');");
-        jsCode += QString("$('#select-company').trigger('change');");
-    }
-
     qDebug() << "jsCodeISL:" << jsCode;
 
     ui->webView_settings->page()->runJavaScript(
@@ -1093,25 +1087,7 @@ void MainWindow::setPowerCurveForUser(int riderID, int company_id, int trainer_i
     myUserStudio.setCompanyID(company_id);
     myUserStudio.setBrandID(trainer_id);
 
-    PowerCurve myCurve = myUserStudio.getPowerCurve();
-    myCurve.setId(trainer_id);
-    myCurve.setName(companyName, trainerName);
-    myCurve.setCoefs(coef0, coef1, coef2, coef3);
-    myCurve.setFormulaInCode(formulaInCode);
-
-    myUserStudio.setPowerCurve(myCurve);
     vecUserStudio.replace(riderID-1, myUserStudio);
-
-
-    //    UserStudio testUserStudio = vecUserStudio.at(riderID-1);
-    //    qDebug() << "PowerCurve for user 2 is now:" << testUserStudio.getPowerCurve().getFullName();
-
-    for (int i=0; i<vecUserStudio.size(); i++) {
-
-        UserStudio userStudio = vecUserStudio.at(i);
-        qDebug() << "User Studio power Curve is_WORKOUTDIALOG:" << userStudio.getPowerCurve().getFullName() << userStudio.getPowerCurve().getId() << "test att:" << userStudio.getDisplayName();
-    }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1125,8 +1101,6 @@ void MainWindow::disablePowerCurveForUser(int riderID) {
     myUserStudio.setUsingPowerCurve(false);
     myUserStudio.setCompanyID(0);
     myUserStudio.setBrandID(0);
-    PowerCurve powerCurve;
-    myUserStudio.setPowerCurve(powerCurve);
     vecUserStudio.replace(riderID-1, myUserStudio);
 
 }
@@ -1741,13 +1715,6 @@ void MainWindow::executeWorkout(Workout workout) {
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
-    for (int i = 0; i < vecUserStudio.size(); i++) {
-        UserStudio userStudio = vecUserStudio.at(i);
-        qDebug() << "Before Execute__ User Studio power Curve is_WORKOUTDIALOG:"
-                 << userStudio.getPowerCurve().getFullName()
-                 << userStudio.getPowerCurve().getId()
-                 << "test att:" << userStudio.getDisplayName();
-    }
 
     BtleHub *btleHub = new BtleHub(this);
     if (account->wheel_circ > 0)
@@ -2291,19 +2258,6 @@ void MainWindow::setPmForSpeed(bool usedFor) {
 ///////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::updateTrainerCurve(int trainer_id, QString companyName, QString trainerName,
-                                    double coef0, double coef1, double coef2, double coef3, int formulaInCode) {
-
-    qDebug() << "UPDATE_TRAINER_CURVE INFO" << formulaInCode;
-
-    account->powerCurve.setId(trainer_id);
-    account->powerCurve.setName(companyName, trainerName);
-    account->powerCurve.setCoefs(coef0, coef1, coef2, coef3);
-    account->powerCurve.setFormulaInCode(formulaInCode);
-
-
-    qDebug() << "ok trainerID is now:" << account->powerCurve.getId();
-}
 
 
 // ─────────────────────────────────────────────────────────────────────────────
