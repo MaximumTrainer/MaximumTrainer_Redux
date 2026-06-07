@@ -262,7 +262,7 @@ void InfoWidget::setTypeInfoBox(TypeInfoBox type) {
     int size = 35;
     QPixmap pixmapPower = QPixmap(":/image/icon/power2");
     QPixmap pixmapCadence = QPixmap(":/image/icon/crank2");
-    QPixmap pixmapSpeed = QPixmap(":/image/icon/speed)");
+    QPixmap pixmapSpeed = QPixmap(":/image/icon/speed");
     QPixmap pixmapHr = QPixmap(":/image/icon/heart2");
     QPixmap pixmapTarget = QPixmap(":/image/icon/target");
 

@@ -105,6 +105,18 @@ jobs:
         # Create AppDir structure
         mkdir -p AppDir/usr/bin AppDir/usr/lib AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
         cp build/release/MaximumTrainer AppDir/usr/bin/
+        # QtWebEngine spell-checker tries to set a dictionaries path relative to
+        # the binary at startup and emits a WARNING if the directory is absent.
+        # Create the empty directories so the path-override succeeds (no dictionaries
+        # = spell-check disabled, unchanged from before).
+        mkdir -p AppDir/usr/bin/qtwebengine_dictionaries
+        mkdir -p AppDir/usr/libexec/qtwebengine_dictionaries
+        # linuxdeploy-plugin-qt sets FONTCONFIG_FILE="${APPDIR}/etc/fonts/fonts.conf"
+        # in the generated AppRun; bundle the build host's config so the packaged
+        # app can locate fonts on the user's machine instead of logging
+        # "Cannot load default config file: No such file: (null)".
+        mkdir -p AppDir/etc/fonts
+        cp /etc/fonts/fonts.conf AppDir/etc/fonts/ 2>/dev/null || true
         # Bundle the QWT shared library so the qt plugin / patchelf can resolve it
         cp -P "$QWT_DIR"/lib/libqwt.so* AppDir/usr/lib/
         # QtWebEngine dlopen()s these NSS modules at runtime, so linuxdeploy's
