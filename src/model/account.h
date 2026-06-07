@@ -87,7 +87,6 @@ public:
 
 
     // -----------------------------------  Settings ----------------------------------------------------------------------
-    int nb_ant_stick;
     int nb_user_studio;
     bool enable_studio_mode;
     bool use_pm_for_cadence;

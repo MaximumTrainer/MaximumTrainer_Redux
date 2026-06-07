@@ -276,15 +276,15 @@ void DialogMainWindowConfig::stravaLabelClicked() {
 void DialogMainWindowConfig::trainingPeaksLabelClicked() {
 
 
-    DialogInfoWebView infoAntStick;
+    DialogInfoWebView trainingPeaksInfoView;
 
-    infoAntStick.setTitle(tr("Connect MaximumTrainer with your TrainingPeaks account"));
-    infoAntStick.setUsedForTrainingPeaks(true);
-    connect(&infoAntStick, SIGNAL(trainingPeaksLinked(bool)), this, SLOT(trainingPeaksLinked(bool)) );
-    infoAntStick.setUrlWebView(Environnement::getURLTrainingPeaksAuthorize());
+    trainingPeaksInfoView.setTitle(tr("Connect MaximumTrainer with your TrainingPeaks account"));
+    trainingPeaksInfoView.setUsedForTrainingPeaks(true);
+    connect(&trainingPeaksInfoView, SIGNAL(trainingPeaksLinked(bool)), this, SLOT(trainingPeaksLinked(bool)) );
+    trainingPeaksInfoView.setUrlWebView(Environnement::getURLTrainingPeaksAuthorize());
 
     qDebug() << "TP URL IS : " << Environnement::getURLTrainingPeaksAuthorize();
-    infoAntStick.exec();
+    trainingPeaksInfoView.exec();
 
 }
 
