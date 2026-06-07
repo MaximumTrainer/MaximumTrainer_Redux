@@ -5,6 +5,10 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QPushButton>
+#include <QCheckBox>
+#include <QApplication>
+
+#include "account.h"
 
 #ifndef GC_WASM_BUILD
 #include "btle_sensor_store.h"
@@ -14,6 +18,8 @@
 SensorsWidget::SensorsWidget(QWidget *parent)
     : QWidget(parent)
 {
+    m_account = qApp->property("Account").value<Account*>();
+
     // Paint the page with the palette's Window colour. The light stylesheet only
     // backgrounds a few named widgets and trusts the palette elsewhere, so without
     // this the MainWindow chrome gradient shows through this page in light mode.
@@ -82,6 +88,29 @@ void SensorsWidget::buildUi()
 
     mainLayout->addWidget(group);
 
+    // Trainer control toggle. Lives here, next to the Trainer slot, rather than
+    // in a separate Preferences page. Drives account->control_trainer_resistance,
+    // which gates ERG setpoints over BLE FTMS (and legacy ANT FE-C) at runtime.
+    QGroupBox *trainerGroup = new QGroupBox(tr("Smart Trainer"), this);
+    QVBoxLayout *trainerLayout = new QVBoxLayout(trainerGroup);
+    trainerLayout->setSpacing(4);
+
+    m_controlResistanceCheck =
+        new QCheckBox(tr("Control trainer resistance (ERG / FTMS)"), trainerGroup);
+    connect(m_controlResistanceCheck, &QCheckBox::toggled,
+            this, &SensorsWidget::onControlResistanceToggled);
+    trainerLayout->addWidget(m_controlResistanceCheck);
+
+    QLabel *trainerHint = new QLabel(
+        tr("When on, MaximumTrainer sets your smart trainer's target power "
+           "during a workout (ERG mode). Turn off to ride a structured workout "
+           "while controlling resistance yourself."), trainerGroup);
+    trainerHint->setWordWrap(true);
+    trainerHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
+    trainerLayout->addWidget(trainerHint);
+
+    mainLayout->addWidget(trainerGroup);
+
     QLabel *hint = new QLabel(
         tr("Saved sensors are connected automatically when you start a workout."), this);
     hint->setWordWrap(true);
@@ -101,7 +130,20 @@ void SensorsWidget::reload()
         m_rows[i].current.role = m_rows[i].role;
         refreshRow(i);
     }
+
+    if (m_controlResistanceCheck && m_account) {
+        QSignalBlocker blocker(m_controlResistanceCheck);
+        m_controlResistanceCheck->setChecked(m_account->control_trainer_resistance);
+    }
 #endif
+}
+
+void SensorsWidget::onControlResistanceToggled(bool checked)
+{
+    if (!m_account)
+        return;
+    m_account->control_trainer_resistance = checked;
+    m_account->saveDisplayPrefs();
 }
 
 void SensorsWidget::refreshRow(int rowIndex)

@@ -1175,9 +1175,6 @@ QWidget *DialogConfig::setupTrainerTab()
     auto *grp = new QGroupBox(tr("Trainer Settings"), page);
     auto *grpLayout = new QVBoxLayout(grp);
 
-    checkControlResistance = new QCheckBox(tr("Control trainer resistance (ERG mode)"), grp);
-    grpLayout->addWidget(checkControlResistance);
-
     auto *modelRow = new QHBoxLayout();
     modelRow->addWidget(new QLabel(tr("Trainer model (virtual power):"), grp));
     comboTrainerModel = new QComboBox(grp);
@@ -1297,8 +1294,7 @@ QWidget *DialogConfig::setupTrainerTab()
 
 void DialogConfig::initTrainerTab()
 {
-    if (!checkControlResistance) return;
-    checkControlResistance->setChecked(account->control_trainer_resistance);
+    if (!comboTrainerModel) return;
 
     const int modelId = account->powerCurve.getId();
     for (int i = 0; i < comboTrainerModel->count(); ++i) {
@@ -1327,8 +1323,7 @@ void DialogConfig::initTrainerTab()
 
 void DialogConfig::saveTrainerTab()
 {
-    if (!checkControlResistance) return;
-    account->control_trainer_resistance = checkControlResistance->isChecked();
+    if (!comboTrainerModel) return;
     account->powerCurve.setId(comboTrainerModel->currentData().toInt());
 
     if (spinErgSmoothing)

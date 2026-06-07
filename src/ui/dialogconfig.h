@@ -208,7 +208,6 @@ private:
     QSpinBox     *spinNbRiders      = nullptr;
 
     // Trainer tab controls
-    QCheckBox    *checkControlResistance = nullptr;
     QComboBox    *comboTrainerModel      = nullptr;
     QSpinBox     *spinErgSmoothing       = nullptr;
     QCheckBox    *checkIntervalsIcuAutoUpload = nullptr;
