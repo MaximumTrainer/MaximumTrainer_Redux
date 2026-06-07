@@ -1,5 +1,6 @@
 #include "hreditor.h"
 #include "ui_hreditor.h"
+#include "metriceditorvisibility.h"
 #include <QDebug>
 
 HrEditor::~HrEditor()
@@ -76,36 +77,15 @@ void HrEditor::on_comboBox_hr_currentIndexChanged(int index)
     Interval::StepType typeStep = static_cast<Interval::StepType>(hrStepType);
     myInterval.setHrStepType(typeStep);
 
-
-    /// change interface (hide/show widgets)
-    if (index == 0) { ///None
-        ui->spinBox_lthrStart->setVisible(false);
-        ui->label_toLthrTxt->setVisible(false);
-        ui->spinBox_lthrEnd->setVisible(false);
-        ui->comboBox_LTHRorBpm->setVisible(false);
-        ui->label_acceptedLthr->setVisible(false);
-        ui->spinBox_rangeLthr->setVisible(false);
-        ui->label_accptedBpmTxt->setVisible(false);
-    }
-    else if (index == 1) { ///FLAT
-        ui->spinBox_lthrEnd->setVisible(false);
-        ui->label_toLthrTxt->setVisible(false);
-
-        ui->spinBox_lthrStart->setVisible(true);
-        ui->comboBox_LTHRorBpm->setVisible(true);
-        ui->label_acceptedLthr->setVisible(true);
-        ui->spinBox_rangeLthr->setVisible(true);
-        ui->label_accptedBpmTxt->setVisible(true);
-    }
-    else { ///2- Progressive
-        ui->spinBox_lthrStart->setVisible(true);
-        ui->label_toLthrTxt->setVisible(true);
-        ui->spinBox_lthrEnd->setVisible(true);
-        ui->comboBox_LTHRorBpm->setVisible(true);
-        ui->label_acceptedLthr->setVisible(true);
-        ui->spinBox_rangeLthr->setVisible(true);
-        ui->label_accptedBpmTxt->setVisible(true);
-    }
+    MetricEditorVisibility::applyStepTypeVisibility(
+        index,
+        ui->spinBox_lthrStart,
+        ui->label_toLthrTxt,
+        ui->spinBox_lthrEnd,
+        ui->comboBox_LTHRorBpm,
+        ui->label_acceptedLthr,
+        ui->spinBox_rangeLthr,
+        ui->label_accptedBpmTxt);
 }
 
 

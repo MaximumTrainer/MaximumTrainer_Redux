@@ -13,8 +13,8 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 |-------|--------|----|
 | 1 — Dead-code sweep | ☑ done | #230 |
 | 2 — Hot-path guards | ☑ done (2 of 4 items; 2 evaluated and intentionally skipped) | #227 |
-| 3 — De-duplication via templates | ☐ todo (deferred) | — |
-| 4 — Latent naming hazard | ☑ done | (this PR) |
+| 3 — De-duplication via templates | ◐ partial (singletons done; editors in progress) | #236 |
+| 4 — Latent naming hazard | ☑ done | #235 |
 | 5 — Quick correctness fixes | ☑ done (1 of 3; 2 dropped after inspection) | #234 |
 | 6 — Large mechanical modernization | ☐ todo | — |
 
@@ -41,16 +41,18 @@ skipped (risk to core data paths for no measurable gain).
 - ⏭ **Skipped — `updateCurve` ring buffer** (`workoutplotzoomer.cpp`): the sample buffer is capped at **90** at 1-4 Hz, and Qwt's `setSamples` copies internally regardless. The original #1 audit ranking conflated this with the 40 Hz replot, which #227 already fixed.
 
 ## Group 3 — De-duplication via templates  ◐  (partial)
-- ☑ `DataPower/DataHeartRate/DataCadence/DataSpeed` — the four byte-identical singleton `.cpp` files (~590 lines) replaced by one CRTP base `DataMetricSingleton<Derived>` in `datametric.h`; each metric is now an ~11-line `final` subclass. Net −598 lines. Public API (`DataPower::instance().append()` etc.) unchanged; verified app builds + workout plots render live data. (The `CurveData*` wrappers were left as-is — they differ more than the audit implied and aren't pure boilerplate.)
-- ☐ `PowerEditor/HrEditor/CadenceEditor` — identical NONE/FLAT/PROGRESSIVE show-hide structure → a parameterised `MetricEditor`. (Still todo — separate change.)
+- ☑ `DataPower/DataHeartRate/DataCadence/DataSpeed` — the four byte-identical singleton `.cpp` files (~590 lines) replaced by one CRTP base `DataMetricSingleton<Derived>` in `datametric.h`; each metric is now an ~11-line `final` subclass. Net −598 lines. Public API (`DataPower::instance().append()` etc.) unchanged; verified app builds + workout plots render live data. (The `CurveData*` wrappers were left as-is — they differ more than the audit implied and aren't pure boilerplate.) **(PR #236)**
+- ◐ `PowerEditor/HrEditor/CadenceEditor` — the audit proposed one parameterised `MetricEditor`, but a full merge is **not** small/low-risk: the three diverge (Power adds L/R balance + test-interval; Power/HR have a unit toggle, Cadence doesn't) and each has its own `.ui` with a distinct `Ui::` namespace.
+  - ☑ **First step shipped:** extracted the one byte-identical part — the NONE/FLAT/PROGRESSIVE show-hide block in each `on_comboBox_*_currentIndexChanged` — into `MetricEditorVisibility::applyStepTypeVisibility(...)` (`metriceditorvisibility.h`). ~75 lines of triplicated visibility logic → 1 inline helper + 3 call sites. Verified: builds + workout-editor screenshot renders.
+  - ☐ Remaining (optional, larger): dedup the unit-toggle handlers (`on_comboBox_FTPorWatts` / `on_comboBox_LTHRorBpm`) and/or a fuller shared base. Lower value, more divergence — defer unless it pays off.
 
 ## Group 4 — Latent naming hazard  ☑
 - ☑ Two classes were both named `IntervalsIcuService` (static `intervals_icu_service.*` + QObject `intervalsicuservice.*`), both compiled in `db.pri` — an ODR/confusion trap. Renamed the static one to **`IntervalsIcuApi`** and its files to `intervals_icu_api.{h,cpp}`; updated `db.pri` and the 3 test projects that use it. The QObject `IntervalsIcuService` (used by the UI) is unchanged. Verified: app builds + the `intervals_icu_tests` unit suite passes (19/19).
 
-## Group 5 — Quick correctness fixes  ☐
-- ☐ `simplecrypt.cpp:~130` — unguarded `qrand()` (removed in Qt6) → `QRandomGenerator`. (Confirm it even compiles on Qt6 CI.)
-- ☐ `util.cpp:~859,~881` — `Util::zipFileToDisk`/`unzipFile` discard `QFile::open()` return → check + log + bail.
-- ☐ `selfloops_service.cpp:~31` — local `gzipCompress` duplicates `Util::zipFileHelperConvertToGzip` → call the util.
+## Group 5 — Quick correctness fixes  ☑  (1 of 3 shipped; 2 dropped after inspection — PR #234)
+- ☑ `util.cpp` — `Util::zipFileToDisk`/`unzipFile` discarded the `QFile::open()` return → now checked + logged + bailed. **(PR #234)**
+- ⏭ **Dropped** — `simplecrypt.cpp` `qrand()`: not actually present/broken on the current Qt6 tree; no change needed.
+- ⏭ **Dropped** — `selfloops_service.cpp` local `gzipCompress`: on inspection it diverges enough from `Util::zipFileHelperConvertToGzip` that folding it in added risk for no real gain.
 
 ## Group 6 — Large mechanical modernization (one PR per sweep; low-risk, big diff)  ☐
 - ☐ 243 string-based `connect(SIGNAL/SLOT)` → function-pointer syntax (compile-time checked). Worst: `workoutdialog.cpp` (96), `mainwindow.cpp` (66).

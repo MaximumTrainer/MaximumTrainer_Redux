@@ -27,7 +27,8 @@ HEADERS +=\
     $$PWD/intervalviewstyle.h \
     $$PWD/myqwtpickermachine.h \
     $$PWD/myqwtplotpicker.h \
-    $$PWD/repeatincreaseeditor.h
+    $$PWD/repeatincreaseeditor.h \
+    $$PWD/metriceditorvisibility.h
 
 FORMS += \
     $$PWD/repeatwidget.ui \
