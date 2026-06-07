@@ -90,6 +90,12 @@ void SensorsWidget::buildUi()
 
     mainLayout->addWidget(group);
 
+    QLabel *hint = new QLabel(
+        tr("Saved sensors are connected automatically when you start a workout."), this);
+    hint->setWordWrap(true);
+    hint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
+    mainLayout->addWidget(hint);
+
     // Trainer control toggle. Lives here, next to the Trainer slot, rather than
     // in a separate Preferences page. Drives account->control_trainer_resistance,
     // which gates ERG setpoints over BLE FTMS (and legacy ANT FE-C) at runtime.
@@ -188,12 +194,6 @@ void SensorsWidget::buildUi()
     batteryLayout->addWidget(batteryHint);
 
     mainLayout->addWidget(batteryGroup);
-
-    QLabel *hint = new QLabel(
-        tr("Saved sensors are connected automatically when you start a workout."), this);
-    hint->setWordWrap(true);
-    hint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
-    mainLayout->addWidget(hint);
 
     mainLayout->addStretch();
 #endif
