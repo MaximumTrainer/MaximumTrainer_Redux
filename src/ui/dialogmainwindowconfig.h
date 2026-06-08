@@ -43,7 +43,6 @@ signals:
 
 public slots:
     void stravaLinked(bool);
-    void trainingPeaksLinked(bool);
     /// Update the Intervals.icu section visibility based on network state.
     /// When \a isOnline is false the groupBox_intervals is hidden so the
     /// user cannot attempt to test credentials that will time out.
@@ -58,9 +57,6 @@ private slots:
     void stravaLabelClicked();
     void unlinkStravaClicked();
     void stravaUnlinkFinished();
-
-    void trainingPeaksLabelClicked();
-    void unlinkTrainingPeaksClicked();
 
     void onTestIntervalsConnectionClicked();
     void onTestIntervalsConnectionFinished();
@@ -88,7 +84,6 @@ private:
     Account *account;
 
     QNetworkReply *replyStravaDeauthorization;
-    QNetworkReply *replyTPDeauthorization;
 
     QNetworkReply *replyIntervalsTest = nullptr;
     IntervalsIcuService *m_intervalsService = nullptr;

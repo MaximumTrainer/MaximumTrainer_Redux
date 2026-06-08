@@ -146,11 +146,6 @@ private slots:
     void slotStravaUploadFinished();
     void slotStravaCheckUploadStatus();
     void slotStravaUploadStatusFinished();
-    //- TrainingPeaks
-    void slotTrainingPeaksRefreshFinished();
-    void slotTrainingPeaksUploadFinished();
-    //-SelfLoops
-    void slotSelfLoopsUploadFinished();
     //-Intervals.icu
     void slotIntervalsIcuUploadFinished();
 
@@ -224,14 +219,6 @@ private:
     QNetworkReply *replyStravaUploadStatus;
     int stravaUploadID;
     QTimer *timerCheckUploadStatus;
-    //TrainingPeaks
-    QString nameWorkout;
-    QString descriptionWorkout;
-    QString filepathWorkout;
-    QNetworkReply *replyTrainingPeaksRefreshStatus;
-    QNetworkReply *replyTrainingPeaksPostFile;
-    //SelfLoops
-    QNetworkReply *replySelfLoopsUpload;
     //Intervals.icu
     QNetworkReply *replyIntervalsIcuUpload;
     QNetworkReply *replyVersionCheck = nullptr;

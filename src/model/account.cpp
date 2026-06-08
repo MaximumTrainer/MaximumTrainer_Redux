@@ -84,10 +84,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     // Load encrypted third-party service credentials from the platform credential store.
     strava_access_token         = CredentialStore::load("strava",        "access_token");
     strava_refresh_token        = CredentialStore::load("strava",        "refresh_token");
-    training_peaks_access_token  = CredentialStore::load("trainingpeaks", "access_token");
-    training_peaks_refresh_token = CredentialStore::load("trainingpeaks", "refresh_token");
-    selfloops_user              = CredentialStore::load("selfloops",     "email");
-    selfloops_pw                = CredentialStore::load("selfloops",     "password");
 
 
 
@@ -103,7 +99,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     show_included_workout = true;
     distance_in_km = true;
     strava_private_upload = false;
-    training_peaks_public_upload = false;
     // intervals_icu_auto_upload is loaded from QSettings above; don't reset it here
     control_trainer_resistance = true;
     // Clamp the loaded value to the valid range (0–30 s)
@@ -311,7 +306,6 @@ void Account::loadDisplayPrefs() {
     distance_in_km               = settings.value("distance_in_km",               distance_in_km).toBool();
     force_workout_window_on_top  = settings.value("force_workout_window_on_top",  force_workout_window_on_top).toBool();
     strava_private_upload        = settings.value("strava_private_upload",        strava_private_upload).toBool();
-    training_peaks_public_upload = settings.value("training_peaks_public_upload", training_peaks_public_upload).toBool();
 
     // Studio / power-meter / virtual-speed / included-content preferences.
     nb_user_studio        = settings.value("nb_user_studio",        nb_user_studio).toInt();
@@ -395,7 +389,6 @@ void Account::saveDisplayPrefs() {
     settings.setValue("distance_in_km",              distance_in_km);
     settings.setValue("force_workout_window_on_top", force_workout_window_on_top);
     settings.setValue("strava_private_upload",       strava_private_upload);
-    settings.setValue("training_peaks_public_upload", training_peaks_public_upload);
 
     // Studio / power-meter / virtual-speed / included-content preferences.
     // Formerly server-saved; persisted locally so they survive a restart.
@@ -454,18 +447,6 @@ void Account::saveStravaCredentials()
 {
     CredentialStore::store("strava", "access_token",  strava_access_token);
     CredentialStore::store("strava", "refresh_token", strava_refresh_token);
-}
-
-void Account::saveTrainingPeaksCredentials()
-{
-    CredentialStore::store("trainingpeaks", "access_token",  training_peaks_access_token);
-    CredentialStore::store("trainingpeaks", "refresh_token", training_peaks_refresh_token);
-}
-
-void Account::saveSelfloopsCredentials()
-{
-    CredentialStore::store("selfloops", "email",    selfloops_user);
-    CredentialStore::store("selfloops", "password", selfloops_pw);
 }
 
 void Account::saveSensorDropoutSettings()

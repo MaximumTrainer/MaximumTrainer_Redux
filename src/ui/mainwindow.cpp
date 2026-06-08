@@ -1849,10 +1849,9 @@ void MainWindow::checkToUploadFile(const QString& filename, const QString& nameO
         m_adherenceStore->addCompleted(today, nameOnly, filename);
     }
 
-    // Note: Strava, TrainingPeaks, and SelfLoops uploads are now triggered
-    // explicitly by the post-workout upload buttons inside WorkoutDialog.
-    // Only Intervals.icu is auto-uploaded here because it has its own
-    // dedicated auto-upload setting flag.
+    // Note: Strava uploads are triggered explicitly by the post-workout upload
+    // buttons inside WorkoutDialog. Only Intervals.icu is auto-uploaded here
+    // because it has its own dedicated auto-upload setting flag.
 
     // Intervals.icu
     if (account->intervals_icu_auto_upload &&
@@ -1874,47 +1873,6 @@ void MainWindow::checkToUploadFile(const QString& filename, const QString& nameO
     }
 
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::slotSelfLoopsUploadFinished()
-{
-    qDebug() << "slotSelfLoopsUploadFinished";
-
-    QString msgReady = tr("Your activity was successfully uploaded to SelfLoops");
-    QString msgPresent = tr("This activity is already present on SelfLoops");
-    QString msgEmpty = tr("Your activity is empty, it was not uploaded to SelfLoops");
-    QString msgNotUploaded = tr("Your activity was not uploaded to SelfLoops");
-
-
-    //success, process data
-    if (replySelfLoopsUpload->error() == QNetworkReply::NoError) {
-        qDebug() << "no error selfLoops!";
-        QByteArray arrayData =  replySelfLoopsUpload->readAll();
-        QString msgReply(arrayData);
-
-        if (msgReply.contains("Success", Qt::CaseInsensitive)) {
-            ui->widget_bottomMenu->setGeneralMessage(msgReady, 5000);
-        }
-        else if (msgReply.contains("already", Qt::CaseInsensitive)) {
-            ui->widget_bottomMenu->setGeneralMessage(msgPresent, 5000);
-        }
-        else if (msgReply.contains("empty", Qt::CaseInsensitive)) {
-            ui->widget_bottomMenu->setGeneralMessage(msgEmpty, 5000);
-        }
-        else {
-            ui->widget_bottomMenu->setGeneralMessage(msgNotUploaded, 5000);
-        }
-
-    }
-    else {
-        LOG_WARN("MainWindow",
-                 QStringLiteral("SelfLoops upload failed: ") + replySelfLoopsUpload->errorString());
-        ui->widget_bottomMenu->setGeneralMessage("SelfLoops : " + replySelfLoopsUpload->errorString(), 5000);
-    }
-    replySelfLoopsUpload->deleteLater();
-
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::slotIntervalsIcuUploadFinished()
@@ -1970,59 +1928,6 @@ void MainWindow::slotSystemThemeChanged()
     // Only react when the user has chosen "System" mode.
     if (account->app_theme == 2 /*System*/)
         AppTheme::apply(qApp, AppTheme::System);
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::slotTrainingPeaksRefreshFinished()
-{
-
-    qDebug() << "slotTrainingPeaksRefreshFinished";
-
-    //success, process data (new access Token)
-    if (replyTrainingPeaksRefreshStatus->error() == QNetworkReply::NoError) {
-        qDebug() << "no error TP!";
-        QByteArray arrayData =  replyTrainingPeaksRefreshStatus->readAll();
-        Util::parseJsonTPObject(QString(arrayData));
-
-        replyTrainingPeaksPostFile = ExtRequest::trainingPeaksUploadFile(account->training_peaks_access_token, account->training_peaks_public_upload,
-                                                                         nameWorkout, descriptionWorkout, filepathWorkout);
-        connect(replyTrainingPeaksPostFile, SIGNAL(finished()), this, SLOT(slotTrainingPeaksUploadFinished()) );
-    }
-    else {
-        LOG_WARN("MainWindow",
-                 QStringLiteral("TrainingPeaks token refresh failed: ")
-                 + replyTrainingPeaksRefreshStatus->errorString());
-        ui->widget_bottomMenu->setGeneralMessage("TrainingPeaks : " + replyTrainingPeaksRefreshStatus->errorString(), 5000);
-    }
-    replyTrainingPeaksRefreshStatus->deleteLater();
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::slotTrainingPeaksUploadFinished()
-{
-    qDebug() << "slotTrainingPeaksUploadFinished";
-
-    QString msgReady = tr("Your activity was successfully uploaded to TrainingPeaks");
-    //    QString msgError = tr("There was an error processing your activity to TrainingPeaks");
-
-
-    //success, process data
-    if (replyTrainingPeaksPostFile->error() == QNetworkReply::NoError) {
-        qDebug() << "no error slotTrainingPeaksUploadFinished!";
-        QByteArray arrayData =  replyTrainingPeaksPostFile->readAll();
-        ui->widget_bottomMenu->setGeneralMessage(msgReady, 5000);
-
-    }
-    else {
-        LOG_WARN("MainWindow",
-                 QStringLiteral("TrainingPeaks upload failed: ")
-                 + replyTrainingPeaksPostFile->errorString());
-        ui->widget_bottomMenu->setGeneralMessage("TrainingPeaks : " + replyTrainingPeaksPostFile->errorString(), 5000);
-    }
-    replyTrainingPeaksPostFile->deleteLater();
-
 }
 
 

@@ -84,7 +84,7 @@ DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent
 
     QListWidgetItem *item1 = new QListWidgetItem(QIcon(":/image/icon/general"), tr("General"), ui->listWidget_settings);
     QListWidgetItem *item3 = new QListWidgetItem(QIcon(":/image/icon/folder"), tr("Folders"), ui->listWidget_settings);
-    QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/upload"), tr("Auto Upload"), ui->listWidget_settings);
+    QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/strava_logo"), tr("Strava"), ui->listWidget_settings);
     QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/intervals"), tr("Intervals.icu"), ui->listWidget_settings);
     // "Profile" reuses the old main-page profile icon; its page (page_profile)
     // is the last static page in the .ui, so it maps to stacked index 4 and the
@@ -116,9 +116,6 @@ DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent
 
     initUI();
 
-
-    ui->checkBox_trainingPeaksPrivate->setVisible(false);
-
     connect(ui->pushButton_testIntervalsConnection, &QPushButton::clicked,
             this, &DialogMainWindowConfig::onTestIntervalsConnectionClicked);
 }
@@ -140,20 +137,7 @@ void DialogMainWindowConfig::initUI() {
         stravaLinked(false);
     }
 
-    // TrainingPeaks
-    ui->label_TrainingPeaksUnlink->setText(tr("Unlink"));
-    ui->label_TrainingPeaksUnlink->setStyleSheet("background-color : transparent; color : blue; text-decoration: underline;");
-    connect(ui->label_TrainingPeaksUnlink, SIGNAL(clicked(bool)), this, SLOT(unlinkTrainingPeaksClicked()) );
-
-    if (account->training_peaks_refresh_token != "") {
-        trainingPeaksLinked(true);
-    }
-    else {
-        trainingPeaksLinked(false);
-    }
-
     ui->checkBox_stravaPrivate->setChecked(account->strava_private_upload);
-    ui->checkBox_trainingPeaksPrivate->setChecked(!account->training_peaks_public_upload);
     ui->lineEdit_historyDir->setText(Util::getSystemPathHistory());
     ui->lineEdit_workoutDir->setText(Util::getSystemPathWorkout());
     ui->lineEdit_historyDir->setReadOnly(true);
@@ -167,9 +151,6 @@ void DialogMainWindowConfig::initUI() {
     ui->checkBox_forceOnTop->setChecked(account->force_workout_window_on_top);
 
     ui->comboBox_theme->setCurrentIndex(themeComboIndexFromMode(account->app_theme));
-
-    ui->lineEdit_userSelfloops->setText(account->selfloops_user);
-    ui->lineEdit_pwSelfloops->setText(account->selfloops_pw);
 
     // Intervals.icu credentials
     ui->lineEdit_intervalsApiKey->setText(account->intervals_icu_api_key);
@@ -223,37 +204,6 @@ void DialogMainWindowConfig::stravaLinked(bool linked) {
 
 
 //---------------------------------------------------------------------------------------------
-void DialogMainWindowConfig::trainingPeaksLinked(bool linked) {
-
-    qDebug() << "TP linked!";
-
-    if (linked) {
-        qDebug() << "Access token for TP is: " << account->training_peaks_access_token;
-        qDebug() << "refresh token for TP is: " << account->training_peaks_refresh_token;
-
-        ui->label_connectTrainingPeaks->setCursor(Qt::ArrowCursor);
-        ui->label_connectTrainingPeaks->setVisible(false);
-        disconnect(ui->label_connectTrainingPeaks, SIGNAL(clicked(bool)), this, SLOT(trainingPeaksLabelClicked()) );
-
-        ui->label_TrainingPeaksUnlink->setVisible(true);
-        ui->label_TrainingPeaksUnlink->setCursor(Qt::PointingHandCursor);
-        ui->label_TrainingPeaksUnlink->fadeIn(1000);
-        //        ui->checkBox_trainingPeaksPrivate->setVisible(true);
-    }
-    else {
-        ui->label_connectTrainingPeaks->setStyleSheet("image: url(:/image/icon/trainingpeaks);");
-        ui->label_connectTrainingPeaks->setCursor(Qt::PointingHandCursor);
-        ui->label_connectTrainingPeaks->setVisible(true);
-        connect(ui->label_connectTrainingPeaks, SIGNAL(clicked(bool)), this, SLOT(trainingPeaksLabelClicked()) );
-
-        ui->label_TrainingPeaksUnlink->setVisible(false);
-        //        ui->checkBox_trainingPeaksPrivate->setVisible(false);
-    }
-    ui->label_connectTrainingPeaks->fadeIn(1000);
-}
-
-
-//---------------------------------------------------------------------------------------------
 void DialogMainWindowConfig::stravaLabelClicked() {
 
     qDebug() << "stravaLabelClicked1";
@@ -272,22 +222,6 @@ void DialogMainWindowConfig::stravaLabelClicked() {
 
 }
 
-//---------------------------------------------------------------------------------------------
-void DialogMainWindowConfig::trainingPeaksLabelClicked() {
-
-
-    DialogInfoWebView trainingPeaksInfoView;
-
-    trainingPeaksInfoView.setTitle(tr("Connect MaximumTrainer with your TrainingPeaks account"));
-    trainingPeaksInfoView.setUsedForTrainingPeaks(true);
-    connect(&trainingPeaksInfoView, SIGNAL(trainingPeaksLinked(bool)), this, SLOT(trainingPeaksLinked(bool)) );
-    trainingPeaksInfoView.setUrlWebView(Environnement::getURLTrainingPeaksAuthorize());
-
-    qDebug() << "TP URL IS : " << Environnement::getURLTrainingPeaksAuthorize();
-    trainingPeaksInfoView.exec();
-
-}
-
 
 //---------------------------------------------------------------------------------------------
 void DialogMainWindowConfig::unlinkStravaClicked() {
@@ -297,15 +231,6 @@ void DialogMainWindowConfig::unlinkStravaClicked() {
 
     replyStravaDeauthorization = ExtRequest::stravaDeauthorization(account->strava_access_token);
     connect(replyStravaDeauthorization, SIGNAL(finished()), this, SLOT(stravaUnlinkFinished()) );
-}
-
-//---------------------------------------------------------------------------------------------
-void DialogMainWindowConfig::unlinkTrainingPeaksClicked() {
-
-    account->training_peaks_access_token = "";
-    account->training_peaks_refresh_token = "";
-    trainingPeaksLinked(false);
-
 }
 
 
@@ -409,7 +334,6 @@ void DialogMainWindowConfig::accept() {
     qDebug() << "ACCEPT, save settings";
 
     account->strava_private_upload = ui->checkBox_stravaPrivate->isChecked();
-    account->training_peaks_public_upload = !ui->checkBox_trainingPeaksPrivate->isChecked();
 
     //Folder changed
     if (settings->workoutFolder != ui->lineEdit_workoutDir->text()) {
@@ -448,11 +372,6 @@ void DialogMainWindowConfig::accept() {
     else //MPH
         account->distance_in_km = false;
 
-    account->selfloops_user = ui->lineEdit_userSelfloops->text();
-    account->selfloops_pw = ui->lineEdit_pwSelfloops->text();
-
-    qDebug() << "user Selfloop is" << account->selfloops_user << "pw is:" << account->selfloops_pw;
-
     // Intervals.icu credentials — trim whitespace before saving
     const QString newApiKey    = ui->lineEdit_intervalsApiKey->text().trimmed();
     const QString newAthleteId = ui->lineEdit_intervalsAthleteId->text().trimmed();
@@ -480,12 +399,10 @@ void DialogMainWindowConfig::accept() {
 
     // Persist the preferences edited here locally (the maximumtrainer.com
     // account endpoint is defunct): general/trainer/pairing/upload toggles via
-    // saveDisplayPrefs(), and the third-party credentials via their encrypted
-    // credential-store savers (covers Selfloops edits and Strava/TP disconnects).
+    // saveDisplayPrefs(), and the Strava credentials via the encrypted
+    // credential-store saver (covers Strava connect/disconnect).
     account->saveDisplayPrefs();
-    account->saveSelfloopsCredentials();
     account->saveStravaCredentials();
-    account->saveTrainingPeaksCredentials();
 
     if (intervalsChanged)
         emit intervalsIcuCredentialsChanged();

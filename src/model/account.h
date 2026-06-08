@@ -39,12 +39,6 @@ public:
     /// Call after a successful token exchange or refresh.
     void saveStravaCredentials();
 
-    /// Encrypt and persist TrainingPeaks OAuth2 tokens to QSettings.
-    void saveTrainingPeaksCredentials();
-
-    /// Encrypt and persist Selfloops email + password to QSettings.
-    void saveSelfloopsCredentials();
-
 
     int id;
     int subscription_type_id;  //1 = Free, 2= Regular, 3=Studio
@@ -96,8 +90,6 @@ public:
     QString strava_access_token;
     QString strava_refresh_token;    ///< OAuth2 refresh token for Strava.
     bool strava_private_upload;
-    QString selfloops_user;
-    QString selfloops_pw;
 
     // Intervals.icu integration
     QString intervals_icu_athlete_id;  ///< Intervals.icu athlete ID (e.g. "i12345")
@@ -107,10 +99,6 @@ public:
     QString intervals_icu_refresh_token; ///< OAuth2 refresh token (from OAuth login flow)
     QList<int> hr_zones;               ///< HR zone upper-bounds retrieved from Intervals.icu
     QList<int> power_zones;            ///< Power zone upper-bounds retrieved from Intervals.icu
-
-    QString training_peaks_access_token;
-    QString training_peaks_refresh_token;
-    bool training_peaks_public_upload;
 
     bool control_trainer_resistance;
     int erg_smoothing_duration_s;  ///< Ramp duration (seconds) for ERG setpoint transitions; 0 = disabled.

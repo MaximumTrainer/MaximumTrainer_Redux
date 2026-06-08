@@ -22,7 +22,7 @@
 #include "faderframe.h"
 #include "radio.h"
 #ifdef GC_HAVE_QTMULTIMEDIA
-#include "myvlcplayer.h"
+#include "qtmediaplayer.h"
 #endif
 #include "userstudiowidget.h"
 #include "myconstants.h"
@@ -211,16 +211,11 @@ private slots:
 
     // Post-workout upload slots
     void uploadToStrava();
-    void uploadToTrainingPeaks();
-    void uploadToSelfLoops();
     void uploadToIntervalsIcu();
     void slotPostIntervalsIcuUploadDone();
     void slotPostStravaUploadDone();
     void slotPostStravaCheckStatus();
     void slotPostStravaStatusDone();
-    void slotPostTPRefreshDone();
-    void slotPostTPUploadDone();
-    void slotPostSelfloopsUploadDone();
 
 
 
@@ -294,7 +289,7 @@ private:
 
     //Internet radio player
 #ifdef GC_HAVE_QTMULTIMEDIA
-    MyVlcPlayer *radioPlayer;
+    QtMediaPlayer *radioPlayer;
 #endif
 
     // Embedded web video player (QWebEngine-based). Created lazily the first
@@ -352,9 +347,6 @@ private:
     QNetworkReply *replyPostStravaStatus   = nullptr;
     QTimer        *timerPostStravaStatus   = nullptr;
     int            stravaUploadID_post     = 0;
-    QNetworkReply *replyPostTPRefresh      = nullptr;
-    QNetworkReply *replyPostTPUpload       = nullptr;
-    QNetworkReply *replyPostSelfloopsUpload = nullptr;
     QNetworkReply *replyPostIntervalsIcuUpload = nullptr;
 
 

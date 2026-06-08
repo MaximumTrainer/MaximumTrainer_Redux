@@ -26,13 +26,6 @@ public:
     static QNetworkReply* stravaCheckUploadStatus(QString access_token, int uploadID);
 
 
-    //-- Training Peaks
-    static QNetworkReply* trainingPeaksRefreshToken(QString access_token, QString refresh_token);
-    static QNetworkReply* trainingPeaksUploadFile(QString access_token, bool workoutPublic, QString activityName, QString activityDescription, QString pathToFile);
-
-    //-- SelfLoops
-    static QNetworkReply* selfloopsUploadFile(QString email, QString password, QString pathToFile, QString note);
-
     //-- Intervals.icu OAuth2
     /// Exchange an authorization code for an access token by POSTing directly
     /// to the Intervals.icu token endpoint.  This is used as a client-side

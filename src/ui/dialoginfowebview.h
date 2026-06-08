@@ -21,7 +21,6 @@ public:
     void setUrlWebView(QString url);
     void setTitle(QString title);
     void setUsedForStrava(bool used);
-    void setUsedForTrainingPeaks(bool used);
     /// Configure this dialog as an Intervals.icu OAuth2 flow.
     /// When set, the dialog watches for the unified github.io
     /// /oauth_callback.html redirect and exchanges the authorization code
@@ -35,7 +34,6 @@ public:
 
 signals:
     void stravaLinked(bool linked);
-    void trainingPeaksLinked(bool linked);
     /// Emitted when the Intervals.icu OAuth2 flow completes (or fails).
     void intervalsIcuLinked(bool linked);
 
@@ -58,7 +56,6 @@ private:
 
 
     bool usedForStrava;
-    bool usedForTrainingPeaks;
     bool usedForIntervalsIcu;
     QString m_expectedOAuthState; ///< CSRF state token sent in the authorize URL
     QString emailUser;

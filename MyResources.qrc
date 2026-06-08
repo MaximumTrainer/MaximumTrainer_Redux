@@ -53,10 +53,9 @@
         <file alias="next">resources/images/button_blue_ffw.png</file>
         <file alias="workoutMan">resources/images/workoutMan.png</file>
         <file alias="strava">resources/images/connectStrava1.png</file>
-        <file alias="upload">resources/images/cloudUpload.png</file>
+        <file alias="strava_logo">resources/images/strava_logomark.png</file>
         <file alias="studio">resources/images/studio.png</file>
         <file alias="target">resources/images/fa-target.png</file>
-        <file alias="trainingpeaks">resources/images/TP_logo_horz_2_color.png</file>
         <file alias="intervals">resources/images/intervals.png</file>
     </qresource>
     <qresource prefix="/sound">

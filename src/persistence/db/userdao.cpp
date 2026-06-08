@@ -81,12 +81,6 @@ QNetworkReply* UserDAO::putAccount(Account *account) {
     postData.addQueryItem("strava_access_token", account->strava_access_token);
     postData.addQueryItem("strava_private_upload", QString::number(account->strava_private_upload) );
 
-    postData.addQueryItem("training_peaks_access_token", account->training_peaks_access_token);
-    postData.addQueryItem("training_peaks_refresh_token", account->training_peaks_refresh_token);
-    postData.addQueryItem("training_peaks_public_upload", QString::number(account->training_peaks_public_upload) );
-
-    postData.addQueryItem("selfloops_user", account->selfloops_user);
-    postData.addQueryItem("selfloops_pw", account->selfloops_pw);
     postData.addQueryItem("control_trainer_resistance", QString::number(account->control_trainer_resistance) );
 
     /* ----- */

@@ -137,14 +137,6 @@ QString Environnement::getURLStravaAuthorize() {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-QString Environnement::getURLTrainingPeaksAuthorize() {
-
-    QString myURL = urlTrainingPeaksAuthorize;
-    myURL += "&redirect_uri=" + getURLEnvironnement() + "trainingpeaks_token_exchange";
-    return (myURL);
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Build the full Intervals.icu OAuth2 authorization URL.
 ///
 /// Both desktop and WASM builds use the same redirect_uri — the GitHub Pages
