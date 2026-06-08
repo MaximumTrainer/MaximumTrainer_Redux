@@ -138,6 +138,7 @@ void DialogMainWindowConfig::initUI() {
     }
 
     ui->checkBox_stravaPrivate->setChecked(account->strava_private_upload);
+    ui->checkBox_stravaAutoUpload->setChecked(account->strava_auto_upload);
     ui->lineEdit_historyDir->setText(Util::getSystemPathHistory());
     ui->lineEdit_workoutDir->setText(Util::getSystemPathWorkout());
     ui->lineEdit_historyDir->setReadOnly(true);
@@ -334,6 +335,7 @@ void DialogMainWindowConfig::accept() {
     qDebug() << "ACCEPT, save settings";
 
     account->strava_private_upload = ui->checkBox_stravaPrivate->isChecked();
+    account->strava_auto_upload = ui->checkBox_stravaAutoUpload->isChecked();
 
     //Folder changed
     if (settings->workoutFolder != ui->lineEdit_workoutDir->text()) {

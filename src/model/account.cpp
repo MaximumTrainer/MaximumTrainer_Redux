@@ -450,6 +450,12 @@ void Account::saveStravaCredentials()
 {
     CredentialStore::store("strava", "access_token",  strava_access_token);
     CredentialStore::store("strava", "refresh_token", strava_refresh_token);
+    // Persist the expiry too so refresh-if-expired survives a restart.
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.setValue("strava_token_expires_at",
+                      QVariant::fromValue<qlonglong>(strava_token_expires_at));
+    settings.endGroup();
 }
 
 void Account::saveSensorDropoutSettings()

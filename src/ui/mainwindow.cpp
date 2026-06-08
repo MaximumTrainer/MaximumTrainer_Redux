@@ -62,6 +62,7 @@
 #include "myqwebenginepage.h"
 
 #include "extrequest.h"
+#include "strava_service.h"
 #ifdef GC_WASM_BUILD
 #include "btle_scanner_dialog_wasm.h"
 #else
@@ -1849,9 +1850,44 @@ void MainWindow::checkToUploadFile(const QString& filename, const QString& nameO
         m_adherenceStore->addCompleted(today, nameOnly, filename);
     }
 
-    // Note: Strava uploads are triggered explicitly by the post-workout upload
-    // buttons inside WorkoutDialog. Only Intervals.icu is auto-uploaded here
-    // because it has its own dedicated auto-upload setting flag.
+    // Strava + Intervals.icu auto-upload (each has its own toggle). The
+    // post-workout WorkoutDialog buttons remain for manual one-off uploads.
+
+    // Strava — refresh the access token if it's expired (via the token Worker),
+    // then upload. Access tokens live only 6 h, so check expires_at first.
+    if (account->strava_auto_upload &&
+        !account->strava_access_token.isEmpty() &&
+        NetworkMonitor::instance()->isOnline()) {
+
+        m_pendingStravaFile = filename;
+        m_pendingStravaName = nameOnly;
+        m_pendingStravaDesc = description;
+
+        const qint64 now = QDateTime::currentSecsSinceEpoch();
+        const bool tokenValid = account->strava_token_expires_at > now + 60;
+        if (tokenValid || account->strava_refresh_token.isEmpty()) {
+            startStravaAutoUpload();
+        } else {
+            ui->widget_bottomMenu->setGeneralMessage(tr("Refreshing Strava token..."));
+            QNetworkReply *refresh = StravaService::refreshToken(account->strava_refresh_token);
+            if (!refresh) {
+                startStravaAutoUpload();
+            } else {
+                connect(refresh, &QNetworkReply::finished, this, [this, refresh]() {
+                    refresh->deleteLater();
+                    if (refresh->error() == QNetworkReply::NoError) {
+                        Util::parseJsonStravaObject(QString::fromUtf8(refresh->readAll()));
+                        account->saveStravaCredentials();
+                    } else {
+                        LOG_WARN("MainWindow",
+                                 QStringLiteral("Strava token refresh failed: ")
+                                 + refresh->errorString());
+                    }
+                    startStravaAutoUpload();
+                });
+            }
+        }
+    }
 
     // Intervals.icu
     if (account->intervals_icu_auto_upload &&
@@ -1872,6 +1908,24 @@ void MainWindow::checkToUploadFile(const QString& filename, const QString& nameO
         svc->deleteLater();
     }
 
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Kicks off the actual Strava upload (assumes a fresh access token). The reply
+// is handled by the existing slotStravaUploadFinished → poll-status machinery.
+void MainWindow::startStravaAutoUpload()
+{
+    ui->widget_bottomMenu->setGeneralMessage(tr("Uploading your activity to Strava..."));
+    replyStravaUpload = ExtRequest::stravaUploadFile(
+        account->strava_access_token,
+        m_pendingStravaName,
+        m_pendingStravaDesc,
+        true,                              // indoor / trainer activity
+        account->strava_private_upload,
+        QStringLiteral("ride"),
+        m_pendingStravaFile);
+    if (replyStravaUpload)
+        connect(replyStravaUpload, SIGNAL(finished()), this, SLOT(slotStravaUploadFinished()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
