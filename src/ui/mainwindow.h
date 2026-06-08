@@ -85,12 +85,7 @@ public slots:
     void loadConfigStudio();
     void saveConfigStudio();
     void updateVecStudio(QVector<UserStudio>);
-    void fillStudioPage();
     void fillSettingPage();
-    void companyLoadedForUser(int riderID);
-    void setPowerCurveForUser(int riderID, int company_id, int trainer_id, QString companyName, QString trainerName,
-                              double coef0, double coef1, double coef2, double coef3, int formulaInCode);
-    void disablePowerCurveForUser(int riderID);
     void updateFieldForUser(int riderID, int fieldNumber, QVariant value);
 
 
