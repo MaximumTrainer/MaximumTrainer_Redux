@@ -58,7 +58,6 @@ SOURCES += \
     ../../src/model/workout.cpp \
     ../../src/model/interval.cpp \
     ../../src/model/repeatdata.cpp \
-    ../../src/model/powercurve.cpp \
     ../intervals_icu/credential_store_stub.cpp \
     tst_workout_creator.cpp
 

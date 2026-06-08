@@ -295,40 +295,7 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="QTabWidget" name="tabStudio">
-          <property name="usesScrollButtons">
-           <bool>false</bool>
-          </property>
-          <property name="documentMode">
-           <bool>true</bool>
-          </property>
-          <widget class="QWidget" name="tab">
-           <attribute name="title">
-            <string>Studio</string>
-           </attribute>
-           <layout class="QVBoxLayout" name="verticalLayout_11">
-            <property name="leftMargin">
-             <number>0</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="rightMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
-             <number>0</number>
-            </property>
-            <item>
-             <widget class="QWebEngineView" name="webView_studio" native="true">
-              <property name="contextMenuPolicy">
-               <enum>Qt::NoContextMenu</enum>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-         </widget>
+         <widget class="StudioWidget" name="studioWidget" native="true"/>
         </item>
        </layout>
       </widget>
@@ -697,6 +664,12 @@
    <class>SensorsWidget</class>
    <extends>QWidget</extends>
    <header>sensorswidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>StudioWidget</class>
+   <extends>QWidget</extends>
+   <header>studiowidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

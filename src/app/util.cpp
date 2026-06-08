@@ -379,11 +379,6 @@ void Util::parseJsonObjectAccount(QString data) {
     account->height_cm = jsonObj["height_cm"].toString().toInt();
 
 
-    int trainer_curve_id = jsonObj["trainer_curve_id"].toString().toInt();
-    PowerCurve curve;
-    curve.setId(trainer_curve_id);
-    curve.setRiderWeightKg(account->weight_kg);
-    account->powerCurve = curve;
     account->wheel_circ = jsonObj["wheel_circ"].toString().toInt();
     account->bike_weight_kg = jsonObj["bike_weight_kg"].toString().toDouble();
     account->bike_type = jsonObj["bike_type"].toString().toInt();

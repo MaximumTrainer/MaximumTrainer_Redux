@@ -56,8 +56,22 @@ jobs:
       shell: powershell
 
     - name: Install jom
-      run: choco install jom -y
-      shell: cmd
+      shell: pwsh
+      run: |
+        # Chocolatey's CDN occasionally returns a 504 and then exits 0 with
+        # "Chocolatey installed 0/0 packages" — leaving jom missing, which only
+        # surfaces later as "jom : not recognized" in a build step. Retry until
+        # jom.exe actually exists, fail fast if it never does, and pin it on PATH.
+        $jom = "C:\ProgramData\chocolatey\bin\jom.exe"
+        for ($i = 1; $i -le 5 -and -not (Test-Path $jom); $i++) {
+          if ($i -gt 1) { Start-Sleep -Seconds 15 }
+          Write-Host "Installing jom (attempt $i)..."
+          choco install jom -y --no-progress
+        }
+        if (-not (Test-Path $jom)) {
+          throw "jom failed to install after 5 attempts (Chocolatey source issue)"
+        }
+        "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
     - name: Restore OpenSSL cache
       id: openssl-cache
@@ -513,8 +527,22 @@ jobs:
       shell: powershell
 
     - name: Install jom
-      run: choco install jom -y
-      shell: cmd
+      shell: pwsh
+      run: |
+        # Chocolatey's CDN occasionally returns a 504 and then exits 0 with
+        # "Chocolatey installed 0/0 packages" — leaving jom missing, which only
+        # surfaces later as "jom : not recognized" in a build step. Retry until
+        # jom.exe actually exists, fail fast if it never does, and pin it on PATH.
+        $jom = "C:\ProgramData\chocolatey\bin\jom.exe"
+        for ($i = 1; $i -le 5 -and -not (Test-Path $jom); $i++) {
+          if ($i -gt 1) { Start-Sleep -Seconds 15 }
+          Write-Host "Installing jom (attempt $i)..."
+          choco install jom -y --no-progress
+        }
+        if (-not (Test-Path $jom)) {
+          throw "jom failed to install after 5 attempts (Chocolatey source issue)"
+        }
+        "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
     - name: Restore OpenSSL cache
       id: openssl-cache

@@ -47,7 +47,6 @@ SOURCES += \
     ../../src/model/interval.cpp \
     ../../src/model/account.cpp \
     ../../src/model/repeatdata.cpp \
-    ../../src/model/powercurve.cpp \
     credential_store_stub.cpp \
     tst_importer_workout_zwo.cpp
 
@@ -57,5 +56,4 @@ HEADERS += \
     ../../src/model/interval.h \
     ../../src/model/account.h \
     ../../src/model/repeatdata.h \
-    ../../src/model/powercurve.h \
     util.h

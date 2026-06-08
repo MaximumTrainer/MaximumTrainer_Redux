@@ -63,7 +63,6 @@ QNetworkReply* UserDAO::putAccount(Account *account) {
     postData.addQueryItem("weight_kg", QString::number(account->weight_kg) );
     postData.addQueryItem("weight_in_kg", QString::number(account->weight_in_kg) );
     postData.addQueryItem("height_cm", QString::number(account->height_cm) );
-    postData.addQueryItem("trainer_curve_id", QString::number( account->powerCurve.getId()) ) ;
 
 
     postData.addQueryItem("wheel_circ", QString::number(account->wheel_circ) );

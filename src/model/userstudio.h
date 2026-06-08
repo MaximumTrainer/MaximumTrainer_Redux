@@ -2,7 +2,6 @@
 #define USERSTUDIO_H
 
 #include <QtCore>
-#include "powercurve.h"
 
 
 class UserStudio
@@ -56,9 +55,6 @@ public:
     int getBrandID() const {
         return this->brandID;
     }
-    PowerCurve getPowerCurve() const {
-        return this->powerCurve;
-    }
 
 
     //QString displayName;  = 0
@@ -110,10 +106,6 @@ public:
         this->brandID = id;
     }
 
-    void setPowerCurve(PowerCurve curve) {
-        this->powerCurve = curve;
-    }
-
 
 private :
 
@@ -132,8 +124,6 @@ private :
     bool usingPowerCurve;
     int companyID;
     int brandID;
-
-    PowerCurve powerCurve;
 
 
 };

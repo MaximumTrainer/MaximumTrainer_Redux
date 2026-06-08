@@ -175,15 +175,12 @@ private :
     void playSoundTestEffect();
     void moveElement(QString widgetIdentifier, bool moveRight); //moveRight false = moveLeft
 
-    // Group C: preference tab setup helpers
-    QWidget *setupStudioTab();
-    QWidget *setupTrainerTab();
+    // Interval-summary overlay setting (lives at the bottom of the General tab)
+    void buildIntervalSummaryGroup();
 
-    void initStudioTab();
-    void initTrainerTab();
+    void initIntervalSummary();
 
-    void saveStudioTab();
-    void saveTrainerTab();
+    void saveIntervalSummary();
 
 private:
     RadioTableModel *tableModel;
@@ -202,22 +199,6 @@ private:
 
     bool isPlayingRadio;
     bool isConnecting = false;
-
-    // Studio tab controls
-    QCheckBox    *checkStudioMode   = nullptr;
-    QSpinBox     *spinNbRiders      = nullptr;
-
-    // Trainer tab controls
-    QComboBox    *comboTrainerModel      = nullptr;
-    QSpinBox     *spinErgSmoothing       = nullptr;
-    QCheckBox    *checkIntervalsIcuAutoUpload = nullptr;
-
-    // Trainer tab — Sensor dropout (issue #148)
-    QCheckBox    *checkDropoutEnabled    = nullptr;
-    QSpinBox     *spinDropoutTimeout     = nullptr;
-
-    // Trainer tab — Battery warning threshold (issue #156)
-    QSpinBox     *spinBatteryThreshold   = nullptr;
 
     // Interval Summary overlay controls
     QCheckBox    *checkIntervalSummary         = nullptr;

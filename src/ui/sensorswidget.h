@@ -9,6 +9,7 @@
 class QLabel;
 class QPushButton;
 class QCheckBox;
+class QSpinBox;
 class Account;
 
 /*
@@ -35,6 +36,9 @@ private slots:
     void onScanClicked(int rowIndex);
     void onClearClicked(int rowIndex);
     void onControlResistanceToggled(bool checked);
+    void onErgRampChanged(int seconds);
+    void onSensorDropoutChanged();
+    void onBatteryThresholdChanged(int percent);
 
 private:
     struct SlotRow {
@@ -50,6 +54,10 @@ private:
 
     QVector<SlotRow> m_rows;
     QCheckBox *m_controlResistanceCheck = nullptr;
+    QSpinBox  *m_ergRampSpin            = nullptr;
+    QCheckBox *m_dropoutEnabledCheck    = nullptr;
+    QSpinBox  *m_dropoutTimeoutSpin     = nullptr;
+    QSpinBox  *m_batteryThresholdSpin   = nullptr;
     Account   *m_account = nullptr;
 };
 

@@ -70,6 +70,7 @@
 #include "sensor_connect_dialog.h"
 #endif
 #include "sensorswidget.h"
+#include "studiowidget.h"
 
 
 
@@ -139,8 +140,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         );
     }
 
-    ui->webView_studio->setUrl(QUrl(Environnement::getUrlStudio()));
-
     // ── Trainerweb integration ────────────────────────────────────────────────
     ui->webView_trainerweb_plans->setUrl(
         QUrl(QStringLiteral("https://trainerdb-84bdb.firebaseapp.com/listplan")));
@@ -184,7 +183,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // removed — FTP/LTHR/weight now live in the Preferences dialog, and the
     // server-hosted settings page is superseded by it.
     ftb->insertTab(0, QIcon(":/image/icon/workoutMan"), tr("Workout"));
-    ftb->insertTab(1, QIcon(":/image/icon/calendar"),   tr("Intervals.icu"));
+    ftb->insertTab(1, QIcon(":/image/icon/intervals"),   tr("Intervals.icu"));
     ftb->insertTab(2, QIcon(":/image/icon/calendar"),  tr("Plan"));
     ftb->insertTab(3, QIcon(":/image/icon/studio"), tr("Studio"));
     ftb->insertTab(4, QIcon(":/image/icon/chart"), tr("History"));
@@ -317,7 +316,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 
     connect(ui->webView_settings, SIGNAL(loadFinished(bool)), this, SLOT(fillSettingPage()));
-    connect(ui->webView_studio, SIGNAL(loadFinished(bool)), this, SLOT(fillStudioPage()));
+
+    // Native Studio page: enabling studio mode / changing rider count routes
+    // through the same MainWindow logic the old web page used.
+    connect(ui->studioWidget, &StudioWidget::studioModeChanged, this, &MainWindow::enableStudioMode);
+    connect(ui->studioWidget, &StudioWidget::riderCountChanged, this, &MainWindow::setNumberUserStudio);
 
     // Wire Intervals.icu workout downloaded → refresh workout list and filter
     connect(ui->tab_intervals_icu, &TabIntervalsIcu::workoutDownloaded,
@@ -801,6 +804,11 @@ void MainWindow::leftMenuChanged(int tabSelected) {
         if (auto *sw = qobject_cast<SensorsWidget*>(ui->sensorsWidget))
             sw->reload();
     }
+    // Refresh studio settings each time the Studio tab is opened.
+    if (tabSelected == 3) {
+        if (auto *sw = qobject_cast<StudioWidget*>(ui->studioWidget))
+            sw->reload();
+    }
 }
 
 
@@ -838,10 +846,6 @@ void MainWindow::createWebChannelZone() {
         ui->webView_zones->page()->scripts().insert(script);
         ui->webView_zones->page()->setWebChannel(channel);
         channel->registerObject("zoneObject", zoneObject);
-
-        // execute updateCdA() js function to init value
-        ui->webView_studio->page()->runJavaScript(
-            "if(typeof updateCdA==='function'){updateCdA();}");
     }
 }
 
@@ -948,18 +952,6 @@ void MainWindow::createWebChannelStudio() {
                     "\n"
                     );
 
-        QWebChannel *channel = new QWebChannel(ui->webView_studio);
-        QWebEngineScript script;
-        script.setSourceCode(webChannelJs);
-        script.setName("qwebchannel.js");
-        script.setWorldId(QWebEngineScript::MainWorld);
-        script.setInjectionPoint(QWebEngineScript::DocumentCreation);
-        script.setRunsOnSubFrames(false);
-
-        ui->webView_studio->page()->scripts().insert(script);
-        ui->webView_studio->page()->setWebChannel(channel);
-        channel->registerObject("MainWindow", this);
-
     }
 }
 
@@ -971,12 +963,6 @@ void MainWindow::fillSettingPage()  {
 
     QString jsCode = QString("$('#switch-pm-cadence').bootstrapSwitch('state', %1);").arg(account->use_pm_for_cadence);
     jsCode += QString("$('#switch-pm-speed').bootstrapSwitch('state', %1);").arg(account->use_pm_for_speed);
-
-    //using trainer curve?
-    if (account->powerCurve.getId() > 0) {
-        jsCode += QString("$('#power-data-source').trigger('change');");
-        jsCode += QString("$('#select-company').trigger('change');");
-    }
 
     qDebug() << "jsCodeISL:" << jsCode;
 
@@ -991,145 +977,9 @@ void MainWindow::updateVecStudio(QVector<UserStudio> vecUserStudio) {
 
     qDebug() << "zzzzz MainWindow::updateVecStudio";
     this->vecUserStudio = vecUserStudio;
-
-    fillStudioPage();
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::fillStudioPage() {
-
-    qDebug() << "fillStudioPage -  Set the Checkbox to " << account->enable_studio_mode;
-
-    QString jsCode = QString("$('#switch-enable-studio').bootstrapSwitch('state', %1);").arg(account->enable_studio_mode);
-    jsCode += QString("$('#select-number-workout').val(%1);").arg(account->nb_user_studio);
-    jsCode += "$('#select-number-workout').trigger('change');";
-
-
-    qDebug() << "JSTOEXECUTE IS:" << jsCode;
-    ui->webView_studio->page()->runJavaScript(
-        "if(typeof window.$==='function'){" + jsCode + "}");
-
-
-    //-- Populate QwebView Studio
-    QString jsToExecute = "";
-    for (int i=0; i<vecUserStudio.size(); i++) {
-
-        int userID = i+1;
-        UserStudio userStudio = vecUserStudio.at(i);
-
-        // UserStudio dummyUser("", -1, -1, -1, -1, -1, -1, -1, 2100, false, 0, 0);
-        jsToExecute += QString("$('#input-display-name_" +QString::number(userID)+ "').val('%1');").arg(userStudio.getDisplayName());
-        if (userStudio.getFTP() > 0)
-            jsToExecute += QString("$('#input-ftp_" +QString::number(userID)+ "').val(%1);").arg(userStudio.getFTP());
-        if (userStudio.getLTHR() > 0)
-            jsToExecute += QString("$('#input-lthr_" +QString::number(userID)+ "').val(%1);").arg(userStudio.getLTHR());
-        if (userStudio.getHrID() > 0)
-            jsToExecute += QString("$('#sensor-hr-id_" +QString::number(userID)+ "').val(%1);").arg(userStudio.getHrID());
-        if (userStudio.getPowerID() > 0)
-            jsToExecute += QString("$('#sensor-power-id_" +QString::number(userID)+ "').val(%1);").arg(userStudio.getPowerID());
-        if (userStudio.getCadenceID() > 0)
-            jsToExecute += QString("$('#sensor-cadence-id_" +QString::number(userID)+ "').val(%1);").arg(userStudio.getCadenceID());
-        if (userStudio.getSpeedID() > 0)
-            jsToExecute += QString("$('#sensor-speed-id_" +QString::number(userID)+ "').val(%1);").arg(userStudio.getSpeedID());
-        if (userStudio.getFecID() > 0)
-            jsToExecute += QString("$('#sensor-fec-id_" +QString::number(userID)+ "').val(%1);").arg(userStudio.getFecID());
-        if (userStudio.getWheelCircMM() > 0)
-            jsToExecute += QString("$('#wheelcirc_" +QString::number(userID)+ "').val(%1);").arg(userStudio.getWheelCircMM());
-        jsToExecute += QString("$('#switch-power-curve_" +QString::number(userID)+ "').bootstrapSwitch('state', %1);").arg(userStudio.getUsingPowerCurve());
-
-        if (userStudio.getUsingPowerCurve()) {
-            jsToExecute += QString("$('#select-company_" +QString::number(userID)+ "').val(%1);").arg(userStudio.getCompanyID());
-            jsToExecute += "$('#select-company_"  +QString::number(userID)+ "').selectpicker('refresh');";
-            jsToExecute += "$('#select-company_"  +QString::number(userID)+ "').trigger('change');";
-        }
-    }
-
-
-    qDebug() << "JSTOEXECUTE IS:" << jsToExecute;
-    ui->webView_studio->page()->runJavaScript(
-        "if(typeof window.$==='function'){" + jsToExecute + "}");
 }
 
 
-
-/////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::companyLoadedForUser(int riderID) {
-
-    if (riderID >= vecUserStudio.size())
-        return;
-
-    qDebug() << "companyLoadedForUser" << riderID;
-
-    UserStudio myUserStudio = vecUserStudio.at(riderID-1);
-
-    if (myUserStudio.getBrandID() > 0) {
-
-        qDebug() << "OK This one got a brand ID, send to QWebView brand id!";
-
-        QString jsToExecute = "";
-        jsToExecute += QString("$('#select-trainer_" +QString::number(riderID)+ "').val(%1);").arg(myUserStudio.getBrandID());
-        jsToExecute += "$('#select-trainer_"  +QString::number(riderID)+ "').selectpicker('refresh');";
-        jsToExecute += "$('#select-trainer_"  +QString::number(riderID)+ "').trigger('change');";
-        ui->webView_studio->page()->runJavaScript(
-            "if(typeof window.$==='function'){" + jsToExecute + "}");
-    }
-
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::setPowerCurveForUser(int riderID, int company_id, int trainer_id, QString companyName, QString trainerName,
-                                      double coef0, double coef1, double coef2, double coef3, int formulaInCode) {
-
-    if (riderID >= vecUserStudio.size())
-        return;
-
-    UserStudio myUserStudio = vecUserStudio.at(riderID-1);
-
-    qDebug() << "setPowerCurveForUser" << "riderID" << riderID << "company_id" << company_id << "trainer_id" << trainer_id << "companyName" << companyName << "trainerName" << trainerName <<
-                "coef0" << coef0 << "coef1" << coef1 << "coef2" << coef2 << "coef3" << coef3 << "formulaInCode" << formulaInCode ;
-
-    myUserStudio.setUsingPowerCurve(true);
-    myUserStudio.setCompanyID(company_id);
-    myUserStudio.setBrandID(trainer_id);
-
-    PowerCurve myCurve = myUserStudio.getPowerCurve();
-    myCurve.setId(trainer_id);
-    myCurve.setName(companyName, trainerName);
-    myCurve.setCoefs(coef0, coef1, coef2, coef3);
-    myCurve.setFormulaInCode(formulaInCode);
-
-    myUserStudio.setPowerCurve(myCurve);
-    vecUserStudio.replace(riderID-1, myUserStudio);
-
-
-    //    UserStudio testUserStudio = vecUserStudio.at(riderID-1);
-    //    qDebug() << "PowerCurve for user 2 is now:" << testUserStudio.getPowerCurve().getFullName();
-
-    for (int i=0; i<vecUserStudio.size(); i++) {
-
-        UserStudio userStudio = vecUserStudio.at(i);
-        qDebug() << "User Studio power Curve is_WORKOUTDIALOG:" << userStudio.getPowerCurve().getFullName() << userStudio.getPowerCurve().getId() << "test att:" << userStudio.getDisplayName();
-    }
-
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::disablePowerCurveForUser(int riderID) {
-
-    qDebug() << "disablePowerCurveForUser" << riderID;
-    if (riderID >= vecUserStudio.size())
-        return;
-
-    UserStudio myUserStudio = vecUserStudio.at(riderID-1);
-    myUserStudio.setUsingPowerCurve(false);
-    myUserStudio.setCompanyID(0);
-    myUserStudio.setBrandID(0);
-    PowerCurve powerCurve;
-    myUserStudio.setPowerCurve(powerCurve);
-    vecUserStudio.replace(riderID-1, myUserStudio);
-
-}
 
 
 //QString displayName;  = 0
@@ -1236,7 +1086,6 @@ void MainWindow::loadConfigStudio() {
     //Parse File and reset QWebView with QVector
     XmlUtil *xmlUtil = new XmlUtil(this);
     vecUserStudio = xmlUtil->parseUserStudioFile(file);
-    fillStudioPage();
     ui->widget_bottomMenu->setGeneralMessage(QString(tr("Studio Profile %1 loaded")).arg(file), 5000);
 
 
@@ -1381,13 +1230,9 @@ void MainWindow::sendDataToSettingsOrStudioPage(int deviceType, int numberDevice
     QString jsToRun = script.arg(arg1, arg2, arg3, arg4, arg5);
     qDebug() << "here is the script to run:" << jsToRun;
 
-    if (fromStudioPage) {
-        qDebug() << "send the script to studio page";
-        ui->webView_studio->page()->runJavaScript(
-            "if(typeof foundSensor==='function'){" + jsToRun + "}");
-    }
-    else {
-        qDebug() << "send the script to settings page";
+    // The studio page is now a native widget; only the (legacy) settings web
+    // page still consumes this JS callback.
+    if (!fromStudioPage) {
         ui->webView_settings->page()->runJavaScript(
             "if(typeof foundSensor==='function'){" + jsToRun + "}");
     }
@@ -1741,13 +1586,6 @@ void MainWindow::executeWorkout(Workout workout) {
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
-    for (int i = 0; i < vecUserStudio.size(); i++) {
-        UserStudio userStudio = vecUserStudio.at(i);
-        qDebug() << "Before Execute__ User Studio power Curve is_WORKOUTDIALOG:"
-                 << userStudio.getPowerCurve().getFullName()
-                 << userStudio.getPowerCurve().getId()
-                 << "test att:" << userStudio.getDisplayName();
-    }
 
     BtleHub *btleHub = new BtleHub(this);
     if (account->wheel_circ > 0)
@@ -2291,19 +2129,6 @@ void MainWindow::setPmForSpeed(bool usedFor) {
 ///////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::updateTrainerCurve(int trainer_id, QString companyName, QString trainerName,
-                                    double coef0, double coef1, double coef2, double coef3, int formulaInCode) {
-
-    qDebug() << "UPDATE_TRAINER_CURVE INFO" << formulaInCode;
-
-    account->powerCurve.setId(trainer_id);
-    account->powerCurve.setName(companyName, trainerName);
-    account->powerCurve.setCoefs(coef0, coef1, coef2, coef3);
-    account->powerCurve.setFormulaInCode(formulaInCode);
-
-
-    qDebug() << "ok trainerID is now:" << account->powerCurve.getId();
-}
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2450,6 +2275,14 @@ void MainWindow::screenshotNextStep()
             dconfig->hide();
             qDebug() << "Screenshot: settings (Preferences dialog)";
         }
+        // Capture the Bluetooth Sensors page (FancyTabBar index 5), which hosts
+        // sensor pairing plus the trainer/sensor settings.
+        ftb->setCurrentIndex(5);
+        QCoreApplication::processEvents();
+        grab().save(m_ssOutputDir + QLatin1String("/screenshot_sensors.png"), "PNG");
+        qDebug() << "Screenshot: sensors";
+        ftb->setCurrentIndex(0);
+        QCoreApplication::processEvents();
         break;
 
     // ── Step 1: switch to WorkoutCreator and load demo workout ───────────

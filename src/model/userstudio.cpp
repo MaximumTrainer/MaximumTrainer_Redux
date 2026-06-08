@@ -24,9 +24,6 @@ UserStudio::UserStudio(QString displayName, int FTP, int LTHR, int hrID, int pow
     this->usingPowerCurve = usingPowerCurve;
     this->companyID = companyID;
     this->brandID = brandID;
-
-    //only set default powerCurve if usingPowerCurve is False
-    this->powerCurve = PowerCurve(); //init with default power curve
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////

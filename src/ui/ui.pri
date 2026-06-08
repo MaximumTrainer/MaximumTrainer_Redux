@@ -58,6 +58,11 @@ $$PWD/workoutdialog.h \
 SOURCES += $$PWD/sensorswidget.cpp
 HEADERS += $$PWD/sensorswidget.h
 
+# Studio main-window page — native replacement for the dead server-hosted
+# QWebEngineView studio page.
+SOURCES += $$PWD/studiowidget.cpp
+HEADERS += $$PWD/studiowidget.h
+
 FORMS    += $$PWD/mainwindow.ui \
     $$PWD/workoutdialog.ui \
     $$PWD/main_workoutpage.ui \

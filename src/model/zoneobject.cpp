@@ -41,7 +41,6 @@ void ZoneObject::updateUserWeight(double weight, bool isKg) {
 
     account->weight_in_kg = isKg;
     account->weight_kg = weightKg;
-    account->powerCurve.setRiderWeightKg(weightKg);
 }
 
 ///---------------------------------------------------------------------------

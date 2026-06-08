@@ -61,7 +61,6 @@ GlobalVars::GlobalVars(QObject *parent) :
 
 
     // Used in Signal/Slots connection
-    qRegisterMetaType<PowerCurve>("PowerCurve");
     qRegisterMetaType<Sensor>("Sensor");
     qRegisterMetaType<QList<Sensor> >( "QList<Sensor>" );
     qRegisterMetaType<QList<int> >( "QList<int>" );

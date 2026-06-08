@@ -92,7 +92,7 @@ signals:
 
     //--Send to Hub
     void sendDataUserStudio(QVector<UserStudio>);
-    void sendSoloData(PowerCurve curve, int wheelCircMM, QList<Sensor> lstSensor, bool usePmForCadence, bool usePmForSpeed);
+    void sendSoloData(int wheelCircMM, QList<Sensor> lstSensor, bool usePmForCadence, bool usePmForSpeed);
 
     void stopDecodingMsgHub();
 
