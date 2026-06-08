@@ -56,7 +56,7 @@ void StudioWidget::buildUi()
 
     QLabel *note = new QLabel(
         tr("Studio mode lets multiple riders train simultaneously, each with "
-           "their own sensors. Changes take effect after restarting a workout."),
+           "their own sensors."),
         group);
     note->setWordWrap(true);
     note->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
