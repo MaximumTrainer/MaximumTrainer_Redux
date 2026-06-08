@@ -15,10 +15,10 @@ Status: **not implemented** — this document is the plan.
 - Reuse Strava app **Client ID 7252** (owner blais.maxime@gmail.com,
   Category "Indoor", 751 athletes connected). Do **not** create a new app — a
   fresh app starts capped at 1 athlete with no history; 7252 is the better base.
-- **Athlete cap:** currently **1**. The API page has a self-serve **"Upgrade
-  your API"** button that raises it to **10 athletes** and doubles the limits:
-  read 200 req/15 min · 2,000/day; overall **400 req/15 min · 4,000/day**.
-  → Click **Upgrade** to support up to 10 users immediately, no Strava review.
+- **Athlete cap:** ✅ **upgraded (2026-06-08)** — now **10 athletes**, read
+  200 req/15 min · 2,000/day, overall **400 req/15 min · 4,000/day**. (751
+  legacy athletes remain "currently connected"; the 10 is the going-forward
+  cap — verify with a real new authorization during testing.)
 - **For more than 10 users:** the self-serve tier stops at 10. Going higher
   needs a manual increase request to Strava (developers@strava.com), which is
   reviewed and not guaranteed. Plan to launch at ≤10, request more if needed.
@@ -124,9 +124,12 @@ is the more-secure alternative if the embed risk ever becomes a concern; it is
 
 ## 8. Order of work (prerequisites first)
 
-1. **Upgrade app 7252** to 10 athletes (self-serve button).
-2. Set the **Authorization Callback Domain** in Strava settings.
-3. Add **`STRAVA_CLIENT_SECRET`** to the repo's GitHub Actions secrets.
-4. Implement the in-app flow (sections 2–5).
-5. Verify end-to-end with a real ride; if >10 users are expected, file the
+1. ✅ **Upgrade app 7252** to 10 athletes (done 2026-06-08).
+2. ⬜ Set the **Authorization Callback Domain** in Strava settings (Edit → must
+   match the redirect host chosen in §3, e.g. `maximumtrainer.github.io`).
+3. ⬜ Add **`STRAVA_CLIENT_SECRET`** to the repo's GitHub Actions secrets.
+4. ⬜ Implement the in-app flow (sections 2–5). Can be coded now without the
+   secret (the build-time constant defaults to `""`); the real secret is only
+   needed in CI release builds and at the user's runtime.
+5. ⬜ Verify end-to-end with a real ride; if >10 users are expected, file the
    Strava limit-increase request in parallel.
