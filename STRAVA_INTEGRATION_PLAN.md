@@ -1,12 +1,19 @@
-# Strava Auto-Upload — implementation plan
+# Strava Auto-Upload — implementation
 
 Goal: after a workout finishes, upload the `.fit` to the rider's Strava
 account — per user, with a one-time in-app "Connect with Strava" login and an
-"auto-upload to Strava" toggle. The `client_secret` is stored in **GitHub**
-(Actions secret) and injected at build time, mirroring the existing
-Intervals.icu / TrainingPeaks secret pattern in this repo.
+"auto-upload to Strava" toggle.
 
-Status: **not implemented** — this document is the plan.
+**Architecture: Plan B (production).** The `client_secret` lives **only in a
+Cloudflare Worker** (`workers/strava-token-proxy/`), never in the app binary.
+The app sends just the authorization `code` (or a `refresh_token`); the worker
+injects the credentials and calls Strava's `/oauth/token`. This is the secure
+path for a distributed app — Strava has no PKCE, so a secret-holder is required,
+and a worker keeps it out of every shipped copy.
+
+Status: **app side implemented** (branch `strava-oauth-auto-upload`). Remaining
+work is operational: deploy the worker, set its secret, set the Strava callback
+domain, then test. See "Deploy & test" below.
 
 ---
 
@@ -25,37 +32,26 @@ Status: **not implemented** — this document is the plan.
 - **Scope:** the current token on the API page is `read`-only; uploads need
   `activity:write`, granted per user via the OAuth consent screen.
 
-## 2. Where the `client_secret` lives — on GitHub
+## 2. Where the `client_secret` lives — the Cloudflare Worker
 
 Strava **requires** `client_secret` for both the authorization-code exchange
 and token refresh (no PKCE, no implicit/device flow — confirmed against
-developers.strava.com/docs). So the secret must exist at runtime somewhere.
+developers.strava.com/docs). So a secret-holder must exist at runtime. For a
+distributed app the secret must **not** ship in the binary, so it lives in a
+small Cloudflare Worker:
 
-**Chosen approach — GitHub Actions secret + build-time injection:**
-
-1. Add a repository **Actions secret**: `STRAVA_CLIENT_SECRET` (Settings →
-   Secrets and variables → Actions).
-2. Inject it into the build via `MaximumTrainer.pro` `DEFINES`, copying the
-   existing block for `INTERVALS_OAUTH_CLIENT_SECRET` (`MaximumTrainer.pro`
-   lines ~53–57). The CI workflows (`build-linux/mac/windows.yml`) already
-   forward such secrets to the qmake step — add `STRAVA_CLIENT_SECRET` there.
-3. The app reads it via a compiled-in constant (e.g. `STRAVA_CLIENT_SECRET`
-   macro → `Environnement::CLIENT_SECRET_STRAVA`), defaulting to `""` for local
-   dev builds.
-
-**Trade-off (explicit):** this bakes the secret into the released binary, so a
-determined user can extract it. This is the **same risk profile the repo
-already accepts for Intervals.icu**. It does **not** expose any user's data —
-OAuth still requires each user to authorize — the practical risk is only
-rate-limit / app-identity abuse. Acceptable for this use case.
-
-**Why not "secret on GitHub" without embedding?** GitHub can't host a live
-secret-holding endpoint (Pages is static; Actions isn't a request-time API).
-The only way to keep the secret out of the binary is a live backend — e.g. a
-**Cloudflare Worker** (secret stored in Cloudflare via `wrangler secret`, the
-Worker *code* in this GitHub repo, like `workers/intervals-cors-proxy/`). That
-is the more-secure alternative if the embed risk ever becomes a concern; it is
-**not** the plan here but is recorded as the fallback.
+- **`workers/strava-token-proxy/`** holds `STRAVA_CLIENT_SECRET` (set via
+  `wrangler secret put`) and `STRAVA_CLIENT_ID` (`7252`, a plain var). It
+  exposes `POST /strava/oauth/token`, injects the credentials, and forwards to
+  `https://www.strava.com/oauth/token`.
+- The app calls it at `URL_TOKEN_STRAVA`
+  (`https://mt-strava-token.intervals-login.workers.dev/strava/oauth/token`,
+  matching the existing Intervals worker subdomain) and sends only the
+  `code` / `refresh_token`. The secret is never in the app, the build, or
+  GitHub. **No `STRAVA_CLIENT_SECRET` GitHub Actions secret is needed** (that
+  was the Plan A / embed approach we did not take).
+- Access is allow-listed to the github.io WASM origin and native desktop
+  clients (`X-MT-Client: desktop`), so it can't be used as an open relay.
 
 ## 3. Per-user OAuth flow
 
@@ -122,14 +118,30 @@ is the more-secure alternative if the embed risk ever becomes a concern; it is
   Strava page.
 - `src/ui/mainwindow.cpp` — auto-upload trigger + finished-slot.
 
-## 8. Order of work (prerequisites first)
+## 8. Deploy & test
+
+App side is implemented (branch `strava-oauth-auto-upload`). Remaining steps:
 
 1. ✅ **Upgrade app 7252** to 10 athletes (done 2026-06-08).
-2. ⬜ Set the **Authorization Callback Domain** in Strava settings (Edit → must
-   match the redirect host chosen in §3, e.g. `maximumtrainer.github.io`).
-3. ⬜ Add **`STRAVA_CLIENT_SECRET`** to the repo's GitHub Actions secrets.
-4. ⬜ Implement the in-app flow (sections 2–5). Can be coded now without the
-   secret (the build-time constant defaults to `""`); the real secret is only
-   needed in CI release builds and at the user's runtime.
-5. ⬜ Verify end-to-end with a real ride; if >10 users are expected, file the
-   Strava limit-increase request in parallel.
+2. ✅ **Authorization Callback Domain** set to `maximumtrainer.github.io`.
+3. ✅ App implementation (worker + OAuth exchange/refresh + auto-upload toggle
+   + trigger).
+4. ⬜ **Rotate the Strava client secret** (it was shown on screen once) — Strava
+   API page → *Generate New Client Secret*.
+5. ⬜ **Deploy the worker** and set its secret (needs Cloudflare access to the
+   same account as the Intervals worker, subdomain `intervals-login`):
+   ```bash
+   cd workers/strava-token-proxy
+   npx wrangler deploy
+   npx wrangler secret put STRAVA_CLIENT_SECRET   # paste the rotated secret
+   ```
+   It must land at `https://mt-strava-token.intervals-login.workers.dev`
+   (the name in `wrangler.toml`); that matches `URL_TOKEN_STRAVA` in the app.
+   **No GitHub secret / build-time secret is needed** — the app never sees it.
+6. ⬜ **Test locally:** build the app normally (no secret env), open
+   Preferences → Strava → **Connect with Strava** → log in → grant
+   `activity:write`. Confirm it links. Then tick **Auto-upload completed
+   activities to Strava**, ride a (demo) workout, and confirm it uploads +
+   appears on Strava.
+7. ⬜ When you hit the 10-athlete cap, file the Strava limit-increase request
+   for app 7252 (developers@strava.com).
