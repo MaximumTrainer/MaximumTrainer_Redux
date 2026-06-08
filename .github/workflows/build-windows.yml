@@ -152,7 +152,6 @@ jobs:
     - name: Create Makefile
       run: |
         $qwtInstallDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
-        $env:TP_CLIENT_SECRET = "${{ secrets.TP_CLIENT_SECRET }}"
         $env:INTERVALS_OAUTH_CLIENT_ID = "${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}"
         $env:INTERVALS_OAUTH_CLIENT_SECRET = "${{ secrets.INTERVALS_OAUTH_CLIENT_SECRET }}"
         qmake MaximumTrainer.pro `

@@ -92,7 +92,6 @@ jobs:
       run: |
         qmake MaximumTrainer.pro "QWT_INSTALL=$QWT_DIR"
       env:
-        TP_CLIENT_SECRET:              ${{ secrets.TP_CLIENT_SECRET }}
         INTERVALS_OAUTH_CLIENT_ID:     ${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}
         INTERVALS_OAUTH_CLIENT_SECRET: ${{ secrets.INTERVALS_OAUTH_CLIENT_SECRET }}
 
@@ -1092,7 +1091,7 @@ jobs:
       run: ./build/tests/workout_creator_tests -v2
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Strava / TrainingPeaks / Selfloops Service Unit Tests – Linux
+  # Strava Service Unit Tests – Linux
   #
   # Builds and runs all three offline service test suites.  These tests use
   # a mock network manager and do not require real API credentials.
@@ -1105,13 +1104,7 @@ jobs:
     permissions:
       contents: read
     env:
-      TP_CLIENT_SECRET:              ${{ secrets.TP_CLIENT_SECRET }}
-      INTERVALS_OAUTH_CLIENT_ID:     ${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}
-      INTERVALS_OAUTH_CLIENT_SECRET: ${{ secrets.INTERVALS_OAUTH_CLIENT_SECRET }}
       STRAVA_ACCESS_TOKEN: ${{ secrets.STRAVA_ACCESS_TOKEN }}
-      TP_REFRESH_TOKEN:    ${{ secrets.TP_REFRESH_TOKEN }}
-      SELFLOOPS_EMAIL:     ${{ secrets.SELFLOOPS_EMAIL }}
-      SELFLOOPS_PW:        ${{ secrets.SELFLOOPS_PW }}
 
     steps:
     - name: Checkout
@@ -1136,26 +1129,8 @@ jobs:
         qmake strava_tests.pro
         make -j$(nproc)
 
-    - name: Build TrainingPeaks service tests
-      run: |
-        cd tests/trainingpeaks
-        qmake trainingpeaks_tests.pro
-        make -j$(nproc)
-
-    - name: Build Selfloops service tests
-      run: |
-        cd tests/selfloops
-        qmake selfloops_tests.pro
-        make -j$(nproc)
-
     - name: Run Strava service tests
       run: ./build/tests/strava_tests -v2
-
-    - name: Run TrainingPeaks service tests
-      run: ./build/tests/trainingpeaks_tests -v2
-
-    - name: Run Selfloops service tests
-      run: ./build/tests/selfloops_tests -v2
 
   # ──────────────────────────────────────────────────────────────────────────
   # CredentialStore Unit Tests – Linux
