@@ -420,7 +420,6 @@ void Util::parseJsonObjectAccount(QString data) {
     account->show_interval_remaining  = jsonObj["show_interval_remaining"].toString().toInt();
     account->show_workout_remaining  = jsonObj["show_workout_remaining"].toString().toInt();
     account->show_elapsed  = jsonObj["show_elapsed"].toString().toInt();
-    account->font_size_timer  = jsonObj["font_size_timer"].toString().toInt();
 
     account->averaging_power  = jsonObj["averaging_power"].toString().toInt();
     account->offset_power  = jsonObj["offset_power"].toString().toInt();

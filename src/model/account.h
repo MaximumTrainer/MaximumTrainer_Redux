@@ -176,7 +176,6 @@ public:
     bool show_interval_remaining;
     bool show_workout_remaining;
     bool show_elapsed;
-    int font_size_timer;
 
     int averaging_power;
     int offset_power;

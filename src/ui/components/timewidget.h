@@ -18,7 +18,6 @@ public:
     void showIntervalRemaining(bool);
     void showWorkoutRemaining(bool);
     void showWorkoutElapsed(bool);
-    void setTimerFontSize(int);
 
 
     void setFreeRideMode();

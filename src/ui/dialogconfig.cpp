@@ -368,17 +368,12 @@ void DialogConfig::initUi() {
     ///Timers
     ui->checkBox_showTimerOnTop->setChecked(account->show_timer_on_top);
     if (account->show_timer_on_top) {
-        ui->comboBox_fontSizeTimer->setDisabled(true);
         ui->pushButton_leftTimer->setDisabled(true);
         ui->pushButton_rightTimer->setDisabled(true);
     }
     ui->checkBox_showIntervalRemainingTime->setChecked(account->show_interval_remaining);
     ui->checkBox_showWorkoutRemainingTime->setChecked(account->show_workout_remaining);
     ui->checkBox_showElapsedTime->setChecked(account->show_elapsed);
-    ui->comboBox_fontSizeTimer->setCurrentText(QString::number(account->font_size_timer) );
-    // Connect after setCurrentText() so seeding the initial value does not emit.
-    connect(ui->comboBox_fontSizeTimer, &QComboBox::currentTextChanged,
-            this, &DialogConfig::onTimerFontSizeChanged);
 
     int startTrigger = account->start_trigger;
     /// 0 - Cadence
@@ -559,7 +554,6 @@ void DialogConfig::on_checkBox_showGrid_clicked(bool checked)
 
 void DialogConfig::on_checkBox_showTimerOnTop_clicked(bool checked)
 {
-    ui->comboBox_fontSizeTimer->setDisabled(checked);
     ui->pushButton_leftTimer->setDisabled(checked);
     ui->pushButton_rightTimer->setDisabled(checked);
 
@@ -586,13 +580,6 @@ void DialogConfig::on_checkBox_showElapsedTime_clicked(bool checked)
 
     parentDialog->showTimerWorkoutElapsed(checked);
 }
-
-void DialogConfig::onTimerFontSizeChanged(const QString &arg1)
-{
-    parentDialog->setTimerFontSize(arg1.toInt());
-}
-
-
 
 /// CHANGE DISPLAY WIDGET
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -798,9 +785,7 @@ void DialogConfig::setStudioMode() {
 
     //timer
     ui->checkBox_showTimerOnTop->setVisible(false);
-    ui->comboBox_fontSizeTimer->setVisible(false);
     ui->groupBox_4->setVisible(false);
-    ui->label_fontSizeTxt->setVisible(false);
 
     //power
     ui->checkBox_enablePower->setVisible(false);
@@ -892,7 +877,6 @@ void DialogConfig::saveSettings() {
     account->show_interval_remaining = ui->checkBox_showIntervalRemainingTime->isChecked();
     account->show_workout_remaining =  ui->checkBox_showWorkoutRemainingTime->isChecked();
     account->show_elapsed = ui->checkBox_showElapsedTime->isChecked();
-    account->font_size_timer = ui->comboBox_fontSizeTimer->currentText().toInt();
 
 
 

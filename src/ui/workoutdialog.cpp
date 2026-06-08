@@ -858,7 +858,6 @@ void WorkoutDialog::initUI() {
     showTimerIntervalRemaining(account->show_interval_remaining);
     showTimerWorkoutRemaining(account->show_workout_remaining);
     showTimerWorkoutElapsed(account->show_elapsed);
-    setTimerFontSize(account->font_size_timer);
 
     /// Widgets
     showHeartRateDisplayWidget(account->display_hr);
@@ -2634,10 +2633,6 @@ void WorkoutDialog::showTimerWorkoutElapsed(bool show) {
 
     ui->widget_time->showWorkoutElapsed(show);
     ui->widget_topMenu->showWorkoutElapsed(show);
-}
-void WorkoutDialog::setTimerFontSize(int value) {
-
-    ui->widget_time->setTimerFontSize(value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

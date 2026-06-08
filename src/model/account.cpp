@@ -143,7 +143,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     show_interval_remaining = true;
     show_workout_remaining = false;
     show_elapsed = true;
-    font_size_timer = 26;
 
     averaging_power = 2;
     offset_power = 0;
@@ -295,8 +294,7 @@ void Account::loadDisplayPrefs() {
     value_power_start   = settings.value("value_power_start",   value_power_start).toInt();
     value_speed_start   = settings.value("value_speed_start",   value_speed_start).toInt();
 
-    // Workout timer font size and the last-selected config tab/sub-tab.
-    font_size_timer                    = settings.value("font_size_timer",                    font_size_timer).toInt();
+    // The last-selected config tab/sub-tab.
     last_index_selected_config_workout = settings.value("last_index_selected_config_workout", last_index_selected_config_workout).toInt();
     last_tab_sub_config_selected       = settings.value("last_tab_sub_config_selected",       last_tab_sub_config_selected).toInt();
 
@@ -377,8 +375,7 @@ void Account::saveDisplayPrefs() {
     settings.setValue("value_power_start",   value_power_start);
     settings.setValue("value_speed_start",   value_speed_start);
 
-    // Workout timer font size and the last-selected config tab/sub-tab.
-    settings.setValue("font_size_timer",                    font_size_timer);
+    // The last-selected config tab/sub-tab.
     settings.setValue("last_index_selected_config_workout", last_index_selected_config_workout);
     settings.setValue("last_tab_sub_config_selected",       last_tab_sub_config_selected);
 
