@@ -179,15 +179,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Tab indices must stay in sync with the pages in stackedWidget_menu
     // (see leftMenuChanged): 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio,
-    // 4 History, 5 Sensors. The former Profile and Settings web-view tabs were
+    // 4 Sensors, 5 History. The former Profile and Settings web-view tabs were
     // removed — FTP/LTHR/weight now live in the Preferences dialog, and the
     // server-hosted settings page is superseded by it.
     ftb->insertTab(0, QIcon(":/image/icon/workoutMan"), tr("Workout"));
     ftb->insertTab(1, QIcon(":/image/icon/intervals"),   tr("Intervals.icu"));
     ftb->insertTab(2, QIcon(":/image/icon/calendar"),  tr("Plan"));
     ftb->insertTab(3, QIcon(":/image/icon/studio"), tr("Studio"));
-    ftb->insertTab(4, QIcon(":/image/icon/chart"), tr("History"));
-    ftb->insertTab(5, QIcon(":/image/icon/bluetooth"), tr("Sensors"));
+    ftb->insertTab(4, QIcon(":/image/icon/bluetooth"), tr("Sensors"));
+    ftb->insertTab(5, QIcon(":/image/icon/chart"), tr("History"));
 
     ftb->setTabEnabled(0, true);
     ftb->setTabEnabled(1, true);
@@ -790,9 +790,9 @@ void MainWindow::leftMenuChanged(int tabSelected) {
     // The Profile (page 4) and Settings (page 5) tabs were removed from the tab
     // bar, but their stacked-widget pages remain so the existing web views keep
     // working for code that still references them. Map the visible tabs to their
-    // pages: 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio, 4 History(=page 6),
-    // 5 Sensors(=page 7).
-    static const int tabToPage[] = {0, 1, 2, 3, 6, 7};
+    // pages: 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio, 4 Sensors(=page 7),
+    // 5 History(=page 6).
+    static const int tabToPage[] = {0, 1, 2, 3, 7, 6};
     const int pageIndex = (tabSelected >= 0 && tabSelected < 6)
                               ? tabToPage[tabSelected]
                               : tabSelected;
@@ -800,7 +800,7 @@ void MainWindow::leftMenuChanged(int tabSelected) {
     currentIndexLeftMenu = tabSelected;
 
     // Refresh saved sensors each time the Sensors tab is opened.
-    if (tabSelected == 5) {
+    if (tabSelected == 4) {
         if (auto *sw = qobject_cast<SensorsWidget*>(ui->sensorsWidget))
             sw->reload();
     }
@@ -1050,9 +1050,9 @@ void MainWindow::enableStudioMode(bool enable) {
         this->setWindowTitle("MaximumTrainer");
     }
 
-    // Disable the History tab (now index 4) while in studio mode. The former
-    // Profile (4) and Settings (5) tabs were removed.
-    ftb->setTabEnabled(4, !enable);
+    // Disable the History tab (now index 5) while in studio mode. The former
+    // Profile and Settings tabs were removed.
+    ftb->setTabEnabled(5, !enable);
 
 }
 
@@ -1446,7 +1446,7 @@ void MainWindow::on_actionWorkout_triggered()
 //-----------------------------------------------
 void MainWindow::on_actionHistory_triggered()
 {
-    ftb->setCurrentIndex(4); // History (was index 6 before Profile/Settings removal)
+    ftb->setCurrentIndex(5); // History
 }
 
 
@@ -1563,7 +1563,7 @@ void MainWindow::executeWorkout(Workout workout) {
                         // "Manage Sensors" – cancel the connect flow and switch
                         // to the Sensors tab so the user can edit their devices.
                         connectDlg.reject();
-                        ftb->setCurrentIndex(5);
+                        ftb->setCurrentIndex(4);
                     });
 
             if (connectDlg.exec() != QDialog::Accepted)
@@ -2180,9 +2180,9 @@ void MainWindow::screenshotNextStep()
             dconfig->hide();
             qDebug() << "Screenshot: settings (Preferences dialog)";
         }
-        // Capture the Bluetooth Sensors page (FancyTabBar index 5), which hosts
+        // Capture the Bluetooth Sensors page (FancyTabBar index 4), which hosts
         // sensor pairing plus the trainer/sensor settings.
-        ftb->setCurrentIndex(5);
+        ftb->setCurrentIndex(4);
         QCoreApplication::processEvents();
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_sensors.png"), "PNG");
         qDebug() << "Screenshot: sensors";
@@ -2307,9 +2307,9 @@ void MainWindow::screenshotNextStep()
         qDebug() << "Screenshot: plan";
         break;
 
-    // ── Step 12: switch to History tab (tab 4) ────────────────────────────
+    // ── Step 12: switch to History tab (tab 5) ────────────────────────────
     case 12:
-        ftb->setCurrentIndex(4);
+        ftb->setCurrentIndex(5);
         raise();
         activateWindow();
         QCoreApplication::processEvents();
