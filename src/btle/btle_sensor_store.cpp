@@ -40,6 +40,32 @@ QString BtleSensorStore::roleDisplayName(BtleSensorRole role)
     return QString();
 }
 
+QList<QBluetoothUuid> BtleSensorStore::serviceUuidsForRole(BtleSensorRole role)
+{
+    // 16-bit assigned GATT service UUIDs. A smart trainer (FTMS, 0x1826) also
+    // satisfies the Power and Cadence/Speed slots because many trainers report
+    // those metrics over FTMS without advertising the dedicated services.
+    constexpr quint16 HeartRate           = 0x180D;
+    constexpr quint16 CyclingPower        = 0x1818;
+    constexpr quint16 CyclingSpeedCadence = 0x1816;
+    constexpr quint16 FitnessMachine      = 0x1826;
+    constexpr quint16 MoxyOxygen          = 0xAAB0;
+
+    switch (role) {
+    case BtleSensorRole::HeartRate:
+        return { QBluetoothUuid(HeartRate) };
+    case BtleSensorRole::Power:
+        return { QBluetoothUuid(CyclingPower), QBluetoothUuid(FitnessMachine) };
+    case BtleSensorRole::CadenceSpeed:
+        return { QBluetoothUuid(CyclingSpeedCadence), QBluetoothUuid(FitnessMachine) };
+    case BtleSensorRole::Trainer:
+        return { QBluetoothUuid(FitnessMachine) };
+    case BtleSensorRole::Oxygen:
+        return { QBluetoothUuid(MoxyOxygen) };
+    }
+    return {};
+}
+
 QMap<BtleSensorRole, BtleSavedSensor> BtleSensorStore::loadAll()
 {
     QMap<BtleSensorRole, BtleSavedSensor> result;

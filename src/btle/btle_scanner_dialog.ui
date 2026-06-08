@@ -35,6 +35,16 @@
     </widget>
    </item>
    <item>
+    <widget class="QCheckBox" name="checkBox_showAll">
+     <property name="text">
+      <string>Show all Bluetooth devices</string>
+     </property>
+     <property name="toolTip">
+      <string>By default only devices matching this sensor type are listed. Enable this if your sensor doesn't appear.</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QLabel" name="label_status">
      <property name="text">
       <string>Press "Scan" to search for devices.</string>
