@@ -100,6 +100,7 @@ test.describe('Login verification – Layer B: OAuth popup flow', () => {
   // Fake Bearer token returned by the mocked token exchange endpoint.
   const FAKE_ACCESS_TOKEN  = 'test_access_token_abcdef';
   const FAKE_REFRESH_TOKEN = 'test_refresh_token_ghijkl';
+  const EXPECTED_SCOPE = 'ACTIVITY:WRITE,WELLNESS:READ,SETTINGS:WRITE,CALENDAR:WRITE,LIBRARY:READ';
 
   let wasmApp: WasmAppPage;
   let ctx: import('@playwright/test').BrowserContext;
@@ -109,6 +110,7 @@ test.describe('Login verification – Layer B: OAuth popup flow', () => {
 
   // Captured from browser-side route interception.
   let capturedRequests: Array<{ method: string; url: string; auth: string }> = [];
+  let capturedOAuthAuthorizeUrl = '';
 
   test.beforeAll(async ({ browser, playwright }) => {
     if (!hasCredentials) return;
@@ -151,6 +153,7 @@ test.describe('Login verification – Layer B: OAuth popup flow', () => {
         features?: string,
       ) {
         if (target === 'mt_oauth_login' && typeof url === 'string') {
+          (window as any).__mtCapturedOAuthAuthorizeUrl = url;
           // Extract the state parameter from the OAuth URL.
           try {
             const parsed = new URL(url);
@@ -252,6 +255,9 @@ test.describe('Login verification – Layer B: OAuth popup flow', () => {
 
     // Trigger the OAuth popup flow (synchronous call within a user-gesture context).
     await wasmApp.page.evaluate(() => (window as any).mt_triggerOAuthLogin());
+    capturedOAuthAuthorizeUrl = await wasmApp.page.evaluate(
+      () => (window as any).__mtCapturedOAuthAuthorizeUrl ?? '',
+    );
 
     // ── Step 4: Wait for MainWindow to appear (login succeeded) ──────────────
     await wasmApp.waitForIntervalsTestHooks(120_000);
@@ -321,6 +327,27 @@ test.describe('Login verification – Layer B: OAuth popup flow', () => {
       dataRequests.length,
       'No intervals.icu data requests were made after OAuth login.',
     ).toBeGreaterThan(0);
+  });
+
+  test('B1a – OAuth authorize URL uses comma-separated Intervals.icu scope', async () => {
+    if (!hasCredentials) {
+      test.skip(
+        true,
+        'Skipped: set INTERVALS_ICU_API_KEY and INTERVALS_ICU_ATHLETE_ID ' +
+        'to run Intervals.icu login verification tests.',
+      );
+    }
+
+    expect(
+      capturedOAuthAuthorizeUrl,
+      'No OAuth authorize URL was captured from window.open.',
+    ).toBeTruthy();
+
+    const parsed = new URL(capturedOAuthAuthorizeUrl);
+    const scope = parsed.searchParams.get('scope') ?? '';
+    expect(scope).toBe(EXPECTED_SCOPE);
+    expect(scope.includes(',')).toBeTruthy();
+    expect(scope.includes(' ')).toBeFalsy();
   });
 
   // ── B2: WASM uses Bearer authorization after OAuth login ─────────────────────
