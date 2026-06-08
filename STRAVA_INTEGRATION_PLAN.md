@@ -11,17 +11,45 @@ is currently broken. This document records how to fix it.
    to `…/strava_token_exchange`, where the maximumtrainer.com server performed
    the secret half of the OAuth handshake and returned the tokens to the
    embedded webview. That backend is defunct, so the handshake dies there.
-2. **`client_id=7252` is the legacy MaximumTrainer Strava app** (hard-coded in
-   `environnement.h`). If that API application is no longer owned/accessible,
-   it's effectively dead and must be replaced with a freshly registered one.
+2. **The redirect points at the dead backend, and the scope is stale.** The
+   authorize URL still requests the deprecated `scope=write` and redirects to
+   the maximumtrainer.com endpoint above.
+
+> **Update (2026-06-08):** the legacy MaximumTrainer Strava app
+> (**`client_id=7252`**) is still owned/accessible — the client secret can be
+> shown/regenerated. So we **reuse 7252**; no new app registration is needed.
+> See "Athlete limit" below for the one real catch.
 
 ## The hard constraint
 
 Strava OAuth **always requires the `client_secret`** to exchange the login
 `code` for tokens and to refresh them. Strava does **not** support PKCE /
-public clients. A `client_secret` must never ship inside a distributed desktop
-binary, so something server-side has to hold the secret and perform the
-exchange.
+public clients. Where the secret lives depends on whether this is a
+personal-only build or a distributed one (see "Two paths" below).
+
+## Athlete limit (the real catch)
+
+App 7252's settings show **"Number of athletes allowed to connect: 1"**. This
+is Strava's cap for unapproved apps under their newer API agreement. The
+"~751 currently connected" are *legacy* connections and do **not** lift the
+cap. Consequence:
+
+- **Personal use (the owner uploading their own rides):** works now — the
+  owner is athlete #1, no approval needed.
+- **Distributing to other users:** blocked until Strava raises the athlete
+  limit via their (slow, strict) app-approval process.
+
+## Two paths
+
+| | Personal / desktop-only | Distribute to many users |
+| --- | --- | --- |
+| New app registration | not needed (reuse 7252) | not needed (reuse 7252) |
+| `client_secret` location | **embed at build time** via the `.pro` env-var pattern already used for Intervals/TP (add `STRAVA_CLIENT_SECRET`) | **Cloudflare Worker** holds it (out of the binary; also gives CORS for WASM) |
+| Cloudflare Worker | not needed | needed |
+| Strava athlete cap | fine (owner is #1) | **must be raised by Strava** |
+
+The personal path is much lighter: no Worker, no new app — just embed the
+secret, fix scope/redirect, and wire the upload trigger.
 
 ## What already exists (≈90% done)
 
@@ -42,28 +70,31 @@ a new one.
 
 ## The fix
 
-1. **Register a new Strava API application** (owned by us) at
-   `https://www.strava.com/settings/api`. Note the `client_id` /
-   `client_secret`, and set **Authorization Callback Domain** to
-   `maximumtrainer.github.io` (where the OAuth callback page already lives).
-2. **Deploy a small `strava-token` Cloudflare Worker** (clone the Intervals
-   one). It holds the `client_secret` as a Worker secret (never shipped to
-   clients) and exposes one endpoint that forwards both the
-   `authorization_code` exchange and `refresh_token` requests to
-   `https://www.strava.com/oauth/token` with the secret injected server-side.
-   Add a `URL_TOKEN_STRAVA` constant pointing at it.
-3. **Repoint the in-app OAuth flow:**
-   - authorize URL uses *our* new `client_id`, `redirect_uri` = the
-     github.io callback page, and **`scope=activity:write`**
-     (the current URL uses the deprecated `scope=write` — must be updated).
-   - `DialogInfoWebView` catches the redirect, extracts the `code`, POSTs it
-     to the Worker (no secret in the app), and stores the returned
-     access/refresh/expiry tokens.
-4. **Wire auto-upload:** on workout finish, if a Strava token exists and an
-   "auto-upload to Strava" toggle is on, refresh-if-expired via the Worker,
-   then call `StravaService::uploadActivity()` and poll status. Today only
-   Intervals.icu auto-uploads (`MainWindow::checkToUploadFile`); add the
-   Strava branch + a toggle on `Account` (`strava_auto_upload`).
+Common to both paths (reusing app **7252**):
+
+1. **Set the secret holder.**
+   - *Personal:* add `STRAVA_CLIENT_SECRET` to the build via the `.pro`
+     env-var pattern already used for `INTERVALS_OAUTH_CLIENT_SECRET` /
+     `TP_CLIENT_SECRET`, and exchange the code directly from the app against
+     `https://www.strava.com/oauth/token`.
+   - *Distribute:* deploy a small `strava-token` Cloudflare Worker (clone the
+     Intervals one) that holds the secret as a Worker secret and forwards both
+     `authorization_code` exchange and `refresh_token` to Strava with the
+     secret injected server-side. Point a `URL_TOKEN_STRAVA` constant at it.
+2. **Repoint the in-app OAuth flow** (off the dead maximumtrainer.com endpoint):
+   - authorize URL: keep `client_id=7252`, set `redirect_uri` to a detectable
+     callback (e.g. the github.io callback page, or a localhost/`/exchange-token`
+     path the embedded webview can catch), and **`scope=activity:write`**
+     (replace the deprecated `scope=write`). Set the app's
+     *Authorization Callback Domain* in Strava settings to match.
+   - `DialogInfoWebView` catches the redirect, extracts the `code`, exchanges
+     it (directly with the embedded secret, or via the Worker), and stores the
+     returned access/refresh/expiry tokens.
+3. **Wire auto-upload:** on workout finish, if a Strava token exists and an
+   "auto-upload to Strava" toggle is on, refresh-if-expired, then call
+   `StravaService::uploadActivity()` and poll status. Today only Intervals.icu
+   auto-uploads (`MainWindow::checkToUploadFile`); add the Strava branch + a
+   toggle on `Account` (`strava_auto_upload`).
 
 ## Scopes & gotchas
 
@@ -78,8 +109,12 @@ a new one.
 
 ## Estimated work
 
-In-app (one branch): new authorize URL + scope, `DialogInfoWebView` Strava
-callback handling, `URL_TOKEN_STRAVA` exchange/refresh, `strava_auto_upload`
-toggle + post-save trigger. Out-of-app: register the Strava app, scaffold +
-deploy the Worker with the `client_secret`. The upload code itself needs no
-changes.
+Personal path (likely the target): in-app only — updated authorize URL +
+`activity:write` scope, `DialogInfoWebView` Strava callback handling, direct
+token exchange/refresh with a build-time `STRAVA_CLIENT_SECRET`,
+`strava_auto_upload` toggle + post-save trigger. Out-of-app: just set the
+`client_secret` and the Authorization Callback Domain in app 7252's settings.
+The upload code (`StravaService`) needs no changes.
+
+Distribute path adds: the `strava-token` Cloudflare Worker, and getting
+Strava to raise the per-app athlete limit above 1.
