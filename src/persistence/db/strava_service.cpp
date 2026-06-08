@@ -1,5 +1,6 @@
 #include "strava_service.h"
 #include "logger.h"
+#include "environnement.h"   // URL_TOKEN_STRAVA, INTERVALS_PROXY_CLIENT_HEADER
 
 #include <QCoreApplication>
 #include <QHttpMultiPart>
@@ -10,7 +11,6 @@
 
 static const QString STRAVA_UPLOAD_URL    = QStringLiteral("https://www.strava.com/api/v3/uploads");
 static const QString STRAVA_DEAUTH_URL    = QStringLiteral("https://www.strava.com/oauth/deauthorize");
-static const QString STRAVA_TOKEN_URL     = QStringLiteral("https://www.strava.com/oauth/token");
 
 // ─────────────────────────────────────────────────────────────────────────────
 void StravaService::setAccessToken(const QString &token)
@@ -130,9 +130,43 @@ QNetworkReply* StravaService::deauthorize()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-QNetworkReply* StravaService::refreshToken(const QString &clientId,
-                                            const QString &clientSecret,
-                                            const QString &refreshToken)
+// Token exchange / refresh go through the Strava token Worker (URL_TOKEN_STRAVA)
+// so the client_secret never lives in the app. The worker injects client_id +
+// client_secret; the app sends only the grant-specific fields.
+QNetworkRequest StravaService::buildTokenWorkerRequest()
+{
+    QNetworkRequest req;
+    req.setUrl(QUrl(URL_TOKEN_STRAVA));
+    req.setHeader(QNetworkRequest::ContentTypeHeader,
+                  QStringLiteral("application/x-www-form-urlencoded"));
+#ifndef Q_OS_WASM
+    // Desktop is not a browser and sends no Origin; identify to the worker's
+    // allow-list with X-MT-Client (mirrors the Intervals proxy). On WASM the
+    // browser sets Origin automatically and refuses header overrides.
+    req.setRawHeader(INTERVALS_PROXY_CLIENT_HEADER.toUtf8(),
+                     INTERVALS_PROXY_DESKTOP_CLIENT_VALUE.toUtf8());
+#endif
+    return req;
+}
+
+QNetworkReply* StravaService::exchangeAuthCode(const QString &code,
+                                               const QString &redirectUri)
+{
+    auto *mgr = qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
+    if (!mgr) {
+        LOG_WARN("StravaService", QStringLiteral("exchangeAuthCode: NetworkManagerWS not available"));
+        return nullptr;
+    }
+
+    QUrlQuery body;
+    body.addQueryItem(QStringLiteral("grant_type"),   QStringLiteral("authorization_code"));
+    body.addQueryItem(QStringLiteral("code"),         code);
+    body.addQueryItem(QStringLiteral("redirect_uri"), redirectUri);
+
+    return mgr->post(buildTokenWorkerRequest(), body.toString(QUrl::FullyEncoded).toUtf8());
+}
+
+QNetworkReply* StravaService::refreshToken(const QString &refreshToken)
 {
     auto *mgr = qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!mgr) {
@@ -141,15 +175,8 @@ QNetworkReply* StravaService::refreshToken(const QString &clientId,
     }
 
     QUrlQuery body;
-    body.addQueryItem(QStringLiteral("client_id"),     clientId);
-    body.addQueryItem(QStringLiteral("client_secret"), clientSecret);
-    body.addQueryItem(QStringLiteral("refresh_token"), refreshToken);
     body.addQueryItem(QStringLiteral("grant_type"),    QStringLiteral("refresh_token"));
+    body.addQueryItem(QStringLiteral("refresh_token"), refreshToken);
 
-    QNetworkRequest req;
-    req.setUrl(QUrl(STRAVA_TOKEN_URL));
-    req.setHeader(QNetworkRequest::ContentTypeHeader,
-                  QStringLiteral("application/x-www-form-urlencoded"));
-
-    return mgr->post(req, body.toString(QUrl::FullyEncoded).toUtf8());
+    return mgr->post(buildTokenWorkerRequest(), body.toString(QUrl::FullyEncoded).toUtf8());
 }

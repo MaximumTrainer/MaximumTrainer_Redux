@@ -8,6 +8,7 @@
 #include "util.h"
 #include "account.h"
 #include "extrequest.h"
+#include "strava_service.h"
 #include "environnement.h"
 #include "logger.h"
 
@@ -153,30 +154,56 @@ void DialogInfoWebView::pageLoaded(bool ok){
 
     LOG_DEBUG("DialogInfoWebView",
               QStringLiteral("Checking OAuth callback for url: ") + currentUrl);
-    /// ------------------------------- Login sucess! ---------------------------------------
-    if (ui->webView->url().toDisplayString().contains("/strava_token_exchange"))  {
+    /// ------------------------------- Strava OAuth2 callback ------------------------------
+    /// Strava redirects to the same github.io callback page with ?code=... The
+    /// code is exchanged for tokens via the Strava token Worker (no secret in
+    /// the app); the response is parsed and the tokens persisted.
+    if (usedForStrava
+        && ui->webView->url().toDisplayString().contains("/oauth_callback.html"))  {
 
-        // Only try to parse the json object when request was successful
-        if (!ui->webView->url().toDisplayString().contains("&error") && ui->webView->url().toDisplayString().contains("&code")) {
-            LOG_INFO("DialogInfoWebView", QStringLiteral("Strava token exchange callback received"));
+        const QString urlStr = ui->webView->url().toDisplayString();
+        const QUrlQuery cbQuery{QUrl(urlStr)};
 
-            ui->webView->page()->toPlainText([=](const QString &response){
-                LOG_DEBUG("DialogInfoWebView",
-                          QStringLiteral("Strava token exchange response length: ")
-                          + QString::number(response.size()));
-                Util::parseJsonStravaObject(response);
-
-                Account *account = qApp->property("Account").value<Account*>();
-                if (account->strava_access_token.size() > 2) {
-                    LOG_INFO("DialogInfoWebView", QStringLiteral("Strava OAuth linked successfully"));
-                    emit stravaLinked(true);
-                }
-            });
-
-
-
-
+        if (cbQuery.hasQueryItem(QStringLiteral("error"))) {
+            LOG_WARN("DialogInfoWebView",
+                     QStringLiteral("Strava OAuth declined/error: ")
+                     + cbQuery.queryItemValue(QStringLiteral("error")));
+            emit stravaLinked(false);
+            this->reject();
+            return;
         }
+
+        const QString code = cbQuery.queryItemValue(QStringLiteral("code"));
+        if (code.isEmpty())
+            return;   // not the redirect yet (e.g. the authorize page itself)
+
+        LOG_INFO("DialogInfoWebView",
+                 QStringLiteral("Strava OAuth code received; exchanging via worker"));
+        QNetworkReply *reply = StravaService::exchangeAuthCode(
+            code, Environnement::getWasmOAuthRedirectUri());
+        if (!reply) {
+            emit stravaLinked(false);
+            return;
+        }
+        connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+            reply->deleteLater();
+            if (reply->error() != QNetworkReply::NoError) {
+                LOG_WARN("DialogInfoWebView",
+                         QStringLiteral("Strava token exchange failed: ") + reply->errorString());
+                emit stravaLinked(false);
+                return;
+            }
+            Util::parseJsonStravaObject(QString::fromUtf8(reply->readAll()));
+            Account *account = qApp->property("Account").value<Account*>();
+            if (account && !account->strava_access_token.isEmpty()) {
+                account->saveStravaCredentials();
+                LOG_INFO("DialogInfoWebView", QStringLiteral("Strava OAuth linked successfully"));
+                emit stravaLinked(true);
+                this->accept();
+            } else {
+                emit stravaLinked(false);
+            }
+        });
     }
     /// ------ Intervals.icu OAuth2 callback ------------------------------------------------
     else if (usedForIntervalsIcu

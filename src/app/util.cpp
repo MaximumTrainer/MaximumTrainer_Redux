@@ -248,16 +248,19 @@ bool Util::isVersionNewer(const QString &currentVersion, const QString &latestVe
 ///--------------------------------------------------------------------------------------------------------------------
 void Util::parseJsonStravaObject(QString data) {
 
-    qDebug() << "start parseJsonStravaObject";
-
     Account *account = qApp->property("Account").value<Account*>();
 
     QJsonDocument jsonResponse = QJsonDocument::fromJson(data.toUtf8());
     QJsonObject jsonObj = jsonResponse.object();
 
     account->strava_access_token = jsonObj["access_token"].toString();
-
-    qDebug() << "end parseJsonStravaObject";
+    // Refresh-token rotation: persist whatever comes back. expires_at is epoch
+    // seconds; refresh before that time on the next upload.
+    if (jsonObj.contains("refresh_token"))
+        account->strava_refresh_token = jsonObj["refresh_token"].toString();
+    if (jsonObj.contains("expires_at"))
+        account->strava_token_expires_at =
+            static_cast<qint64>(jsonObj["expires_at"].toDouble());
 }
 
 

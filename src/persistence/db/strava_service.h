@@ -50,20 +50,29 @@ public:
     /// POST https://www.strava.com/oauth/deauthorize
     QNetworkReply* deauthorize();
 
-    /// Exchange a refresh token for a new access + refresh token pair.
-    /// POST https://www.strava.com/oauth/token
-    /// @param clientId      Strava application client_id (see environnement.h).
-    /// @param clientSecret  Strava application client_secret.
+    /// Exchange an OAuth2 authorization code for an access + refresh token pair.
+    /// POSTs to the Strava token Worker (URL_TOKEN_STRAVA), which injects the
+    /// client_id/client_secret — the secret never lives in the app. Parse the
+    /// reply with Util::parseJsonStravaObject() and persist the tokens.
+    /// @param code         Authorization code from the OAuth redirect.
+    /// @param redirectUri  The exact redirect_uri used in the authorize request.
+    static QNetworkReply* exchangeAuthCode(const QString &code,
+                                           const QString &redirectUri);
+
+    /// Exchange a refresh token for a new access + refresh token pair, via the
+    /// same Strava token Worker (no client_secret in the app).
     /// @param refreshToken  Refresh token stored from the previous OAuth exchange.
-    static QNetworkReply* refreshToken(const QString &clientId,
-                                       const QString &clientSecret,
-                                       const QString &refreshToken);
+    static QNetworkReply* refreshToken(const QString &refreshToken);
 
 private:
     QString m_accessToken;
 
     QNetworkRequest buildBearerRequest(const QString &url) const;
     static QNetworkAccessManager* networkManager();
+
+    /// Build the POST request to the Strava token Worker, tagging desktop
+    /// clients with X-MT-Client so the worker's allow-list accepts them.
+    static QNetworkRequest buildTokenWorkerRequest();
 };
 
 #endif // STRAVA_SERVICE_H
