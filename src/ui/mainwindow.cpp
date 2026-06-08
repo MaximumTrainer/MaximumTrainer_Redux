@@ -1050,9 +1050,9 @@ void MainWindow::enableStudioMode(bool enable) {
         this->setWindowTitle("MaximumTrainer");
     }
 
-    // Disable the History tab (now index 5) while in studio mode. The former
-    // Profile and Settings tabs were removed.
-    ftb->setTabEnabled(5, !enable);
+    // Disable the Sensors tab (index 4) while in studio mode: sensor pairing is
+    // per-rider and not meaningful in the multi-rider studio view.
+    ftb->setTabEnabled(4, !enable);
 
 }
 
