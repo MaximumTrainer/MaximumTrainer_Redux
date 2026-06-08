@@ -81,12 +81,6 @@ QNetworkReply* UserDAO::putAccount(Account *account) {
     postData.addQueryItem("strava_access_token", account->strava_access_token);
     postData.addQueryItem("strava_private_upload", QString::number(account->strava_private_upload) );
 
-    postData.addQueryItem("training_peaks_access_token", account->training_peaks_access_token);
-    postData.addQueryItem("training_peaks_refresh_token", account->training_peaks_refresh_token);
-    postData.addQueryItem("training_peaks_public_upload", QString::number(account->training_peaks_public_upload) );
-
-    postData.addQueryItem("selfloops_user", account->selfloops_user);
-    postData.addQueryItem("selfloops_pw", account->selfloops_pw);
     postData.addQueryItem("control_trainer_resistance", QString::number(account->control_trainer_resistance) );
 
     /* ----- */
@@ -126,7 +120,6 @@ QNetworkReply* UserDAO::putAccount(Account *account) {
     postData.addQueryItem("show_interval_remaining", QString::number(account->show_interval_remaining) );
     postData.addQueryItem("show_workout_remaining", QString::number(account->show_workout_remaining) );
     postData.addQueryItem("show_elapsed", QString::number(account->show_elapsed) );
-    postData.addQueryItem("font_size_timer", QString::number(account->font_size_timer) );
 
     postData.addQueryItem("averaging_power", QString::number(account->averaging_power) );
     postData.addQueryItem("offset_power", QString::number(account->offset_power) );

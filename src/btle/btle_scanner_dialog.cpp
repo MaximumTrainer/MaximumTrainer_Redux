@@ -4,13 +4,37 @@
 #include <QDebug>
 #include <QMessageBox>
 
+#include "btle_sensor_store.h"
+
 // ─────────────────────────────────────────────────────────────────────────────
 BtleScannerDialog::BtleScannerDialog(QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::BtleScannerDialog)
 {
+    init();
+}
+
+BtleScannerDialog::BtleScannerDialog(BtleSensorRole role, QWidget *parent)
+    : QDialog(parent)
+    , ui(new Ui::BtleScannerDialog)
+    , m_role(role)
+    , m_hasRoleFilter(true)
+{
+    init();
+}
+
+void BtleScannerDialog::init()
+{
     ui->setupUi(this);
     setWindowTitle(tr("Select Bluetooth Device"));
+
+    if (m_hasRoleFilter) {
+        ui->label_title->setText(
+            tr("Nearby %1 sensors").arg(BtleSensorStore::roleDisplayName(m_role)));
+    } else {
+        // No role → nothing to filter by; hide the toggle entirely.
+        ui->checkBox_showAll->hide();
+    }
 
     m_model = new QStandardItemModel(this);
     m_model->setHorizontalHeaderLabels({ tr("Device Name"), tr("Address") });
@@ -48,6 +72,8 @@ BtleScannerDialog::BtleScannerDialog(QWidget *parent)
     connect(ui->tableView_devices->selectionModel(),
             &QItemSelectionModel::selectionChanged,
             this, &BtleScannerDialog::onSelectionChanged);
+    connect(ui->checkBox_showAll, &QCheckBox::toggled,
+            this, [this]() { rebuildVisibleList(); });
 
     startScan();
 }
@@ -64,6 +90,7 @@ void BtleScannerDialog::startScan()
 {
     m_model->removeRows(0, m_model->rowCount());
     m_devices.clear();
+    m_allDiscovered.clear();
     ui->label_status->setText(tr("Scanning..."));
     ui->pushButton_scan->setEnabled(false);
     ui->pushButton_stop->setEnabled(true);
@@ -81,7 +108,69 @@ void BtleScannerDialog::onDeviceDiscovered(const QBluetoothDeviceInfo &device)
     // Only show BLE devices
     if (!(device.coreConfigurations() & QBluetoothDeviceInfo::LowEnergyCoreConfiguration))
         return;
-    addOrUpdateDevice(device);
+
+    // Track every discovery so the list can be rebuilt when the user toggles
+    // the "Show all devices" filter, then add it to the visible list if it
+    // matches the current filter.
+    for (int i = 0; i < m_allDiscovered.size(); ++i) {
+        if (m_allDiscovered[i].address() == device.address()) {
+            m_allDiscovered[i] = device;
+            if (passesFilter(device))
+                addOrUpdateDevice(device);
+            return;
+        }
+    }
+    m_allDiscovered.append(device);
+    if (passesFilter(device))
+        addOrUpdateDevice(device);
+}
+
+bool BtleScannerDialog::passesFilter(const QBluetoothDeviceInfo &device) const
+{
+    if (!m_hasRoleFilter || ui->checkBox_showAll->isChecked())
+        return true;
+
+    const QList<QBluetoothUuid> wanted = BtleSensorStore::serviceUuidsForRole(m_role);
+    if (wanted.isEmpty())
+        return true;
+
+    // Strict match: only devices that advertise the matching GATT service are
+    // shown. Real sensors (HR straps, power meters, FTMS trainers) advertise
+    // their primary service; unrelated gadgets (phones, TVs) do not, and most
+    // advertise no service UUIDs at all. A sensor that doesn't advertise its
+    // service is recovered via the "Show all devices" toggle.
+    const QList<QBluetoothUuid> advertised = device.serviceUuids();
+    for (const QBluetoothUuid &uuid : advertised) {
+        if (wanted.contains(uuid))
+            return true;
+    }
+    return false;
+}
+
+void BtleScannerDialog::rebuildVisibleList()
+{
+    const QString previouslySelected =
+        m_selectedDevice.isValid() ? m_selectedDevice.address().toString() : QString();
+
+    m_model->removeRows(0, m_model->rowCount());
+    m_devices.clear();
+    for (const QBluetoothDeviceInfo &device : m_allDiscovered) {
+        if (passesFilter(device))
+            addOrUpdateDevice(device);
+    }
+
+    // Preserve the user's selection across a filter toggle when still visible.
+    if (!previouslySelected.isEmpty()) {
+        for (int i = 0; i < m_devices.size(); ++i) {
+            if (m_devices[i].address().toString() == previouslySelected) {
+                ui->tableView_devices->selectRow(i);
+                break;
+            }
+        }
+    }
+
+    if (!m_discoveryAgent->isActive())
+        updateStatusComplete();
 }
 
 void BtleScannerDialog::addOrUpdateDevice(const QBluetoothDeviceInfo &device)
@@ -103,9 +192,23 @@ void BtleScannerDialog::addOrUpdateDevice(const QBluetoothDeviceInfo &device)
     m_model->appendRow(row);
 }
 
+void BtleScannerDialog::updateStatusComplete()
+{
+    if (m_hasRoleFilter && !ui->checkBox_showAll->isChecked()
+        && m_allDiscovered.size() > m_devices.size()) {
+        ui->label_status->setText(
+            tr("Scan complete. %1 matching device(s) shown (%2 hidden).")
+                .arg(m_devices.size())
+                .arg(m_allDiscovered.size() - m_devices.size()));
+    } else {
+        ui->label_status->setText(
+            tr("Scan complete. %1 device(s) found.").arg(m_devices.size()));
+    }
+}
+
 void BtleScannerDialog::onScanFinished()
 {
-    ui->label_status->setText(tr("Scan complete. %1 device(s) found.").arg(m_devices.size()));
+    updateStatusComplete();
     ui->pushButton_scan->setEnabled(true);
     ui->pushButton_stop->setEnabled(false);
 }

@@ -2,7 +2,9 @@
 #define BTLE_SENSOR_STORE_H
 
 #include <QMap>
+#include <QList>
 #include <QBluetoothDeviceInfo>
+#include <QBluetoothUuid>
 
 #include "btle_sensor_config.h"
 
@@ -42,6 +44,12 @@ public:
 
     /// Human-readable role name for UI ("Heart Rate", "Power", ...).
     static QString roleDisplayName(BtleSensorRole role);
+
+    /// GATT service UUIDs a device must advertise to be relevant for \a role.
+    /// Used by the scanner to filter the discovery list down to devices of the
+    /// matching type (e.g. only heart-rate monitors when scanning the HR slot).
+    /// An empty list means "no filter / accept anything".
+    static QList<QBluetoothUuid> serviceUuidsForRole(BtleSensorRole role);
 
     /// All roles in display order. Single source of truth for iteration.
     static QList<BtleSensorRole> allRoles();

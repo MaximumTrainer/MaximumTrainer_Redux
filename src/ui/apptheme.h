@@ -201,6 +201,14 @@ public:
 // ── General widget defaults ──────────────────────────────────────────────
 "QWidget { background-color: #2b2b2b; color: #e0e0e0; }"
 "QDialog { background-color: #2b2b2b; color: #e0e0e0; }"
+// ── Always-dark in-workout toolbar ────────────────────────────────────────
+// TopMenuWorkout (#widget_topMenu) carries its own black chrome, but the
+// blanket "QWidget { background-color:#2b2b2b }" above outranks that child
+// widget's own stylesheet (an application-level stylesheet takes priority over
+// a widget-level one), so the bar renders dark-grey in Dark mode while it is
+// black in Light mode (which has no blanket rule). Re-assert black here, in
+// the same stylesheet, where the id/descendant selectors win normally.
+"#widget_topMenu, #widget_topMenu QFrame { background-color: #000000; }"
 "QGroupBox { color: #e0e0e0; border: 1px solid #444; border-radius: 4px; margin-top: 8px; padding-top: 4px; }"
 "QGroupBox::title { subcontrol-origin: margin; left: 8px; color: #ccc; }"
 "QLabel { color: #e0e0e0; background-color: transparent; }"

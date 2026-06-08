@@ -263,23 +263,6 @@ void Util::parseJsonStravaObject(QString data) {
 
 
 ///--------------------------------------------------------------------------------------------------------------------
-void Util::parseJsonTPObject(QString data) {
-
-    qDebug() << "parseJsonTPObject!";
-
-    Account *account = qApp->property("Account").value<Account*>();
-
-    QJsonDocument jsonResponse = QJsonDocument::fromJson(data.toUtf8());
-    QJsonObject jsonObj = jsonResponse.object();
-
-    account->training_peaks_access_token = jsonObj["access_token"].toString();
-    account->training_peaks_refresh_token = jsonObj["refresh_token"].toString();
-
-    qDebug() << "new values are: training_peaks_access_token:" << account->training_peaks_access_token;
-    qDebug() << "new values are: training_peaks_refresh_token:" << account->training_peaks_refresh_token;
-}
-
-///--------------------------------------------------------------------------------------------------------------------
 int Util::parseIdJsonStravaUploadObject(QString data) {
 
 
@@ -397,12 +380,6 @@ void Util::parseJsonObjectAccount(QString data) {
     account->strava_access_token = jsonObj["strava_access_token"].toString();
     account->strava_private_upload = jsonObj["strava_private_upload"].toString().toInt();
 
-    account->training_peaks_access_token = jsonObj["training_peaks_access_token"].toString();
-    account->training_peaks_refresh_token = jsonObj["training_peaks_refresh_token"].toString();
-    account->training_peaks_public_upload = jsonObj["training_peaks_public_upload"].toString().toInt();
-
-    account->selfloops_user = jsonObj["selfloops_user"].toString();
-    account->selfloops_pw = jsonObj["selfloops_pw"].toString();
     account->control_trainer_resistance = jsonObj["control_trainer_resistance"].toString().toInt();
     /* ----- */
 
@@ -443,7 +420,6 @@ void Util::parseJsonObjectAccount(QString data) {
     account->show_interval_remaining  = jsonObj["show_interval_remaining"].toString().toInt();
     account->show_workout_remaining  = jsonObj["show_workout_remaining"].toString().toInt();
     account->show_elapsed  = jsonObj["show_elapsed"].toString().toInt();
-    account->font_size_timer  = jsonObj["font_size_timer"].toString().toInt();
 
     account->averaging_power  = jsonObj["averaging_power"].toString().toInt();
     account->offset_power  = jsonObj["offset_power"].toString().toInt();

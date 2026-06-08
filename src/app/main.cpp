@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
         LOG_INFO("main", QStringLiteral("Network disabled (MT_NO_NETWORK=1)"));
     }
 
-//    MyVlcPlayer player;
+//    QtMediaPlayer player;
 //    player.setMinimumSize(QSize(500,300));
 //    player.show();
 

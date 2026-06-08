@@ -43,3 +43,6 @@ tests/integration/ui_repeatwidget.h
 !.dev.vars.example
 .env*
 !.env.example
+
+# Qt Creator clangd index cache
+.qtc_clangd/

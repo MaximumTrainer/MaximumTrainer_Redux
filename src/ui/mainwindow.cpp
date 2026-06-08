@@ -179,15 +179,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Tab indices must stay in sync with the pages in stackedWidget_menu
     // (see leftMenuChanged): 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio,
-    // 4 History, 5 Sensors. The former Profile and Settings web-view tabs were
+    // 4 Sensors, 5 History. The former Profile and Settings web-view tabs were
     // removed — FTP/LTHR/weight now live in the Preferences dialog, and the
     // server-hosted settings page is superseded by it.
     ftb->insertTab(0, QIcon(":/image/icon/workoutMan"), tr("Workout"));
     ftb->insertTab(1, QIcon(":/image/icon/intervals"),   tr("Intervals.icu"));
     ftb->insertTab(2, QIcon(":/image/icon/calendar"),  tr("Plan"));
     ftb->insertTab(3, QIcon(":/image/icon/studio"), tr("Studio"));
-    ftb->insertTab(4, QIcon(":/image/icon/chart"), tr("History"));
-    ftb->insertTab(5, QIcon(":/image/icon/bluetooth"), tr("Sensors"));
+    ftb->insertTab(4, QIcon(":/image/icon/bluetooth"), tr("Sensors"));
+    ftb->insertTab(5, QIcon(":/image/icon/chart"), tr("History"));
 
     ftb->setTabEnabled(0, true);
     ftb->setTabEnabled(1, true);
@@ -790,9 +790,9 @@ void MainWindow::leftMenuChanged(int tabSelected) {
     // The Profile (page 4) and Settings (page 5) tabs were removed from the tab
     // bar, but their stacked-widget pages remain so the existing web views keep
     // working for code that still references them. Map the visible tabs to their
-    // pages: 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio, 4 History(=page 6),
-    // 5 Sensors(=page 7).
-    static const int tabToPage[] = {0, 1, 2, 3, 6, 7};
+    // pages: 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio, 4 Sensors(=page 7),
+    // 5 History(=page 6).
+    static const int tabToPage[] = {0, 1, 2, 3, 7, 6};
     const int pageIndex = (tabSelected >= 0 && tabSelected < 6)
                               ? tabToPage[tabSelected]
                               : tabSelected;
@@ -800,7 +800,7 @@ void MainWindow::leftMenuChanged(int tabSelected) {
     currentIndexLeftMenu = tabSelected;
 
     // Refresh saved sensors each time the Sensors tab is opened.
-    if (tabSelected == 5) {
+    if (tabSelected == 4) {
         if (auto *sw = qobject_cast<SensorsWidget*>(ui->sensorsWidget))
             sw->reload();
     }
@@ -1050,8 +1050,8 @@ void MainWindow::enableStudioMode(bool enable) {
         this->setWindowTitle("MaximumTrainer");
     }
 
-    // Disable the History tab (now index 4) while in studio mode. The former
-    // Profile (4) and Settings (5) tabs were removed.
+    // Disable the Sensors tab (index 4) while in studio mode: sensor pairing is
+    // per-rider and not meaningful in the multi-rider studio view.
     ftb->setTabEnabled(4, !enable);
 
 }
@@ -1446,7 +1446,7 @@ void MainWindow::on_actionWorkout_triggered()
 //-----------------------------------------------
 void MainWindow::on_actionHistory_triggered()
 {
-    ftb->setCurrentIndex(4); // History (was index 6 before Profile/Settings removal)
+    ftb->setCurrentIndex(5); // History
 }
 
 
@@ -1563,7 +1563,7 @@ void MainWindow::executeWorkout(Workout workout) {
                         // "Manage Sensors" – cancel the connect flow and switch
                         // to the Sensors tab so the user can edit their devices.
                         connectDlg.reject();
-                        ftb->setCurrentIndex(5);
+                        ftb->setCurrentIndex(4);
                     });
 
             if (connectDlg.exec() != QDialog::Accepted)
@@ -1849,10 +1849,9 @@ void MainWindow::checkToUploadFile(const QString& filename, const QString& nameO
         m_adherenceStore->addCompleted(today, nameOnly, filename);
     }
 
-    // Note: Strava, TrainingPeaks, and SelfLoops uploads are now triggered
-    // explicitly by the post-workout upload buttons inside WorkoutDialog.
-    // Only Intervals.icu is auto-uploaded here because it has its own
-    // dedicated auto-upload setting flag.
+    // Note: Strava uploads are triggered explicitly by the post-workout upload
+    // buttons inside WorkoutDialog. Only Intervals.icu is auto-uploaded here
+    // because it has its own dedicated auto-upload setting flag.
 
     // Intervals.icu
     if (account->intervals_icu_auto_upload &&
@@ -1874,47 +1873,6 @@ void MainWindow::checkToUploadFile(const QString& filename, const QString& nameO
     }
 
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::slotSelfLoopsUploadFinished()
-{
-    qDebug() << "slotSelfLoopsUploadFinished";
-
-    QString msgReady = tr("Your activity was successfully uploaded to SelfLoops");
-    QString msgPresent = tr("This activity is already present on SelfLoops");
-    QString msgEmpty = tr("Your activity is empty, it was not uploaded to SelfLoops");
-    QString msgNotUploaded = tr("Your activity was not uploaded to SelfLoops");
-
-
-    //success, process data
-    if (replySelfLoopsUpload->error() == QNetworkReply::NoError) {
-        qDebug() << "no error selfLoops!";
-        QByteArray arrayData =  replySelfLoopsUpload->readAll();
-        QString msgReply(arrayData);
-
-        if (msgReply.contains("Success", Qt::CaseInsensitive)) {
-            ui->widget_bottomMenu->setGeneralMessage(msgReady, 5000);
-        }
-        else if (msgReply.contains("already", Qt::CaseInsensitive)) {
-            ui->widget_bottomMenu->setGeneralMessage(msgPresent, 5000);
-        }
-        else if (msgReply.contains("empty", Qt::CaseInsensitive)) {
-            ui->widget_bottomMenu->setGeneralMessage(msgEmpty, 5000);
-        }
-        else {
-            ui->widget_bottomMenu->setGeneralMessage(msgNotUploaded, 5000);
-        }
-
-    }
-    else {
-        LOG_WARN("MainWindow",
-                 QStringLiteral("SelfLoops upload failed: ") + replySelfLoopsUpload->errorString());
-        ui->widget_bottomMenu->setGeneralMessage("SelfLoops : " + replySelfLoopsUpload->errorString(), 5000);
-    }
-    replySelfLoopsUpload->deleteLater();
-
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::slotIntervalsIcuUploadFinished()
@@ -1970,59 +1928,6 @@ void MainWindow::slotSystemThemeChanged()
     // Only react when the user has chosen "System" mode.
     if (account->app_theme == 2 /*System*/)
         AppTheme::apply(qApp, AppTheme::System);
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::slotTrainingPeaksRefreshFinished()
-{
-
-    qDebug() << "slotTrainingPeaksRefreshFinished";
-
-    //success, process data (new access Token)
-    if (replyTrainingPeaksRefreshStatus->error() == QNetworkReply::NoError) {
-        qDebug() << "no error TP!";
-        QByteArray arrayData =  replyTrainingPeaksRefreshStatus->readAll();
-        Util::parseJsonTPObject(QString(arrayData));
-
-        replyTrainingPeaksPostFile = ExtRequest::trainingPeaksUploadFile(account->training_peaks_access_token, account->training_peaks_public_upload,
-                                                                         nameWorkout, descriptionWorkout, filepathWorkout);
-        connect(replyTrainingPeaksPostFile, SIGNAL(finished()), this, SLOT(slotTrainingPeaksUploadFinished()) );
-    }
-    else {
-        LOG_WARN("MainWindow",
-                 QStringLiteral("TrainingPeaks token refresh failed: ")
-                 + replyTrainingPeaksRefreshStatus->errorString());
-        ui->widget_bottomMenu->setGeneralMessage("TrainingPeaks : " + replyTrainingPeaksRefreshStatus->errorString(), 5000);
-    }
-    replyTrainingPeaksRefreshStatus->deleteLater();
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::slotTrainingPeaksUploadFinished()
-{
-    qDebug() << "slotTrainingPeaksUploadFinished";
-
-    QString msgReady = tr("Your activity was successfully uploaded to TrainingPeaks");
-    //    QString msgError = tr("There was an error processing your activity to TrainingPeaks");
-
-
-    //success, process data
-    if (replyTrainingPeaksPostFile->error() == QNetworkReply::NoError) {
-        qDebug() << "no error slotTrainingPeaksUploadFinished!";
-        QByteArray arrayData =  replyTrainingPeaksPostFile->readAll();
-        ui->widget_bottomMenu->setGeneralMessage(msgReady, 5000);
-
-    }
-    else {
-        LOG_WARN("MainWindow",
-                 QStringLiteral("TrainingPeaks upload failed: ")
-                 + replyTrainingPeaksPostFile->errorString());
-        ui->widget_bottomMenu->setGeneralMessage("TrainingPeaks : " + replyTrainingPeaksPostFile->errorString(), 5000);
-    }
-    replyTrainingPeaksPostFile->deleteLater();
-
 }
 
 
@@ -2275,9 +2180,9 @@ void MainWindow::screenshotNextStep()
             dconfig->hide();
             qDebug() << "Screenshot: settings (Preferences dialog)";
         }
-        // Capture the Bluetooth Sensors page (FancyTabBar index 5), which hosts
+        // Capture the Bluetooth Sensors page (FancyTabBar index 4), which hosts
         // sensor pairing plus the trainer/sensor settings.
-        ftb->setCurrentIndex(5);
+        ftb->setCurrentIndex(4);
         QCoreApplication::processEvents();
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_sensors.png"), "PNG");
         qDebug() << "Screenshot: sensors";
@@ -2402,9 +2307,9 @@ void MainWindow::screenshotNextStep()
         qDebug() << "Screenshot: plan";
         break;
 
-    // ── Step 12: switch to History tab (tab 4) ────────────────────────────
+    // ── Step 12: switch to History tab (tab 5) ────────────────────────────
     case 12:
-        ftb->setCurrentIndex(4);
+        ftb->setCurrentIndex(5);
         raise();
         activateWindow();
         QCoreApplication::processEvents();

@@ -114,29 +114,6 @@ const static QString urlStravaAuthorize("https://www.strava.com/oauth/authorize?
 
 
 
-///TrainingPeaks - These are the API URLs that you will use for development:
-//https://oauth.trainingpeaks.com/oauth/token
-//https://oauth.trainingpeaks.com/oauth/authorize
-//https://api.trainingpeaks.com/v1/file
-
-const static QString urlTrainingPeaksAuthorize("https://oauth.trainingpeaks.com/oauth/authorize?"
-                                               "client_id=maximumtrainer"
-                                               "&response_type=code"
-                                               "&scope=file:write");
-
-const static QString CLIENT_ID_TP = "maximumtrainer";
-// CLIENT_SECRET_TP is injected at build time via the TP_CLIENT_SECRET env var
-// (see MaximumTrainer.pro).  The macro expands to an empty string when the secret
-// has not been configured, which disables the token-refresh flow.
-#ifndef TP_CLIENT_SECRET
-#define TP_CLIENT_SECRET ""
-#endif
-const static QString CLIENT_SECRET_TP = QStringLiteral(TP_CLIENT_SECRET);
-const static QString URL_TOKEN_TP = "https://oauth.trainingpeaks.com/oauth/token/";
-const static QString URL_POST_FILE_TP = "https://api.trainingpeaks.com/v1/file/";
-
-
-
 /// Login
 const static QString urlLoginEn = "login/insideMT";
 
@@ -195,7 +172,6 @@ public:
 
 
     static QString getURLStravaAuthorize();
-    static QString getURLTrainingPeaksAuthorize();
     /// Build the Intervals.icu OAuth2 authorization URL (desktop — redirect to maximumtrainer.com backend).
     /// @param state  Per-request CSRF token; pass an empty string to omit.
     static QString getURLIntervalsIcuAuthorize(const QString &state = QString());

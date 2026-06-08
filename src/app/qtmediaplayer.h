@@ -1,5 +1,5 @@
-#ifndef MYVLCPLAYER_H
-#define MYVLCPLAYER_H
+#ifndef QTMEDIAPLAYER_H
+#define QTMEDIAPLAYER_H
 
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -13,9 +13,7 @@
 
 // Embedded media player built on QtMultimedia (QMediaPlayer + QVideoWidget +
 // QAudioOutput). Handles both the embedded video player and the audio-only
-// internet radio (setRadio(true)). NOTE: the class is still named
-// MyVlcPlayer for historical reasons (the .ui files promote `widgetVideo` as
-// this class); the VLC-Qt backend has been removed.
+// internet radio (setRadio(true)). Replaces the former VLC-Qt backend.
 
 QT_FORWARD_DECLARE_CLASS(QMediaPlayer)
 QT_FORWARD_DECLARE_CLASS(QAudioOutput)
@@ -23,12 +21,12 @@ QT_FORWARD_DECLARE_CLASS(QVideoWidget)
 QT_FORWARD_DECLARE_CLASS(QLabel)
 QT_FORWARD_DECLARE_CLASS(QTimer)
 
-class MyVlcPlayer : public QWidget
+class QtMediaPlayer : public QWidget
 {
     Q_OBJECT
 public:
-    explicit MyVlcPlayer(QWidget *parent = nullptr);
-    ~MyVlcPlayer();
+    explicit QtMediaPlayer(QWidget *parent = nullptr);
+    ~QtMediaPlayer();
 
     void setMovieTime(int msec);
     void setRadio(bool isRadio) { this->isRadio = isRadio; }
@@ -87,12 +85,12 @@ private:
 
 #else // ── No media backend: stub for platforms without VLC-Qt or QtMultimedia ──
 
-class MyVlcPlayer : public QWidget
+class QtMediaPlayer : public QWidget
 {
     Q_OBJECT
 public:
-    explicit MyVlcPlayer(QWidget *parent = nullptr) : QWidget(parent) {}
-    ~MyVlcPlayer() {}
+    explicit QtMediaPlayer(QWidget *parent = nullptr) : QWidget(parent) {}
+    ~QtMediaPlayer() {}
     void setMovieTime(int) {}
     void setRadio(bool) {}
 signals:
@@ -122,4 +120,4 @@ public slots:
 
 #endif // media backend
 
-#endif // MYVLCPLAYER_H
+#endif // QTMEDIAPLAYER_H

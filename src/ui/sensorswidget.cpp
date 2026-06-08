@@ -288,7 +288,7 @@ void SensorsWidget::refreshRow(int rowIndex)
 void SensorsWidget::onScanClicked(int rowIndex)
 {
 #ifndef GC_WASM_BUILD
-    BtleScannerDialog scanner(this);
+    BtleScannerDialog scanner(m_rows[rowIndex].role, this);
     if (scanner.exec() != QDialog::Accepted || !scanner.hasSelection())
         return;
 

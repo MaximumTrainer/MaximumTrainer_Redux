@@ -1,4 +1,4 @@
-#include "myvlcplayer.h"
+#include "qtmediaplayer.h"
 
 #ifdef GC_HAVE_QTMULTIMEDIA
 
@@ -20,9 +20,9 @@
 
 // QtMultimedia-based replacement for the VLC-Qt player. Used on Qt6 (and any
 // build without VLC-Qt). Handles the embedded video player and the audio-only
-// internet radio behind the same MyVlcPlayer API the rest of the app expects.
+// internet radio behind the same QtMediaPlayer API the rest of the app expects.
 
-MyVlcPlayer::MyVlcPlayer(QWidget *parent) : QWidget(parent)
+QtMediaPlayer::QtMediaPlayer(QWidget *parent) : QWidget(parent)
 {
     m_player = new QMediaPlayer(this);
     m_audio  = new QAudioOutput(this);
@@ -61,11 +61,11 @@ MyVlcPlayer::MyVlcPlayer(QWidget *parent) : QWidget(parent)
         "QMenu { background-color: #2b2b2b; color: #e0e0e0; border: 1px solid #555; }"
         "QMenu::item:selected { background-color: #4a7ab5; color: white; }"
         "QMenu::separator { height: 1px; background: #555; margin: 4px 0; }");
-    m_menu->addAction(tr("Open File…"),  this, &MyVlcPlayer::openLocal);
-    m_menu->addAction(tr("Open URL…"),   this, &MyVlcPlayer::openUrl);
+    m_menu->addAction(tr("Open File…"),  this, &QtMediaPlayer::openLocal);
+    m_menu->addAction(tr("Open URL…"),   this, &QtMediaPlayer::openUrl);
     m_menu->addSeparator();
-    m_menu->addAction(tr("Play / Pause"), this, &MyVlcPlayer::playOrPause);
-    m_menu->addAction(tr("Stop"),         this, &MyVlcPlayer::stop);
+    m_menu->addAction(tr("Play / Pause"), this, &QtMediaPlayer::playOrPause);
+    m_menu->addAction(tr("Stop"),         this, &QtMediaPlayer::stop);
     m_menu->addSeparator();
     m_menu->addAction(tr("Volume +10%"), this, [this]() { changeVolume(qMin(100, audioVol + 10)); });
     m_menu->addAction(tr("Volume -10%"), this, [this]() { changeVolume(qMax(0,   audioVol - 10)); });
@@ -104,7 +104,7 @@ MyVlcPlayer::MyVlcPlayer(QWidget *parent) : QWidget(parent)
     });
 }
 
-bool MyVlcPlayer::eventFilter(QObject *watched, QEvent *event)
+bool QtMediaPlayer::eventFilter(QObject *watched, QEvent *event)
 {
     // Forward right-clicks on the (native) video surface to the context menu,
     // since a CustomContextMenu policy on QVideoWidget does not fire reliably.
@@ -118,19 +118,19 @@ bool MyVlcPlayer::eventFilter(QObject *watched, QEvent *event)
     return QWidget::eventFilter(watched, event);
 }
 
-MyVlcPlayer::~MyVlcPlayer() = default;
+QtMediaPlayer::~QtMediaPlayer() = default;
 
-void MyVlcPlayer::setMovieTime(int msec)
+void QtMediaPlayer::setMovieTime(int msec)
 {
     m_player->setPosition(msec);
 }
 
-void MyVlcPlayer::videoRightClick()
+void QtMediaPlayer::videoRightClick()
 {
     m_menu->popup(QCursor::pos());
 }
 
-void MyVlcPlayer::openLocal()
+void QtMediaPlayer::openLocal()
 {
     const QString file = QFileDialog::getOpenFileName(
         this, tr("Open file"), loadPath(), tr("Multimedia Files (*)"));
@@ -142,7 +142,7 @@ void MyVlcPlayer::openLocal()
     savePath(file);
 }
 
-void MyVlcPlayer::openUrl()
+void QtMediaPlayer::openUrl()
 {
     const QString url = QInputDialog::getText(
         this, tr("Open Url"), tr("Enter the URL you want to play"));
@@ -153,19 +153,19 @@ void MyVlcPlayer::openUrl()
     m_player->play();
 }
 
-void MyVlcPlayer::openUrlRadio(QString url)
+void QtMediaPlayer::openUrlRadio(QString url)
 {
     qDebug() << "QtMultimedia radio open:" << url;
     m_player->setSource(QUrl::fromUserInput(url));
     m_player->play();
 }
 
-void MyVlcPlayer::openUrlRadioFromIp(QHostInfo hostInfo)
+void QtMediaPlayer::openUrlRadioFromIp(QHostInfo hostInfo)
 {
     Q_UNUSED(hostInfo);
 }
 
-void MyVlcPlayer::playOrPause()
+void QtMediaPlayer::playOrPause()
 {
     if (m_player->playbackState() == QMediaPlayer::PlayingState)
         m_player->pause();
@@ -173,22 +173,22 @@ void MyVlcPlayer::playOrPause()
         m_player->play();
 }
 
-void MyVlcPlayer::pause()
+void QtMediaPlayer::pause()
 {
     m_player->pause();
 }
 
-void MyVlcPlayer::resume()
+void QtMediaPlayer::resume()
 {
     m_player->play();
 }
 
-void MyVlcPlayer::stop()
+void QtMediaPlayer::stop()
 {
     m_player->stop();
 }
 
-void MyVlcPlayer::changeVolume(int volume)
+void QtMediaPlayer::changeVolume(int volume)
 {
     audioVol = qBound(0, volume, 100);
     applyVolume();
@@ -196,13 +196,13 @@ void MyVlcPlayer::changeVolume(int volume)
         saveSoundVolume(audioVol);
 }
 
-void MyVlcPlayer::muteVolume(bool mute)
+void QtMediaPlayer::muteVolume(bool mute)
 {
     isMuted = mute;
     applyVolume();
 }
 
-void MyVlcPlayer::applyVolume()
+void QtMediaPlayer::applyVolume()
 {
     // QAudioOutput volume is 0.0–1.0; honour the mute flag.
     m_audio->setMuted(isMuted);
@@ -210,7 +210,7 @@ void MyVlcPlayer::applyVolume()
 }
 
 // ── QSettings persistence (same keys as the VLC implementation) ──────────────
-QString MyVlcPlayer::loadPath()
+QString QtMediaPlayer::loadPath()
 {
     QSettings settings;
     settings.beginGroup("videoPlayer");
@@ -219,7 +219,7 @@ QString MyVlcPlayer::loadPath()
     return path;
 }
 
-void MyVlcPlayer::savePath(QString path)
+void QtMediaPlayer::savePath(QString path)
 {
     QSettings settings;
     settings.beginGroup("videoPlayer");
@@ -227,7 +227,7 @@ void MyVlcPlayer::savePath(QString path)
     settings.endGroup();
 }
 
-int MyVlcPlayer::loadSoundVolume()
+int QtMediaPlayer::loadSoundVolume()
 {
     QSettings settings;
     settings.beginGroup("videoPlayer");
@@ -236,7 +236,7 @@ int MyVlcPlayer::loadSoundVolume()
     return volume;
 }
 
-void MyVlcPlayer::saveSoundVolume(int vol)
+void QtMediaPlayer::saveSoundVolume(int vol)
 {
     QSettings settings;
     settings.beginGroup("videoPlayer");

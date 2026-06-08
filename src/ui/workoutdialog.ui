@@ -189,7 +189,7 @@ QwtScaleWidget {
         </widget>
        </item>
        <item>
-        <widget class="MyVlcPlayer" name="widgetVideo" native="true">
+        <widget class="QtMediaPlayer" name="widgetVideo" native="true">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -686,9 +686,9 @@ QwtScaleWidget {
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>MyVlcPlayer</class>
+   <class>QtMediaPlayer</class>
    <extends>QWidget</extends>
-   <header>myvlcplayer.h</header>
+   <header>qtmediaplayer.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

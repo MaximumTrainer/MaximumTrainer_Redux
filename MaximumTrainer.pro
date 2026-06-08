@@ -36,18 +36,6 @@ isEmpty(GIT_VERSION) {
 }
 DEFINES += APP_VERSION=\\\"$$GIT_VERSION\\\"
 
-# TrainingPeaks client secret — supplied at build time via environment variable.
-# In GitHub Actions CI, set the TP_CLIENT_SECRET secret and expose it as an
-# environment variable in the qmake step.  For local development, export
-# TP_CLIENT_SECRET before running qmake.  An empty secret disables the token
-# refresh flow but does not prevent file uploads with an existing access token.
-TP_SECRET_VAL = $$(TP_CLIENT_SECRET)
-!isEmpty(TP_SECRET_VAL) {
-    DEFINES += TP_CLIENT_SECRET=\\\"$$TP_SECRET_VAL\\\"
-} else {
-    DEFINES += TP_CLIENT_SECRET=\\\"\\\"
-}
-
 # Intervals.icu OAuth2 client credentials — supplied at build time via env vars.
 # In GitHub Actions CI, add INTERVALS_OAUTH_CLIENT_ID and INTERVALS_OAUTH_CLIENT_SECRET
 # as repository secrets and expose them on the qmake step.  For local development,

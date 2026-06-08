@@ -84,10 +84,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     // Load encrypted third-party service credentials from the platform credential store.
     strava_access_token         = CredentialStore::load("strava",        "access_token");
     strava_refresh_token        = CredentialStore::load("strava",        "refresh_token");
-    training_peaks_access_token  = CredentialStore::load("trainingpeaks", "access_token");
-    training_peaks_refresh_token = CredentialStore::load("trainingpeaks", "refresh_token");
-    selfloops_user              = CredentialStore::load("selfloops",     "email");
-    selfloops_pw                = CredentialStore::load("selfloops",     "password");
 
 
 
@@ -103,7 +99,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     show_included_workout = true;
     distance_in_km = true;
     strava_private_upload = false;
-    training_peaks_public_upload = false;
     // intervals_icu_auto_upload is loaded from QSettings above; don't reset it here
     control_trainer_resistance = true;
     // Clamp the loaded value to the valid range (0–30 s)
@@ -148,7 +143,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     show_interval_remaining = true;
     show_workout_remaining = false;
     show_elapsed = true;
-    font_size_timer = 26;
 
     averaging_power = 2;
     offset_power = 0;
@@ -300,8 +294,7 @@ void Account::loadDisplayPrefs() {
     value_power_start   = settings.value("value_power_start",   value_power_start).toInt();
     value_speed_start   = settings.value("value_speed_start",   value_speed_start).toInt();
 
-    // Workout timer font size and the last-selected config tab/sub-tab.
-    font_size_timer                    = settings.value("font_size_timer",                    font_size_timer).toInt();
+    // The last-selected config tab/sub-tab.
     last_index_selected_config_workout = settings.value("last_index_selected_config_workout", last_index_selected_config_workout).toInt();
     last_tab_sub_config_selected       = settings.value("last_tab_sub_config_selected",       last_tab_sub_config_selected).toInt();
 
@@ -311,7 +304,6 @@ void Account::loadDisplayPrefs() {
     distance_in_km               = settings.value("distance_in_km",               distance_in_km).toBool();
     force_workout_window_on_top  = settings.value("force_workout_window_on_top",  force_workout_window_on_top).toBool();
     strava_private_upload        = settings.value("strava_private_upload",        strava_private_upload).toBool();
-    training_peaks_public_upload = settings.value("training_peaks_public_upload", training_peaks_public_upload).toBool();
 
     // Studio / power-meter / virtual-speed / included-content preferences.
     nb_user_studio        = settings.value("nb_user_studio",        nb_user_studio).toInt();
@@ -383,8 +375,7 @@ void Account::saveDisplayPrefs() {
     settings.setValue("value_power_start",   value_power_start);
     settings.setValue("value_speed_start",   value_speed_start);
 
-    // Workout timer font size and the last-selected config tab/sub-tab.
-    settings.setValue("font_size_timer",                    font_size_timer);
+    // The last-selected config tab/sub-tab.
     settings.setValue("last_index_selected_config_workout", last_index_selected_config_workout);
     settings.setValue("last_tab_sub_config_selected",       last_tab_sub_config_selected);
 
@@ -395,7 +386,6 @@ void Account::saveDisplayPrefs() {
     settings.setValue("distance_in_km",              distance_in_km);
     settings.setValue("force_workout_window_on_top", force_workout_window_on_top);
     settings.setValue("strava_private_upload",       strava_private_upload);
-    settings.setValue("training_peaks_public_upload", training_peaks_public_upload);
 
     // Studio / power-meter / virtual-speed / included-content preferences.
     // Formerly server-saved; persisted locally so they survive a restart.
@@ -454,18 +444,6 @@ void Account::saveStravaCredentials()
 {
     CredentialStore::store("strava", "access_token",  strava_access_token);
     CredentialStore::store("strava", "refresh_token", strava_refresh_token);
-}
-
-void Account::saveTrainingPeaksCredentials()
-{
-    CredentialStore::store("trainingpeaks", "access_token",  training_peaks_access_token);
-    CredentialStore::store("trainingpeaks", "refresh_token", training_peaks_refresh_token);
-}
-
-void Account::saveSelfloopsCredentials()
-{
-    CredentialStore::store("selfloops", "email",    selfloops_user);
-    CredentialStore::store("selfloops", "password", selfloops_pw);
 }
 
 void Account::saveSensorDropoutSettings()

@@ -46,7 +46,6 @@ DialogInfoWebView::DialogInfoWebView(QWidget *parent) :
     ui->webView->setPage(myPage);
 
     usedForStrava = false;
-    usedForTrainingPeaks = false;
     usedForIntervalsIcu = false;
 
     connect(ui->webView, SIGNAL(loadStarted()), this, SLOT(onLoadStarted()));
@@ -65,12 +64,6 @@ void DialogInfoWebView::setUsedForStrava(bool used) {
 
     this->usedForStrava = used;
 }
-/////////////////////////////////////////////////////////////////////////
-void DialogInfoWebView::setUsedForTrainingPeaks(bool used) {
-
-    this->usedForTrainingPeaks = used;
-}
-
 /////////////////////////////////////////////////////////////////////////
 void DialogInfoWebView::setUsedForIntervalsIcu(bool used) {
 
@@ -148,14 +141,14 @@ void DialogInfoWebView::pageLoaded(bool ok){
         LOG_WARN("DialogInfoWebView",
                  QStringLiteral("Page failed to load: ") + currentUrl);
 
-        if (usedForIntervalsIcu || usedForStrava || usedForTrainingPeaks) {
+        if (usedForIntervalsIcu || usedForStrava) {
             m_showingErrorPage = true;
             ui->webView->setHtml(buildErrorPageHtml(currentUrl));
         }
         return;
     }
 
-    if (!usedForStrava && !usedForTrainingPeaks && !usedForIntervalsIcu)
+    if (!usedForStrava && !usedForIntervalsIcu)
         return;
 
     LOG_DEBUG("DialogInfoWebView",
@@ -178,36 +171,8 @@ void DialogInfoWebView::pageLoaded(bool ok){
                     LOG_INFO("DialogInfoWebView", QStringLiteral("Strava OAuth linked successfully"));
                     emit stravaLinked(true);
                 }
-                if (account->training_peaks_access_token.size() > 2) {
-                    emit trainingPeaksLinked(true);
-                }
             });
 
-
-
-
-        }
-    }
-    /// ------------------------------- TP Login sucess! ---------------------------------------
-    else if (ui->webView->url().toDisplayString().contains("/trainingpeaks_token_exchange"))  {
-
-        // Only try to parse the json object when request was successful
-        if (ui->webView->url().toDisplayString().contains("code=")) {
-            LOG_INFO("DialogInfoWebView", QStringLiteral("TrainingPeaks token exchange callback received"));
-
-            ui->webView->page()->toPlainText([=](const QString &response){
-                LOG_DEBUG("DialogInfoWebView",
-                          QStringLiteral("TrainingPeaks token exchange response length: ")
-                          + QString::number(response.size()));
-                Util::parseJsonTPObject(response);
-
-                Account *account = qApp->property("Account").value<Account*>();
-                if (account->training_peaks_access_token.size() > 2) {
-                    LOG_INFO("DialogInfoWebView", QStringLiteral("TrainingPeaks OAuth linked successfully"));
-                    emit trainingPeaksLinked(true);
-                }
-                this->accept();
-            });
 
 
 
@@ -332,27 +297,6 @@ void DialogInfoWebView::pageLoaded(bool ok){
 }
 
 
-
-
-
-/////////////////////////////////////////////////////////////////////////
-//void DialogInfoWebView::linkClickedWebView(QUrl url) {
-
-//    if (this->usedForStrava || this->usedForTrainingPeaks) {
-//        ui->webView->load(url);
-//        return;
-//    }
-
-//    if (!url.toString().contains("maximumtrainer", Qt::CaseInsensitive)) {
-//        QDesktopServices::openUrl(url);
-//    }
-//    else if (url.toString().contains("forum", Qt::CaseInsensitive)) {
-//        QDesktopServices::openUrl(url);
-//    }
-//    else {
-//        ui->webView->load(url);
-//    }
-//}
 
 
 

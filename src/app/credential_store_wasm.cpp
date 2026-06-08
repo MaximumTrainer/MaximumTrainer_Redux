@@ -6,8 +6,8 @@
 // cleared when the user's browser data is wiped; values are not encrypted
 // but this matches the security model of any other browser-based web app.
 //
-// This enables OAuth tokens for Strava, Intervals.icu, and TrainingPeaks to
-// persist across browser sessions in the WASM build.
+// This enables OAuth tokens for Strava and Intervals.icu to persist across
+// browser sessions in the WASM build.
 
 #include "credential_store.h"
 #include <emscripten.h>

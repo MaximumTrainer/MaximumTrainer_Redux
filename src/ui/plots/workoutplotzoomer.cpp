@@ -7,6 +7,7 @@
 #include <QPixmap>
 
 #include "qwt_date_scale_draw.h"
+#include "qwt_plot_canvas.h"
 #include "qwt_symbol.h"
 #include "qwt_plot_shapeitem.h"
 #include "qwt_scale_widget.h"
@@ -703,6 +704,14 @@ void WorkoutPlotZoomer::setCanvasColor(CanvasColor color) {
         canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(35, 35, 35); }");
         break;
     }
+
+    // QwtPlotCanvas caches the styled background (including the rounded-corner
+    // border) in its backing store, which a bare setStyleSheet() does not
+    // refresh — so the previous colour lingers at the canvas edge/corners until
+    // some later full repaint. Invalidate the cache and repaint immediately.
+    if (auto *plotCanvas = qobject_cast<QwtPlotCanvas*>(canvas()))
+        plotCanvas->invalidateBackingStore();
+    canvas()->update();
 }
 
 

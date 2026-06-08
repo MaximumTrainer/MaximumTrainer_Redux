@@ -155,28 +155,6 @@ void TimeWidget::showWorkoutElapsed(bool show) {
     //    ui->label_timeWorkoutElaps_txt->setVisible(show);
 
 }
-void TimeWidget::setTimerFontSize(int size) {
-
-    QFont font;
-    font.setBold(true);
-    font.setStyleStrategy(QFont::PreferAntialias);
-    font.setPointSize(size);
-
-    QFont font2(font);
-    font2.setBold(false);
-    font2.setPointSize(font.pointSize()-8);
-
-    ui->label_intervalTime->setFont(font);
-    ui->label_remainingTime->setFont(font);
-    ui->label_timeElapsed->setFont(font);
-
-    ui->label_targetPower->setFont(font2);
-    ui->label_targetCad->setFont(font2);
-    ui->label_targetHr->setFont(font2);
-    ui->label_rangePower->setFont(font2);
-    ui->label_rangeCad->setFont(font2);
-    ui->label_rangeHr->setFont(font2);
-}
 
 
 
