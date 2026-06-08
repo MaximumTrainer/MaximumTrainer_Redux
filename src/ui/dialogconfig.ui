@@ -215,7 +215,22 @@ QLabel#label_imageCalories {
             </layout>
            </item>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_20">
+            <widget class="QGroupBox" name="groupBox_intervalMessage">
+             <property name="title">
+              <string>Interval Message</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_intervalMessage">
+              <property name="spacing">
+               <number>4</number>
+              </property>
+              <property name="topMargin">
+               <number>6</number>
+              </property>
+              <property name="bottomMargin">
+               <number>6</number>
+              </property>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_20">
              <item>
               <widget class="QLabel" name="label_startWorkoutWhen_2">
                <property name="sizePolicy">
@@ -367,6 +382,9 @@ QLabel#label_imageCalories {
               </spacer>
              </item>
             </layout>
+              </item>
+             </layout>
+            </widget>
            </item>
            <item>
             <spacer name="verticalSpacer">
