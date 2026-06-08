@@ -57,6 +57,7 @@
         <file alias="studio">resources/images/studio.png</file>
         <file alias="target">resources/images/fa-target.png</file>
         <file alias="trainingpeaks">resources/images/TP_logo_horz_2_color.png</file>
+        <file alias="intervals">resources/images/intervals.png</file>
     </qresource>
     <qresource prefix="/sound">
         <file alias="end_workout">resources/sound/end_workout.wav</file>

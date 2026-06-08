@@ -85,7 +85,7 @@ DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent
     QListWidgetItem *item1 = new QListWidgetItem(QIcon(":/image/icon/general"), tr("General"), ui->listWidget_settings);
     QListWidgetItem *item3 = new QListWidgetItem(QIcon(":/image/icon/folder"), tr("Folders"), ui->listWidget_settings);
     QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/upload"), tr("Auto Upload"), ui->listWidget_settings);
-    QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/calendar"), tr("Intervals.icu"), ui->listWidget_settings);
+    QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/intervals"), tr("Intervals.icu"), ui->listWidget_settings);
     // "Profile" reuses the old main-page profile icon; its page (page_profile)
     // is the last static page in the .ui, so it maps to stacked index 4 and the
     // runtime-added Logging page lands at index 5 — keep this order in sync.
