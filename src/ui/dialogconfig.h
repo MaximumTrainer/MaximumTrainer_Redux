@@ -175,12 +175,12 @@ private :
     void playSoundTestEffect();
     void moveElement(QString widgetIdentifier, bool moveRight); //moveRight false = moveLeft
 
-    // Group C: preference tab setup helpers
-    QWidget *setupTrainerTab();
+    // Interval-summary overlay setting (lives at the bottom of the General tab)
+    void buildIntervalSummaryGroup();
 
-    void initTrainerTab();
+    void initIntervalSummary();
 
-    void saveTrainerTab();
+    void saveIntervalSummary();
 
 private:
     RadioTableModel *tableModel;

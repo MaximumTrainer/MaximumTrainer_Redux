@@ -53,14 +53,12 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/sound"),   tr("Sounds"), ui->listWidget_settings);
     QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/movie"),   tr("Video Player"), ui->listWidget_settings);
     QListWidgetItem *item6 = new QListWidgetItem(QIcon(":/image/icon/radio"),   tr("Radio"), ui->listWidget_settings);
-    QListWidgetItem *item8 = new QListWidgetItem(tr("Workout"), ui->listWidget_settings);
     item1->setSizeHint(QSize(35,35));
     item2->setSizeHint(QSize(35,35));
     item3->setSizeHint(QSize(35,35));
     item4->setSizeHint(QSize(35,35));
     item5->setSizeHint(QSize(35,35));
     item6->setSizeHint(QSize(35,35));
-    item8->setSizeHint(QSize(35,35));
 
     ui->listWidget_settings->addItem(item1);
     ui->listWidget_settings->addItem(item2);
@@ -68,11 +66,11 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     ui->listWidget_settings->addItem(item4);
     ui->listWidget_settings->addItem(item5);
     ui->listWidget_settings->addItem(item6);
-    ui->listWidget_settings->addItem(item8);
 
-    // Studio mode is configured on the main-window Studio page; this dialog no
-    // longer duplicates it. Logging lives only in the Preferences dialog.
-    ui->stackedWidget->addWidget(setupTrainerTab());
+    // The interval-summary overlay setting lives at the bottom of the General
+    // tab now (the standalone "Workout"/Studio tabs were removed). Studio mode
+    // is configured on the main-window Studio page; logging in Preferences.
+    buildIntervalSummaryGroup();
 
 
     connect(ui->listWidget_settings, SIGNAL(currentRowChanged(int)), this, SLOT(currentListViewSelectionChanged(int)) );
@@ -364,7 +362,7 @@ void DialogConfig::initUi() {
         myTab->setCurrentIndex(account->last_tab_sub_config_selected);
 
     // Init the programmatic tabs
-    initTrainerTab();
+    initIntervalSummary();
 
 
     ///Timers
@@ -947,7 +945,7 @@ void DialogConfig::saveSettings() {
     account->saveDisplayPrefs();
 
     // Save the new preference tabs
-    saveTrainerTab();
+    saveIntervalSummary();
 
     parentDialog->setMessagePlot(); //update message start workout
 }
@@ -1104,29 +1102,10 @@ void DialogConfig::on_spinBox_value_intervalmessage_before_valueChanged(int arg1
 // Group C — Programmatic preference tabs
 // ═══════════════════════════════════════════════════════════════════════════════
 
-static QWidget *makeTabPage(const QString &objectName)
+// ─── Interval-summary overlay (appended to the General tab) ──────────────────
+void DialogConfig::buildIntervalSummaryGroup()
 {
-    auto *page = new QWidget();
-    page->setObjectName(objectName);
-    auto *layout = new QVBoxLayout(page);
-    layout->setContentsMargins(16, 16, 16, 16);
-    layout->setSpacing(10);
-    return page;
-}
-
-// ─── Trainer tab (#131) ──────────────────────────────────────────────────────
-QWidget *DialogConfig::setupTrainerTab()
-{
-    QWidget *page = makeTabPage("page_trainer");
-    auto *layout = qobject_cast<QVBoxLayout*>(page->layout());
-
-    // Trainer model (virtual power), ERG ramp, sensor dropout and battery
-    // warning moved to the main-window Bluetooth Sensors page; Intervals.icu
-    // auto-upload moved to the Preferences -> Intervals.icu page. This tab now
-    // holds only the interval-summary overlay (a workout-time display concern).
-
-    // Interval Summary Overlay group
-    auto *grpSummary = new QGroupBox(tr("Interval Summary Overlay"), page);
+    auto *grpSummary = new QGroupBox(tr("Interval Summary Overlay"));
     auto *grpSummaryLayout = new QVBoxLayout(grpSummary);
 
     checkIntervalSummary = new QCheckBox(tr("Show summary overlay on interval transition"), grpSummary);
@@ -1141,12 +1120,10 @@ QWidget *DialogConfig::setupTrainerTab()
     durRow->addStretch();
     grpSummaryLayout->addLayout(durRow);
 
-    layout->addWidget(grpSummary);
-    layout->addStretch();
-    return page;
+    ui->verticalLayout_2->addWidget(grpSummary);
 }
 
-void DialogConfig::initTrainerTab()
+void DialogConfig::initIntervalSummary()
 {
     if (!checkIntervalSummary) return;
 
@@ -1154,7 +1131,7 @@ void DialogConfig::initTrainerTab()
     spinIntervalSummaryDuration->setValue(account->interval_summary_duration_s);
 }
 
-void DialogConfig::saveTrainerTab()
+void DialogConfig::saveIntervalSummary()
 {
     if (!checkIntervalSummary) return;
 
