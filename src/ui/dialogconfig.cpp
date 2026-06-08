@@ -1104,7 +1104,10 @@ void DialogConfig::buildIntervalSummaryGroup()
     durRow->addStretch();
     grpSummaryLayout->addLayout(durRow);
 
-    ui->verticalLayout_2->addWidget(grpSummary);
+    // Insert just before the trailing vertical spacer so the box sits directly
+    // under the Interval Message group, with the spacer keeping the slack at the
+    // bottom (appending would place it after the spacer, pushing it down).
+    ui->verticalLayout_2->insertWidget(ui->verticalLayout_2->count() - 1, grpSummary);
 }
 
 void DialogConfig::initIntervalSummary()
