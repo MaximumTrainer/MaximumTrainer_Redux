@@ -41,6 +41,10 @@ DialogInfoWebView::DialogInfoWebView(QWidget *parent) :
     newProfile->setPersistentCookiesPolicy(QWebEngineProfile::NoPersistentCookies);
 
     MyQWebEnginePage *myPage = new MyQWebEnginePage(newProfile, this);
+    // Qt requires the profile to outlive its page. Reparent the profile to the
+    // page so it is destroyed *after* the page on teardown — otherwise Qt logs
+    // "Release of profile requested but QWebEnginePage still not deleted".
+    newProfile->setParent(myPage);
 
     myPage->setExternalList(lstExternal);
     ui->webView->setPage(myPage);

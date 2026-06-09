@@ -13,7 +13,6 @@
 #endif
 #endif
 
-#include "zoneobject.h"
 #include "planobject.h"
 #include "fancytabbar.h"
 #include "radio.h"
@@ -85,12 +84,7 @@ public slots:
     void loadConfigStudio();
     void saveConfigStudio();
     void updateVecStudio(QVector<UserStudio>);
-    void fillSettingPage();
     void updateFieldForUser(int riderID, int fieldNumber, QVariant value);
-
-
-
-    void updateZoneInterface();
     void leftMenuChanged(int tabSelected);
 
     void goToWorkoutPlanFilter(const QString& plan);
@@ -100,8 +94,6 @@ public slots:
 
     void showWorkoutList();
     void showWorkoutCreator();
-
-    void setFlagFtpChanged();
 
 
 
@@ -152,9 +144,6 @@ private slots:
     void onNetworkOnlineChanged(bool isOnline);
 
     void createWebChannelPlan();
-    void createWebChannelZone();
-    void createWebChannelSettings();
-    void createWebChannelStudio();
 
     void reloadPlanWebView();
     void onIntervalsIcuWorkoutDownloaded();
@@ -184,8 +173,6 @@ private:
 
     void tryAdvanceWorkoutQueue();
 
-    void sendDataToSettingsOrStudioPage(int deviceType, int numberDeviceFound, QList<int> lstDevicePairedr, QList<int> lstTypeDevicePairedr, bool fromStudioPage);
-
     // Screenshot mode helpers
     Workout makeDemoWorkout() const;
 
@@ -206,7 +193,6 @@ private:
 
     QList<Radio> lstRadio;
 
-    ZoneObject *zoneObject;
     PlanObject *planObject;
 
     QEventLoop loop;
@@ -229,7 +215,6 @@ private:
     FancyTabBar *ftb;
 
     int currentIndexLeftMenu;
-    bool ftpChanged;
     bool isInsideWorkout;
 
     QString lastWorkoutNameDownloaded;

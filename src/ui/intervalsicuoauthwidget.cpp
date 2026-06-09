@@ -26,6 +26,10 @@ IntervalsIcuOAuthWidget::IntervalsIcuOAuthWidget(QWidget *parent)
     profile->setPersistentCookiesPolicy(QWebEngineProfile::NoPersistentCookies);
 
     auto *page = new MyQWebEnginePage(profile, this);
+    // Qt requires the profile to outlive its page. Reparent the profile to the
+    // page so it is destroyed *after* the page on teardown — otherwise Qt logs
+    // "Release of profile requested but QWebEnginePage still not deleted".
+    profile->setParent(page);
     page->setExternalList({"maximumtrainer"});
 
     m_webView = new QWebEngineView(this);

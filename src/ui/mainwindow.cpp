@@ -103,7 +103,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->settings = qApp->property("User_Settings").value<Settings*>();
     this->account = qApp->property("Account").value<Account*>();
 
-    zoneObject = new ZoneObject(this);         /// Used with QWebView zone page
     planObject = new PlanObject(this);         ///Used with QWebView Plan page
 
     replyIntervalsIcuZwo    = nullptr;
@@ -111,18 +110,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 
     createWebChannelPlan();
-    createWebChannelZone();
-    createWebChannelSettings();
-    createWebChannelStudio();
 
     // Right-click context menu on the Plan (Intervals.icu calendar) view
     ui->webView_plan->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->webView_plan, SIGNAL(customContextMenuRequested(QPoint)),
             this, SLOT(showPlanContextMenu(QPoint)));
-
-    ui->webView_zones->setUrl(QUrl(Environnement::getUrlZones()));
-    ui->webView_achiev->setUrl(QUrl(Environnement::getUrlAchievement()));
-    ui->webView_settings->setUrl(QUrl(Environnement::getUrlSettings()));
 
     // Load Intervals.icu athlete calendar, or show a setup prompt if no credentials configured
     if (!account->intervals_icu_athlete_id.isEmpty()) {
@@ -229,7 +221,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 
     currentIndexLeftMenu = 0;
-    ftpChanged = false;
 
 
     // connect Workout Dialog done with refresh Training Data page
@@ -252,8 +243,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 
     /// Update create workout graph on FTP and LTHR change
-    connect(zoneObject, SIGNAL(signal_updateFTP()), this, SLOT(setFlagFtpChanged()) );
-    connect(zoneObject, SIGNAL(signal_updateLTHR()), this, SLOT(setFlagFtpChanged()) );
     connect(this, SIGNAL(ftpAndTabProfileChanged()), ui->tab_create, SLOT(computeWorkout()) );
     ///Also update workout metrics based on FTP
     connect(this, SIGNAL(ftpAndTabProfileChanged()), ui->tab_workout1, SLOT(updateTableViewMetrics()) );
@@ -313,9 +302,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     qDebug() << "Test1";
 
     connect(planObject, SIGNAL(signal_goToWorkout(QString)), this, SLOT(goToWorkoutPlanFilter(QString)) );
-
-
-    connect(ui->webView_settings, SIGNAL(loadFinished(bool)), this, SLOT(fillSettingPage()));
 
     // Native Studio page: enabling studio mode / changing rider count routes
     // through the same MainWindow logic the old web page used.
@@ -750,13 +736,6 @@ void MainWindow::workoutOver() {
 
 
 
-/////////////////////////////////////////////////////////////////////////////////
-void MainWindow::setFlagFtpChanged() {
-
-    ftpChanged = true;
-
-}
-
 /////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::leftMenuChanged(int tabSelected) {
 
@@ -781,18 +760,11 @@ void MainWindow::leftMenuChanged(int tabSelected) {
 
 
 
-    if (currentIndexLeftMenu == 3 && ftpChanged) { ///Also check that FTP has changed..
-        qDebug() << "-*-*-*-OK FTP CHANGED, RECALCULATE!";
-        emit ftpAndTabProfileChanged();
-        ftpChanged = false;
-    }
-
-    // The Profile (page 4) and Settings (page 5) tabs were removed from the tab
-    // bar, but their stacked-widget pages remain so the existing web views keep
-    // working for code that still references them. Map the visible tabs to their
-    // pages: 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio, 4 Sensors(=page 7),
-    // 5 History(=page 6).
-    static const int tabToPage[] = {0, 1, 2, 3, 7, 6};
+    // The Profile and Settings web-view pages were removed from stackedWidget_menu,
+    // so the visible tabs no longer map 1:1 to page indices. Tab order is
+    // 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio, 4 Sensors, 5 History; the
+    // matching stacked pages are 0/1/2/3 then 5 Sensors and 4 History.
+    static const int tabToPage[] = {0, 1, 2, 3, 5, 4};
     const int pageIndex = (tabSelected >= 0 && tabSelected < 6)
                               ? tabToPage[tabSelected]
                               : tabSelected;
@@ -811,43 +783,6 @@ void MainWindow::leftMenuChanged(int tabSelected) {
     }
 }
 
-
-
-//------------------------------------------------------------
-void MainWindow::createWebChannelZone() {
-
-    qDebug() << "createWebChannelZone";
-
-    QFile webChannelJsFile(":/qtwebchannel/qwebchannel.js");
-    if(  !webChannelJsFile.open(QIODevice::ReadOnly) ) {
-        LOG_WARN("MainWindow", QStringLiteral("Could not open qwebchannel.js: ") + webChannelJsFile.errorString());
-    }
-    else {
-        qDebug() << "OK webEngineProfile";
-        QByteArray webChannelJs = webChannelJsFile.readAll();
-        webChannelJs.append(
-                    "\n"
-                    "var zoneObject"
-                    "\n"
-                    "new QWebChannel(qt.webChannelTransport, function(channel) {"
-                    "     zoneObject = channel.objects.zoneObject;"
-                    "});"
-                    "\n"
-                    );
-
-        QWebChannel *channel = new QWebChannel(ui->webView_zones);
-        QWebEngineScript script;
-        script.setSourceCode(webChannelJs);
-        script.setName("qwebchannel.js");
-        script.setWorldId(QWebEngineScript::MainWorld);
-        script.setInjectionPoint(QWebEngineScript::DocumentCreation);
-        script.setRunsOnSubFrames(false);
-
-        ui->webView_zones->page()->scripts().insert(script);
-        ui->webView_zones->page()->setWebChannel(channel);
-        channel->registerObject("zoneObject", zoneObject);
-    }
-}
 
 
 //------------------------------------------------------------
@@ -891,85 +826,6 @@ void MainWindow::createWebChannelPlan() {
         channel->registerObject("planObject", planObject);
     }
 }
-
-
-//------------------------------------------------------------
-void MainWindow::createWebChannelSettings() {
-
-    qDebug() << "createWebChannelSettings";
-
-    QFile webChannelJsFile(":/qtwebchannel/qwebchannel.js");
-    if(  !webChannelJsFile.open(QIODevice::ReadOnly) ) {
-        LOG_WARN("MainWindow", QStringLiteral("Could not open qwebchannel.js: ") + webChannelJsFile.errorString());
-    }
-    else {
-        qDebug() << "OK webEngineProfile";
-        QByteArray webChannelJs = webChannelJsFile.readAll();
-        webChannelJs.append(
-                    "\n"
-                    "var MainWindow"
-                    "\n"
-                    "new QWebChannel(qt.webChannelTransport, function(channel) {"
-                    "     MainWindow = channel.objects.MainWindow;"
-                    "});"
-                    "\n"
-                    );
-
-        QWebChannel *channel = new QWebChannel(ui->webView_settings);
-        QWebEngineScript script;
-        script.setSourceCode(webChannelJs);
-        script.setName("qwebchannel.js");
-        script.setWorldId(QWebEngineScript::MainWorld);
-        script.setInjectionPoint(QWebEngineScript::DocumentCreation);
-        script.setRunsOnSubFrames(false);
-
-        ui->webView_settings->page()->scripts().insert(script);
-        ui->webView_settings->page()->setWebChannel(channel);
-        channel->registerObject("MainWindow", this);
-    }
-}
-
-
-//------------------------------------------------------------
-void MainWindow::createWebChannelStudio() {
-
-    qDebug() << "createWebChannelStudio";
-
-    QFile webChannelJsFile(":/qtwebchannel/qwebchannel.js");
-    if(  !webChannelJsFile.open(QIODevice::ReadOnly) ) {
-        LOG_WARN("MainWindow", QStringLiteral("Could not open qwebchannel.js: ") + webChannelJsFile.errorString());
-    }
-    else {
-        qDebug() << "OK webEngineProfile";
-        QByteArray webChannelJs = webChannelJsFile.readAll();
-        webChannelJs.append(
-                    "\n"
-                    "var MainWindow"
-                    "\n"
-                    "new QWebChannel(qt.webChannelTransport, function(channel) {"
-                    "     MainWindow = channel.objects.MainWindow;"
-                    "});"
-                    "\n"
-                    );
-
-    }
-}
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::fillSettingPage()  {
-
-    qDebug() << "fillSettingPage -  Set the pmUseForCadence " << account->use_pm_for_cadence;
-
-    QString jsCode = QString("$('#switch-pm-cadence').bootstrapSwitch('state', %1);").arg(account->use_pm_for_cadence);
-    jsCode += QString("$('#switch-pm-speed').bootstrapSwitch('state', %1);").arg(account->use_pm_for_speed);
-
-    qDebug() << "jsCodeISL:" << jsCode;
-
-    ui->webView_settings->page()->runJavaScript(
-        "if(typeof window.$==='function'){" + jsCode + "}");
-}
-
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1129,19 +985,6 @@ void MainWindow::saveConfigStudio() {
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::updateZoneInterface() {
-
-    qDebug() << "update zone interface!********************";
-
-    QString jsToExecute = QString("$('#FTP').val( '%1' ); ").arg((QString::number(account->FTP)));
-    jsToExecute += QString("$('#LTHR').val( '%1' ); ").arg((QString::number(account->LTHR)));
-    //    ui->webView_zones->page()->mainFrame()->documentElement().evaluateJavaScript(jsToExecute + "; null");
-    ui->webView_zones->page()->runJavaScript(
-        "if(typeof window.$==='function'){" + jsToExecute + "}");
-
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::showWorkoutCreator() {
 
     ui->tabWidget_workout->setCurrentIndex(1);
@@ -1209,35 +1052,6 @@ void MainWindow::saveSettings() {
 
 
 
-
-void MainWindow::sendDataToSettingsOrStudioPage(int deviceType, int numberDeviceFound, QList<int> lstDevicePaired, QList<int> lstTypeDevicePaired, bool fromStudioPage) {
-
-    qDebug() << "sendDataToSettingsOrStudioPage" << deviceType << numberDeviceFound << "..." << fromStudioPage;
-    //transform List to JS format
-    QStringList temp;
-    std::transform(lstDevicePaired.begin(), lstDevicePaired.end(), std::back_inserter(temp), [](int i){ return QString::number(i); });
-
-    QStringList temp2;
-    std::transform(lstTypeDevicePaired.begin(), lstTypeDevicePaired.end(), std::back_inserter(temp2), [](int i){ return QString::number(i); });
-
-    QString script("foundSensor(%1, %2, [%3], [%4], %5);");
-    QString arg1= QString::number(deviceType);
-    QString arg2= QString::number(lstDevicePaired.size());
-    QString arg3 = temp.join(',');
-    QString arg4 = temp2.join(',');
-    QString arg5 = QString::number(fromStudioPage);
-
-    QString jsToRun = script.arg(arg1, arg2, arg3, arg4, arg5);
-    qDebug() << "here is the script to run:" << jsToRun;
-
-    // The studio page is now a native widget; only the (legacy) settings web
-    // page still consumes this JS callback.
-    if (!fromStudioPage) {
-        ui->webView_settings->page()->runJavaScript(
-            "if(typeof foundSensor==='function'){" + jsToRun + "}");
-    }
-
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::closeEvent(QCloseEvent *event) {
@@ -1529,7 +1343,6 @@ void MainWindow::executeWorkout(Workout workout) {
         connect(w, SIGNAL(stopDecodingMsgHub()), simHub, SLOT(stopDecodingMsg()));
 
         connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
-        connect(w, SIGNAL(ftp_lthr_changed()), this, SLOT(updateZoneInterface()));
         connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
         connect(w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
 
@@ -1537,7 +1350,6 @@ void MainWindow::executeWorkout(Workout workout) {
             workoutOver();
             simHub->stopDecodingMsg();
             delete simHub;
-            ui->webView_achiev->reload();
             // Auto-advance to next queued workout if one exists
             tryAdvanceWorkoutQueue();
         });
@@ -1646,7 +1458,6 @@ void MainWindow::executeWorkout(Workout workout) {
 #endif
 
     connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
-    connect(w, SIGNAL(ftp_lthr_changed()), this, SLOT(updateZoneInterface()));
     connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
     connect(w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
 
@@ -1654,7 +1465,6 @@ void MainWindow::executeWorkout(Workout workout) {
         workoutOver();
         btleHub->disconnectFromDevice();
         delete btleHub;
-        ui->webView_achiev->reload();
         // Auto-advance to next queued workout if one exists
         tryAdvanceWorkoutQueue();
     });
@@ -1739,7 +1549,6 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
                 SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
 
     connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
-    connect(w, SIGNAL(ftp_lthr_changed()), this, SLOT(updateZoneInterface()));
     connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
     connect(w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
 
@@ -1749,7 +1558,6 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
             hub->disconnectFromDevice();
             delete hub;
         }
-        ui->webView_achiev->reload();
         // Auto-advance to next queued workout if one exists
         tryAdvanceWorkoutQueue();
     });

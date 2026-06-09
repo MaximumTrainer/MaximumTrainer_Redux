@@ -114,48 +114,6 @@ const static QString urlStravaAuthorize("https://www.strava.com/oauth/authorize?
 
 
 
-/// Login
-const static QString urlLoginEn = "login/insideMT";
-
-/// Profile
-const static QString urlProfilEnOutsideMt = "myprofile";
-
-/// Choose-Subscription
-const static QString urlChooseSubEn = "choose-subscription";
-
-/// News
-const static QString urlNewsEn = "news";
-
-/// Zones
-const static QString urlZonesEn = "training-zones";
-
-/// Studio
-const static QString urlStudioEn = "studio";
-
-/// Achievement
-const static QString urlAchievEn = "achievement/insideMT";
-
-/// Settings
-const static QString urlSettingsEn = "settings";
-
-/// Workout
-const static QString urlWorkoutEn = "workouts";
-
-/// Workout-creator
-const static QString urlWorkoutCreatorEn = "workout-creator";
-
-/// Training-Plans
-const static QString urlPlanEn = "training-plans/insideMT";
-
-/// Help
-const static QString urlSupportEn = "support/insideMT";
-
-/// Download
-const static QString urlDownloadEn = "download-mt";
-
-
-
-
 
 class Environnement
 {
@@ -192,24 +150,6 @@ public:
     /// Checks CredentialStore("intervals_icu_app","client_secret") first; falls back
     /// to the build-time constant (INTERVALS_OAUTH_CLIENT_SECRET / "").
     static QString getIntervalsIcuClientSecret();
-
-
-    static QString getUrlLogin();
-    static QString getUrlProfileOutsideMt();
-    static QString getUrlChooseSub();
-    static QString getUrlNews();
-
-    static QString getUrlZones();
-    static QString getUrlStudio();
-    static QString getUrlAchievement();
-    static QString getUrlSettings();
-
-    static QString getUrlWorkout();
-    static QString getUrlWorkoutCreator();
-    static QString getUrlDownload();
-    static QString getUrlPlans();
-
-    static QString getUrlSupport();
 
 };
 
