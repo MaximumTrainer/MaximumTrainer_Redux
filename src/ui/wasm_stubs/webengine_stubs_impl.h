@@ -69,6 +69,7 @@ public:
     static QWebEngineProfile *defaultProfile() { static QWebEngineProfile p; return &p; }
     QWebEngineSettings *settings() { return QWebEngineSettings::defaultSettings(); }
     void setPersistentCookiesPolicy(PersistentCookiesPolicy) {}
+    void setHttpUserAgent(const QString &) {}
 };
 
 // ─────────────────────────────── QWebEnginePage ──────────────────────────────
