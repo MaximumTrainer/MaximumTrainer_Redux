@@ -1,7 +1,9 @@
 #include "repeatwidget.h"
 #include "ui_repeatwidget.h"
+#include "themedicon.h"
 #include <QLabel>
 #include <QDebug>
+#include <QStyle>
 
 RepeatWidget::~RepeatWidget() {
     delete ui;
@@ -23,10 +25,16 @@ RepeatWidget::RepeatWidget(RepeatData *data, QWidget *parent) :
     ui->setupUi(this);
 
 
-    QIcon iconRepeat(":/image/icon/repeat");
+    // Tint the repeat glyph to the palette text colour so it stays visible in
+    // both light and dark themes (the bundled icon is dark).
+    const QColor glyphColor = palette().color(QPalette::WindowText);
+    QIcon iconRepeat = tintedIcon(":/image/icon/repeat", glyphColor);
     for (int i=0; i<ui->comboBox_repeat->count(); i++)
         ui->comboBox_repeat->setItemIcon(i, iconRepeat);
     setMouseTracking(true);
+
+    // Native close (X) icon for removing the repeat block.
+    ui->pushButton_delete->setIcon(style()->standardIcon(QStyle::SP_TitleBarCloseButton));
 
 
     setWindowFlags(Qt::WindowStaysOnTopHint);

@@ -12,6 +12,7 @@
 
 
 #include "intervaldelegate.h"
+#include "themedicon.h"
 #include "util.h"
 #include "account.h"
 #include "xmlutil.h"
@@ -31,6 +32,11 @@ WorkoutCreator::~WorkoutCreator()
 WorkoutCreator::WorkoutCreator(QWidget *parent) : QWidget(parent), ui(new Ui::WorkoutCreator)
 {
     ui->setupUi(this);
+
+    // The repeat glyph is a dark icon; tint it to the palette text colour so it
+    // is visible in both light and dark themes.
+    ui->pushButton_repeat->setIcon(
+        tintedIcon(":/image/icon/repeat", palette().color(QPalette::ButtonText)));
 
     this->account = qApp->property("Account").value<Account*>();
 
@@ -85,32 +91,17 @@ WorkoutCreator::WorkoutCreator(QWidget *parent) : QWidget(parent), ui(new Ui::Wo
 
 
 
-    ui->tableView->setColumnWidth(0, 35);  //drag selector
-    ui->tableView->setColumnWidth(1, 90);  //time
-    ui->tableView->setColumnWidth(2, 160); //power
-    ui->tableView->setColumnWidth(3, 160); //cadence
-    ui->tableView->setColumnWidth(4, 160); //hr
-    ui->tableView->setColumnWidth(5, 130); // display message
-    ui->tableView->setColumnWidth(6, 130); // dummy column
-    ui->tableView->setColumnWidth(7, 130); // dummy column
-
-
     //Connect Edit trigger (fix bug that sometimes select Cell instead of edit, TOFIX: edit: editing failed on columns not editable..)
     connect(ui->tableView, SIGNAL(clicked(QModelIndex)), ui->tableView, SLOT(edit(QModelIndex)));
 
-
-    widthLast2Column = ui->tableView->columnWidth(ui->tableView->model()->columnCount()-1);
-    //    widthLast2Column += ui->tableView->columnWidth(ui->tableView->model()->columnCount()-2);
-    totalWidthColumms = 0;
-    for (int i=0; i<ui->tableView->model()->columnCount(); i++) {
-        totalWidthColumms += ui->tableView->columnWidth(i);
-    }
-    //    qDebug() << "totalWidgthColumn :" << totalWidthColumms;
+    // Column widths are distributed responsively to fill the table — see
+    // distributeColumnWidths(), driven by the viewport resize below.
+    ui->tableView->viewport()->installEventFilter(this);
 
 
 
 
-    ui->tableView->verticalHeader()->setDefaultSectionSize(50); //55
+    ui->tableView->verticalHeader()->setDefaultSectionSize(70); //55
 
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->tableView->verticalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -118,6 +109,8 @@ WorkoutCreator::WorkoutCreator(QWidget *parent) : QWidget(parent), ui(new Ui::Wo
     /// Disable resize vertical header
     ui->tableView->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
     ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
+
+    distributeColumnWidths();
 
 
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -136,7 +129,8 @@ WorkoutCreator::WorkoutCreator(QWidget *parent) : QWidget(parent), ui(new Ui::Wo
 
 
     contextMenu = new QMenu(this);
-    actionRepeat = contextMenu->addAction(QIcon(":/image/icon/repeat"), tr("Repeat"));
+    actionRepeat = contextMenu->addAction(
+        tintedIcon(":/image/icon/repeat", palette().color(QPalette::WindowText)), tr("Repeat"));
     actionCopy = contextMenu->addAction(QIcon(":/image/icon/copy"), tr("Copy"));
     actionDelete = contextMenu->addAction(QIcon(":/image/icon/delete"), tr("Delete"));
 
@@ -631,6 +625,69 @@ void WorkoutCreator::on_pushButton_delete_clicked()
 
     ajustRepeatWidgetPosition();
 
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// Spread the table's width across the columns so it always fills the viewport:
+// it stays usable on small screens and takes advantage of large ones. Column 0
+// (the drag handle) keeps a fixed narrow width; the rest share the remaining
+// width by weight, preserving the previous proportions.
+void WorkoutCreator::distributeColumnWidths() {
+
+    if (!ui->tableView->model())
+        return;
+
+    const int columnCount = ui->tableView->model()->columnCount();
+    if (columnCount < 8)
+        return;
+
+    const int handleWidth = 35;
+    ui->tableView->setColumnWidth(0, handleWidth);
+
+    // Weights for columns 1..7: Duration, Power, Cadence, Heart Rate,
+    // Display Message, Repeat Change, # Repeat.
+    static const double weight[8] = { 0.0, 1.1, 2.1, 2.1, 2.1, 2.1, 1.75, 1.6 };
+    double totalWeight = 0.0;
+    for (int c = 1; c < columnCount && c < 8; ++c)
+        totalWeight += weight[c];
+    if (totalWeight <= 0.0)
+        return;
+
+    const int available = ui->tableView->viewport()->width() - handleWidth;
+    if (available <= 0)
+        return;
+
+    int used = 0;
+    for (int c = 1; c < columnCount; ++c) {
+        int columnWidth;
+        if (c == columnCount - 1) {
+            columnWidth = available - used;            // last column absorbs rounding
+        } else {
+            const double w = (c < 8) ? weight[c] : 1.0;
+            columnWidth = int(available * w / totalWeight);
+            used += columnWidth;
+        }
+        ui->tableView->setColumnWidth(c, columnWidth);
+    }
+
+    // Refresh the cached widths the repeat overlays are sized/positioned with.
+    totalWidthColumms = 0;
+    for (int c = 0; c < columnCount; ++c)
+        totalWidthColumms += ui->tableView->columnWidth(c);
+    widthLast2Column = ui->tableView->columnWidth(columnCount - 1);
+
+    ajustRepeatWidgetPosition();
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////
+bool WorkoutCreator::eventFilter(QObject *watched, QEvent *event) {
+
+    if (watched == ui->tableView->viewport() && event->type() == QEvent::Resize)
+        distributeColumnWidths();
+
+    return QWidget::eventFilter(watched, event);
 }
 
 

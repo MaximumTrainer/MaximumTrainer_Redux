@@ -23,6 +23,7 @@ public:
 
 signals:
     void endEdit();
+    void cancelEdit();
 
 private slots:
     void on_comboBox_cadence_currentIndexChanged(int index);

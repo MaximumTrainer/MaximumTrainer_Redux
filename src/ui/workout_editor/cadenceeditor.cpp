@@ -35,6 +35,8 @@ CadenceEditor::CadenceEditor(QWidget *parent) :
 
     ui->gridLayout->setRowMinimumHeight(0,45);
     ui->gridLayout->setRowMinimumHeight(1,45);
+
+    MetricEditorVisibility::applyNativeOkCancelButtons(ui->pushButton_ok, ui->pushButton_default);
 }
 
 
@@ -95,10 +97,5 @@ void CadenceEditor::on_pushButton_ok_clicked()
 
 void CadenceEditor::on_pushButton_default_clicked()
 {
-    this->myInterval.setCadenceStepType(Interval::StepType::NONE);
-    this->myInterval.setTargetCadence_start(90);
-    this->myInterval.setTargetCadence_end(90);
-    this->myInterval.setTargetCadence_range(5);
-    emit endEdit();
-
+    emit cancelEdit();
 }

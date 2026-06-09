@@ -29,6 +29,7 @@ signals:
 
 public slots:
     void closeWidgetEditor();
+    void cancelWidgetEditor();
 
 private :
 

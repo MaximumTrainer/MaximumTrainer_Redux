@@ -36,6 +36,8 @@ HrEditor::HrEditor(QWidget *parent) :
 
     ui->gridLayout->setRowMinimumHeight(0,45);
     ui->gridLayout->setRowMinimumHeight(1,45);
+
+    MetricEditorVisibility::applyNativeOkCancelButtons(ui->pushButton_ok, ui->pushButton_default);
 }
 
 
@@ -133,11 +135,7 @@ void HrEditor::on_pushButton_ok_clicked()
 
 void HrEditor::on_pushButton_default_clicked()
 {
-    this->myInterval.setHrStepType(Interval::StepType::NONE);
-    this->myInterval.setTargetHR_start(0.5);
-    this->myInterval.setTargetHR_end(0.5);
-    this->myInterval.setTargetHR_range(15);
-    emit endEdit();
+    emit cancelEdit();
 }
 
 
