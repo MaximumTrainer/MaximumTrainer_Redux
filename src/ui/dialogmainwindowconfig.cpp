@@ -12,6 +12,7 @@
 #include <QGroupBox>
 #include <QDesktopServices>
 #include <QStandardPaths>
+#include <QShowEvent>
 
 #include "util.h"
 #include "environnement.h"
@@ -313,6 +314,21 @@ void DialogMainWindowConfig::on_pushButton_browseHistoryDir_clicked()
         msgBox.setStandardButtons(QMessageBox::Close);
         msgBox.exec();
     }
+}
+
+
+///////////////////////////////////////////////////////////////////////
+void DialogMainWindowConfig::showEvent(QShowEvent *event) {
+
+    QDialog::showEvent(event);
+
+    // The athlete profile can change outside this dialog — an FTP test writes a
+    // new FTP/LTHR straight into the account. Re-read those fields on every open
+    // so the spin boxes reflect the current values and OK does not clobber a
+    // freshly-tested result with the stale value loaded at construction time.
+    ui->spinBox_ftp->setValue(account->FTP);
+    ui->spinBox_lthr->setValue(account->LTHR);
+    ui->doubleSpinBox_weight->setValue(account->weight_kg);
 }
 
 

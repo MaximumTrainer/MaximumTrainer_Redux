@@ -41,6 +41,40 @@ QPushButton, QToolButton {
         color: white;
 }
 
+/* Give the icon-only radio buttons a slightly larger, evenly padded hit area
+   so they are easier to click. */
+QToolButton {
+        padding: 3px;
+}
+
+/* Hover highlight: make it obvious which icon-only control is under the cursor
+   and where the clickable area is. */
+QToolButton:hover,
+QPushButton#pushButton_config:hover,
+QPushButton#pushButton_expand:hover,
+QPushButton#pushButton_exit:hover {
+        background-color: #3c3c3c;
+        border-radius: 4px;
+}
+
+/* Start / Interval are real text buttons, not icon-only controls, so give them
+   a standard, native-looking button chrome (the flat reset above is meant for
+   the icon-only window/radio controls). */
+QPushButton#pushButton_start, QPushButton#pushButton_lap {
+        background-color: #2d2d2d;
+        border: 1px solid #5a5a5a;
+        border-radius: 4px;
+        padding: 3px 8px;
+        color: white;
+}
+QPushButton#pushButton_start:hover, QPushButton#pushButton_lap:hover {
+        background-color: #3c3c3c;
+        border-color: #6e6e6e;
+}
+QPushButton#pushButton_start:pressed, QPushButton#pushButton_lap:pressed {
+        background-color: #555555;
+}
+
 QGroupBox#groupBox_commandWorkout {
      border: 2px solid gray;
 	 background-color: rgb(0, 0, 0);
@@ -52,6 +86,14 @@ margin-top:-6px;
 QGroupBox::title {
     margin:0px;
 	padding: 0px;
+}
+
+/* Radio controls: a light border visually groups the radio icon with its
+   prev/play-pause/next buttons. The button reset above keeps the buttons
+   themselves borderless so only this frame draws an outline. */
+QFrame#frame_radioGroup {
+	border: 1px solid rgb(120, 120, 120);
+	border-radius: 4px;
 }
 
 QLabel {
@@ -232,13 +274,13 @@ border-radius: 1px;
         </property>
         <property name="minimumSize">
          <size>
-          <width>100</width>
+          <width>120</width>
           <height>0</height>
          </size>
         </property>
         <property name="maximumSize">
          <size>
-          <width>125</width>
+          <width>150</width>
           <height>16777215</height>
          </size>
         </property>
@@ -603,90 +645,93 @@ border-radius: 1px;
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="label_radioIcon">
-        <property name="text">
-         <string>RadioIcon</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QToolButton" name="pushButton_prevRadio">
-        <property name="cursor">
-         <cursorShape>PointingHandCursor</cursorShape>
-        </property>
-        <property name="focusPolicy">
-         <enum>Qt::NoFocus</enum>
-        </property>
-        <property name="toolTip">
-         <string>Previous station (F6)</string>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-        <property name="autoRaise">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QToolButton" name="pushButton_playPauseRadio">
-        <property name="cursor">
-         <cursorShape>PointingHandCursor</cursorShape>
-        </property>
-        <property name="focusPolicy">
-         <enum>Qt::NoFocus</enum>
-        </property>
-        <property name="toolTip">
-         <string>Play / Pause (F7)</string>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-        <property name="autoRaise">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QToolButton" name="pushButton_nextRadio">
-        <property name="cursor">
-         <cursorShape>PointingHandCursor</cursorShape>
-        </property>
-        <property name="focusPolicy">
-         <enum>Qt::NoFocus</enum>
-        </property>
-        <property name="toolTip">
-         <string>Next station (F8)</string>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-        <property name="autoRaise">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QFrame" name="frame_radio">
+       <widget class="QFrame" name="frame_radioGroup">
         <property name="frameShape">
-         <enum>QFrame::NoFrame</enum>
+         <enum>QFrame::StyledPanel</enum>
         </property>
         <property name="frameShadow">
-         <enum>QFrame::Raised</enum>
+         <enum>QFrame::Plain</enum>
         </property>
         <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <property name="spacing">
+          <number>8</number>
+         </property>
          <property name="leftMargin">
-          <number>0</number>
+          <number>6</number>
          </property>
          <property name="topMargin">
-          <number>0</number>
+          <number>1</number>
          </property>
          <property name="rightMargin">
-          <number>0</number>
+          <number>6</number>
          </property>
          <property name="bottomMargin">
-          <number>0</number>
+          <number>1</number>
          </property>
+         <item>
+          <widget class="QLabel" name="label_radioIcon">
+           <property name="text">
+            <string>RadioIcon</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="pushButton_prevRadio">
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="toolTip">
+            <string>Previous station (F6)</string>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="pushButton_playPauseRadio">
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="toolTip">
+            <string>Play / Pause (F7)</string>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="pushButton_nextRadio">
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="toolTip">
+            <string>Next station (F8)</string>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
         </layout>
        </widget>
       </item>
@@ -760,51 +805,54 @@ border-radius: 1px;
         </property>
         <property name="sizeHint" stdset="0">
          <size>
-          <width>10</width>
+          <width>40</width>
           <height>24</height>
          </size>
         </property>
        </spacer>
       </item>
       <item>
-       <widget class="QPushButton" name="pushButton_config">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>30</width>
-          <height>28</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>30</width>
-          <height>28</height>
-         </size>
-        </property>
-        <property name="toolTip">
-         <string>Settings</string>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-        <property name="iconSize">
-         <size>
-          <width>30</width>
-          <height>28</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item>
        <layout class="QHBoxLayout" name="horizontalLayout_customButton">
-        <property name="leftMargin">
-         <number>20</number>
+        <property name="spacing">
+         <number>8</number>
         </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QPushButton" name="pushButton_config">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>30</width>
+            <height>28</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>30</width>
+            <height>28</height>
+           </size>
+          </property>
+          <property name="toolTip">
+           <string>Settings</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="iconSize">
+           <size>
+            <width>30</width>
+            <height>28</height>
+           </size>
+          </property>
+         </widget>
+        </item>
         <item>
          <widget class="QPushButton" name="pushButton_expand">
           <property name="sizePolicy">
