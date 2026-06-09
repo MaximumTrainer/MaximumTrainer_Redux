@@ -111,6 +111,7 @@ private:
     QPushButton  *m_exportButton     = nullptr;
     QLabel       *m_noteLabel        = nullptr;
     QScrollArea  *m_scrollArea       = nullptr;
+    QWidget      *m_bottomSpacer     = nullptr;
     QGridLayout *m_cardsGrid        = nullptr;
     QVector<RiderCard>  m_cards;     // index 0 == rider 1
     QVector<UserStudio> m_riders;    // full vector from the UserStudio XML

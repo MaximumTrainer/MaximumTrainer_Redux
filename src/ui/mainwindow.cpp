@@ -2150,15 +2150,27 @@ void MainWindow::screenshotNextStep()
         QCoreApplication::processEvents();
         break;
 
-    // ── Step 6: enable studio mode and switch to Studio tab (tab 3) ──────
-    case 6:
+    // ── Step 6: capture the Studio tab off (switch only) then on ─────────
+    case 6: {
+        StudioWidget *sw = qobject_cast<StudioWidget*>(ui->studioWidget);
+        ftb->setCurrentIndex(3);
+
+        // Off: only the Studio Mode switch row should show, pinned at the top.
+        enableStudioMode(false);
+        if (sw) sw->reload();
+        QCoreApplication::processEvents();
+        grab().save(m_ssOutputDir + QLatin1String("/screenshot_studio_off.png"), "PNG");
+        qDebug() << "Screenshot: studio_off";
+
+        // On: reveal the full configuration UI for the studio_mode capture.
         setNumberUserStudio(6);
         enableStudioMode(true);
-        ftb->setCurrentIndex(3);
+        if (sw) sw->reload();
         raise();
         activateWindow();
         QCoreApplication::processEvents();
         break;
+    }
 
     // ── Step 7: capture studio mode ───────────────────────────────────────
     case 7:

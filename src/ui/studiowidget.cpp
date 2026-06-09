@@ -147,6 +147,14 @@ void StudioWidget::buildUi()
 
     scroll->setWidget(cardsHost);
     mainLayout->addWidget(scroll, 1);
+
+    // When studio mode is off the cards/scroll are hidden; this expanding spacer
+    // takes over the freed space so the switch row stays pinned at the top
+    // instead of the layout re-centring the remaining widgets.
+    m_bottomSpacer = new QWidget(this);
+    m_bottomSpacer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    m_bottomSpacer->setVisible(false);
+    mainLayout->addWidget(m_bottomSpacer);
 }
 
 QGroupBox *StudioWidget::buildRiderCard(int riderIndex)
@@ -341,9 +349,12 @@ void StudioWidget::updateVisibleCards(int count)
 void StudioWidget::setStudioControlsVisible(bool visible)
 {
     // The Studio Mode switch row stays put; only the rest of the page collapses.
-    if (m_controlsRow) m_controlsRow->setVisible(visible);
-    if (m_noteLabel)   m_noteLabel->setVisible(visible);
-    if (m_scrollArea)  m_scrollArea->setVisible(visible);
+    if (m_controlsRow)  m_controlsRow->setVisible(visible);
+    if (m_noteLabel)    m_noteLabel->setVisible(visible);
+    if (m_scrollArea)   m_scrollArea->setVisible(visible);
+    // The spacer fills the freed space (off) so nothing re-centres; off when the
+    // cards are visible so the scroll area keeps the stretch instead.
+    if (m_bottomSpacer) m_bottomSpacer->setVisible(!visible);
 }
 
 void StudioWidget::onStudioModeToggled(bool enabled)
