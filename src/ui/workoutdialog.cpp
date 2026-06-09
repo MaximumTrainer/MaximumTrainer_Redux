@@ -3985,7 +3985,7 @@ void WorkoutDialog::showTestResult() {
     // ------------- FTP TEST -----------------
     if (workout.getWorkoutNameEnum() == Workout::FTP_TEST || workout.getWorkoutNameEnum() == Workout::FTP8min_TEST) {
 
-        // GROUP
+        // GROUP — update every rider's FTP/LTHR from their own test result.
         if (account->enable_studio_mode) {
 
             for (int i=0; i<account->nb_user_studio; i++) {
@@ -3998,8 +3998,10 @@ void WorkoutDialog::showTestResult() {
                 if (newFTP > 0) { myUserStudio.setFTP(newFTP); }
                 if (newLTHR >0) { myUserStudio.setLTHR(newLTHR); }
                 vecUserStudio.replace(i, myUserStudio);
-                emit ftpUserStudioChanged(vecUserStudio);
             }
+            // Emit once with the fully-updated vector; MainWindow persists it so
+            // the new values show in the Studio tab and survive a restart.
+            emit ftpUserStudioChanged(vecUserStudio);
         }
         //SOLO
         else {

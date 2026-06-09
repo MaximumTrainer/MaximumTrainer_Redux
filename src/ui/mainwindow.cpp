@@ -832,8 +832,12 @@ void MainWindow::createWebChannelPlan() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::updateVecStudio(QVector<UserStudio> vecUserStudio) {
 
-    qDebug() << "zzzzz MainWindow::updateVecStudio";
     this->vecUserStudio = vecUserStudio;
+
+    // Persist immediately (e.g. after a Studio FTP test updates every rider's
+    // FTP/LTHR) so the Studio tab reflects the new values on its next open and
+    // they survive a restart, rather than only being written on app close.
+    XmlUtil::saveUserStudioFile(this->vecUserStudio, "");
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
