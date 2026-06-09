@@ -61,7 +61,7 @@ private slots:
     void onRiderCountChanged(int index);
 
 private:
-    static constexpr int kMaxRiders = 10;
+    static constexpr int kMaxRiders = 12;
 
     struct SensorSlot {
         BtleSensorRole role = BtleSensorRole::HeartRate;

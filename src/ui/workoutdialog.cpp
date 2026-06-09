@@ -3923,63 +3923,55 @@ void WorkoutDialog::showIntervalSummaryOverlay(double avgPower, double avgHr, do
 void WorkoutDialog::createUserStudioWidget() {
 
 
-    int widthWidgetStudio = 384; //384 and less = 5 widgets per row with HD res (1920 Width)
-    int heightWidgetStudio = 190;
+    // Rider boxes are laid out in a balanced, screen-adaptive grid. Each box
+    // stretches to fill its column (growing on wide displays, shrinking toward
+    // minBoxWidth on small ones) while keeping a fixed height so rows align.
+    // Columns are capped at maxPerRow and balanced across the rows needed, so
+    // e.g. 10 riders → 5+5 and 12 → 6+6 rather than a full row plus a stub.
+    const int minBoxWidth = 300;
+    const int boxHeight    = 190;
+    const int maxPerRow    = 6;
 
+    const int nbRiders = account->nb_user_studio;
 
-    // Get Main Screen Resolution
-    int widthCurrentComputer = QGuiApplication::primaryScreen()->availableGeometry().width();
-    qDebug() << "WHAT IS THE WIDTH??" << widthCurrentComputer;
+    if (account->enable_studio_mode && nbRiders > 0) {
+        const int availWidth   = QGuiApplication::primaryScreen()->availableGeometry().width();
+        const int colsThatFit  = qMax(1, availWidth / minBoxWidth);
+        const int cap          = qMin(maxPerRow, colsThatFit);
+        const int rowsNeeded   = (nbRiders + cap - 1) / cap;
+        const int columns      = qMax(1, (nbRiders + rowsNeeded - 1) / rowsNeeded);
 
+        QGridLayout *glayout = static_cast<QGridLayout*>(ui->widget_allSpeedo->layout());
 
-    // Check how many Boxes we can put on a row
-    int numberOfWidgetsPerRow = (widthCurrentComputer)/widthWidgetStudio;
-    qDebug() << "we can have "<< numberOfWidgetsPerRow << " on this display..";
-    int currentRowInserting = 0;
-    int currentColInserting = 0;
-
-
-    qDebug() <<  "createUserStudioWidget";
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            qDebug() << "Create WidgeT!" << i;
-
-            if (i+1 > (numberOfWidgetsPerRow*currentRowInserting)) {
-                currentRowInserting++;
-                currentColInserting = 0;
-            }
-
+        for (int i = 0; i < nbRiders; i++) {
             UserStudio myUserStudio = vecUserStudio.at(i);
             // Fall back to "RiderN" when the rider left their name blank in the
             // Studio tab, so every box is still labelled in the workout view.
             QString riderName = myUserStudio.getDisplayName().trimmed();
             if (riderName.isEmpty())
                 riderName = tr("Rider%1").arg(i+1);
+
             arrUserStudioWidget[i] = new UserStudioWidget(i+1, riderName, myUserStudio.getFTP(), myUserStudio.getLTHR(), this);
-            arrUserStudioWidget[i]->setMinimumSize(widthWidgetStudio, heightWidgetStudio);
-            arrUserStudioWidget[i]->setMaximumSize(widthWidgetStudio, heightWidgetStudio);
-            arrUserStudioWidget[i]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+            arrUserStudioWidget[i]->setMinimumSize(minBoxWidth, boxHeight);
+            arrUserStudioWidget[i]->setMaximumHeight(boxHeight);
+            arrUserStudioWidget[i]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
-            if (myUserStudio.getHrID() < 1 && myUserStudio.getFecID() < 1) {
+            if (myUserStudio.getHrID() < 1 && myUserStudio.getFecID() < 1)
                 arrUserStudioWidget[i]->setHrSectionHidden();
-            }
-            if (myUserStudio.getPowerID() < 1 && myUserStudio.getFecID() < 1) {
+            if (myUserStudio.getPowerID() < 1 && myUserStudio.getFecID() < 1)
                 arrUserStudioWidget[i]->setPowerSectionHidden();
-            }
 
-            // insert Widget
-            QGridLayout *glayout = static_cast<QGridLayout*>( ui->widget_allSpeedo->layout()  );
-            glayout->addWidget(arrUserStudioWidget[i], currentRowInserting, currentColInserting, 1, 1, Qt::AlignCenter);
-            currentColInserting++;
-
+            glayout->addWidget(arrUserStudioWidget[i], i / columns, i % columns);
         }
+        for (int c = 0; c < columns; c++)
+            glayout->setColumnStretch(c, 1);
+
         //Set back theses widgets on top of GridStudio
         widgetLoading->raise();
         widgetLoading->activateWindow();
 
         widgetBattery->raise();
         widgetBattery->activateWindow();
-
     }
 }
 

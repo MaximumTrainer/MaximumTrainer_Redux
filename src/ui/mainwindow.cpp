@@ -2202,7 +2202,7 @@ void MainWindow::screenshotNextStep()
 
     // ── Step 14: launch a Studio-mode workout with N simulated riders ─────
     case 14: {
-        setNumberUserStudio(4);
+        setNumberUserStudio(12);
         enableStudioMode(true);
         ftb->setCurrentIndex(0);
         ui->tabWidget_workout->setCurrentIndex(0);
