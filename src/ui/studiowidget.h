@@ -2,9 +2,19 @@
 #define STUDIOWIDGET_H
 
 #include <QWidget>
+#include <QVector>
+
+#include "userstudio.h"
+#include "btle_sensor_config.h"
 
 class QCheckBox;
+class QComboBox;
 class QSpinBox;
+class QLineEdit;
+class QLabel;
+class QPushButton;
+class QGroupBox;
+class QGridLayout;
 class Account;
 
 /*
@@ -12,11 +22,17 @@ class Account;
  *
  * Main-window page (a FancyTabBar tab) for Studio mode. Replaces the former
  * server-hosted QWebEngineView studio page (now dead). Built programmatically
- * like SensorsWidget. Exposes the two settings that used to live in the
- * in-workout "Workout Config" dialog: enable Studio mode and the rider count.
+ * like SensorsWidget.
  *
- * It does not own the studio-mode side effects (window title, History-tab
- * enable/disable) — those stay in MainWindow, reached via the signals below.
+ * Exposes Enable Studio mode + a rider-count dropdown (1..kMaxRiders) that
+ * drives N compact per-rider cards. Each card configures one rider: name
+ * (default RiderN), FTP, LTHR, the five BLE sensor slots (persisted per rider
+ * via BtleSensorStore) and a per-rider Smart Trainer ERG setting.
+ *
+ * Rider identity (name/FTP/LTHR) is persisted via the existing UserStudio XML
+ * (XmlUtil); per-rider ERG is persisted in QSettings ("studioErg/riderN").
+ * Studio-mode side effects (window title, Sensors-tab enable) stay in
+ * MainWindow, reached via the signals below.
  */
 class StudioWidget : public QWidget
 {
@@ -28,20 +44,63 @@ public:
     /// Re-read persisted settings into the controls (e.g. when the tab is shown).
     void reload();
 
+    /// Per-rider ERG settings, persisted in QSettings group "studioErg/riderN".
+    /// Static so the workout-launch path in MainWindow reads the same keys.
+    static bool studioErgControl(int riderIndex, bool defaultValue);
+    static int  studioErgRamp(int riderIndex, int defaultValue);
+
 signals:
     void studioModeChanged(bool enabled);
     void riderCountChanged(int nbRiders);
+    /// Emitted when a rider's name/FTP/LTHR changes so MainWindow refreshes the
+    /// in-memory vecUserStudio used to launch workouts.
+    void ridersChanged(QVector<UserStudio> riders);
 
 private slots:
     void onStudioModeToggled(bool enabled);
-    void onRiderCountChanged(int nbRiders);
+    void onRiderCountChanged(int index);
 
 private:
-    void buildUi();
+    static constexpr int kMaxRiders = 10;
 
-    QCheckBox *m_enableCheck   = nullptr;
-    QSpinBox  *m_riderCountSpin = nullptr;
-    Account   *m_account = nullptr;
+    struct SensorSlot {
+        BtleSensorRole role = BtleSensorRole::HeartRate;
+        QLabel      *deviceLabel = nullptr;
+        QPushButton *clearButton = nullptr;
+    };
+    struct RiderCard {
+        QGroupBox *box      = nullptr;
+        QLineEdit *nameEdit = nullptr;
+        QSpinBox  *ftpSpin  = nullptr;
+        QSpinBox  *lthrSpin = nullptr;
+        QVector<SensorSlot> sensorSlots;
+        QCheckBox *ergCheck    = nullptr;
+        QSpinBox  *ergRampSpin = nullptr;
+    };
+
+    void buildUi();
+    QGroupBox *buildRiderCard(int riderIndex);     // riderIndex is 1-based
+    void updateVisibleCards(int count);
+    void loadRiderIntoCard(int riderIndex);
+    void refreshSensorSlot(int riderIndex, int slotIdx);
+
+    void onNameChanged(int riderIndex);
+    void onFtpChanged(int riderIndex);
+    void onLthrChanged(int riderIndex);
+    void onScanClicked(int riderIndex, int slotIdx);
+    void onClearClicked(int riderIndex, int slotIdx);
+    void onErgChanged(int riderIndex);
+
+    void persistRiders();
+    static QString ergGroup(int riderIndex);
+    static void    saveErg(int riderIndex, bool control, int ramp);
+
+    Account     *m_account         = nullptr;
+    QCheckBox   *m_enableCheck      = nullptr;
+    QComboBox   *m_riderCountCombo  = nullptr;
+    QGridLayout *m_cardsGrid        = nullptr;
+    QVector<RiderCard>  m_cards;     // index 0 == rider 1
+    QVector<UserStudio> m_riders;    // full vector from the UserStudio XML
 };
 
 #endif // STUDIOWIDGET_H
