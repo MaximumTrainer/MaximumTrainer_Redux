@@ -3927,10 +3927,10 @@ void WorkoutDialog::createUserStudioWidget() {
     // stretches to fill its column (growing on wide displays, shrinking toward
     // minBoxWidth on small ones) while keeping a fixed height so rows align.
     // Columns are capped at maxPerRow and balanced across the rows needed, so
-    // e.g. 10 riders → 5+5 and 12 → 6+6 rather than a full row plus a stub.
-    const int minBoxWidth = 300;
+    // e.g. 15 riders → 5+5+5 and 10 → 5+5 rather than a full row plus a stub.
+    const int minBoxWidth = 290;
     const int boxHeight    = 190;
-    const int maxPerRow    = 6;
+    const int maxPerRow    = 5;
 
     const int nbRiders = account->nb_user_studio;
 
