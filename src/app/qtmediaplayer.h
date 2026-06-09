@@ -17,6 +17,7 @@
 
 QT_FORWARD_DECLARE_CLASS(QMediaPlayer)
 QT_FORWARD_DECLARE_CLASS(QAudioOutput)
+QT_FORWARD_DECLARE_CLASS(QMediaDevices)
 QT_FORWARD_DECLARE_CLASS(QVideoWidget)
 QT_FORWARD_DECLARE_CLASS(QLabel)
 QT_FORWARD_DECLARE_CLASS(QTimer)
@@ -76,8 +77,13 @@ private:
 
     void applyVolume();
 
-    QMediaPlayer *m_player = nullptr;
-    QAudioOutput *m_audio  = nullptr;
+    // Follow the system's default audio output so the player switches to a newly
+    // connected device (e.g. headphones) instead of staying on the old one.
+    void updateAudioDevice();
+
+    QMediaPlayer  *m_player = nullptr;
+    QAudioOutput  *m_audio  = nullptr;
+    QMediaDevices *m_mediaDevices = nullptr;
     QVideoWidget *m_video  = nullptr;
     QMenu        *m_menu   = nullptr;
     QLabel       *m_hint   = nullptr;   // "right-click to open media" overlay

@@ -1,5 +1,8 @@
 #include "soundplayer.h"
 #include <QDebug>
+#ifdef SOUNDPLAYER_USE_QSOUNDEFFECT
+#include <QAudioDevice>
+#endif
 
 
 SoundPlayer::~SoundPlayer() {
@@ -21,8 +24,33 @@ SoundPlayer::SoundPlayer(QObject *parent) : QObject(parent)
     soundPowerTooLow.setSource(QUrl("qrc:/sound/powerTooLow"));
     soundPowerTooHigh.setSource(QUrl("qrc:/sound/powerTooHigh"));
 
+    // QSoundEffect binds to the default device at creation; follow later changes
+    // (e.g. plugging in headphones) so beeps move to the new output.
+    m_mediaDevices = new QMediaDevices(this);
+    connect(m_mediaDevices, &QMediaDevices::audioOutputsChanged,
+            this, &SoundPlayer::applyAudioDevice);
+    applyAudioDevice();
+
     m_initialized = true;
     setVolume(100);
+}
+
+
+//------------------------------------------------------------------------------------------------------------------------
+void SoundPlayer::applyAudioDevice() {
+
+    const QAudioDevice defaultDevice = QMediaDevices::defaultAudioOutput();
+    if (defaultDevice.isNull())
+        return;
+
+    for (QSoundEffect *effect : { &soundAchievement, &soundLastBeepInterval,
+                                  &soundFirstBeepInterval, &soundEndWorkout,
+                                  &soundStartWorkout, &soundCadenceTooLow,
+                                  &soundCadenceTooHigh, &soundPowerTooLow,
+                                  &soundPowerTooHigh }) {
+        if (effect->audioDevice() != defaultDevice)
+            effect->setAudioDevice(defaultDevice);
+    }
 }
 
 

@@ -10,6 +10,7 @@
 #if !defined(Q_OS_WASM) && defined(GC_HAVE_QTMULTIMEDIA)
 #define SOUNDPLAYER_USE_QSOUNDEFFECT
 #include <QSoundEffect>
+#include <QMediaDevices>
 #endif
 
 
@@ -45,6 +46,11 @@ public:
 
 private :
 #ifdef SOUNDPLAYER_USE_QSOUNDEFFECT
+    // Point every effect at the current default output so beeps follow a newly
+    // connected device (e.g. headphones).
+    void applyAudioDevice();
+    QMediaDevices *m_mediaDevices = nullptr;
+
     QSoundEffect soundAchievement;
     QSoundEffect soundLastBeepInterval;
     QSoundEffect soundFirstBeepInterval;
