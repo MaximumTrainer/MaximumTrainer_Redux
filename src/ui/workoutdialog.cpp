@@ -3942,6 +3942,9 @@ void WorkoutDialog::createUserStudioWidget() {
         const int columns      = qMax(1, (nbRiders + rowsNeeded - 1) / rowsNeeded);
 
         QGridLayout *glayout = static_cast<QGridLayout*>(ui->widget_allSpeedo->layout());
+        // Gap between boxes so each rider's outline reads as a separate card.
+        glayout->setHorizontalSpacing(10);
+        glayout->setVerticalSpacing(10);
 
         for (int i = 0; i < nbRiders; i++) {
             UserStudio myUserStudio = vecUserStudio.at(i);
