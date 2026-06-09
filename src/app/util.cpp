@@ -311,6 +311,18 @@ int Util::parseStravaUploadStatus(QString data) {
 }
 
 
+// The Strava upload-status response carries the created activity's id (a 64-bit
+// value, null until processing completes). Returns 0 when absent.
+///--------------------------------------------------------------------------------------------------------------------
+qint64 Util::parseStravaActivityId(QString data) {
+
+    QJsonDocument jsonResponse = QJsonDocument::fromJson(data.toUtf8());
+    QJsonObject jsonObj = jsonResponse.object();
+
+    return jsonObj["activity_id"].toVariant().toLongLong();
+}
+
+
 
 
 

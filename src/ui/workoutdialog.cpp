@@ -3567,6 +3567,9 @@ void WorkoutDialog::showPostWorkoutPanel()
             lbl->setObjectName("lblStrava");
             lbl->setWordWrap(true);
             lbl->setStyleSheet("font-size: 10pt;");
+            // Allow the "View on Strava" link (shown on success) to open the
+            // activity in the user's browser.
+            lbl->setOpenExternalLinks(true);
             if (account->strava_auto_upload)
                 lbl->setText(tr("Uploading to Strava…"));
             layout->addWidget(lbl);
@@ -3718,7 +3721,19 @@ void WorkoutDialog::slotPostStravaStatusDone()
     if (timerPostStravaStatus) { timerPostStravaStatus->stop(); timerPostStravaStatus->deleteLater(); timerPostStravaStatus = nullptr; }
 
     if (code == 0) {
-        setStravaPostStatus(tr("✓ Uploaded to Strava"), false);
+        // Per Strava brand guidelines, deep-link back to the activity with a
+        // "View on Strava" link in Strava orange (#FC5200).
+        const qint64 activityId = Util::parseStravaActivityId(QString::fromUtf8(statusBody));
+        if (activityId > 0) {
+            const QString link =
+                QStringLiteral("<a style=\"color:#FC5200; text-decoration:underline;\" "
+                               "href=\"https://www.strava.com/activities/%1\">%2</a>")
+                    .arg(activityId)
+                    .arg(tr("View on Strava"));
+            setStravaPostStatus(tr("✓ Uploaded to Strava — %1").arg(link), false);
+        } else {
+            setStravaPostStatus(tr("✓ Uploaded to Strava"), false);
+        }
         LOG_INFO("WorkoutDialog", "Strava upload succeeded");
     } else {
         LOG_WARN("WorkoutDialog", QStringLiteral("Strava processing error: ") + QString::fromUtf8(statusBody));

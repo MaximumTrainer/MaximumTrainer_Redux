@@ -103,6 +103,7 @@ public:
     static void parseJsonStravaObject(QString data);
     static qint64 parseIdJsonStravaUploadObject(QString data);
     static int parseStravaUploadStatus(QString data);
+    static qint64 parseStravaActivityId(QString data);
 
     static QList<Sensor> parseJsonSensorList(QString data);
     static QList<Radio> parseJsonRadioList(QString data);
