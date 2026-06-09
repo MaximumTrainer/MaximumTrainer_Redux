@@ -3513,8 +3513,11 @@ void WorkoutDialog::showPostWorkoutPanel()
 {
     if (widgetPostWorkout) return;  // already shown
 
-    widgetPostWorkout = new QWidget(ui->widget_allSpeedo);
+    // Parent to the large video pane so the panel has room to show status /
+    // error text (the bottom speedo area is too small and clips it).
+    widgetPostWorkout = new QWidget(ui->widget_videoPlayers);
     widgetPostWorkout->setObjectName("widgetPostWorkout");
+    widgetPostWorkout->setMinimumWidth(420);
     widgetPostWorkout->setStyleSheet(
         "QWidget#widgetPostWorkout { background-color: rgba(10,10,10,220); border-radius: 10px; }"
         "QLabel  { color: white; }"
@@ -3554,19 +3557,24 @@ void WorkoutDialog::showPostWorkoutPanel()
         layout->addWidget(upHeader);
 
         if (hasStrava) {
-            if (account->strava_auto_upload) {
-                // Auto-upload: no button, just a status line that updates in place.
-                auto *lbl = new QLabel(tr("Uploading to Strava…"), widgetPostWorkout);
-                lbl->setObjectName("lblStrava");
-                lbl->setStyleSheet("font-size: 10pt;");
-                layout->addWidget(lbl);
-                QTimer::singleShot(0, this, &WorkoutDialog::uploadToStrava);
-            } else {
+            // Manual mode (auto-upload off) shows a button to trigger the upload;
+            // both modes share a word-wrapped status label that shows progress
+            // and the full error text on failure.
+            if (!account->strava_auto_upload) {
                 auto *btn = new QPushButton(tr("Upload to Strava"), widgetPostWorkout);
                 btn->setObjectName("btnStrava");
                 connect(btn, &QPushButton::clicked, this, &WorkoutDialog::uploadToStrava);
                 layout->addWidget(btn);
             }
+            auto *lbl = new QLabel(widgetPostWorkout);
+            lbl->setObjectName("lblStrava");
+            lbl->setWordWrap(true);
+            lbl->setStyleSheet("font-size: 10pt;");
+            if (account->strava_auto_upload)
+                lbl->setText(tr("Uploading to Strava…"));
+            layout->addWidget(lbl);
+            if (account->strava_auto_upload)
+                QTimer::singleShot(0, this, &WorkoutDialog::uploadToStrava);
         }
         if (hasIcu) {
             auto *btn = new QPushButton(tr("Upload to Intervals.icu"), widgetPostWorkout);
@@ -3577,7 +3585,7 @@ void WorkoutDialog::showPostWorkoutPanel()
     }
 
     widgetPostWorkout->adjustSize();
-    const QSize ps = ui->widget_allSpeedo->size();
+    const QSize ps = ui->widget_videoPlayers->size();
     const QSize ws = widgetPostWorkout->size();
     widgetPostWorkout->move((ps.width()  - ws.width())  / 2,
                             (ps.height() - ws.height()) / 2);
@@ -3591,12 +3599,12 @@ void WorkoutDialog::showPostWorkoutPanel()
 void WorkoutDialog::setStravaPostStatus(const QString &text, bool retryable)
 {
     if (!widgetPostWorkout) return;
-    if (auto *btn = widgetPostWorkout->findChild<QPushButton*>("btnStrava")) {
-        btn->setText(text);
-        btn->setEnabled(retryable);
-    } else if (auto *lbl = widgetPostWorkout->findChild<QLabel*>("lblStrava")) {
+    if (auto *lbl = widgetPostWorkout->findChild<QLabel*>("lblStrava"))
         lbl->setText(text);
-    }
+    // The manual button (if any) is re-enabled only when a retry makes sense.
+    if (auto *btn = widgetPostWorkout->findChild<QPushButton*>("btnStrava"))
+        btn->setEnabled(retryable);
+    widgetPostWorkout->adjustSize();
 }
 
 void WorkoutDialog::uploadToStrava()
@@ -3658,7 +3666,8 @@ void WorkoutDialog::slotPostStravaUploadDone()
     if (reply->error() != QNetworkReply::NoError) {
         LOG_WARN("WorkoutDialog",
                  QStringLiteral("Strava upload failed: ") + reply->errorString());
-        setStravaPostStatus(tr("Upload to Strava (Failed — Retry)"), true);
+        setStravaPostStatus(tr("✗ Strava upload failed (HTTP %1): %2")
+                                .arg(httpStatus).arg(QString::fromUtf8(body).trimmed()), true);
         return;
     }
 
@@ -3668,7 +3677,8 @@ void WorkoutDialog::slotPostStravaUploadDone()
         LOG_WARN("WorkoutDialog",
                  QStringLiteral("Strava upload: no upload id in response — ")
                  + QString::fromUtf8(body));
-        setStravaPostStatus(tr("Upload to Strava (Failed — Retry)"), true);
+        setStravaPostStatus(tr("✗ Strava did not accept the upload: %1")
+                                .arg(QString::fromUtf8(body).trimmed()), true);
         return;
     }
 
@@ -3695,14 +3705,16 @@ void WorkoutDialog::slotPostStravaStatusDone()
     reply->deleteLater();
     replyPostStravaStatus = nullptr;
 
+    const QByteArray statusBody = reply->readAll();
+
     if (reply->error() != QNetworkReply::NoError) {
         if (timerPostStravaStatus) timerPostStravaStatus->stop();
         LOG_WARN("WorkoutDialog", QStringLiteral("Strava status check failed: ") + reply->errorString());
-        setStravaPostStatus(tr("Upload to Strava (Failed — Retry)"), true);
+        setStravaPostStatus(tr("✗ Strava status check failed: %1").arg(reply->errorString()), true);
         return;
     }
 
-    const int code = Util::parseStravaUploadStatus(QString(reply->readAll()));
+    const int code = Util::parseStravaUploadStatus(QString::fromUtf8(statusBody));
     // 0 = completed, 1 = in progress, 2 = error, -1 = unexpected
     if (code == 1) return;  // keep timer running
 
@@ -3712,7 +3724,9 @@ void WorkoutDialog::slotPostStravaStatusDone()
         setStravaPostStatus(tr("✓ Uploaded to Strava"), false);
         LOG_INFO("WorkoutDialog", "Strava upload succeeded");
     } else {
-        setStravaPostStatus(tr("Upload to Strava (Failed — Retry)"), true);
+        LOG_WARN("WorkoutDialog", QStringLiteral("Strava processing error: ") + QString::fromUtf8(statusBody));
+        setStravaPostStatus(tr("✗ Strava could not process the activity: %1")
+                                .arg(QString::fromUtf8(statusBody).trimmed()), true);
     }
 }
 
