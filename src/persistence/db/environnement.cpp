@@ -124,15 +124,16 @@ QString Environnement::getUrlSupport() {
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-QString Environnement::getURLStravaAuthorize() {
-    // Redirects to the github.io callback page with ?code=... on success
-    // (?error=access_denied if the user declines). DialogInfoWebView catches
-    // that redirect, extracts the code, and exchanges it via the Strava Worker.
+QString Environnement::getURLStravaAuthorize(const QString &redirectUri) {
+    // Opened in the system browser; Strava redirects to redirectUri with
+    // ?code=... on success (?error=access_denied if declined). For the desktop
+    // flow redirectUri is a localhost loopback URL (StravaOAuthFlow), so the
+    // Strava app's Authorization Callback Domain must be `localhost`.
     QUrl url(QStringLiteral("https://www.strava.com/oauth/authorize"));
     QUrlQuery query;
     query.addQueryItem(QStringLiteral("client_id"),       CLIENT_ID_STRAVA);
     query.addQueryItem(QStringLiteral("response_type"),   QStringLiteral("code"));
-    query.addQueryItem(QStringLiteral("redirect_uri"),    getWasmOAuthRedirectUri());
+    query.addQueryItem(QStringLiteral("redirect_uri"),    redirectUri);
     query.addQueryItem(QStringLiteral("approval_prompt"), QStringLiteral("auto"));
     query.addQueryItem(QStringLiteral("scope"),           QStringLiteral("activity:write"));
     url.setQuery(query);

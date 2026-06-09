@@ -17,6 +17,7 @@
 #include "dialoginfowebview.h"
 #include "environnement.h"
 #include "extrequest.h"
+#include "strava_oauth_flow.h"
 #include "intervalsicuservice.h"
 #include "xmlutil.h"
 #include "logger.h"
@@ -65,12 +66,8 @@ DialogMainWindowConfig::~DialogMainWindowConfig()
 
 DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent), ui(new Ui::DialogMainWindowConfig)
 {
-    stravaConnectView = new DialogInfoWebView(this);
-    stravaConnectView->setTitle(tr("Connect MaximumTrainer with your Strava account"));
-    stravaConnectView->setUsedForStrava(true);
-    connect(stravaConnectView, SIGNAL(stravaLinked(bool)), this, SLOT(stravaLinked(bool)) );
-    stravaConnectView->setUrlWebView(Environnement::getURLStravaAuthorize());
-    stravaConnectViewAlreadyUsed = false;
+    // Strava login runs in the system browser (StravaOAuthFlow) — Strava blocks
+    // embedded webviews. Set up in stravaLabelClicked().
 
     ui->setupUi(this);
 
@@ -199,28 +196,31 @@ void DialogMainWindowConfig::stravaLinked(bool linked) {
     ui->label_connectStrava->fadeIn(1000);
 
     qDebug() << "strava linked end!";
-
-    stravaConnectView->accept();
 }
 
 
 //---------------------------------------------------------------------------------------------
 void DialogMainWindowConfig::stravaLabelClicked() {
 
-    qDebug() << "stravaLabelClicked1";
+    // Open the Strava login in the user's system browser and capture the
+    // redirect via a localhost loopback listener (Strava blocks embedded views).
+    StravaOAuthFlow *flow = new StravaOAuthFlow(this);
+    connect(flow, &StravaOAuthFlow::finished, this, [this, flow](bool linked) {
+        flow->deleteLater();
+        if (linked) {
+            stravaLinked(true);
+        } else {
+            QMessageBox::warning(this, tr("Strava"),
+                                 tr("Could not connect to Strava. Please try again."));
+        }
+    });
 
-    if (stravaConnectViewAlreadyUsed) {
-            stravaConnectView = new DialogInfoWebView(this);
-            stravaConnectView->setTitle(tr("Connect MaximumTrainer with your Strava account"));
-            stravaConnectView->setUsedForStrava(true);
-            connect(stravaConnectView, SIGNAL(stravaLinked(bool)), this, SLOT(stravaLinked(bool)) );
-            stravaConnectView->setUrlWebView(Environnement::getURLStravaAuthorize());
+    if (!flow->start()) {
+        flow->deleteLater();
+        QMessageBox::warning(this, tr("Strava"),
+                             tr("Could not start the local login listener. "
+                                "Please try again."));
     }
-    stravaConnectView->exec();
-
-    stravaConnectViewAlreadyUsed = true;
-    qDebug() << "stravaLabelClicked3 done";
-
 }
 
 

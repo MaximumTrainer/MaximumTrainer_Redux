@@ -88,8 +88,6 @@ private:
     QNetworkReply *replyIntervalsTest = nullptr;
     IntervalsIcuService *m_intervalsService = nullptr;
 
-    DialogInfoWebView *stravaConnectView;
-    bool stravaConnectViewAlreadyUsed;
 
     // Logging settings page widgets (owned by the page widget, not directly by us)
     QComboBox   *m_comboLogLevel    = nullptr;

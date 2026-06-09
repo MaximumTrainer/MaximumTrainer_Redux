@@ -175,7 +175,7 @@ public:
     static QString getDateBuilded();
 
 
-    static QString getURLStravaAuthorize();
+    static QString getURLStravaAuthorize(const QString &redirectUri);
     /// Build the Intervals.icu OAuth2 authorization URL (desktop — redirect to maximumtrainer.com backend).
     /// @param state  Per-request CSRF token; pass an empty string to omit.
     static QString getURLIntervalsIcuAuthorize(const QString &state = QString());
