@@ -21,18 +21,15 @@ public:
 
 signals:
     void endEdit();
+    void cancelEdit();
 
 
 private slots:
-    void on_pushButton_ok_clicked();
-
     void on_doubleSpinBox_increaseFTP_valueChanged(double arg1);
 
     void on_spinBox_increaseCadence_valueChanged(int arg1);
 
     void on_doubleSpinBox_increaseLTHR_valueChanged(double arg1);
-
-    void on_pushButton_default_clicked();
 
 private:
     Ui::RepeatIncreaseEditor *ui;

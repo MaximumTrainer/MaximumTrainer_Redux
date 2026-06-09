@@ -22,6 +22,7 @@ public:
 
 signals :
     void endEdit();
+    void cancelEdit();
 
 private slots:
     void on_comboBox_hr_currentIndexChanged(int index);

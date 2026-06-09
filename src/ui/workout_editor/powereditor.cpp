@@ -43,6 +43,7 @@ PowerEditor::PowerEditor(QWidget *parent) : QWidget(parent),ui(new Ui::PowerEdit
     ui->gridLayout->setRowMinimumHeight(0,45);
     ui->gridLayout->setRowMinimumHeight(1,45);
 
+    MetricEditorVisibility::applyNativeOkCancelButtons(ui->pushButton_ok, ui->pushButton_default);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -212,15 +213,7 @@ void PowerEditor::on_pushButton_ok_clicked()
 
 void PowerEditor::on_pushButton_default_clicked()
 {
-
-    this->myInterval.setPowerStepType(Interval::StepType::NONE);
-    this->myInterval.setTargetFTP_start(0.60);
-    this->myInterval.setTargetFTP_end(0.60);
-    this->myInterval.setTargetFTP_range(20);
-    this->myInterval.setTestInterval(false);
-    this->myInterval.setRightPowerTarget(-1);
-
-    emit endEdit();
+    emit cancelEdit();
 }
 
 

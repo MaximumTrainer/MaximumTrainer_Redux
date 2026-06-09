@@ -24,6 +24,7 @@ public:
 
 signals :
     void endEdit();
+    void cancelEdit();
 
 
 private slots:

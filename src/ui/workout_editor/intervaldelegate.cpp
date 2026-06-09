@@ -54,19 +54,22 @@ QWidget *IntervalDelegate::createEditor(QWidget *parent, const QStyleOptionViewI
     /// Power
     else if (index.column() == 2 ) {
         PowerEditor *editor = new PowerEditor(parent);
-        connect (editor, SIGNAL(endEdit()), this, SLOT(closeWidgetEditor()) );
+        connect (editor, SIGNAL(endEdit()),    this, SLOT(closeWidgetEditor()) );
+        connect (editor, SIGNAL(cancelEdit()), this, SLOT(cancelWidgetEditor()) );
         return editor;
     }
     /// Cadence
     else if (index.column() == 3 ) {
         CadenceEditor *editor = new CadenceEditor(parent);
-        connect (editor, SIGNAL(endEdit()), this, SLOT(closeWidgetEditor()) );
+        connect (editor, SIGNAL(endEdit()),    this, SLOT(closeWidgetEditor()) );
+        connect (editor, SIGNAL(cancelEdit()), this, SLOT(cancelWidgetEditor()) );
         return editor;
     }
-    /// Cadence
+    /// Heart Rate
     else if (index.column() == 4 ) {
         HrEditor *editor = new HrEditor(parent);
-        connect (editor, SIGNAL(endEdit()), this, SLOT(closeWidgetEditor()) );
+        connect (editor, SIGNAL(endEdit()),    this, SLOT(closeWidgetEditor()) );
+        connect (editor, SIGNAL(cancelEdit()), this, SLOT(cancelWidgetEditor()) );
         return editor;
     }
     /// Display Msg
@@ -77,7 +80,8 @@ QWidget *IntervalDelegate::createEditor(QWidget *parent, const QStyleOptionViewI
     /// Repeat Perc
     else if (index.column() == 6 ) {
         RepeatIncreaseEditor *editor = new RepeatIncreaseEditor(parent);
-        connect (editor, SIGNAL(endEdit()), this, SLOT(closeWidgetEditor()) );
+        connect (editor, SIGNAL(endEdit()),    this, SLOT(closeWidgetEditor()) );
+        connect (editor, SIGNAL(cancelEdit()), this, SLOT(cancelWidgetEditor()) );
         return editor;
 
     }
@@ -94,6 +98,16 @@ void IntervalDelegate::closeWidgetEditor() {
     QWidget *editor = qobject_cast<QWidget*>(sender());
 
     emit commitData(editor);
+    emit closeEditor(editor);
+
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+void IntervalDelegate::cancelWidgetEditor() {
+
+    // Close without committing — discards the edit (Cancel button).
+    QWidget *editor = qobject_cast<QWidget*>(sender());
     emit closeEditor(editor);
 
 }
@@ -222,10 +236,10 @@ void IntervalDelegate::updateEditorGeometry(QWidget *editor,  const QStyleOption
         editor->setGeometry(option.rect.x(), option.rect.y(), 350, 90);
         editor->move(editor->parentWidget()->mapToGlobal(option.rect.topLeft()));
     }
-    /// HR
+    /// Repeat Change
     else if  (index.column() == 6) {
         editor->setWindowFlags(Qt::Popup);
-        editor->setGeometry(option.rect.x(), option.rect.y(), 300, 90);
+        editor->setGeometry(option.rect.x(), option.rect.y(), 490, 150);
         editor->move(editor->parentWidget()->mapToGlobal(option.rect.topLeft()));
     }
 

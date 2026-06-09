@@ -25,6 +25,9 @@ public:
 
     void paintEvent(QPaintEvent *);
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 
 
 public slots:
@@ -74,6 +77,7 @@ private slots:
 private :
     void restoreRepeatWidgetInterface();
     void ajustRepeatWidgetPosition();
+    void distributeColumnWidths();
 
 
 
