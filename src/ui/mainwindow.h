@@ -142,10 +142,6 @@ private slots:
     void on_actionSingle_Workout_triggered();
     void on_actionMultiple_Workouts_triggered();
 
-    //-Strava
-    void slotStravaUploadFinished();
-    void slotStravaCheckUploadStatus();
-    void slotStravaUploadStatusFinished();
     //-Intervals.icu
     void slotIntervalsIcuUploadFinished();
 
@@ -214,15 +210,6 @@ private:
     int saveAccountTry;
     SavingWindow savingWindow;
 
-    //Strava
-    QNetworkReply *replyStravaUpload;
-    QNetworkReply *replyStravaUploadStatus;
-    qint64 stravaUploadID;
-    QTimer *timerCheckUploadStatus;
-    void startStravaAutoUpload();   ///< upload m_pendingStrava* after token refresh
-    QString m_pendingStravaFile;
-    QString m_pendingStravaName;
-    QString m_pendingStravaDesc;
     //Intervals.icu
     QNetworkReply *replyIntervalsIcuUpload;
     QNetworkReply *replyVersionCheck = nullptr;

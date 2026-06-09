@@ -210,6 +210,8 @@ private slots:
 
     // Post-workout upload slots
     void uploadToStrava();
+    void doStravaUpload();   ///< the actual upload, after any token refresh
+    void setStravaPostStatus(const QString &text, bool retryable);
     void uploadToIntervalsIcu();
     void slotPostIntervalsIcuUploadDone();
     void slotPostStravaUploadDone();

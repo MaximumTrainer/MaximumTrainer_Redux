@@ -172,7 +172,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // ------------------------------------- BTLE ready ---------------------------------
 
 
-    stravaUploadID = -1;
     saveAccountTry = 0;
 
     ftb = new FancyTabBar(FancyTabBar::TabBarPosition::Left, ui->widget_fancyMenu);
@@ -1850,44 +1849,10 @@ void MainWindow::checkToUploadFile(const QString& filename, const QString& nameO
         m_adherenceStore->addCompleted(today, nameOnly, filename);
     }
 
-    // Strava + Intervals.icu auto-upload (each has its own toggle). The
-    // post-workout WorkoutDialog buttons remain for manual one-off uploads.
-
-    // Strava — refresh the access token if it's expired (via the token Worker),
-    // then upload. Access tokens live only 6 h, so check expires_at first.
-    if (account->strava_auto_upload &&
-        !account->strava_access_token.isEmpty() &&
-        NetworkMonitor::instance()->isOnline()) {
-
-        m_pendingStravaFile = filename;
-        m_pendingStravaName = nameOnly;
-        m_pendingStravaDesc = description;
-
-        const qint64 now = QDateTime::currentSecsSinceEpoch();
-        const bool tokenValid = account->strava_token_expires_at > now + 60;
-        if (tokenValid || account->strava_refresh_token.isEmpty()) {
-            startStravaAutoUpload();
-        } else {
-            ui->widget_bottomMenu->setGeneralMessage(tr("Refreshing Strava token..."));
-            QNetworkReply *refresh = StravaService::refreshToken(account->strava_refresh_token);
-            if (!refresh) {
-                startStravaAutoUpload();
-            } else {
-                connect(refresh, &QNetworkReply::finished, this, [this, refresh]() {
-                    refresh->deleteLater();
-                    if (refresh->error() == QNetworkReply::NoError) {
-                        Util::parseJsonStravaObject(QString::fromUtf8(refresh->readAll()));
-                        account->saveStravaCredentials();
-                    } else {
-                        LOG_WARN("MainWindow",
-                                 QStringLiteral("Strava token refresh failed: ")
-                                 + refresh->errorString());
-                    }
-                    startStravaAutoUpload();
-                });
-            }
-        }
-    }
+    // Strava auto-upload is handled in WorkoutDialog's post-workout panel
+    // (so the status shows there and the manual button is replaced), which
+    // avoids uploading the same activity twice. Only Intervals.icu auto-uploads
+    // here.
 
     // Intervals.icu
     if (account->intervals_icu_auto_upload &&
@@ -1908,24 +1873,6 @@ void MainWindow::checkToUploadFile(const QString& filename, const QString& nameO
         svc->deleteLater();
     }
 
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// Kicks off the actual Strava upload (assumes a fresh access token). The reply
-// is handled by the existing slotStravaUploadFinished → poll-status machinery.
-void MainWindow::startStravaAutoUpload()
-{
-    ui->widget_bottomMenu->setGeneralMessage(tr("Uploading your activity to Strava..."));
-    replyStravaUpload = ExtRequest::stravaUploadFile(
-        account->strava_access_token,
-        m_pendingStravaName,
-        m_pendingStravaDesc,
-        true,                              // indoor / trainer activity
-        account->strava_private_upload,
-        QStringLiteral("ride"),
-        m_pendingStravaFile);
-    if (replyStravaUpload)
-        connect(replyStravaUpload, SIGNAL(finished()), this, SLOT(slotStravaUploadFinished()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1986,90 +1933,6 @@ void MainWindow::slotSystemThemeChanged()
 
 
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::slotStravaUploadFinished()
-{
-    qDebug() << "slotStravaUploadFinished";
-
-
-    const QByteArray arrayData = replyStravaUpload->readAll();
-    LOG_INFO("MainWindow", QStringLiteral("Strava upload response: ") + QString::fromUtf8(arrayData));
-
-    if (replyStravaUpload->error() == QNetworkReply::NoError) {
-        stravaUploadID = Util::parseIdJsonStravaUploadObject(QString::fromUtf8(arrayData));
-        if (stravaUploadID > 0) {
-            timerCheckUploadStatus = new QTimer(this);
-            connect(timerCheckUploadStatus, SIGNAL(timeout()), this, SLOT(slotStravaCheckUploadStatus()) );
-            timerCheckUploadStatus->start(3000);
-        } else {
-            // 2xx but no usable id — Strava returned an error/duplicate in the body.
-            LOG_WARN("MainWindow", QStringLiteral("Strava upload: no upload id in response"));
-            ui->widget_bottomMenu->setGeneralMessage(tr("Strava upload was not accepted."), 5000);
-        }
-    }
-    else {
-        LOG_WARN("MainWindow",
-                 QStringLiteral("Strava upload failed: ") + replyStravaUpload->errorString()
-                 + QStringLiteral(" — ") + QString::fromUtf8(arrayData));
-        ui->widget_bottomMenu->setGeneralMessage("Strava : " + replyStravaUpload->errorString(), 5000);
-    }
-    replyStravaUpload->deleteLater();
-
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::slotStravaCheckUploadStatus() {
-
-    qDebug() << "slotStravaCheckUploadStatus";
-
-    replyStravaUploadStatus = ExtRequest::stravaCheckUploadStatus(account->strava_access_token, stravaUploadID );
-    connect(replyStravaUploadStatus, SIGNAL(finished()), this, SLOT(slotStravaUploadStatusFinished()) );
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::slotStravaUploadStatusFinished() {
-
-    qDebug() << "slotStravaUploadStatusFinished";
-
-
-    QString msgReady = tr("Your activity was successfully uploaded to Strava");
-    QString msgError = tr("There was an error processing your activity to Strava");
-
-
-    //success, process data
-    if (replyStravaUploadStatus->error() == QNetworkReply::NoError) {
-
-        QByteArray arrayData =  replyStravaUploadStatus->readAll();
-        int codeReturn = Util::parseStravaUploadStatus(QString(arrayData));
-        // -1 = Not normal, stop checking for status...
-        //  0 = Completed (Ready)
-        //  1 = Still In process
-        //  2 = Error
-        if (codeReturn == -1) {
-            timerCheckUploadStatus->stop();
-            ui->widget_bottomMenu->removeGeneralMessage();
-        }
-        else if (codeReturn == 0) {
-            timerCheckUploadStatus->stop();
-            ui->widget_bottomMenu->setGeneralMessage(msgReady, 5000);
-        }
-        else if (codeReturn == 2) {
-            timerCheckUploadStatus->stop();
-            ui->widget_bottomMenu->setGeneralMessage(msgError, 5000);
-
-        }
-
-    }
-    else {
-        timerCheckUploadStatus->stop();
-        LOG_WARN("MainWindow",
-                 QStringLiteral("Strava upload status check failed: ")
-                 + replyStravaUploadStatus->errorString());
-        ui->widget_bottomMenu->setGeneralMessage("Strava : " + replyStravaUploadStatus->errorString(), 5000);
-    }
-    replyStravaUploadStatus->deleteLater();
-}
 
 
 
