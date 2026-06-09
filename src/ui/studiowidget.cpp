@@ -14,6 +14,12 @@
 #include <QSettings>
 #include <QApplication>
 #include <QSignalBlocker>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QFile>
 
 #include "account.h"
 #include "xmlutil.h"
@@ -23,6 +29,16 @@
 #include "btle_sensor_store.h"
 #include "btle_scanner_dialog.h"
 #endif
+
+namespace {
+// The sensor roles offered per rider in Studio mode (Oxygen is omitted).
+const QVector<BtleSensorRole> kStudioSensorRoles = {
+    BtleSensorRole::HeartRate,
+    BtleSensorRole::Power,
+    BtleSensorRole::CadenceSpeed,
+    BtleSensorRole::Trainer
+};
+}
 
 StudioWidget::StudioWidget(QWidget *parent)
     : QWidget(parent)
@@ -75,6 +91,19 @@ void StudioWidget::buildUi()
             this, &StudioWidget::onRiderCountChanged);
     topRow->addWidget(m_riderCountCombo);
     topRow->addStretch();
+
+    // Top-right: share the whole studio setup (riders + sensors + ERG) as a
+    // single file so it can be moved between computers without re-pairing.
+    QPushButton *importButton = new QPushButton(tr("Import…"), this);
+    importButton->setToolTip(tr("Load a studio configuration from a file"));
+    connect(importButton, &QPushButton::clicked, this, &StudioWidget::onImportClicked);
+    topRow->addWidget(importButton);
+
+    QPushButton *exportButton = new QPushButton(tr("Export…"), this);
+    exportButton->setToolTip(tr("Save the current studio configuration to a file"));
+    connect(exportButton, &QPushButton::clicked, this, &StudioWidget::onExportClicked);
+    topRow->addWidget(exportButton);
+
     mainLayout->addLayout(topRow);
 
     QLabel *note = new QLabel(
@@ -148,16 +177,8 @@ QGroupBox *StudioWidget::buildRiderCard(int riderIndex)
     grid->setColumnStretch(1, 1);
     grid->setHorizontalSpacing(8);
     grid->setVerticalSpacing(3);
-    // Oxygen (Moxy) is niche for studio sessions and is intentionally omitted
-    // here to keep the per-rider card compact.
-    static const QVector<BtleSensorRole> kStudioRoles = {
-        BtleSensorRole::HeartRate,
-        BtleSensorRole::Power,
-        BtleSensorRole::CadenceSpeed,
-        BtleSensorRole::Trainer
-    };
     int row = 0;
-    for (BtleSensorRole role : kStudioRoles) {
+    for (BtleSensorRole role : kStudioSensorRoles) {
         SensorSlot slot;
         slot.role = role;
 
@@ -411,4 +432,142 @@ void StudioWidget::saveErg(int riderIndex, bool control, int ramp)
     settings.setValue(QStringLiteral("control_resistance"), control);
     settings.setValue(QStringLiteral("ramp_s"), ramp);
     settings.endGroup();
+}
+
+void StudioWidget::onExportClicked()
+{
+    QString path = QFileDialog::getSaveFileName(
+        this, tr("Export Studio Configuration"),
+        QStringLiteral("studio_config.json"), tr("Studio configuration (*.json)"));
+    if (path.isEmpty())
+        return;
+    if (!path.endsWith(QLatin1String(".json"), Qt::CaseInsensitive))
+        path += QLatin1String(".json");
+
+    QJsonObject root;
+    root[QStringLiteral("version")]  = 1;
+    root[QStringLiteral("nbRiders")] = m_riderCountCombo
+                                           ? m_riderCountCombo->currentData().toInt()
+                                           : 1;
+
+    QJsonArray ridersArr;
+    for (int rider = 1; rider <= kMaxRiders; ++rider) {
+        const UserStudio &u = m_riders.at(rider - 1);
+
+        QJsonObject ro;
+        ro[QStringLiteral("index")] = rider;
+        ro[QStringLiteral("name")]  = u.getDisplayName();
+        ro[QStringLiteral("ftp")]   = u.getFTP();
+        ro[QStringLiteral("lthr")]  = u.getLTHR();
+
+        QJsonObject erg;
+        erg[QStringLiteral("control")] =
+            studioErgControl(rider, m_account && m_account->control_trainer_resistance);
+        erg[QStringLiteral("ramp")] =
+            studioErgRamp(rider, m_account ? m_account->erg_smoothing_duration_s : 0);
+        ro[QStringLiteral("erg")] = erg;
+
+#ifndef GC_WASM_BUILD
+        QJsonObject sensors;
+        const QMap<BtleSensorRole, BtleSavedSensor> saved = BtleSensorStore::loadAll(rider);
+        for (BtleSensorRole role : kStudioSensorRoles) {
+            if (!saved.contains(role))
+                continue;
+            const BtleSavedSensor &s = saved.value(role);
+            QJsonObject so;
+            so[QStringLiteral("name")]       = s.name;
+            so[QStringLiteral("address")]    = s.address;
+            so[QStringLiteral("deviceUuid")] = s.deviceUuid;
+            sensors[BtleSensorStore::roleKey(role)] = so;
+        }
+        ro[QStringLiteral("sensors")] = sensors;
+#endif
+        ridersArr.append(ro);
+    }
+    root[QStringLiteral("riders")] = ridersArr;
+
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::warning(this, tr("Export failed"),
+                             tr("Could not write to %1").arg(path));
+        return;
+    }
+    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    file.close();
+}
+
+void StudioWidget::onImportClicked()
+{
+    const QString path = QFileDialog::getOpenFileName(
+        this, tr("Import Studio Configuration"),
+        QString(), tr("Studio configuration (*.json)"));
+    if (path.isEmpty())
+        return;
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, tr("Import failed"),
+                             tr("Could not read %1").arg(path));
+        return;
+    }
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parseError);
+    file.close();
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        QMessageBox::warning(this, tr("Import failed"),
+                             tr("This is not a valid studio configuration file."));
+        return;
+    }
+
+    const QJsonObject root = doc.object();
+    const QJsonArray ridersArr = root.value(QStringLiteral("riders")).toArray();
+
+    for (const QJsonValue &riderValue : ridersArr) {
+        const QJsonObject ro = riderValue.toObject();
+        const int rider = ro.value(QStringLiteral("index")).toInt();
+        if (rider < 1 || rider > kMaxRiders)
+            continue;
+
+        UserStudio u = m_riders.at(rider - 1);
+        u.setDisplayName(ro.value(QStringLiteral("name")).toString());
+        u.setFTP(ro.value(QStringLiteral("ftp")).toInt());
+        u.setLTHR(ro.value(QStringLiteral("lthr")).toInt());
+        m_riders.replace(rider - 1, u);
+
+        const QJsonObject erg = ro.value(QStringLiteral("erg")).toObject();
+        saveErg(rider, erg.value(QStringLiteral("control")).toBool(),
+                erg.value(QStringLiteral("ramp")).toInt());
+
+#ifndef GC_WASM_BUILD
+        const QJsonObject sensors = ro.value(QStringLiteral("sensors")).toObject();
+        for (BtleSensorRole role : kStudioSensorRoles) {
+            const QString key = BtleSensorStore::roleKey(role);
+            if (sensors.contains(key)) {
+                const QJsonObject so = sensors.value(key).toObject();
+                BtleSavedSensor s;
+                s.role       = role;
+                s.name       = so.value(QStringLiteral("name")).toString();
+                s.address    = so.value(QStringLiteral("address")).toString();
+                s.deviceUuid = so.value(QStringLiteral("deviceUuid")).toString();
+                s.enabled    = true;
+                BtleSensorStore::saveSensor(s, rider);
+            } else {
+                BtleSensorStore::clearSensor(role, rider);
+            }
+        }
+#endif
+    }
+
+    if (m_account) {
+        m_account->nb_user_studio =
+            qBound(1, root.value(QStringLiteral("nbRiders")).toInt(m_account->nb_user_studio),
+                   kMaxRiders);
+    }
+
+    // Persist the identity changes, refresh every card, and tell MainWindow.
+    XmlUtil::saveUserStudioFile(m_riders, QString());
+    reload();
+    emit ridersChanged(m_riders);
+    if (m_account)
+        emit riderCountChanged(m_account->nb_user_studio);
 }

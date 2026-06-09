@@ -60,6 +60,8 @@ signals:
 private slots:
     void onStudioModeToggled(bool enabled);
     void onRiderCountChanged(int index);
+    void onExportClicked();
+    void onImportClicked();
 
 private:
     static constexpr int kMaxRiders = 15;
