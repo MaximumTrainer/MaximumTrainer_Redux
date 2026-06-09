@@ -80,8 +80,8 @@ QString Environnement::getURLStravaAuthorize(const QString &redirectUri) {
 /// callback page (Environnement::getWasmOAuthRedirectUri).  On WASM the page
 /// is loaded in a popup that posts the authorization code back via
 /// window.opener.postMessage.  On desktop the embedded QWebEngineView
-/// (IntervalsIcuOAuthWidget / DialogInfoWebView) detects the redirect to
-/// oauth_callback.html and extracts the code from its query string.
+/// (IntervalsIcuOAuthWidget) detects the redirect to oauth_callback.html and
+/// extracts the code from its query string.
 ///
 /// In both cases the subsequent /oauth/token POST goes through the
 /// Cloudflare Worker proxy (see URL_TOKEN_ICV in environnement.h).

@@ -14,7 +14,6 @@
 #include <QStandardPaths>
 
 #include "util.h"
-#include "dialoginfowebview.h"
 #include "environnement.h"
 #include "extrequest.h"
 #include "strava_oauth_flow.h"
