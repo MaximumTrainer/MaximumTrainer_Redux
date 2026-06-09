@@ -55,6 +55,17 @@ int main(int argc, char *argv[]) {
     // AppImage — see release-linux.yml.
     if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORMTHEME"))
         qputenv("QT_QPA_PLATFORMTHEME", "xdgdesktopportal");
+
+    // Use the PulseAudio audio backend rather than Qt's default PipeWire-native
+    // one. On PipeWire systems the native backend enumerates only the ALSA
+    // sinks, misses Bluetooth outputs entirely, and reports the wrong default —
+    // so playback gets stuck on e.g. HDMI and never follows the user's
+    // headphones. The PulseAudio backend (served by pipewire-pulse on modern
+    // desktops, or PulseAudio proper) sees every sink incl. Bluetooth and tracks
+    // the system default correctly. If PulseAudio isn't available Qt logs a
+    // notice and falls back to its default backend, so this is safe to force.
+    if (qEnvironmentVariableIsEmpty("QT_AUDIO_BACKEND"))
+        qputenv("QT_AUDIO_BACKEND", "pulseaudio");
 #endif
 
     // QtWebEngine requires the GUI thread and Chromium's GPU process to share
