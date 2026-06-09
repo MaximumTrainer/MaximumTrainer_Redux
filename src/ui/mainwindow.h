@@ -235,6 +235,10 @@ private:
     WorkoutDialog *m_ssWorkoutDlg = nullptr;
     SimulatorHub  *m_ssSimHub     = nullptr;
     QList<SimulatorHub*> m_ssStudioHubs;   // per-rider sim hubs for the studio-workout shot
+    // Saved so screenshot mode (which toggles studio mode + rider count for its
+    // captures) can restore the user's real settings before quitting.
+    bool m_ssSavedStudioEnabled = false;
+    int  m_ssSavedRiderCount    = 1;
 
     // Plan Adherence (#157)
     PlanAdherenceStore *m_adherenceStore = nullptr;

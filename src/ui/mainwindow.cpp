@@ -957,6 +957,9 @@ void MainWindow::enableStudioMode(bool enable) {
     // per-rider and not meaningful in the multi-rider studio view.
     ftb->setTabEnabled(4, !enable);
 
+    // Persist so the toggle state survives a restart (saveDisplayPrefs writes
+    // enable_studio_mode + nb_user_studio together).
+    account->saveDisplayPrefs();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -965,6 +968,8 @@ void MainWindow::setNumberUserStudio(int nbUser) {
     qDebug() << "setNumberUserStudio" << nbUser;
     account->nb_user_studio = nbUser;
 
+    // Persist so the selected rider count survives a restart.
+    account->saveDisplayPrefs();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -2004,6 +2009,11 @@ void MainWindow::startScreenshotMode(const QString &outputDir)
     m_ssOutputDir = outputDir;
     m_ssStep      = 0;
 
+    // Remember the user's real studio settings; the studio capture steps toggle
+    // these, and they are restored before the app quits (see the final step).
+    m_ssSavedStudioEnabled = account->enable_studio_mode;
+    m_ssSavedRiderCount    = account->nb_user_studio;
+
     // Force offline so WorkoutDialog skips the online session check.
     // There is no server to reach in screenshot/CI mode, and the blocking
     // "could not retrieve session" message-box that appears after 3 failed
@@ -2245,6 +2255,10 @@ void MainWindow::screenshotNextStep()
             delete simHub;
         }
         m_ssStudioHubs.clear();
+        // Restore the user's real studio settings the capture steps changed.
+        account->enable_studio_mode = m_ssSavedStudioEnabled;
+        account->nb_user_studio     = m_ssSavedRiderCount;
+        account->saveDisplayPrefs();
         QTimer::singleShot(300, qApp, SLOT(quit()));
         return; // No further steps — quit is already scheduled.
 
