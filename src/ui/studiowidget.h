@@ -9,6 +9,7 @@
 
 class QCheckBox;
 class QComboBox;
+class QScrollArea;
 class ToggleSwitch;
 class QSpinBox;
 class QLineEdit;
@@ -84,6 +85,9 @@ private:
     void buildUi();
     QGroupBox *buildRiderCard(int riderIndex);     // riderIndex is 1-based
     void updateVisibleCards(int count);
+    /// Show/hide everything except the Studio Mode switch (rider count, import/
+    /// export, hint and the rider cards) so the page is empty when studio is off.
+    void setStudioControlsVisible(bool visible);
     void loadRiderIntoCard(int riderIndex);
     void refreshSensorSlot(int riderIndex, int slotIdx);
 
@@ -101,6 +105,12 @@ private:
     Account      *m_account         = nullptr;
     ToggleSwitch *m_enableSwitch     = nullptr;
     QComboBox    *m_riderCountCombo  = nullptr;
+    QWidget      *m_controlsRow      = nullptr;
+    QLabel       *m_riderCountLabel  = nullptr;
+    QPushButton  *m_importButton     = nullptr;
+    QPushButton  *m_exportButton     = nullptr;
+    QLabel       *m_noteLabel        = nullptr;
+    QScrollArea  *m_scrollArea       = nullptr;
     QGridLayout *m_cardsGrid        = nullptr;
     QVector<RiderCard>  m_cards;     // index 0 == rider 1
     QVector<UserStudio> m_riders;    // full vector from the UserStudio XML

@@ -64,61 +64,72 @@ void StudioWidget::buildUi()
     title->setFont(titleFont);
     mainLayout->addWidget(title);
 
-    // Top controls: a prominent on/off switch + rider-count dropdown.
-    QHBoxLayout *topRow = new QHBoxLayout();
-    topRow->setSpacing(10);
+    // Switch row — always visible and pinned at the top, so the Studio Mode
+    // toggle never moves when the rest of the page is shown/hidden.
+    QHBoxLayout *switchRow = new QHBoxLayout();
+    switchRow->setSpacing(10);
 
     QLabel *enableLabel = new QLabel(tr("Studio Mode"), this);
     QFont enableFont = enableLabel->font();
     enableFont.setPointSizeF(enableFont.pointSizeF() + 1);
     enableFont.setBold(true);
     enableLabel->setFont(enableFont);
-    topRow->addWidget(enableLabel);
+    switchRow->addWidget(enableLabel);
 
     m_enableSwitch = new ToggleSwitch(this);
     m_enableSwitch->setFixedSize(60, 30);
     m_enableSwitch->setToolTip(tr("Turn Studio Mode on or off"));
     connect(m_enableSwitch, &QAbstractButton::toggled,
             this, &StudioWidget::onStudioModeToggled);
-    topRow->addWidget(m_enableSwitch);
-    topRow->addSpacing(28);
+    switchRow->addWidget(m_enableSwitch);
+    switchRow->addStretch();
+    mainLayout->addLayout(switchRow);
 
-    topRow->addWidget(new QLabel(tr("Number of riders:"), this));
-    m_riderCountCombo = new QComboBox(this);
+    // Controls row — rider count + import/export. Hidden when studio mode is off
+    // (wrapped in a container so it collapses without disturbing the switch row).
+    m_controlsRow = new QWidget(this);
+    QHBoxLayout *controlsLayout = new QHBoxLayout(m_controlsRow);
+    controlsLayout->setContentsMargins(0, 0, 0, 0);
+    controlsLayout->setSpacing(10);
+
+    m_riderCountLabel = new QLabel(tr("Number of riders:"), m_controlsRow);
+    controlsLayout->addWidget(m_riderCountLabel);
+    m_riderCountCombo = new QComboBox(m_controlsRow);
     for (int i = 1; i <= kMaxRiders; ++i)
         m_riderCountCombo->addItem(QString::number(i), i);
     connect(m_riderCountCombo, qOverload<int>(&QComboBox::currentIndexChanged),
             this, &StudioWidget::onRiderCountChanged);
-    topRow->addWidget(m_riderCountCombo);
-    topRow->addStretch();
+    controlsLayout->addWidget(m_riderCountCombo);
+    controlsLayout->addStretch();
 
-    // Top-right: share the whole studio setup (riders + sensors + ERG) as a
-    // single file so it can be moved between computers without re-pairing.
-    QPushButton *importButton = new QPushButton(tr("Import…"), this);
-    importButton->setToolTip(tr("Load a studio configuration from a file"));
-    connect(importButton, &QPushButton::clicked, this, &StudioWidget::onImportClicked);
-    topRow->addWidget(importButton);
+    // Share the whole studio setup (riders + sensors + ERG) as a single file so
+    // it can be moved between computers without re-pairing.
+    m_importButton = new QPushButton(tr("Import…"), m_controlsRow);
+    m_importButton->setToolTip(tr("Load a studio configuration from a file"));
+    connect(m_importButton, &QPushButton::clicked, this, &StudioWidget::onImportClicked);
+    controlsLayout->addWidget(m_importButton);
 
-    QPushButton *exportButton = new QPushButton(tr("Export…"), this);
-    exportButton->setToolTip(tr("Save the current studio configuration to a file"));
-    connect(exportButton, &QPushButton::clicked, this, &StudioWidget::onExportClicked);
-    topRow->addWidget(exportButton);
+    m_exportButton = new QPushButton(tr("Export…"), m_controlsRow);
+    m_exportButton->setToolTip(tr("Save the current studio configuration to a file"));
+    connect(m_exportButton, &QPushButton::clicked, this, &StudioWidget::onExportClicked);
+    controlsLayout->addWidget(m_exportButton);
 
-    mainLayout->addLayout(topRow);
+    mainLayout->addWidget(m_controlsRow);
 
-    QLabel *note = new QLabel(
+    m_noteLabel = new QLabel(
         tr("Each rider trains with their own sensors. Leave a name blank to use "
            "Rider1, Rider2, … in the workout view."),
         this);
-    note->setWordWrap(true);
-    note->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
-    mainLayout->addWidget(note);
+    m_noteLabel->setWordWrap(true);
+    m_noteLabel->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
+    mainLayout->addWidget(m_noteLabel);
 
     // Scrollable grid of compact rider cards (2 per row so several fit).
-    QScrollArea *scroll = new QScrollArea(this);
-    scroll->setWidgetResizable(true);
-    scroll->setFrameShape(QFrame::NoFrame);
+    m_scrollArea = new QScrollArea(this);
+    m_scrollArea->setWidgetResizable(true);
+    m_scrollArea->setFrameShape(QFrame::NoFrame);
 
+    QScrollArea *scroll = m_scrollArea;
     QWidget *cardsHost = new QWidget(scroll);
     m_cardsGrid = new QGridLayout(cardsHost);
     m_cardsGrid->setContentsMargins(0, 0, 0, 0);
@@ -256,6 +267,9 @@ void StudioWidget::reload()
     for (int rider = 1; rider <= kMaxRiders; ++rider)
         loadRiderIntoCard(rider);
     updateVisibleCards(count);
+
+    // Hide everything but the switch when studio mode is off.
+    setStudioControlsVisible(m_account->enable_studio_mode);
 }
 
 void StudioWidget::loadRiderIntoCard(int riderIndex)
@@ -324,8 +338,17 @@ void StudioWidget::updateVisibleCards(int count)
             m_cards[rider - 1].box->setVisible(rider <= count);
 }
 
+void StudioWidget::setStudioControlsVisible(bool visible)
+{
+    // The Studio Mode switch row stays put; only the rest of the page collapses.
+    if (m_controlsRow) m_controlsRow->setVisible(visible);
+    if (m_noteLabel)   m_noteLabel->setVisible(visible);
+    if (m_scrollArea)  m_scrollArea->setVisible(visible);
+}
+
 void StudioWidget::onStudioModeToggled(bool enabled)
 {
+    setStudioControlsVisible(enabled);
     emit studioModeChanged(enabled);
 }
 
