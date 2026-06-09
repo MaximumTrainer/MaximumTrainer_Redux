@@ -113,7 +113,7 @@ const static QString indexPage = "index.php/";
 /// settings must be maximumtrainer.github.io. Scope is activity:write (upload).
 const static QString CLIENT_ID_STRAVA = QStringLiteral("7252");
 const static QString STRAVA_TOKEN_PROXY_BASE =
-    QStringLiteral("https://mt-strava-token.intervals-login.workers.dev");
+    QStringLiteral("https://mt-strava-token.maximumtrainer.workers.dev");
 const static QString URL_TOKEN_STRAVA = STRAVA_TOKEN_PROXY_BASE + "/strava/oauth/token";
 
 
