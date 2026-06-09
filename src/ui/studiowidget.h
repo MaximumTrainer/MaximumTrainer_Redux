@@ -9,6 +9,7 @@
 
 class QCheckBox;
 class QComboBox;
+class ToggleSwitch;
 class QSpinBox;
 class QLineEdit;
 class QLabel;
@@ -95,9 +96,9 @@ private:
     static QString ergGroup(int riderIndex);
     static void    saveErg(int riderIndex, bool control, int ramp);
 
-    Account     *m_account         = nullptr;
-    QCheckBox   *m_enableCheck      = nullptr;
-    QComboBox   *m_riderCountCombo  = nullptr;
+    Account      *m_account         = nullptr;
+    ToggleSwitch *m_enableSwitch     = nullptr;
+    QComboBox    *m_riderCountCombo  = nullptr;
     QGridLayout *m_cardsGrid        = nullptr;
     QVector<RiderCard>  m_cards;     // index 0 == rider 1
     QVector<UserStudio> m_riders;    // full vector from the UserStudio XML

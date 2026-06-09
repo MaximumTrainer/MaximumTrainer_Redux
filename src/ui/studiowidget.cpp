@@ -17,6 +17,7 @@
 
 #include "account.h"
 #include "xmlutil.h"
+#include "toggleswitch.h"
 
 #ifndef GC_WASM_BUILD
 #include "btle_sensor_store.h"
@@ -47,13 +48,24 @@ void StudioWidget::buildUi()
     title->setFont(titleFont);
     mainLayout->addWidget(title);
 
-    // Top controls: enable + rider-count dropdown.
+    // Top controls: a prominent on/off switch + rider-count dropdown.
     QHBoxLayout *topRow = new QHBoxLayout();
-    m_enableCheck = new QCheckBox(tr("Enable Studio Mode"), this);
-    connect(m_enableCheck, &QCheckBox::toggled,
+    topRow->setSpacing(10);
+
+    QLabel *enableLabel = new QLabel(tr("Studio Mode"), this);
+    QFont enableFont = enableLabel->font();
+    enableFont.setPointSizeF(enableFont.pointSizeF() + 1);
+    enableFont.setBold(true);
+    enableLabel->setFont(enableFont);
+    topRow->addWidget(enableLabel);
+
+    m_enableSwitch = new ToggleSwitch(this);
+    m_enableSwitch->setFixedSize(60, 30);
+    m_enableSwitch->setToolTip(tr("Turn Studio Mode on or off"));
+    connect(m_enableSwitch, &QAbstractButton::toggled,
             this, &StudioWidget::onStudioModeToggled);
-    topRow->addWidget(m_enableCheck);
-    topRow->addSpacing(24);
+    topRow->addWidget(m_enableSwitch);
+    topRow->addSpacing(28);
 
     topRow->addWidget(new QLabel(tr("Number of riders:"), this));
     m_riderCountCombo = new QComboBox(this);
@@ -208,9 +220,10 @@ void StudioWidget::reload()
     while (m_riders.size() < kMaxRiders)
         m_riders.append(UserStudio("", -1, -1, -1, -1, -1, -1, -1, 2100, false, 0, 0));
 
-    if (m_enableCheck) {
-        QSignalBlocker b(m_enableCheck);
-        m_enableCheck->setChecked(m_account->enable_studio_mode);
+    if (m_enableSwitch) {
+        QSignalBlocker b(m_enableSwitch);
+        m_enableSwitch->setChecked(m_account->enable_studio_mode);
+        m_enableSwitch->setKnobPosition(m_account->enable_studio_mode ? 1.0 : 0.0);
     }
 
     const int count = qBound(1, m_account->nb_user_studio, kMaxRiders);
