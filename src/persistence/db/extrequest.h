@@ -23,7 +23,7 @@ public:
     static QNetworkReply* stravaDeauthorization(QString access_token);
     static QNetworkReply* stravaUploadFile(QString access_token, QString activityName, QString activityDescription,
                                            bool activityOnTrainer, bool activityIsPrivate, QString typeActivity, QString pathToFile);
-    static QNetworkReply* stravaCheckUploadStatus(QString access_token, int uploadID);
+    static QNetworkReply* stravaCheckUploadStatus(QString access_token, qint64 uploadID);
 
 
     //-- Intervals.icu OAuth2

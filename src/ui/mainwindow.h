@@ -217,7 +217,7 @@ private:
     //Strava
     QNetworkReply *replyStravaUpload;
     QNetworkReply *replyStravaUploadStatus;
-    int stravaUploadID;
+    qint64 stravaUploadID;
     QTimer *timerCheckUploadStatus;
     void startStravaAutoUpload();   ///< upload m_pendingStrava* after token refresh
     QString m_pendingStravaFile;

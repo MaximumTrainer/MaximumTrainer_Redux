@@ -103,7 +103,7 @@ QNetworkReply* StravaService::uploadActivity(const QString &filePath,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-QNetworkReply* StravaService::checkUploadStatus(int uploadId)
+QNetworkReply* StravaService::checkUploadStatus(qint64 uploadId)
 {
     auto *mgr = networkManager();
     if (!mgr) return nullptr;

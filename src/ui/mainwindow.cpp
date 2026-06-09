@@ -1992,19 +1992,25 @@ void MainWindow::slotStravaUploadFinished()
     qDebug() << "slotStravaUploadFinished";
 
 
-    //success, process data
+    const QByteArray arrayData = replyStravaUpload->readAll();
+    LOG_INFO("MainWindow", QStringLiteral("Strava upload response: ") + QString::fromUtf8(arrayData));
+
     if (replyStravaUpload->error() == QNetworkReply::NoError) {
-        qDebug() << "no error strava!";
-        QByteArray arrayData =  replyStravaUpload->readAll();
-        stravaUploadID = Util::parseIdJsonStravaUploadObject(QString(arrayData));
-        qDebug() << "UPLOAD ID IS:" << stravaUploadID;
-        timerCheckUploadStatus = new QTimer(this);
-        connect(timerCheckUploadStatus, SIGNAL(timeout()), this, SLOT(slotStravaCheckUploadStatus()) );
-        timerCheckUploadStatus->start(3000);
+        stravaUploadID = Util::parseIdJsonStravaUploadObject(QString::fromUtf8(arrayData));
+        if (stravaUploadID > 0) {
+            timerCheckUploadStatus = new QTimer(this);
+            connect(timerCheckUploadStatus, SIGNAL(timeout()), this, SLOT(slotStravaCheckUploadStatus()) );
+            timerCheckUploadStatus->start(3000);
+        } else {
+            // 2xx but no usable id — Strava returned an error/duplicate in the body.
+            LOG_WARN("MainWindow", QStringLiteral("Strava upload: no upload id in response"));
+            ui->widget_bottomMenu->setGeneralMessage(tr("Strava upload was not accepted."), 5000);
+        }
     }
     else {
         LOG_WARN("MainWindow",
-                 QStringLiteral("Strava upload failed: ") + replyStravaUpload->errorString());
+                 QStringLiteral("Strava upload failed: ") + replyStravaUpload->errorString()
+                 + QStringLiteral(" — ") + QString::fromUtf8(arrayData));
         ui->widget_bottomMenu->setGeneralMessage("Strava : " + replyStravaUpload->errorString(), 5000);
     }
     replyStravaUpload->deleteLater();

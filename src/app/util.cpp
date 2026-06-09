@@ -266,16 +266,13 @@ void Util::parseJsonStravaObject(QString data) {
 
 
 ///--------------------------------------------------------------------------------------------------------------------
-int Util::parseIdJsonStravaUploadObject(QString data) {
-
-
-    qDebug() << "PARSE STRAVA DATA" << data;
+qint64 Util::parseIdJsonStravaUploadObject(QString data) {
 
     QJsonDocument jsonResponse = QJsonDocument::fromJson(data.toUtf8());
     QJsonObject jsonObj = jsonResponse.object();
 
-    int myId = jsonObj["id"].toInt();
-    return myId;
+    // Strava upload IDs exceed 32-bit int range — read as 64-bit, not toInt().
+    return jsonObj["id"].toVariant().toLongLong();
 }
 
 

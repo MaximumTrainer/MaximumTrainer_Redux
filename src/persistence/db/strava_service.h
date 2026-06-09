@@ -44,7 +44,7 @@ public:
 
     /// Poll the status of a pending Strava upload.
     /// GET https://www.strava.com/api/v3/uploads/{uploadId}
-    QNetworkReply* checkUploadStatus(int uploadId);
+    QNetworkReply* checkUploadStatus(qint64 uploadId);
 
     /// Revoke the current access token.
     /// POST https://www.strava.com/oauth/deauthorize

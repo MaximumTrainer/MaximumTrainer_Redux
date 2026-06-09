@@ -345,7 +345,7 @@ private:
     QNetworkReply *replyPostStravaUpload   = nullptr;
     QNetworkReply *replyPostStravaStatus   = nullptr;
     QTimer        *timerPostStravaStatus   = nullptr;
-    int            stravaUploadID_post     = 0;
+    qint64         stravaUploadID_post     = 0;
     QNetworkReply *replyPostIntervalsIcuUpload = nullptr;
 
 

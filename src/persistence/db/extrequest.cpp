@@ -69,7 +69,7 @@ QNetworkReply* ExtRequest::stravaDeauthorization(QString access_token) {
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-QNetworkReply* ExtRequest::stravaCheckUploadStatus(QString access_token, int uploadID) {
+QNetworkReply* ExtRequest::stravaCheckUploadStatus(QString access_token, qint64 uploadID) {
 
     QNetworkAccessManager *managerWS = qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!managerWS) {
