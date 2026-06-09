@@ -4012,8 +4012,12 @@ void WorkoutDialog::showTestResult() {
                                       + "<div style='color:white;height:7px;'>------------------------------------</div><br/> "
                                       + tr("FTP: ") + QString::number(newFTP) + tr(" watts") + tr(" (Previous: ") +  QString::number(account->FTP) + tr(" watts)") + "<br/>"
                                       + tr("LTHR: ")  + QString::number(newLTHR) + tr(" bpm") + tr(" (Previous: ") +  QString::number(account->LTHR) + tr(" bpm)"), 500);
-            if (newFTP > 0) { account->FTP = newFTP; }
-            if (newLTHR > 0) { account->LTHR = newLTHR; }
+            // Persist the new FTP/LTHR into the athlete profile so they survive
+            // a restart and show up in Preferences. Keep the previous value for
+            // any metric the test could not compute (<= 0).
+            const int ftpToSave  = (newFTP  > 0) ? newFTP  : account->FTP;
+            const int lthrToSave = (newLTHR > 0) ? newLTHR : account->LTHR;
+            account->saveProfileFields(ftpToSave, lthrToSave, account->weight_kg);
             emit ftp_lthr_changed();
         }
     }

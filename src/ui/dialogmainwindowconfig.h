@@ -29,6 +29,9 @@ public:
     void accept();
     void reject();
 
+protected:
+    void showEvent(QShowEvent *event) override;
+
 
 
 signals:
