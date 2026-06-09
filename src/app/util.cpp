@@ -248,31 +248,31 @@ bool Util::isVersionNewer(const QString &currentVersion, const QString &latestVe
 ///--------------------------------------------------------------------------------------------------------------------
 void Util::parseJsonStravaObject(QString data) {
 
-    qDebug() << "start parseJsonStravaObject";
-
     Account *account = qApp->property("Account").value<Account*>();
 
     QJsonDocument jsonResponse = QJsonDocument::fromJson(data.toUtf8());
     QJsonObject jsonObj = jsonResponse.object();
 
     account->strava_access_token = jsonObj["access_token"].toString();
-
-    qDebug() << "end parseJsonStravaObject";
+    // Refresh-token rotation: persist whatever comes back. expires_at is epoch
+    // seconds; refresh before that time on the next upload.
+    if (jsonObj.contains("refresh_token"))
+        account->strava_refresh_token = jsonObj["refresh_token"].toString();
+    if (jsonObj.contains("expires_at"))
+        account->strava_token_expires_at =
+            static_cast<qint64>(jsonObj["expires_at"].toDouble());
 }
 
 
 
 ///--------------------------------------------------------------------------------------------------------------------
-int Util::parseIdJsonStravaUploadObject(QString data) {
-
-
-    qDebug() << "PARSE STRAVA DATA" << data;
+qint64 Util::parseIdJsonStravaUploadObject(QString data) {
 
     QJsonDocument jsonResponse = QJsonDocument::fromJson(data.toUtf8());
     QJsonObject jsonObj = jsonResponse.object();
 
-    int myId = jsonObj["id"].toInt();
-    return myId;
+    // Strava upload IDs exceed 32-bit int range — read as 64-bit, not toInt().
+    return jsonObj["id"].toVariant().toLongLong();
 }
 
 
@@ -308,6 +308,18 @@ int Util::parseStravaUploadStatus(QString data) {
     else {
         return -1;
     }
+}
+
+
+// The Strava upload-status response carries the created activity's id (a 64-bit
+// value, null until processing completes). Returns 0 when absent.
+///--------------------------------------------------------------------------------------------------------------------
+qint64 Util::parseStravaActivityId(QString data) {
+
+    QJsonDocument jsonResponse = QJsonDocument::fromJson(data.toUtf8());
+    QJsonObject jsonObj = jsonResponse.object();
+
+    return jsonObj["activity_id"].toVariant().toLongLong();
 }
 
 
@@ -378,7 +390,6 @@ void Util::parseJsonObjectAccount(QString data) {
     account->show_included_workout = jsonObj["show_included_workout"].toString().toInt();
     account->distance_in_km = jsonObj["distance_in_km"].toString().toInt();
     account->strava_access_token = jsonObj["strava_access_token"].toString();
-    account->strava_private_upload = jsonObj["strava_private_upload"].toString().toInt();
 
     account->control_trainer_resistance = jsonObj["control_trainer_resistance"].toString().toInt();
     /* ----- */

@@ -19,11 +19,8 @@ public:
     static QNetworkReply* checkGoogleConnection();
     static QNetworkReply* checkIpAddress();
 
-    //-- Strava
+    //-- Strava (token deauthorize only; upload/status now live in StravaService)
     static QNetworkReply* stravaDeauthorization(QString access_token);
-    static QNetworkReply* stravaUploadFile(QString access_token, QString activityName, QString activityDescription,
-                                           bool activityOnTrainer, bool activityIsPrivate, QString typeActivity, QString pathToFile);
-    static QNetworkReply* stravaCheckUploadStatus(QString access_token, int uploadID);
 
 
     //-- Intervals.icu OAuth2

@@ -1,0 +1,16 @@
+name            = "mt-strava-token"
+main            = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Public, non-secret. The Strava application's Client ID (app 7252).
+[vars]
+STRAVA_CLIENT_ID = "7252"
+
+# STRAVA_CLIENT_SECRET is a SECRET — never put it here or commit it. Set it with:
+#   npx wrangler secret put STRAVA_CLIENT_SECRET
+#
+# Workers deploy to:
+#   https://mt-strava-token.<account-subdomain>.workers.dev
+# The token endpoint is then:
+#   https://mt-strava-token.<account-subdomain>.workers.dev/strava/oauth/token
+# Put that URL into URL_TOKEN_STRAVA in src/persistence/db/environnement.h.

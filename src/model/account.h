@@ -89,7 +89,8 @@ public:
     bool distance_in_km;
     QString strava_access_token;
     QString strava_refresh_token;    ///< OAuth2 refresh token for Strava.
-    bool strava_private_upload;
+    bool strava_auto_upload;         ///< Auto-upload completed activities to Strava.
+    qint64 strava_token_expires_at;  ///< Epoch seconds when the access token expires.
 
     // Intervals.icu integration
     QString intervals_icu_athlete_id;  ///< Intervals.icu athlete ID (e.g. "i12345")

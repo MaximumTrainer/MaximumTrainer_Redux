@@ -14,9 +14,9 @@
 #include <QStandardPaths>
 
 #include "util.h"
-#include "dialoginfowebview.h"
 #include "environnement.h"
 #include "extrequest.h"
+#include "strava_oauth_flow.h"
 #include "intervalsicuservice.h"
 #include "xmlutil.h"
 #include "logger.h"
@@ -65,12 +65,8 @@ DialogMainWindowConfig::~DialogMainWindowConfig()
 
 DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent), ui(new Ui::DialogMainWindowConfig)
 {
-    stravaConnectView = new DialogInfoWebView(this);
-    stravaConnectView->setTitle(tr("Connect MaximumTrainer with your Strava account"));
-    stravaConnectView->setUsedForStrava(true);
-    connect(stravaConnectView, SIGNAL(stravaLinked(bool)), this, SLOT(stravaLinked(bool)) );
-    stravaConnectView->setUrlWebView(Environnement::getURLStravaAuthorize());
-    stravaConnectViewAlreadyUsed = false;
+    // Strava login runs in the system browser (StravaOAuthFlow) — Strava blocks
+    // embedded webviews. Set up in stravaLabelClicked().
 
     ui->setupUi(this);
 
@@ -127,7 +123,8 @@ void DialogMainWindowConfig::initUI() {
 
     // Strava
     ui->label_stravaUnlink->setText(tr("Unlink"));
-    ui->label_stravaUnlink->setStyleSheet("background-color : transparent; color : blue; text-decoration: underline;");
+    // Light blue that stays readable on both the dark and light Preferences themes.
+    ui->label_stravaUnlink->setStyleSheet("background-color : transparent; color : #5a9fd4; text-decoration: underline;");
     connect(ui->label_stravaUnlink, SIGNAL(clicked(bool)), this, SLOT(unlinkStravaClicked()) );
 
     if (account->strava_access_token != "") {
@@ -137,7 +134,7 @@ void DialogMainWindowConfig::initUI() {
         stravaLinked(false);
     }
 
-    ui->checkBox_stravaPrivate->setChecked(account->strava_private_upload);
+    ui->checkBox_stravaAutoUpload->setChecked(account->strava_auto_upload);
     ui->lineEdit_historyDir->setText(Util::getSystemPathHistory());
     ui->lineEdit_workoutDir->setText(Util::getSystemPathWorkout());
     ui->lineEdit_historyDir->setReadOnly(true);
@@ -182,7 +179,6 @@ void DialogMainWindowConfig::stravaLinked(bool linked) {
         ui->label_stravaUnlink->setVisible(true);
         ui->label_stravaUnlink->setCursor(Qt::PointingHandCursor);
         ui->label_stravaUnlink->fadeIn(1000);
-        ui->checkBox_stravaPrivate->setVisible(true);
 
         qDebug() << "after disc linked end!";
     }
@@ -193,33 +189,35 @@ void DialogMainWindowConfig::stravaLinked(bool linked) {
         connect(ui->label_connectStrava, SIGNAL(clicked(bool)), this, SLOT(stravaLabelClicked()) );
 
         ui->label_stravaUnlink->setVisible(false);
-        ui->checkBox_stravaPrivate->setVisible(false);
     }
     ui->label_connectStrava->fadeIn(1000);
 
     qDebug() << "strava linked end!";
-
-    stravaConnectView->accept();
 }
 
 
 //---------------------------------------------------------------------------------------------
 void DialogMainWindowConfig::stravaLabelClicked() {
 
-    qDebug() << "stravaLabelClicked1";
+    // Open the Strava login in the user's system browser and capture the
+    // redirect via a localhost loopback listener (Strava blocks embedded views).
+    StravaOAuthFlow *flow = new StravaOAuthFlow(this);
+    connect(flow, &StravaOAuthFlow::finished, this, [this, flow](bool linked) {
+        flow->deleteLater();
+        if (linked) {
+            stravaLinked(true);
+        } else {
+            QMessageBox::warning(this, tr("Strava"),
+                                 tr("Could not connect to Strava. Please try again."));
+        }
+    });
 
-    if (stravaConnectViewAlreadyUsed) {
-            stravaConnectView = new DialogInfoWebView(this);
-            stravaConnectView->setTitle(tr("Connect MaximumTrainer with your Strava account"));
-            stravaConnectView->setUsedForStrava(true);
-            connect(stravaConnectView, SIGNAL(stravaLinked(bool)), this, SLOT(stravaLinked(bool)) );
-            stravaConnectView->setUrlWebView(Environnement::getURLStravaAuthorize());
+    if (!flow->start()) {
+        flow->deleteLater();
+        QMessageBox::warning(this, tr("Strava"),
+                             tr("Could not start the local login listener. "
+                                "Please try again."));
     }
-    stravaConnectView->exec();
-
-    stravaConnectViewAlreadyUsed = true;
-    qDebug() << "stravaLabelClicked3 done";
-
 }
 
 
@@ -333,7 +331,7 @@ void DialogMainWindowConfig::reject() {
 void DialogMainWindowConfig::accept() {
     qDebug() << "ACCEPT, save settings";
 
-    account->strava_private_upload = ui->checkBox_stravaPrivate->isChecked();
+    account->strava_auto_upload = ui->checkBox_stravaAutoUpload->isChecked();
 
     //Folder changed
     if (settings->workoutFolder != ui->lineEdit_workoutDir->text()) {

@@ -101,8 +101,9 @@ public:
     static QString parseJsonObjectVersion(const QString &data);
     static bool isVersionNewer(const QString &currentVersion, const QString &latestVersion);
     static void parseJsonStravaObject(QString data);
-    static int parseIdJsonStravaUploadObject(QString data);
+    static qint64 parseIdJsonStravaUploadObject(QString data);
     static int parseStravaUploadStatus(QString data);
+    static qint64 parseStravaActivityId(QString data);
 
     static QList<Sensor> parseJsonSensorList(QString data);
     static QList<Radio> parseJsonRadioList(QString data);

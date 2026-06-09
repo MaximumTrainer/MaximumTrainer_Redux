@@ -32,38 +32,48 @@ public:
     /// @param filePath      Absolute path to the .fit file.
     /// @param name          Activity name shown in Strava.
     /// @param description   Activity description (a MaximumTrainer reference is appended).
-    /// @param isPrivate     true → visible only to the athlete.
     /// @param onTrainer     true → marks the activity as an indoor trainer ride.
     /// @param activityType  Strava sport type string (default "ride").
+    /// Note: Strava's API offers no way to set per-activity privacy (the old
+    /// `private` upload field was deprecated ~2018); visibility follows the
+    /// athlete's account default.
     QNetworkReply* uploadActivity(const QString &filePath,
                                   const QString &name,
                                   const QString &description,
-                                  bool isPrivate    = false,
                                   bool onTrainer    = true,
                                   const QString &activityType = QStringLiteral("ride"));
 
     /// Poll the status of a pending Strava upload.
     /// GET https://www.strava.com/api/v3/uploads/{uploadId}
-    QNetworkReply* checkUploadStatus(int uploadId);
+    QNetworkReply* checkUploadStatus(qint64 uploadId);
 
     /// Revoke the current access token.
     /// POST https://www.strava.com/oauth/deauthorize
     QNetworkReply* deauthorize();
 
-    /// Exchange a refresh token for a new access + refresh token pair.
-    /// POST https://www.strava.com/oauth/token
-    /// @param clientId      Strava application client_id (see environnement.h).
-    /// @param clientSecret  Strava application client_secret.
+    /// Exchange an OAuth2 authorization code for an access + refresh token pair.
+    /// POSTs to the Strava token Worker (URL_TOKEN_STRAVA), which injects the
+    /// client_id/client_secret — the secret never lives in the app. Parse the
+    /// reply with Util::parseJsonStravaObject() and persist the tokens.
+    /// @param code         Authorization code from the OAuth redirect.
+    /// @param redirectUri  The exact redirect_uri used in the authorize request.
+    static QNetworkReply* exchangeAuthCode(const QString &code,
+                                           const QString &redirectUri);
+
+    /// Exchange a refresh token for a new access + refresh token pair, via the
+    /// same Strava token Worker (no client_secret in the app).
     /// @param refreshToken  Refresh token stored from the previous OAuth exchange.
-    static QNetworkReply* refreshToken(const QString &clientId,
-                                       const QString &clientSecret,
-                                       const QString &refreshToken);
+    static QNetworkReply* refreshToken(const QString &refreshToken);
 
 private:
     QString m_accessToken;
 
     QNetworkRequest buildBearerRequest(const QString &url) const;
     static QNetworkAccessManager* networkManager();
+
+    /// Build the POST request to the Strava token Worker, tagging desktop
+    /// clients with X-MT-Client so the worker's allow-list accepts them.
+    static QNetworkRequest buildTokenWorkerRequest();
 };
 
 #endif // STRAVA_SERVICE_H

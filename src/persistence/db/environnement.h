@@ -105,12 +105,16 @@ const static QString indexPage = "index.php/";
 
 
 
-const static QString urlStravaAuthorize("https://www.strava.com/oauth/authorize?"
-                                        "client_id=7252"
-                                        "&response_type=code"
-                                        "&scope=write"
-                                        "&state=mystate"
-                                        "&approval_prompt=force");
+/// Strava OAuth2 (app 7252). The client_secret is deliberately NOT here — it
+/// lives in the Strava token Worker (workers/strava-token-proxy), which the app
+/// calls at URL_TOKEN_STRAVA to exchange the authorization code and to refresh.
+/// The redirect_uri reuses the github.io OAuth callback page
+/// (getWasmOAuthRedirectUri); the app's Authorization Callback Domain in Strava
+/// settings must be maximumtrainer.github.io. Scope is activity:write (upload).
+const static QString CLIENT_ID_STRAVA = QStringLiteral("7252");
+const static QString STRAVA_TOKEN_PROXY_BASE =
+    QStringLiteral("https://mt-strava-token.maximumtrainer.workers.dev");
+const static QString URL_TOKEN_STRAVA = STRAVA_TOKEN_PROXY_BASE + "/strava/oauth/token";
 
 
 
@@ -129,7 +133,7 @@ public:
     static QString getDateBuilded();
 
 
-    static QString getURLStravaAuthorize();
+    static QString getURLStravaAuthorize(const QString &redirectUri);
     /// Build the Intervals.icu OAuth2 authorization URL (desktop — redirect to maximumtrainer.com backend).
     /// @param state  Per-request CSRF token; pass an empty string to omit.
     static QString getURLIntervalsIcuAuthorize(const QString &state = QString());

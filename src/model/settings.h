@@ -38,7 +38,6 @@ public:
 //    bool showIncludedWorkout;
 //    bool distanceInKM;
 //    QString strava_access_token;
-//    bool stravaPrivateUpload;
 //    bool controlTrainerResistance;
 
 

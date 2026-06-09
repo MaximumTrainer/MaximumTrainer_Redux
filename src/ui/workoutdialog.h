@@ -210,6 +210,8 @@ private slots:
 
     // Post-workout upload slots
     void uploadToStrava();
+    void doStravaUpload();   ///< the actual upload, after any token refresh
+    void setStravaPostStatus(const QString &text, bool retryable);
     void uploadToIntervalsIcu();
     void slotPostIntervalsIcuUploadDone();
     void slotPostStravaUploadDone();
@@ -345,7 +347,7 @@ private:
     QNetworkReply *replyPostStravaUpload   = nullptr;
     QNetworkReply *replyPostStravaStatus   = nullptr;
     QTimer        *timerPostStravaStatus   = nullptr;
-    int            stravaUploadID_post     = 0;
+    qint64         stravaUploadID_post     = 0;
     QNetworkReply *replyPostIntervalsIcuUpload = nullptr;
 
 

@@ -29,6 +29,7 @@
 #include <QHttpMultiPart>
 
 #include "strava_service.h"
+#include "environnement.h"   // URL_TOKEN_STRAVA
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FinishedReply — immediately-finished stub; never touches the network.
@@ -126,8 +127,6 @@ private:
     MockNetworkAccessManager *m_manager = nullptr;
 
     static constexpr const char ACCESS_TOKEN[]  = "testStravaAccessToken";
-    static constexpr const char CLIENT_ID[]     = "12345";
-    static constexpr const char CLIENT_SECRET[] = "secret";
     static constexpr const char REFRESH_TOKEN[] = "refreshTok";
 };
 
@@ -267,13 +266,14 @@ void TstStravaService::testDeauthorize_url()
 
 void TstStravaService::testRefreshToken_url()
 {
-    QNetworkReply *reply = StravaService::refreshToken(CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN);
+    QNetworkReply *reply = StravaService::refreshToken(REFRESH_TOKEN);
     QVERIFY(reply != nullptr);
     reply->deleteLater();
 
+    // Token exchange/refresh go through the Strava token Worker, not directly
+    // to api.strava.com (the worker holds the client_secret).
     const QString url = m_manager->lastRequest.url().toString();
-    QVERIFY2(url.contains(QStringLiteral("strava.com/oauth/token")),
-             qPrintable("Expected Strava token URL, got: " + url));
+    QCOMPARE(url, URL_TOKEN_STRAVA);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -285,13 +285,12 @@ void TstStravaService::testRefreshToken_grantType()
     // We can't easily read the outgoing POST body via MockNetworkAccessManager
     // without a custom QIODevice, but we can confirm the request reached the
     // correct endpoint and was a POST operation.
-    QNetworkReply *reply = StravaService::refreshToken(CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN);
+    QNetworkReply *reply = StravaService::refreshToken(REFRESH_TOKEN);
     QVERIFY(reply != nullptr);
     reply->deleteLater();
 
     QCOMPARE(m_manager->lastOp, QNetworkAccessManager::PostOperation);
-    QVERIFY(m_manager->lastRequest.url().toString().contains(
-        QStringLiteral("strava.com/oauth/token")));
+    QCOMPARE(m_manager->lastRequest.url().toString(), URL_TOKEN_STRAVA);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -309,7 +308,7 @@ void TstStravaService::testNullManager_returnsNullptr()
     QCOMPARE(svc.uploadActivity(tmp, "T", "D"), nullptr);
     QCOMPARE(svc.checkUploadStatus(1), nullptr);
     QCOMPARE(svc.deauthorize(), nullptr);
-    QCOMPARE(StravaService::refreshToken(CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN), nullptr);
+    QCOMPARE(StravaService::refreshToken(REFRESH_TOKEN), nullptr);
     QFile::remove(tmp);
 
     // Restore
