@@ -75,6 +75,17 @@ private:
     /// one per saved sensor role. Used by the multi-device pairing flow.
     void startWorkoutWithHubs(const Workout &workout,
                               const QMap<BtleSensorRole, BtleHub*> &hubsByRole);
+
+    /// Wire one rider's role→hub map to the dialog; distinct hubs accumulate in
+    /// \a allHubs for cleanup. Shared by the solo and Studio launch paths.
+    void wireHubsToDialog(WorkoutDialog *w,
+                          const QMap<BtleSensorRole, BtleHub*> &hubsByRole,
+                          QSet<BtleHub*> &allHubs);
+
+    /// Launch a Studio-mode workout with each rider's already-connected hubs
+    /// (tagged via BtleHub::setUserID). Pairs are (riderIndex, role→hub map).
+    void startWorkoutWithStudioHubs(const Workout &workout,
+                                    const QList<QPair<int, QMap<BtleSensorRole, BtleHub*>>> &riderHubs);
 public slots:
 #endif
 
@@ -85,6 +96,12 @@ public slots:
     void saveConfigStudio();
     void updateVecStudio(QVector<UserStudio>);
     void updateFieldForUser(int riderID, int fieldNumber, QVariant value);
+
+    /// Build the per-rider UserStudio vector to hand to a Studio-mode workout:
+    /// fills FTP/LTHR from the account when a rider left them unset, and sets the
+    /// metric-section visibility flags (hrID/powerID/…). \a simulator shows every
+    /// metric; otherwise the flags reflect that rider's saved BLE sensors.
+    QVector<UserStudio> prepareStudioRiders(bool simulator);
     void leftMenuChanged(int tabSelected);
 
     void goToWorkoutPlanFilter(const QString& plan);
@@ -217,6 +234,7 @@ private:
     int            m_ssStep       = 0;
     WorkoutDialog *m_ssWorkoutDlg = nullptr;
     SimulatorHub  *m_ssSimHub     = nullptr;
+    QList<SimulatorHub*> m_ssStudioHubs;   // per-rider sim hubs for the studio-workout shot
 
     // Plan Adherence (#157)
     PlanAdherenceStore *m_adherenceStore = nullptr;

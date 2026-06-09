@@ -3950,7 +3950,12 @@ void WorkoutDialog::createUserStudioWidget() {
             }
 
             UserStudio myUserStudio = vecUserStudio.at(i);
-            arrUserStudioWidget[i] = new UserStudioWidget(i+1, myUserStudio.getDisplayName(), myUserStudio.getFTP(), myUserStudio.getLTHR(), this);
+            // Fall back to "RiderN" when the rider left their name blank in the
+            // Studio tab, so every box is still labelled in the workout view.
+            QString riderName = myUserStudio.getDisplayName().trimmed();
+            if (riderName.isEmpty())
+                riderName = tr("Rider%1").arg(i+1);
+            arrUserStudioWidget[i] = new UserStudioWidget(i+1, riderName, myUserStudio.getFTP(), myUserStudio.getLTHR(), this);
             arrUserStudioWidget[i]->setMinimumSize(widthWidgetStudio, heightWidgetStudio);
             arrUserStudioWidget[i]->setMaximumSize(widthWidgetStudio, heightWidgetStudio);
             arrUserStudioWidget[i]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
