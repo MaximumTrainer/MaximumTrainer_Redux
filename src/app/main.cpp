@@ -2,6 +2,7 @@
 
 #include <QDebug>
 #include <QMessageBox>
+#include <QTimer>
 #ifdef Q_OS_WIN
 #include <QOperatingSystemVersion>
 #endif
@@ -184,6 +185,13 @@ int main(int argc, char *argv[]) {
         // activateWindow() forces it on top and focused.
         mainWin->raise();
         mainWin->activateWindow();
+        // On X11/Wayland the window is not yet mapped when show() returns, so the
+        // raise()/activateWindow() above can be a no-op and the window comes up
+        // behind others. Re-issue them once the event loop has processed the map.
+        QTimer::singleShot(0, mainWin, [mainWin]() {
+            mainWin->raise();
+            mainWin->activateWindow();
+        });
         return mainWin;
     };
 

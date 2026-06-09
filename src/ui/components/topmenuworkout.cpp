@@ -236,14 +236,6 @@ void TopMenuWorkout::setMinExpandExitVisible(bool visible) {
 
     ui->pushButton_expand->setVisible(visible);
     ui->pushButton_exit->setVisible(visible);
-
-    if (visible) {
-        ui->horizontalLayout_customButton->setContentsMargins(20,0,0,0);
-    }
-    else {
-        ui->horizontalLayout_customButton->setContentsMargins(0,0,0,0);
-    }
-
 }
 
 
