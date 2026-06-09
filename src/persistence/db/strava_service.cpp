@@ -40,7 +40,6 @@ QNetworkRequest StravaService::buildBearerRequest(const QString &url) const
 QNetworkReply* StravaService::uploadActivity(const QString &filePath,
                                               const QString &name,
                                               const QString &description,
-                                              bool isPrivate,
                                               bool onTrainer,
                                               const QString &activityType)
 {
@@ -71,7 +70,6 @@ QNetworkReply* StravaService::uploadActivity(const QString &filePath,
 
     addField(QStringLiteral("name"),         name.toUtf8());
     addField(QStringLiteral("description"),  fullDescription.toUtf8());
-    addField(QStringLiteral("private"),      isPrivate  ? "1" : "0");
     addField(QStringLiteral("trainer"),      onTrainer  ? "1" : "0");
     addField(QStringLiteral("activity_type"), activityType.toUtf8());
     addField(QStringLiteral("data_type"),    "fit");

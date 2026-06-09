@@ -135,7 +135,6 @@ void DialogMainWindowConfig::initUI() {
         stravaLinked(false);
     }
 
-    ui->checkBox_stravaPrivate->setChecked(account->strava_private_upload);
     ui->checkBox_stravaAutoUpload->setChecked(account->strava_auto_upload);
     ui->lineEdit_historyDir->setText(Util::getSystemPathHistory());
     ui->lineEdit_workoutDir->setText(Util::getSystemPathWorkout());
@@ -181,7 +180,6 @@ void DialogMainWindowConfig::stravaLinked(bool linked) {
         ui->label_stravaUnlink->setVisible(true);
         ui->label_stravaUnlink->setCursor(Qt::PointingHandCursor);
         ui->label_stravaUnlink->fadeIn(1000);
-        ui->checkBox_stravaPrivate->setVisible(true);
 
         qDebug() << "after disc linked end!";
     }
@@ -192,7 +190,6 @@ void DialogMainWindowConfig::stravaLinked(bool linked) {
         connect(ui->label_connectStrava, SIGNAL(clicked(bool)), this, SLOT(stravaLabelClicked()) );
 
         ui->label_stravaUnlink->setVisible(false);
-        ui->checkBox_stravaPrivate->setVisible(false);
     }
     ui->label_connectStrava->fadeIn(1000);
 
@@ -335,7 +332,6 @@ void DialogMainWindowConfig::reject() {
 void DialogMainWindowConfig::accept() {
     qDebug() << "ACCEPT, save settings";
 
-    account->strava_private_upload = ui->checkBox_stravaPrivate->isChecked();
     account->strava_auto_upload = ui->checkBox_stravaAutoUpload->isChecked();
 
     //Folder changed

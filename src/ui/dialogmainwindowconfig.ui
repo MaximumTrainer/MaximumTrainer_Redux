@@ -408,13 +408,6 @@
             </property>
            </spacer>
           </item>
-          <item>
-           <widget class="QCheckBox" name="checkBox_stravaPrivate">
-            <property name="text">
-             <string>Upload Activity as Private</string>
-            </property>
-           </widget>
-          </item>
          </layout>
         </widget>
        </item>

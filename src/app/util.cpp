@@ -378,7 +378,6 @@ void Util::parseJsonObjectAccount(QString data) {
     account->show_included_workout = jsonObj["show_included_workout"].toString().toInt();
     account->distance_in_km = jsonObj["distance_in_km"].toString().toInt();
     account->strava_access_token = jsonObj["strava_access_token"].toString();
-    account->strava_private_upload = jsonObj["strava_private_upload"].toString().toInt();
 
     account->control_trainer_resistance = jsonObj["control_trainer_resistance"].toString().toInt();
     /* ----- */

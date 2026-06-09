@@ -98,7 +98,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     force_workout_window_on_top = false;
     show_included_workout = true;
     distance_in_km = true;
-    strava_private_upload = false;
     strava_auto_upload = false;
     strava_token_expires_at = 0;
     // intervals_icu_auto_upload is loaded from QSettings above; don't reset it here
@@ -305,7 +304,6 @@ void Account::loadDisplayPrefs() {
     enable_studio_mode           = settings.value("enable_studio_mode",           enable_studio_mode).toBool();
     distance_in_km               = settings.value("distance_in_km",               distance_in_km).toBool();
     force_workout_window_on_top  = settings.value("force_workout_window_on_top",  force_workout_window_on_top).toBool();
-    strava_private_upload        = settings.value("strava_private_upload",        strava_private_upload).toBool();
     strava_auto_upload           = settings.value("strava_auto_upload",           strava_auto_upload).toBool();
     strava_token_expires_at      = settings.value("strava_token_expires_at",      QVariant::fromValue<qlonglong>(strava_token_expires_at)).toLongLong();
 
@@ -389,7 +387,6 @@ void Account::saveDisplayPrefs() {
     settings.setValue("enable_studio_mode",          enable_studio_mode);
     settings.setValue("distance_in_km",              distance_in_km);
     settings.setValue("force_workout_window_on_top", force_workout_window_on_top);
-    settings.setValue("strava_private_upload",       strava_private_upload);
     settings.setValue("strava_auto_upload",          strava_auto_upload);
     settings.setValue("strava_token_expires_at",     QVariant::fromValue<qlonglong>(strava_token_expires_at));
 

@@ -32,13 +32,14 @@ public:
     /// @param filePath      Absolute path to the .fit file.
     /// @param name          Activity name shown in Strava.
     /// @param description   Activity description (a MaximumTrainer reference is appended).
-    /// @param isPrivate     true → visible only to the athlete.
     /// @param onTrainer     true → marks the activity as an indoor trainer ride.
     /// @param activityType  Strava sport type string (default "ride").
+    /// Note: Strava's API offers no way to set per-activity privacy (the old
+    /// `private` upload field was deprecated ~2018); visibility follows the
+    /// athlete's account default.
     QNetworkReply* uploadActivity(const QString &filePath,
                                   const QString &name,
                                   const QString &description,
-                                  bool isPrivate    = false,
                                   bool onTrainer    = true,
                                   const QString &activityType = QStringLiteral("ride"));
 

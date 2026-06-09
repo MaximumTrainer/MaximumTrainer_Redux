@@ -79,7 +79,6 @@ QNetworkReply* UserDAO::putAccount(Account *account) {
     postData.addQueryItem("show_included_workout", QString::number(account->show_included_workout) );
     postData.addQueryItem("distance_in_km", QString::number(account->distance_in_km) );
     postData.addQueryItem("strava_access_token", account->strava_access_token);
-    postData.addQueryItem("strava_private_upload", QString::number(account->strava_private_upload) );
 
     postData.addQueryItem("control_trainer_resistance", QString::number(account->control_trainer_resistance) );
 

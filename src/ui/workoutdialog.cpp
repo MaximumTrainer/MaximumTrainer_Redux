@@ -3638,7 +3638,7 @@ void WorkoutDialog::doStravaUpload()
     StravaService svc;
     svc.setAccessToken(account->strava_access_token);
     replyPostStravaUpload = svc.uploadActivity(fitFilePath, fitFileName, fitFileDescription,
-                                               account->strava_private_upload, true);
+                                               /*onTrainer*/ true);
     if (!replyPostStravaUpload) {
         setStravaPostStatus(tr("Upload to Strava (Failed — Retry)"), true);
         return;
