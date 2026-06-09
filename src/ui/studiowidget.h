@@ -105,7 +105,6 @@ private:
     Account      *m_account         = nullptr;
     ToggleSwitch *m_enableSwitch     = nullptr;
     QComboBox    *m_riderCountCombo  = nullptr;
-    QWidget      *m_controlsRow      = nullptr;
     QLabel       *m_riderCountLabel  = nullptr;
     QPushButton  *m_importButton     = nullptr;
     QPushButton  *m_exportButton     = nullptr;
