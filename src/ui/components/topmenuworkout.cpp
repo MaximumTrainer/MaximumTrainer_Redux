@@ -131,6 +131,13 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     ui->pushButton_exit->setIcon(tintedStandardIcon(style(), QStyle::SP_TitleBarCloseButton, ctrlIconSize, iconColor));
     ui->pushButton_exit->setIconSize(ctrlIconSize);
 
+    // Start/Pause uses the same tinted standard media glyphs as the radio
+    // controls rather than the legacy coloured PNG, for a native, consistent
+    // look on the dark toolbar.
+    const QSize startIconSize(16, 16);
+    ui->pushButton_start->setIcon(tintedStandardIcon(style(), QStyle::SP_MediaPlay, startIconSize, iconColor));
+    ui->pushButton_start->setIconSize(startIconSize);
+
 
     ui->pushButton_calibrateFEC->setFocusPolicy(Qt::NoFocus);
     ui->pushButton_calibratePM->setFocusPolicy(Qt::NoFocus);
@@ -324,14 +331,17 @@ void TopMenuWorkout::setButtonStartPaused(bool showPause) {
 
 
 
+    const QSize startIconSize(16, 16);
+    const QColor startIconColor(230, 230, 230);
     if (showPause) {
         ui->pushButton_start->setText(tr("Pause"));
-        ui->pushButton_start->setIcon(QIcon(":/image/icon/pause"));
+        ui->pushButton_start->setIcon(tintedStandardIcon(style(), QStyle::SP_MediaPause, startIconSize, startIconColor));
     }
     else {
         ui->pushButton_start->setText(tr("Resume"));
-        ui->pushButton_start->setIcon(QIcon(":/image/icon/play"));
+        ui->pushButton_start->setIcon(tintedStandardIcon(style(), QStyle::SP_MediaPlay, startIconSize, startIconColor));
     }
+    ui->pushButton_start->setIconSize(startIconSize);
 
 
 }

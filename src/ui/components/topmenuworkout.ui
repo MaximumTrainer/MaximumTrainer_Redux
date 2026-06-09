@@ -57,6 +57,24 @@ QPushButton#pushButton_exit:hover {
         border-radius: 4px;
 }
 
+/* Start / Interval are real text buttons, not icon-only controls, so give them
+   a standard, native-looking button chrome (the flat reset above is meant for
+   the icon-only window/radio controls). */
+QPushButton#pushButton_start, QPushButton#pushButton_lap {
+        background-color: #2d2d2d;
+        border: 1px solid #5a5a5a;
+        border-radius: 4px;
+        padding: 3px 8px;
+        color: white;
+}
+QPushButton#pushButton_start:hover, QPushButton#pushButton_lap:hover {
+        background-color: #3c3c3c;
+        border-color: #6e6e6e;
+}
+QPushButton#pushButton_start:pressed, QPushButton#pushButton_lap:pressed {
+        background-color: #555555;
+}
+
 QGroupBox#groupBox_commandWorkout {
      border: 2px solid gray;
 	 background-color: rgb(0, 0, 0);
@@ -256,13 +274,13 @@ border-radius: 1px;
         </property>
         <property name="minimumSize">
          <size>
-          <width>100</width>
+          <width>120</width>
           <height>0</height>
          </size>
         </property>
         <property name="maximumSize">
          <size>
-          <width>125</width>
+          <width>150</width>
           <height>16777215</height>
          </size>
         </property>
