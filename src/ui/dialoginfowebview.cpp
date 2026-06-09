@@ -40,6 +40,13 @@ DialogInfoWebView::DialogInfoWebView(QWidget *parent) :
 
     QWebEngineProfile* newProfile = new QWebEngineProfile(this);
     newProfile->setPersistentCookiesPolicy(QWebEngineProfile::NoPersistentCookies);
+    // Strava's login (reCAPTCHA + bot detection) throws "An unexpected error
+    // occurred" when it sees the "QtWebEngine" token in the default user-agent.
+    // Present a clean desktop Chrome UA so the OAuth login page behaves like a
+    // normal browser. (Harmless for the Intervals.icu login too.)
+    newProfile->setHttpUserAgent(QStringLiteral(
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"));
 
     MyQWebEnginePage *myPage = new MyQWebEnginePage(newProfile, this);
 
