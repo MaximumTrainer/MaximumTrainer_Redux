@@ -3513,11 +3513,8 @@ void WorkoutDialog::showPostWorkoutPanel()
 {
     if (widgetPostWorkout) return;  // already shown
 
-    // Parent to the large video pane so the panel has room to show status /
-    // error text (the bottom speedo area is too small and clips it).
-    widgetPostWorkout = new QWidget(ui->widget_videoPlayers);
+    widgetPostWorkout = new QWidget(ui->widget_allSpeedo);
     widgetPostWorkout->setObjectName("widgetPostWorkout");
-    widgetPostWorkout->setMinimumWidth(420);
     widgetPostWorkout->setStyleSheet(
         "QWidget#widgetPostWorkout { background-color: rgba(10,10,10,220); border-radius: 10px; }"
         "QLabel  { color: white; }"
@@ -3585,7 +3582,7 @@ void WorkoutDialog::showPostWorkoutPanel()
     }
 
     widgetPostWorkout->adjustSize();
-    const QSize ps = ui->widget_videoPlayers->size();
+    const QSize ps = ui->widget_allSpeedo->size();
     const QSize ws = widgetPostWorkout->size();
     widgetPostWorkout->move((ps.width()  - ws.width())  / 2,
                             (ps.height() - ws.height()) / 2);

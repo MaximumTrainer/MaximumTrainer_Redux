@@ -57,7 +57,7 @@ QNetworkReply* StravaService::uploadActivity(const QString &filePath,
     LOG_INFO("StravaService", QStringLiteral("uploadActivity: ") + filePath);
 
     const QString fullDescription =
-        description + QStringLiteral(" - Activity done with MaximumTrainer.com");
+        description + QStringLiteral(" - https://github.com/MaximumTrainer/MaximumTrainer_Redux");
 
     auto *multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
 
