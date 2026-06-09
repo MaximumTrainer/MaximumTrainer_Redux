@@ -222,10 +222,14 @@ void IntervalDelegate::updateEditorGeometry(QWidget *editor,  const QStyleOption
         editor->setGeometry(option.rect.x(), option.rect.y(), 350, 90);
         editor->move(editor->parentWidget()->mapToGlobal(option.rect.topLeft()));
     }
-    /// HR
+    /// Repeat Change — three labelled spin-box groups plus the action row need
+    /// the editor's full design width; 300x90 clipped the frame and squeezed
+    /// the groups. Size to the widget's own hint with a floor.
     else if  (index.column() == 6) {
         editor->setWindowFlags(Qt::Popup);
-        editor->setGeometry(option.rect.x(), option.rect.y(), 300, 90);
+        const QSize hint = editor->sizeHint();
+        editor->setGeometry(option.rect.x(), option.rect.y(),
+                            qMax(hint.width(), 440), qMax(hint.height(), 100));
         editor->move(editor->parentWidget()->mapToGlobal(option.rect.topLeft()));
     }
 
