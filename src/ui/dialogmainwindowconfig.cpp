@@ -124,7 +124,8 @@ void DialogMainWindowConfig::initUI() {
 
     // Strava
     ui->label_stravaUnlink->setText(tr("Unlink"));
-    ui->label_stravaUnlink->setStyleSheet("background-color : transparent; color : blue; text-decoration: underline;");
+    // Light blue that stays readable on both the dark and light Preferences themes.
+    ui->label_stravaUnlink->setStyleSheet("background-color : transparent; color : #5a9fd4; text-decoration: underline;");
     connect(ui->label_stravaUnlink, SIGNAL(clicked(bool)), this, SLOT(unlinkStravaClicked()) );
 
     if (account->strava_access_token != "") {
