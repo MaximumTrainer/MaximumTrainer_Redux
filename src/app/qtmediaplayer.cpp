@@ -4,6 +4,8 @@
 
 #include <QMediaPlayer>
 #include <QAudioOutput>
+#include <QMediaDevices>
+#include <QAudioDevice>
 #include <QVideoWidget>
 #include <QGridLayout>
 #include <QMenu>
@@ -27,6 +29,15 @@ QtMediaPlayer::QtMediaPlayer(QWidget *parent) : QWidget(parent)
     m_player = new QMediaPlayer(this);
     m_audio  = new QAudioOutput(this);
     m_player->setAudioOutput(m_audio);
+
+    // Unlike the short QSoundEffect beeps (which the audio server re-routes to
+    // the new default on their own), the radio/media output is a persistent
+    // stream pinned to its creation-time device. Follow device changes so it
+    // moves to a newly connected output (e.g. headphones) mid-playback.
+    m_mediaDevices = new QMediaDevices(this);
+    connect(m_mediaDevices, &QMediaDevices::audioOutputsChanged,
+            this, &QtMediaPlayer::updateAudioDevice);
+    updateAudioDevice();
 
     auto *layout = new QGridLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -207,6 +218,16 @@ void QtMediaPlayer::applyVolume()
     // QAudioOutput volume is 0.0–1.0; honour the mute flag.
     m_audio->setMuted(isMuted);
     m_audio->setVolume(audioVol / 100.0);
+}
+
+void QtMediaPlayer::updateAudioDevice()
+{
+    const QAudioDevice defaultDevice = QMediaDevices::defaultAudioOutput();
+    if (defaultDevice.isNull() || m_audio->device() == defaultDevice)
+        return;
+
+    qDebug() << "QtMediaPlayer: switching audio output to" << defaultDevice.description();
+    m_audio->setDevice(defaultDevice);
 }
 
 // ── QSettings persistence (same keys as the VLC implementation) ──────────────

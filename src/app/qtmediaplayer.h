@@ -17,6 +17,7 @@
 
 QT_FORWARD_DECLARE_CLASS(QMediaPlayer)
 QT_FORWARD_DECLARE_CLASS(QAudioOutput)
+QT_FORWARD_DECLARE_CLASS(QMediaDevices)
 QT_FORWARD_DECLARE_CLASS(QVideoWidget)
 QT_FORWARD_DECLARE_CLASS(QLabel)
 QT_FORWARD_DECLARE_CLASS(QTimer)
@@ -76,9 +77,15 @@ private:
 
     void applyVolume();
 
-    QMediaPlayer *m_player = nullptr;
-    QAudioOutput *m_audio  = nullptr;
-    QVideoWidget *m_video  = nullptr;
+    // The radio/media output is a long-lived stream pinned to the device it was
+    // created on, so it does not move when the system default changes. Watch for
+    // device changes and re-point it at the new default.
+    void updateAudioDevice();
+
+    QMediaPlayer  *m_player = nullptr;
+    QAudioOutput  *m_audio  = nullptr;
+    QMediaDevices *m_mediaDevices = nullptr;
+    QVideoWidget  *m_video  = nullptr;
     QMenu        *m_menu   = nullptr;
     QLabel       *m_hint   = nullptr;   // "right-click to open media" overlay
 };
