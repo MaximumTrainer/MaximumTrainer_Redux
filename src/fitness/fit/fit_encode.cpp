@@ -112,20 +112,37 @@ void Encode::OnMesgDefinition( MesgDefinition& mesgDef )
 
 void Encode::WriteFileHeader()
 {
-    FIT_FILE_HDR file_header;
-
     if ( !file )
         return;
 
-    file_header.header_size = FIT_FILE_HDR_SIZE;
-    file_header.profile_version = FIT_PROFILE_VERSION;
-    file_header.protocol_version = fit::versionMap.at( version ).GetVersionByte();
-    memcpy( ( FIT_UINT8 * )&file_header.data_type, ".FIT", 4 );
-    file_header.data_size = dataSize;
-    file_header.crc = CRC::Calc16( &file_header, FIT_STRUCT_OFFSET(crc, FIT_FILE_HDR) );
+    // Serialize the header field-by-field rather than dumping the FIT_FILE_HDR
+    // struct: the struct carries compiler alignment padding (its sizeof is not
+    // 14), so writing it raw produces a mis-laid-out header — the ".FIT"
+    // signature and data_size land at the wrong offsets, which strict parsers
+    // (Strava: "Unrecognized file type") reject. Explicit little-endian bytes
+    // guarantee the on-disk layout matches the FIT spec.
+    const FIT_UINT16 profileVersion  = FIT_PROFILE_VERSION;
+    const FIT_UINT8  protocolVersion = fit::versionMap.at( version ).GetVersionByte();
+
+    FIT_UINT8 header[FIT_FILE_HDR_SIZE];
+    header[0]  = FIT_FILE_HDR_SIZE;                            // header_size
+    header[1]  = protocolVersion;                             // protocol_version
+    header[2]  = ( FIT_UINT8 )(  profileVersion        & 0xFF );  // profile_version (LE)
+    header[3]  = ( FIT_UINT8 )( ( profileVersion >> 8 ) & 0xFF );
+    header[4]  = ( FIT_UINT8 )(  dataSize        & 0xFF );        // data_size (LE)
+    header[5]  = ( FIT_UINT8 )( ( dataSize >> 8  ) & 0xFF );
+    header[6]  = ( FIT_UINT8 )( ( dataSize >> 16 ) & 0xFF );
+    header[7]  = ( FIT_UINT8 )( ( dataSize >> 24 ) & 0xFF );
+    header[8]  = '.';                                          // data_type ".FIT"
+    header[9]  = 'F';
+    header[10] = 'I';
+    header[11] = 'T';
+    const FIT_UINT16 headerCrc = CRC::Calc16( header, 12 );    // CRC over the 12 bytes above
+    header[12] = ( FIT_UINT8 )(  headerCrc       & 0xFF );     // crc (LE)
+    header[13] = ( FIT_UINT8 )( ( headerCrc >> 8 ) & 0xFF );
 
     file->seekp( 0, std::ios::beg );
-    file->write( ( const char * )&file_header, FIT_FILE_HDR_SIZE );
+    file->write( ( const char * )header, FIT_FILE_HDR_SIZE );
 }
 } // namespace fit
 
