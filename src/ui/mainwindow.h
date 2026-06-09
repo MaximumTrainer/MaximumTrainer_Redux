@@ -92,8 +92,6 @@ public slots:
     //Coming from Studio QWebView ----------
     void enableStudioMode(bool enable);
     void setNumberUserStudio(int numberUser);
-    void loadConfigStudio();
-    void saveConfigStudio();
     void updateVecStudio(QVector<UserStudio>);
     void updateFieldForUser(int riderID, int fieldNumber, QVariant value);
 

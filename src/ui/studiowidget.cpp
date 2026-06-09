@@ -22,7 +22,6 @@
 #include <QFile>
 
 #include "account.h"
-#include "xmlutil.h"
 #include "toggleswitch.h"
 
 #ifndef GC_WASM_BUILD
@@ -248,8 +247,7 @@ void StudioWidget::reload()
     if (!m_account)
         return;
 
-    XmlUtil xmlUtil;
-    m_riders = xmlUtil.parseUserStudioFile(QString());
+    m_riders = UserStudio::loadStudioConfig();
     // Guarantee enough entries to back every card.
     while (m_riders.size() < kMaxRiders)
         m_riders.append(UserStudio("", -1, -1, -1, -1, -1, -1, -1, 2100, false, 0, 0));
@@ -430,7 +428,7 @@ void StudioWidget::onErgChanged(int riderIndex)
 
 void StudioWidget::persistRiders()
 {
-    XmlUtil::saveUserStudioFile(m_riders, QString());
+    UserStudio::saveStudioConfig(m_riders);
     emit ridersChanged(m_riders);
 }
 
@@ -597,7 +595,7 @@ void StudioWidget::onImportClicked()
     }
 
     // Persist the identity changes, refresh every card, and tell MainWindow.
-    XmlUtil::saveUserStudioFile(m_riders, QString());
+    UserStudio::saveStudioConfig(m_riders);
     reload();
     emit ridersChanged(m_riders);
     if (m_account)

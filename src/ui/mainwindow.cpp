@@ -204,9 +204,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 #endif
 
 
-    //Load userStudio xml file to VecUserStudio
-    XmlUtil *xmlUtil = new XmlUtil(this);
-    vecUserStudio = xmlUtil->parseUserStudioFile("");
+    // Studio rider config (name/FTP/LTHR) lives in QSettings alongside the
+    // per-rider sensors and ERG settings (UserStudio::loadStudioConfig).
+    vecUserStudio = UserStudio::loadStudioConfig();
 
 
     ManagerAchievement *achievementManager = new ManagerAchievement(this);
@@ -837,7 +837,7 @@ void MainWindow::updateVecStudio(QVector<UserStudio> vecUserStudio) {
     // Persist immediately (e.g. after a Studio FTP test updates every rider's
     // FTP/LTHR) so the Studio tab reflects the new values on its next open and
     // they survive a restart, rather than only being written on app close.
-    XmlUtil::saveUserStudioFile(this->vecUserStudio, "");
+    UserStudio::saveStudioConfig(this->vecUserStudio);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -977,70 +977,6 @@ void MainWindow::setNumberUserStudio(int nbUser) {
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::loadConfigStudio() {
-
-    qDebug() << "loadConfigStudio";
-
-    //load path
-    QSettings settings;
-    settings.beginGroup("studiopath");
-    QString path = settings.value("loadPath", Util::getMaximumTrainerDocumentPath() ).toString();
-    settings.endGroup();
-
-    QString file = QFileDialog::getOpenFileName(this, tr("Load Studio Profile"),
-                                                path,
-                                                tr("Studio Save File(*.xml)"));
-    if (file.isEmpty())
-        return;
-
-
-
-    //Parse File and reset QWebView with QVector
-    XmlUtil *xmlUtil = new XmlUtil(this);
-    vecUserStudio = xmlUtil->parseUserStudioFile(file);
-    ui->widget_bottomMenu->setGeneralMessage(QString(tr("Studio Profile %1 loaded")).arg(file), 5000);
-
-
-    //save path
-    settings.beginGroup("studiopath");
-    settings.setValue("loadPath", file);
-    settings.endGroup();
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::saveConfigStudio() {
-
-    qDebug() << "saveConfigStudio";
-
-    //load path
-    QSettings settings;
-    settings.beginGroup("studiopath");
-    QString path = settings.value("loadPath", Util::getMaximumTrainerDocumentPath() ).toString();
-    settings.endGroup();
-
-    QString file = QFileDialog::getSaveFileName(this, tr("Save Studio Profile As"),
-                                                path,
-                                                tr("Studio Save File(*.xml)"));
-
-    if (file.isEmpty())
-        return;
-
-    qDebug() << "Saving FILE" << file;
-
-    //Save Studio User to XML File
-    bool success = XmlUtil::saveUserStudioFile(vecUserStudio, file);
-    if (success) {
-        ui->widget_bottomMenu->setGeneralMessage(QString(tr("Studio Profile saved as %1")).arg(file), 5000);
-    }
-
-    //save path
-    settings.beginGroup("studiopath");
-    settings.setValue("loadPath", file);
-    settings.endGroup();
-}
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::showWorkoutCreator() {
 
     ui->tabWidget_workout->setCurrentIndex(1);
@@ -1139,8 +1075,8 @@ void MainWindow::closeEvent(QCloseEvent *event) {
     //this->closeCSM(true);
 
 
-    //Save Studio User to XML File
-    XmlUtil::saveUserStudioFile(vecUserStudio, "");
+    //Save Studio rider config (name/FTP/LTHR) to QSettings
+    UserStudio::saveStudioConfig(vecUserStudio);
 
     //Save filter Field
     ui->tab_workout1->saveFilterFields();

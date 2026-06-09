@@ -13,6 +13,13 @@ public:
     UserStudio(QString displayName, int FTP, int LTHR, int hrID, int powerID, int cadenceID, int speedID, int fecID,
                int wheelCircMM, bool usingPowerCurve, int companyID, int brandID);
 
+    /// Studio rider identity (name / FTP / LTHR) persistence in QSettings, group
+    /// "studioRiders/riderN". Returns a fixed-size vector (constants::nbMaxUserStudio),
+    /// defaulting riders with no saved data. Sensors and ERG live in their own
+    /// QSettings groups (BtleSensorStore / studioErg); this is name/FTP/LTHR only.
+    static QVector<UserStudio> loadStudioConfig();
+    static void saveStudioConfig(const QVector<UserStudio> &riders);
+
 
 
 
