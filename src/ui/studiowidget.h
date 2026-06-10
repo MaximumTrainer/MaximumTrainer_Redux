@@ -65,11 +65,12 @@ private slots:
     void onImportClicked();
 
 private:
-    static constexpr int kMaxRiders = 15;
+    static constexpr int kMaxRiders = 8;
 
     struct SensorSlot {
         BtleSensorRole role = BtleSensorRole::HeartRate;
         QLabel      *deviceLabel = nullptr;
+        QPushButton *scanButton  = nullptr;
         QPushButton *clearButton = nullptr;
     };
     struct RiderCard {

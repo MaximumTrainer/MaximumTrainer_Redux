@@ -31,11 +31,12 @@
 
 namespace {
 // The sensor roles offered per rider in Studio mode (Oxygen is omitted).
+// Trainer first: when paired it covers the Power and Cadence/Speed slots below.
 const QVector<BtleSensorRole> kStudioSensorRoles = {
-    BtleSensorRole::HeartRate,
+    BtleSensorRole::Trainer,
     BtleSensorRole::Power,
     BtleSensorRole::CadenceSpeed,
-    BtleSensorRole::Trainer
+    BtleSensorRole::HeartRate
 };
 }
 
@@ -198,20 +199,20 @@ QGroupBox *StudioWidget::buildRiderCard(int riderIndex)
         slot.deviceLabel = new QLabel(box);
         slot.deviceLabel->setStyleSheet(QStringLiteral("color: #777;"));
 
-        QPushButton *scanButton = new QPushButton(tr("Scan…"), box);
-        scanButton->setFixedWidth(70);
+        slot.scanButton = new QPushButton(tr("Scan…"), box);
+        slot.scanButton->setFixedWidth(70);
         slot.clearButton = new QPushButton(tr("Clear"), box);
         slot.clearButton->setFixedWidth(55);
 
         const int slotIdx = card.sensorSlots.size();
-        connect(scanButton, &QPushButton::clicked,
+        connect(slot.scanButton, &QPushButton::clicked,
                 this, [this, riderIndex, slotIdx]() { onScanClicked(riderIndex, slotIdx); });
         connect(slot.clearButton, &QPushButton::clicked,
                 this, [this, riderIndex, slotIdx]() { onClearClicked(riderIndex, slotIdx); });
 
         grid->addWidget(roleLabel,        row, 0);
         grid->addWidget(slot.deviceLabel, row, 1);
-        grid->addWidget(scanButton,       row, 2);
+        grid->addWidget(slot.scanButton,  row, 2);
         grid->addWidget(slot.clearButton, row, 3);
 
         card.sensorSlots.append(slot);
@@ -316,6 +317,20 @@ void StudioWidget::refreshSensorSlot(int riderIndex, int slotIdx)
     const QMap<BtleSensorRole, BtleSavedSensor> saved = BtleSensorStore::loadAll(riderIndex);
     const BtleSavedSensor s = saved.value(slot.role, BtleSavedSensor{});
 
+    // A paired FTMS trainer covers this rider's Power and Cadence/Speed slots
+    // (one connection carries all three), so disable scanning them and show why.
+    const bool trainerPaired = saved.value(BtleSensorRole::Trainer, BtleSavedSensor{}).isValid();
+    if (BtleSensorStore::roleCoveredByTrainer(slot.role) && trainerPaired) {
+        slot.scanButton->setEnabled(false);
+        slot.clearButton->setEnabled(s.isValid());
+        slot.deviceLabel->setText(s.isValid()
+                                  ? tr("%1 (provided by trainer)").arg(s.name)
+                                  : tr("Provided by trainer"));
+        slot.deviceLabel->setStyleSheet(QStringLiteral("color: #777;"));
+        return;
+    }
+
+    slot.scanButton->setEnabled(true);
     if (s.isValid()) {
         slot.deviceLabel->setText(s.name);
         slot.deviceLabel->setStyleSheet(QString());
@@ -401,7 +416,9 @@ void StudioWidget::onScanClicked(int riderIndex, int slotIdx)
 
     BtleSavedSensor saved = BtleSensorStore::fromDeviceInfo(slot.role, scanner.selectedDevice());
     BtleSensorStore::saveSensor(saved, riderIndex);     // persist to the rider's package
-    refreshSensorSlot(riderIndex, slotIdx);
+    // Refresh the whole card: pairing the Trainer collapses Power/Cadence slots.
+    for (int s = 0; s < m_cards[riderIndex - 1].sensorSlots.size(); ++s)
+        refreshSensorSlot(riderIndex, s);
 #else
     Q_UNUSED(riderIndex);
     Q_UNUSED(slotIdx);
@@ -413,7 +430,8 @@ void StudioWidget::onClearClicked(int riderIndex, int slotIdx)
 #ifndef GC_WASM_BUILD
     SensorSlot &slot = m_cards[riderIndex - 1].sensorSlots[slotIdx];
     BtleSensorStore::clearSensor(slot.role, riderIndex);
-    refreshSensorSlot(riderIndex, slotIdx);
+    for (int s = 0; s < m_cards[riderIndex - 1].sensorSlots.size(); ++s)
+        refreshSensorSlot(riderIndex, s);
 #else
     Q_UNUSED(riderIndex);
     Q_UNUSED(slotIdx);
