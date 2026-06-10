@@ -285,6 +285,8 @@ void SensorsWidget::refreshRow(int rowIndex)
     // A paired FTMS trainer reports power, cadence and speed over one
     // connection, so its dedicated slots are redundant — disable scanning and
     // show why. A previously-saved device stays clearable so it can be removed.
+    // (BtleSensorStore is desktop-only; the WASM build never reaches here.)
+#ifndef GC_WASM_BUILD
     if (BtleSensorStore::roleCoveredByTrainer(slot.role) && trainerPaired()) {
         slot.scanButton->setEnabled(false);
         slot.clearButton->setEnabled(slot.current.isValid());
@@ -294,6 +296,7 @@ void SensorsWidget::refreshRow(int rowIndex)
         slot.deviceLabel->setStyleSheet(QStringLiteral("color: #777;"));
         return;
     }
+#endif
 
     slot.scanButton->setEnabled(true);
     if (slot.current.isValid()) {
