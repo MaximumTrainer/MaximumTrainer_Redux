@@ -268,12 +268,37 @@ void SensorsWidget::onBatteryThresholdChanged(int percent)
     m_account->saveBatteryWarningThreshold();
 }
 
+bool SensorsWidget::trainerPaired() const
+{
+    for (const SlotRow &row : m_rows)
+        if (row.role == BtleSensorRole::Trainer && row.current.isValid())
+            return true;
+    return false;
+}
+
 void SensorsWidget::refreshRow(int rowIndex)
 {
     SlotRow &slot = m_rows[rowIndex];
     if (!slot.deviceLabel)
         return;
 
+    // A paired FTMS trainer reports power, cadence and speed over one
+    // connection, so its dedicated slots are redundant — disable scanning and
+    // show why. A previously-saved device stays clearable so it can be removed.
+    // (BtleSensorStore is desktop-only; the WASM build never reaches here.)
+#ifndef GC_WASM_BUILD
+    if (BtleSensorStore::roleCoveredByTrainer(slot.role) && trainerPaired()) {
+        slot.scanButton->setEnabled(false);
+        slot.clearButton->setEnabled(slot.current.isValid());
+        slot.deviceLabel->setText(slot.current.isValid()
+                                  ? tr("%1 (provided by trainer)").arg(slot.current.name)
+                                  : tr("Provided by trainer"));
+        slot.deviceLabel->setStyleSheet(QStringLiteral("color: #777;"));
+        return;
+    }
+#endif
+
+    slot.scanButton->setEnabled(true);
     if (slot.current.isValid()) {
         slot.deviceLabel->setText(slot.current.name);
         slot.deviceLabel->setStyleSheet(QString());
@@ -295,7 +320,9 @@ void SensorsWidget::onScanClicked(int rowIndex)
     m_rows[rowIndex].current =
         BtleSensorStore::fromDeviceInfo(m_rows[rowIndex].role, scanner.selectedDevice());
     BtleSensorStore::saveSensor(m_rows[rowIndex].current);   // persist immediately
-    refreshRow(rowIndex);
+    // Refresh every row: pairing the Trainer collapses the Power/Cadence slots.
+    for (int i = 0; i < m_rows.size(); ++i)
+        refreshRow(i);
 #else
     Q_UNUSED(rowIndex);
 #endif
@@ -307,7 +334,8 @@ void SensorsWidget::onClearClicked(int rowIndex)
     BtleSensorStore::clearSensor(m_rows[rowIndex].role);
     m_rows[rowIndex].current = BtleSavedSensor{};
     m_rows[rowIndex].current.role = m_rows[rowIndex].role;
-    refreshRow(rowIndex);
+    for (int i = 0; i < m_rows.size(); ++i)
+        refreshRow(i);
 #else
     Q_UNUSED(rowIndex);
 #endif

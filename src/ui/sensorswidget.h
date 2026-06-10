@@ -51,6 +51,8 @@ private:
 
     void buildUi();
     void refreshRow(int rowIndex);
+    /// True if the Trainer slot currently holds a valid saved device.
+    bool trainerPaired() const;
 
     QVector<SlotRow> m_rows;
     QCheckBox *m_controlResistanceCheck = nullptr;
