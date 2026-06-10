@@ -777,45 +777,6 @@ void DialogConfig::on_comboBox_displayVideo_activated(int index) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-void DialogConfig::setStudioMode() {
-
-    qDebug() << "DConfig- setStudioMode";
-
-    ui->page_general->setDisabled(true);
-
-    //timer
-    ui->checkBox_showTimerOnTop->setVisible(false);
-    ui->groupBox_4->setVisible(false);
-
-    //power
-    ui->checkBox_enablePower->setVisible(false);
-    ui->label_5->setVisible(false);
-    ui->comboBox_displayPower->setVisible(false);
-    ui->label_26->setVisible(false);
-    ui->spinBox_offsetPower->setVisible(false);
-    ui->label_3->setVisible(false);
-    ui->groupBox_7->setVisible(false);
-    ui->groupBox_2->setVisible(false);
-
-    ui->tab_6->setDisabled(true);
-    ui->tab_hr->setDisabled(true);
-    ui->tab_5->setDisabled(true);
-    ui->tab_3->setDisabled(true);
-    ui->tab_2->setDisabled(true);
-
-    //graph
-    ui->checkBox_HeartRateCurve->setDisabled(true);
-    ui->checkBox_PowerCurve->setDisabled(true);
-    ui->checkBox_CadenceCurve->setDisabled(true);
-    ui->checkBox_SpeedCurve->setDisabled(true);
-
-    ui->tab_12->setDisabled(true);
-    ui->tab_14->setDisabled(true);
-
-
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
 void DialogConfig::accept() {
 
     saveSettings();

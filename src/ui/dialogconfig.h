@@ -25,7 +25,6 @@ class DialogConfig : public QDialog
 public:
     DialogConfig(QList<Radio> lstRadio, QWidget *parent, WorkoutDialog *ptrParent);
     ~DialogConfig();
-    void setStudioMode();
 
     void accept();
     void reject();
