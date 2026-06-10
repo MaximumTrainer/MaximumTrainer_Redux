@@ -21,10 +21,10 @@
   </property>
   <property name="styleSheet">
    <string notr="true">#frameStudio {
-   border-top: 1px solid qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(7,0,62,255), stop:1 rgba(13, 0, 158, 255));
-	border-left : 1px solid qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(7,0,62,255), stop:1 rgba(13, 0, 158, 255));
- 	border-right : 1px solid qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(7,0,62,255), stop:1 rgba(13, 0, 158, 255));
-	border-bottom: 1px solid qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(7,0,62,255), stop:1 rgba(13, 0, 158, 255));
+	/* Bright, thicker rounded outline so each rider box is clearly separated
+	   from its neighbours on the dark workout view. */
+	border: 2px solid rgb(86, 124, 214);
+	border-radius: 6px;
 
 	background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(1, 1, 1, 255), stop:1 rgba(15, 15, 15, 255));
 

@@ -204,9 +204,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 #endif
 
 
-    //Load userStudio xml file to VecUserStudio
-    XmlUtil *xmlUtil = new XmlUtil(this);
-    vecUserStudio = xmlUtil->parseUserStudioFile("");
+    // Studio rider config (name/FTP/LTHR) lives in QSettings alongside the
+    // per-rider sensors and ERG settings (UserStudio::loadStudioConfig).
+    vecUserStudio = UserStudio::loadStudioConfig();
 
 
     ManagerAchievement *achievementManager = new ManagerAchievement(this);
@@ -307,6 +307,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // through the same MainWindow logic the old web page used.
     connect(ui->studioWidget, &StudioWidget::studioModeChanged, this, &MainWindow::enableStudioMode);
     connect(ui->studioWidget, &StudioWidget::riderCountChanged, this, &MainWindow::setNumberUserStudio);
+    connect(ui->studioWidget, &StudioWidget::ridersChanged, this, &MainWindow::updateVecStudio);
 
     // Wire Intervals.icu workout downloaded → refresh workout list and filter
     connect(ui->tab_intervals_icu, &TabIntervalsIcu::workoutDownloaded,
@@ -831,8 +832,58 @@ void MainWindow::createWebChannelPlan() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::updateVecStudio(QVector<UserStudio> vecUserStudio) {
 
-    qDebug() << "zzzzz MainWindow::updateVecStudio";
     this->vecUserStudio = vecUserStudio;
+
+    // Persist immediately (e.g. after a Studio FTP test updates every rider's
+    // FTP/LTHR) so the Studio tab reflects the new values on its next open and
+    // they survive a restart, rather than only being written on app close.
+    UserStudio::saveStudioConfig(this->vecUserStudio);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+QVector<UserStudio> MainWindow::prepareStudioRiders(bool simulator) {
+
+    QVector<UserStudio> riders = vecUserStudio;   // copy; never persisted from here
+    const int nbRiders = qBound(1, account->nb_user_studio, constants::nbMaxUserStudio);
+
+    for (int i = 0; i < nbRiders && i < riders.size(); ++i) {
+        UserStudio u = riders.at(i);
+
+        // Fall back to the account's values when the rider left FTP/LTHR unset,
+        // so per-rider targets are sane.
+        if (u.getFTP()  <= 0) u.setFTP(account->FTP);
+        if (u.getLTHR() <= 0) u.setLTHR(account->LTHR);
+
+        // createUserStudioWidget() hides the HR/Power sections unless the
+        // matching flag is set. The simulator drives every metric, so show all;
+        // otherwise reflect what this rider actually has saved.
+        if (simulator) {
+            u.setHrID(1);
+            u.setPowerID(1);
+            u.setCadenceID(1);
+            u.setSpeedID(1);
+            u.setFecID(0);
+        } else {
+#ifndef GC_WASM_BUILD
+            const QMap<BtleSensorRole, BtleSavedSensor> saved = BtleSensorStore::loadAll(i + 1);
+            const bool hasTrainer = saved.contains(BtleSensorRole::Trainer);
+            const bool ergOn = StudioWidget::studioErgControl(i + 1, account->control_trainer_resistance);
+            u.setHrID(saved.contains(BtleSensorRole::HeartRate) ? 1 : 0);
+            u.setPowerID((saved.contains(BtleSensorRole::Power) || hasTrainer) ? 1 : 0);
+            u.setCadenceID((saved.contains(BtleSensorRole::CadenceSpeed) || hasTrainer) ? 1 : 0);
+            u.setSpeedID((saved.contains(BtleSensorRole::CadenceSpeed) || hasTrainer) ? 1 : 0);
+            // WorkoutDialog::sendLoads() emits setLoad(getFecID(), …) per rider;
+            // use the 1-based rider id so each trainer hub (setUserID) filters to
+            // its own target. 0 disables ERG for this rider (no trainer, or the
+            // rider turned trainer control off).
+            u.setFecID((hasTrainer && ergOn) ? (i + 1) : 0);
+#endif
+        }
+
+        riders.replace(i, u);
+    }
+
+    return riders;
 }
 
 
@@ -910,6 +961,9 @@ void MainWindow::enableStudioMode(bool enable) {
     // per-rider and not meaningful in the multi-rider studio view.
     ftb->setTabEnabled(4, !enable);
 
+    // Persist so the toggle state survives a restart (saveDisplayPrefs writes
+    // enable_studio_mode + nb_user_studio together).
+    account->saveDisplayPrefs();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -918,71 +972,9 @@ void MainWindow::setNumberUserStudio(int nbUser) {
     qDebug() << "setNumberUserStudio" << nbUser;
     account->nb_user_studio = nbUser;
 
+    // Persist so the selected rider count survives a restart.
+    account->saveDisplayPrefs();
 }
-
-/////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::loadConfigStudio() {
-
-    qDebug() << "loadConfigStudio";
-
-    //load path
-    QSettings settings;
-    settings.beginGroup("studiopath");
-    QString path = settings.value("loadPath", Util::getMaximumTrainerDocumentPath() ).toString();
-    settings.endGroup();
-
-    QString file = QFileDialog::getOpenFileName(this, tr("Load Studio Profile"),
-                                                path,
-                                                tr("Studio Save File(*.xml)"));
-    if (file.isEmpty())
-        return;
-
-
-
-    //Parse File and reset QWebView with QVector
-    XmlUtil *xmlUtil = new XmlUtil(this);
-    vecUserStudio = xmlUtil->parseUserStudioFile(file);
-    ui->widget_bottomMenu->setGeneralMessage(QString(tr("Studio Profile %1 loaded")).arg(file), 5000);
-
-
-    //save path
-    settings.beginGroup("studiopath");
-    settings.setValue("loadPath", file);
-    settings.endGroup();
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::saveConfigStudio() {
-
-    qDebug() << "saveConfigStudio";
-
-    //load path
-    QSettings settings;
-    settings.beginGroup("studiopath");
-    QString path = settings.value("loadPath", Util::getMaximumTrainerDocumentPath() ).toString();
-    settings.endGroup();
-
-    QString file = QFileDialog::getSaveFileName(this, tr("Save Studio Profile As"),
-                                                path,
-                                                tr("Studio Save File(*.xml)"));
-
-    if (file.isEmpty())
-        return;
-
-    qDebug() << "Saving FILE" << file;
-
-    //Save Studio User to XML File
-    bool success = XmlUtil::saveUserStudioFile(vecUserStudio, file);
-    if (success) {
-        ui->widget_bottomMenu->setGeneralMessage(QString(tr("Studio Profile saved as %1")).arg(file), 5000);
-    }
-
-    //save path
-    settings.beginGroup("studiopath");
-    settings.setValue("loadPath", file);
-    settings.endGroup();
-}
-
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::showWorkoutCreator() {
@@ -1083,8 +1075,8 @@ void MainWindow::closeEvent(QCloseEvent *event) {
     //this->closeCSM(true);
 
 
-    //Save Studio User to XML File
-    XmlUtil::saveUserStudioFile(vecUserStudio, "");
+    //Save Studio rider config (name/FTP/LTHR) to QSettings
+    UserStudio::saveStudioConfig(vecUserStudio);
 
     //Save filter Field
     ui->tab_workout1->saveFilterFields();
@@ -1319,7 +1311,10 @@ void MainWindow::executeWorkout(Workout workout) {
 
     // ── Simulation path ───────────────────────────────────────────────────
     if (connDlg.selectedMethod() == DialogConnectionMethod::Simulation) {
-        SimulatorHub *simHub = new SimulatorHub(this);
+        // In Studio mode simulate every selected rider; otherwise a single rider.
+        const bool studio = account->enable_studio_mode;
+        const int nbRiders = studio ? qBound(1, account->nb_user_studio, constants::nbMaxUserStudio) : 1;
+        const QVector<UserStudio> riders = studio ? prepareStudioRiders(true) : vecUserStudio;
 
         // Show WorkoutDialog NON-MODALLY (window-modal via setWindowModality,
         // run on the main event loop instead of QDialog::exec()). The embedded
@@ -1328,33 +1323,46 @@ void MainWindow::executeWorkout(Workout workout) {
         // exec() loop that window-destroy calls QEventLoop::exit() and tears the
         // dialog down. Running on the main loop removes that hazard. Post-workout
         // cleanup moves to the finished() handler below.
-        WorkoutDialog *w = new WorkoutDialog(workout, lstRadio, vecUserStudio);
+        WorkoutDialog *w = new WorkoutDialog(workout, lstRadio, riders);
         w->setAttribute(Qt::WA_DeleteOnClose);
         w->setWindowModality(Qt::ApplicationModal);
 
-        connect(simHub, SIGNAL(signal_hr(int,int)),               w, SLOT(HrDataReceived(int,int)));
-        connect(simHub, SIGNAL(signal_cadence(int,int)),          w, SLOT(CadenceDataReceived(int,int)));
-        connect(simHub, SIGNAL(signal_speed(int,double)),         w, SLOT(TrainerSpeedDataReceived(int,double)));
-        connect(simHub, SIGNAL(signal_power(int,int)),            w, SLOT(PowerDataReceived(int,int)));
-        connect(simHub, SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
+        // One simulator hub per rider, each emitting its own 1-based userID so
+        // WorkoutDialog routes the data to the matching rider box.
+        QList<SimulatorHub*> simHubs;
+        for (int i = 0; i < nbRiders; ++i) {
+            SimulatorHub *simHub = new SimulatorHub(this);
+            simHub->setUserID(i + 1);
 
-        connect(w, SIGNAL(setLoad(int,double)),  simHub, SLOT(setLoad(int,double)));
-        connect(w, SIGNAL(setSlope(int,double)), simHub, SLOT(setSlope(int,double)));
-        connect(w, SIGNAL(stopDecodingMsgHub()), simHub, SLOT(stopDecodingMsg()));
+            connect(simHub, SIGNAL(signal_hr(int,int)),               w, SLOT(HrDataReceived(int,int)));
+            connect(simHub, SIGNAL(signal_cadence(int,int)),          w, SLOT(CadenceDataReceived(int,int)));
+            connect(simHub, SIGNAL(signal_speed(int,double)),         w, SLOT(TrainerSpeedDataReceived(int,double)));
+            connect(simHub, SIGNAL(signal_power(int,int)),            w, SLOT(PowerDataReceived(int,int)));
+            connect(simHub, SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
+
+            connect(w, SIGNAL(setLoad(int,double)),  simHub, SLOT(setLoad(int,double)));
+            connect(w, SIGNAL(setSlope(int,double)), simHub, SLOT(setSlope(int,double)));
+            connect(w, SIGNAL(stopDecodingMsgHub()), simHub, SLOT(stopDecodingMsg()));
+
+            simHubs.append(simHub);
+        }
 
         connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
         connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
         connect(w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
 
-        connect(w, &QDialog::finished, this, [this, simHub]() {
+        connect(w, &QDialog::finished, this, [this, simHubs]() {
             workoutOver();
-            simHub->stopDecodingMsg();
-            delete simHub;
+            for (SimulatorHub *simHub : simHubs) {
+                simHub->stopDecodingMsg();
+                delete simHub;
+            }
             // Auto-advance to next queued workout if one exists
             tryAdvanceWorkoutQueue();
         });
 
-        simHub->start();
+        for (SimulatorHub *simHub : simHubs)
+            simHub->start();
         workoutExecuting();
         QApplication::restoreOverrideCursor();
         w->show();
@@ -1363,6 +1371,48 @@ void MainWindow::executeWorkout(Workout workout) {
 
     // ── BTLE Device path ─────────────────────────────────────────────────
 #ifndef GC_WASM_BUILD
+    // Studio mode: connect each rider's own saved sensor package in turn, tag
+    // every hub with that rider's id, then run the workout with all of them.
+    if (account->enable_studio_mode) {
+        const int nbRiders = qBound(1, account->nb_user_studio, constants::nbMaxUserStudio);
+        QList<QPair<int, QMap<BtleSensorRole, BtleHub*>>> riderHubs;
+
+        for (int rider = 1; rider <= nbRiders; ++rider) {
+            const QMap<BtleSensorRole, BtleSavedSensor> saved = BtleSensorStore::loadAll(rider);
+            if (saved.isEmpty())
+                continue;   // rider configured no sensors — their box stays empty
+
+            SensorConnectDialog connectDlg(saved, account->wheel_circ, this);
+            const QString riderName = (rider - 1 < vecUserStudio.size()
+                                       && !vecUserStudio.at(rider - 1).getDisplayName().trimmed().isEmpty())
+                                          ? vecUserStudio.at(rider - 1).getDisplayName().trimmed()
+                                          : tr("Rider%1").arg(rider);
+            connectDlg.setWindowTitle(tr("Connect sensors — %1").arg(riderName));
+
+            if (connectDlg.exec() != QDialog::Accepted) {
+                // Cancelled: tear down everything connected for earlier riders.
+                for (const QPair<int, QMap<BtleSensorRole, BtleHub*>> &done : riderHubs) {
+                    QSet<BtleHub*> uniq;
+                    for (BtleHub *hub : done.second) uniq.insert(hub);
+                    for (BtleHub *hub : uniq) { hub->disconnectFromDevice(); delete hub; }
+                }
+                return;
+            }
+
+            QMap<BtleSensorRole, BtleHub*> hubsByRole = connectDlg.connectedHubs();
+            if (!hubsByRole.isEmpty()) {
+                connectDlg.detachHubs();   // we now own the hubs
+                QSet<BtleHub*> uniq;
+                for (BtleHub *hub : hubsByRole) uniq.insert(hub);
+                for (BtleHub *hub : uniq) hub->setUserID(rider);
+                riderHubs.append({rider, hubsByRole});
+            }
+        }
+
+        startWorkoutWithStudioHubs(workout, riderHubs);
+        return;
+    }
+
     // If the user has saved sensors (Sensors tab), connect to all of them at
     // once via the connection-status dialog. With no saved sensors we fall
     // through to the legacy single-device scanner below.
@@ -1488,22 +1538,48 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
     w->setAttribute(Qt::WA_DeleteOnClose);
     w->setWindowModality(Qt::ApplicationModal);
 
-    // One physical device may back several roles (e.g. Trainer + Power), so the
-    // map can hold the same hub under multiple keys. Collect the distinct hubs
-    // for lifecycle management and to wire shared signals (battery/error) once.
+    QSet<BtleHub*> allHubs;
+    wireHubsToDialog(w, hubsByRole, allHubs);
+
+    connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
+    connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
+    connect(w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
+
+    connect(w, &QDialog::finished, this, [this, allHubs]() {
+        workoutOver();
+        for (BtleHub *hub : allHubs) {
+            hub->disconnectFromDevice();
+            delete hub;
+        }
+        // Auto-advance to next queued workout if one exists
+        tryAdvanceWorkoutQueue();
+    });
+
+    workoutExecuting();
+    QApplication::restoreOverrideCursor();
+    w->show();
+}
+
+// Wire one rider's connected hubs (keyed by role) to the dialog: shared
+// battery/error signals once per distinct hub, then per-role data signals with
+// local dedup so a trainer that also reports power/cadence/speed is not
+// double-counted. Distinct hubs are added to \a allHubs for lifecycle cleanup.
+// Called once for solo and once per rider in Studio mode.
+void MainWindow::wireHubsToDialog(WorkoutDialog *w,
+                                  const QMap<BtleSensorRole, BtleHub*> &hubsByRole,
+                                  QSet<BtleHub*> &allHubs)
+{
     QSet<BtleHub*> uniqueHubs;
     for (BtleHub *hub : hubsByRole)
         uniqueHubs.insert(hub);
 
     for (BtleHub *hub : uniqueHubs) {
+        allHubs.insert(hub);
         connect(hub, &BtleHub::signal_battery,  w, &WorkoutDialog::batteryStatusReceived);
         connect(hub, &BtleHub::connectionError, w, &WorkoutDialog::onBleConnectionError);
         connect(w, SIGNAL(stopDecodingMsgHub()), hub, SLOT(stopDecodingMsg()));
     }
 
-    // Track which hub already drives a metric so a trainer that also exposes
-    // power/cadence/speed is not double-wired alongside a dedicated sensor on
-    // the same physical device (which would double-count the rolling average).
     BtleHub *powerHub   = nullptr;
     BtleHub *cadenceHub = nullptr;
     BtleHub *speedHub   = nullptr;
@@ -1547,18 +1623,33 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
     if (hubsByRole.contains(BtleSensorRole::Oxygen))
         connect(hubsByRole.value(BtleSensorRole::Oxygen),
                 SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
+}
+
+// Studio variant: each rider already had its saved sensors connected and its
+// hubs tagged with setUserID(rider). Wire them all to one dialog.
+void MainWindow::startWorkoutWithStudioHubs(const Workout &workout,
+        const QList<QPair<int, QMap<BtleSensorRole, BtleHub*>>> &riderHubs)
+{
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+
+    WorkoutDialog *w = new WorkoutDialog(workout, lstRadio, prepareStudioRiders(false));
+    w->setAttribute(Qt::WA_DeleteOnClose);
+    w->setWindowModality(Qt::ApplicationModal);
+
+    QSet<BtleHub*> allHubs;
+    for (const QPair<int, QMap<BtleSensorRole, BtleHub*>> &rider : riderHubs)
+        wireHubsToDialog(w, rider.second, allHubs);
 
     connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
     connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
     connect(w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
 
-    connect(w, &QDialog::finished, this, [this, uniqueHubs]() {
+    connect(w, &QDialog::finished, this, [this, allHubs]() {
         workoutOver();
-        for (BtleHub *hub : uniqueHubs) {
+        for (BtleHub *hub : allHubs) {
             hub->disconnectFromDevice();
             delete hub;
         }
-        // Auto-advance to next queued workout if one exists
         tryAdvanceWorkoutQueue();
     });
 
@@ -1791,6 +1882,8 @@ static const int ssDelays[] = {
     1500,  // after step 10 (switched to Plan)          → capture Plan
     500,   // after step 11 (captured Plan)             → switch to History
     1500,  // after step 12 (switched to History)       → capture History
+    600,   // after step 13 (captured History)          → launch studio workout
+    4000,  // after step 14 (launched studio workout)   → capture studio workout
 };
 
 Workout MainWindow::makeDemoWorkout() const
@@ -1855,6 +1948,11 @@ void MainWindow::startScreenshotMode(const QString &outputDir)
     QDir().mkpath(outputDir);
     m_ssOutputDir = outputDir;
     m_ssStep      = 0;
+
+    // Remember the user's real studio settings; the studio capture steps toggle
+    // these, and they are restored before the app quits (see the final step).
+    m_ssSavedStudioEnabled = account->enable_studio_mode;
+    m_ssSavedRiderCount    = account->nb_user_studio;
 
     // Force offline so WorkoutDialog skips the online session check.
     // There is no server to reach in screenshot/CI mode, and the blocking
@@ -1992,15 +2090,27 @@ void MainWindow::screenshotNextStep()
         QCoreApplication::processEvents();
         break;
 
-    // ── Step 6: enable studio mode and switch to Studio tab (tab 3) ──────
-    case 6:
+    // ── Step 6: capture the Studio tab off (switch only) then on ─────────
+    case 6: {
+        StudioWidget *sw = qobject_cast<StudioWidget*>(ui->studioWidget);
+        ftb->setCurrentIndex(3);
+
+        // Off: only the Studio Mode switch row should show, pinned at the top.
+        enableStudioMode(false);
+        if (sw) sw->reload();
+        QCoreApplication::processEvents();
+        grab().save(m_ssOutputDir + QLatin1String("/screenshot_studio_off.png"), "PNG");
+        qDebug() << "Screenshot: studio_off";
+
+        // On: reveal the full configuration UI for the studio_mode capture.
         setNumberUserStudio(6);
         enableStudioMode(true);
-        ftb->setCurrentIndex(3);
+        if (sw) sw->reload();
         raise();
         activateWindow();
         QCoreApplication::processEvents();
         break;
+    }
 
     // ── Step 7: capture studio mode ───────────────────────────────────────
     case 7:
@@ -2050,6 +2160,57 @@ void MainWindow::screenshotNextStep()
     case 13:
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_history.png"), "PNG");
         qDebug() << "Screenshot: history";
+        break;
+
+    // ── Step 14: launch a Studio-mode workout with N simulated riders ─────
+    case 14: {
+        setNumberUserStudio(15);
+        enableStudioMode(true);
+        ftb->setCurrentIndex(0);
+        ui->tabWidget_workout->setCurrentIndex(0);
+
+        const int nbRiders = qBound(1, account->nb_user_studio, constants::nbMaxUserStudio);
+        const QVector<UserStudio> riders = prepareStudioRiders(true);
+        m_ssWorkoutDlg = new WorkoutDialog(makeDemoWorkout(), lstRadio, riders, this);
+
+        for (int i = 0; i < nbRiders; ++i) {
+            SimulatorHub *simHub = new SimulatorHub(this);
+            simHub->setUserID(i + 1);
+            connect(simHub, SIGNAL(signal_hr(int,int)),      m_ssWorkoutDlg, SLOT(HrDataReceived(int,int)));
+            connect(simHub, SIGNAL(signal_cadence(int,int)), m_ssWorkoutDlg, SLOT(CadenceDataReceived(int,int)));
+            connect(simHub, SIGNAL(signal_speed(int,double)),m_ssWorkoutDlg, SLOT(TrainerSpeedDataReceived(int,double)));
+            connect(simHub, SIGNAL(signal_power(int,int)),   m_ssWorkoutDlg, SLOT(PowerDataReceived(int,int)));
+            simHub->start();
+            m_ssStudioHubs.append(simHub);
+        }
+        m_ssWorkoutDlg->show();
+        m_ssWorkoutDlg->raise();
+        m_ssWorkoutDlg->activateWindow();
+        QCoreApplication::processEvents();
+        break;
+    }
+
+    // ── Step 15: capture the Studio workout, then quit ───────────────────
+    case 15:
+        if (m_ssWorkoutDlg) {
+            m_ssWorkoutDlg->raise();
+            QCoreApplication::processEvents();
+            m_ssWorkoutDlg->grab().save(
+                m_ssOutputDir + QLatin1String("/screenshot_studio_workout.png"), "PNG");
+            qDebug() << "Screenshot: studio_workout";
+            m_ssWorkoutDlg->hide();
+            delete m_ssWorkoutDlg;
+            m_ssWorkoutDlg = nullptr;
+        }
+        for (SimulatorHub *simHub : m_ssStudioHubs) {
+            simHub->stopDecodingMsg();
+            delete simHub;
+        }
+        m_ssStudioHubs.clear();
+        // Restore the user's real studio settings the capture steps changed.
+        account->enable_studio_mode = m_ssSavedStudioEnabled;
+        account->nb_user_studio     = m_ssSavedRiderCount;
+        account->saveDisplayPrefs();
         QTimer::singleShot(300, qApp, SLOT(quit()));
         return; // No further steps — quit is already scheduled.
 

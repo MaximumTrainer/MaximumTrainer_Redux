@@ -22,13 +22,15 @@ class BtleSensorStore
 {
 public:
     /// Read every role slot. Roles with no saved device are omitted from the map.
-    static QMap<BtleSensorRole, BtleSavedSensor> loadAll();
+    /// \a riderIndex selects the sensor package: 0 (default) is the solo set;
+    /// 1..N are the per-rider Studio-mode sets, stored in separate sub-groups.
+    static QMap<BtleSensorRole, BtleSavedSensor> loadAll(int riderIndex = 0);
 
-    /// Persist a single role slot.
-    static void saveSensor(const BtleSavedSensor &sensor);
+    /// Persist a single role slot (see \a riderIndex on loadAll()).
+    static void saveSensor(const BtleSavedSensor &sensor, int riderIndex = 0);
 
-    /// Remove the saved device for a role.
-    static void clearSensor(BtleSensorRole role);
+    /// Remove the saved device for a role (see \a riderIndex on loadAll()).
+    static void clearSensor(BtleSensorRole role, int riderIndex = 0);
 
     /// Build a BtleSavedSensor from a discovered device, populating the correct
     /// platform identifier (deviceUuid on macOS, address otherwise).
@@ -56,6 +58,10 @@ public:
 
 private:
     static constexpr const char *kGroup = "btleSensors";
+
+    /// QSettings group for a sensor package. riderIndex <= 0 is the solo set
+    /// ("btleSensors"); 1..N are Studio riders ("btleSensors/riderN").
+    static QString groupForRider(int riderIndex);
 };
 
 #endif // BTLE_SENSOR_STORE_H

@@ -3923,58 +3923,58 @@ void WorkoutDialog::showIntervalSummaryOverlay(double avgPower, double avgHr, do
 void WorkoutDialog::createUserStudioWidget() {
 
 
-    int widthWidgetStudio = 384; //384 and less = 5 widgets per row with HD res (1920 Width)
-    int heightWidgetStudio = 190;
+    // Rider boxes are laid out in a balanced, screen-adaptive grid. Each box
+    // stretches to fill its column (growing on wide displays, shrinking toward
+    // minBoxWidth on small ones) while keeping a fixed height so rows align.
+    // Columns are capped at maxPerRow and balanced across the rows needed, so
+    // e.g. 15 riders → 5+5+5 and 10 → 5+5 rather than a full row plus a stub.
+    const int minBoxWidth = 290;
+    const int boxHeight    = 190;
+    const int maxPerRow    = 5;
 
+    const int nbRiders = account->nb_user_studio;
 
-    // Get Main Screen Resolution
-    int widthCurrentComputer = QGuiApplication::primaryScreen()->availableGeometry().width();
-    qDebug() << "WHAT IS THE WIDTH??" << widthCurrentComputer;
+    if (account->enable_studio_mode && nbRiders > 0) {
+        const int availWidth   = QGuiApplication::primaryScreen()->availableGeometry().width();
+        const int colsThatFit  = qMax(1, availWidth / minBoxWidth);
+        const int cap          = qMin(maxPerRow, colsThatFit);
+        const int rowsNeeded   = (nbRiders + cap - 1) / cap;
+        const int columns      = qMax(1, (nbRiders + rowsNeeded - 1) / rowsNeeded);
 
+        QGridLayout *glayout = static_cast<QGridLayout*>(ui->widget_allSpeedo->layout());
+        // Gap between boxes so each rider's outline reads as a separate card.
+        glayout->setHorizontalSpacing(10);
+        glayout->setVerticalSpacing(10);
 
-    // Check how many Boxes we can put on a row
-    int numberOfWidgetsPerRow = (widthCurrentComputer)/widthWidgetStudio;
-    qDebug() << "we can have "<< numberOfWidgetsPerRow << " on this display..";
-    int currentRowInserting = 0;
-    int currentColInserting = 0;
-
-
-    qDebug() <<  "createUserStudioWidget";
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            qDebug() << "Create WidgeT!" << i;
-
-            if (i+1 > (numberOfWidgetsPerRow*currentRowInserting)) {
-                currentRowInserting++;
-                currentColInserting = 0;
-            }
-
+        for (int i = 0; i < nbRiders; i++) {
             UserStudio myUserStudio = vecUserStudio.at(i);
-            arrUserStudioWidget[i] = new UserStudioWidget(i+1, myUserStudio.getDisplayName(), myUserStudio.getFTP(), myUserStudio.getLTHR(), this);
-            arrUserStudioWidget[i]->setMinimumSize(widthWidgetStudio, heightWidgetStudio);
-            arrUserStudioWidget[i]->setMaximumSize(widthWidgetStudio, heightWidgetStudio);
-            arrUserStudioWidget[i]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+            // Fall back to "RiderN" when the rider left their name blank in the
+            // Studio tab, so every box is still labelled in the workout view.
+            QString riderName = myUserStudio.getDisplayName().trimmed();
+            if (riderName.isEmpty())
+                riderName = tr("Rider%1").arg(i+1);
 
-            if (myUserStudio.getHrID() < 1 && myUserStudio.getFecID() < 1) {
+            arrUserStudioWidget[i] = new UserStudioWidget(i+1, riderName, myUserStudio.getFTP(), myUserStudio.getLTHR(), this);
+            arrUserStudioWidget[i]->setMinimumSize(minBoxWidth, boxHeight);
+            arrUserStudioWidget[i]->setMaximumHeight(boxHeight);
+            arrUserStudioWidget[i]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+            if (myUserStudio.getHrID() < 1 && myUserStudio.getFecID() < 1)
                 arrUserStudioWidget[i]->setHrSectionHidden();
-            }
-            if (myUserStudio.getPowerID() < 1 && myUserStudio.getFecID() < 1) {
+            if (myUserStudio.getPowerID() < 1 && myUserStudio.getFecID() < 1)
                 arrUserStudioWidget[i]->setPowerSectionHidden();
-            }
 
-            // insert Widget
-            QGridLayout *glayout = static_cast<QGridLayout*>( ui->widget_allSpeedo->layout()  );
-            glayout->addWidget(arrUserStudioWidget[i], currentRowInserting, currentColInserting, 1, 1, Qt::AlignCenter);
-            currentColInserting++;
-
+            glayout->addWidget(arrUserStudioWidget[i], i / columns, i % columns);
         }
+        for (int c = 0; c < columns; c++)
+            glayout->setColumnStretch(c, 1);
+
         //Set back theses widgets on top of GridStudio
         widgetLoading->raise();
         widgetLoading->activateWindow();
 
         widgetBattery->raise();
         widgetBattery->activateWindow();
-
     }
 }
 
@@ -3988,7 +3988,7 @@ void WorkoutDialog::showTestResult() {
     // ------------- FTP TEST -----------------
     if (workout.getWorkoutNameEnum() == Workout::FTP_TEST || workout.getWorkoutNameEnum() == Workout::FTP8min_TEST) {
 
-        // GROUP
+        // GROUP — update every rider's FTP/LTHR from their own test result.
         if (account->enable_studio_mode) {
 
             for (int i=0; i<account->nb_user_studio; i++) {
@@ -4001,8 +4001,10 @@ void WorkoutDialog::showTestResult() {
                 if (newFTP > 0) { myUserStudio.setFTP(newFTP); }
                 if (newLTHR >0) { myUserStudio.setLTHR(newLTHR); }
                 vecUserStudio.replace(i, myUserStudio);
-                emit ftpUserStudioChanged(vecUserStudio);
             }
+            // Emit once with the fully-updated vector; MainWindow persists it so
+            // the new values show in the Studio tab and survive a restart.
+            emit ftpUserStudioChanged(vecUserStudio);
         }
         //SOLO
         else {

@@ -26,6 +26,7 @@ SOURCES +=\
     $$PWD/dialogcalibrate.cpp \
     $$PWD/dialogcalibratepm.cpp \
     $$PWD/userstudiowidget.cpp \
+    $$PWD/toggleswitch.cpp \
     $$PWD/webbrowserview.cpp
 
 
@@ -54,6 +55,7 @@ HEADERS +=\
     $$PWD/dialogcalibrate.h \
     $$PWD/dialogcalibratepm.h \
     $$PWD/userstudiowidget.h \
+    $$PWD/toggleswitch.h \
     $$PWD/myqwebenginepage.h \
     $$PWD/webbrowserview.h
 

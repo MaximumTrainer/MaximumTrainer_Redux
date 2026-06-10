@@ -66,12 +66,19 @@ QList<QBluetoothUuid> BtleSensorStore::serviceUuidsForRole(BtleSensorRole role)
     return {};
 }
 
-QMap<BtleSensorRole, BtleSavedSensor> BtleSensorStore::loadAll()
+QString BtleSensorStore::groupForRider(int riderIndex)
+{
+    if (riderIndex <= 0)
+        return QLatin1String(kGroup);
+    return QLatin1String(kGroup) + QLatin1String("/rider") + QString::number(riderIndex);
+}
+
+QMap<BtleSensorRole, BtleSavedSensor> BtleSensorStore::loadAll(int riderIndex)
 {
     QMap<BtleSensorRole, BtleSavedSensor> result;
 
     QSettings settings;
-    settings.beginGroup(QLatin1String(kGroup));
+    settings.beginGroup(groupForRider(riderIndex));
     for (BtleSensorRole role : allRoles()) {
         const QString key = roleKey(role);
 
@@ -90,12 +97,12 @@ QMap<BtleSensorRole, BtleSavedSensor> BtleSensorStore::loadAll()
     return result;
 }
 
-void BtleSensorStore::saveSensor(const BtleSavedSensor &sensor)
+void BtleSensorStore::saveSensor(const BtleSavedSensor &sensor, int riderIndex)
 {
     const QString key = roleKey(sensor.role);
 
     QSettings settings;
-    settings.beginGroup(QLatin1String(kGroup));
+    settings.beginGroup(groupForRider(riderIndex));
     settings.setValue(key + QLatin1String("/name"),       sensor.name);
     settings.setValue(key + QLatin1String("/address"),    sensor.address);
     settings.setValue(key + QLatin1String("/deviceUuid"), sensor.deviceUuid);
@@ -103,12 +110,12 @@ void BtleSensorStore::saveSensor(const BtleSavedSensor &sensor)
     settings.endGroup();
 }
 
-void BtleSensorStore::clearSensor(BtleSensorRole role)
+void BtleSensorStore::clearSensor(BtleSensorRole role, int riderIndex)
 {
     const QString key = roleKey(role);
 
     QSettings settings;
-    settings.beginGroup(QLatin1String(kGroup));
+    settings.beginGroup(groupForRider(riderIndex));
     settings.remove(key);
     settings.endGroup();
 }

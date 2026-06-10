@@ -47,10 +47,6 @@ public:
     //Save data from Settings and Account to .save file
     static bool saveLocalSaveFile(Account *account);
 
-    //User Studio
-    static bool saveUserStudioFile(QVector<UserStudio>, QString filepath);
-    QVector<UserStudio> parseUserStudioFile(QString filepath);
-    UserStudio parseUserStudio(QXmlStreamReader &xml);
 
 
     // List workout Done

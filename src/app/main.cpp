@@ -266,6 +266,18 @@ int main(int argc, char *argv[]) {
         qApp->quit();
     });
     loginDlg->show();
+    // The login dialog is the first window the user sees; some Linux window
+    // managers stack a freshly-shown, terminal-launched window behind others.
+    // Force it to the front and focused, re-issuing once the event loop has
+    // processed the map (raise()/activateWindow() right after show() can be a
+    // no-op before the window is mapped). Clear any stale minimized state too.
+    loginDlg->setWindowState((loginDlg->windowState() & ~Qt::WindowMinimized) | Qt::WindowActive);
+    loginDlg->raise();
+    loginDlg->activateWindow();
+    QTimer::singleShot(0, loginDlg, [loginDlg]() {
+        loginDlg->raise();
+        loginDlg->activateWindow();
+    });
 
     return app.exec();
 }
