@@ -95,13 +95,11 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     ui->setupUi(this);
     this->setFocusPolicy(Qt::ClickFocus);
 
-    // Make the web-player container a native window up front. The embedded
-    // QWebEngineView (created lazily when the user picks the WebView player)
-    // requires a native window; if the container is not already native, Qt
-    // recreates the native window of the nearest native ANCESTOR — i.e. the
-    // whole WorkoutDialog — which makes it flicker closed/reopen and orphans
-    // any open child dialog (the settings dialog became unclickable).
-    // WA_DontCreateNativeAncestors confines the native window to this container.
+    // The embedded QWebEngineView needs a native window. Mark its container
+    // native so Qt attaches it here rather than recreating the whole dialog's
+    // native window (which flickers it closed/reopen and orphans child dialogs).
+    // DontCreateNativeAncestors confines that to the container; showEvent() then
+    // builds the view while the container is hidden, so it happens invisibly.
     ui->widget_webPlayer->setAttribute(Qt::WA_DontCreateNativeAncestors, true);
     ui->widget_webPlayer->setAttribute(Qt::WA_NativeWindow, true);
     // Disable ScreenSaver
@@ -944,9 +942,6 @@ void WorkoutDialog::initUI() {
         ui->wid_4_infoBoxSpeed->setVisible(false);
         ui->wid_5_infoWorkout->setVisible(false);
         ui->wid_oxygen->setVisible(false);
-
-        //Disable Workout Config Option not applicable
-        dconfig->setStudioMode();
     }
 
     setMessagePlot();
@@ -2636,8 +2631,6 @@ void WorkoutDialog::showTimerWorkoutElapsed(bool show) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
-// Lazily create the QWebEngine-backed web player on first use, so the heavy
-// Chromium process is not started when the user stays on the default VLC player.
 WebBrowserView *WorkoutDialog::ensureWebPlayer() {
     if (!webPlayer) {
         webPlayer = new WebBrowserView(ui->widget_webPlayer);
@@ -2646,12 +2639,14 @@ WebBrowserView *WorkoutDialog::ensureWebPlayer() {
     return webPlayer;
 }
 
+// The web player is already built and loaded in the background (see showEvent),
+// so switching only toggles which player is shown.
 void WorkoutDialog::showVideoPlayer(int choice) {
 
     /// Standard
     if (choice == 0) {
-        // Hiding the QWebEngineView only stops rendering, not playback, so
-        // explicitly pause it or its audio keeps playing behind the VLC player.
+        // Hiding the view stops rendering but not playback, so pause it too or
+        // its audio keeps playing behind the VLC player.
         if (webPlayer) webPlayer->pauseVideo();
         ui->widget_webPlayer->setVisible(false);
         ui->widgetVideo->setVisible(true);
@@ -2660,15 +2655,6 @@ void WorkoutDialog::showVideoPlayer(int choice) {
     else {
         ui->widgetVideo->setVisible(false);
         ui->widget_webPlayer->setVisible(true);
-        // Defer creation/loading of the QWebEngineView to the next event-loop
-        // iteration. Creating a WebEngine native child window synchronously
-        // from inside the config combobox's "activated" signal handler causes
-        // event-routing problems on Qt6/xcb (the host dialog can close). Doing
-        // it after the current event finishes avoids that.
-        QTimer::singleShot(0, this, [this]() {
-            if (ui->widget_webPlayer->isVisible())   // still on WebView
-                ensureWebPlayer()->loadHomePageIfNeeded();
-        });
     }
 }
 
@@ -3320,6 +3306,22 @@ void WorkoutDialog::keyPressEvent(QKeyEvent *event)
         break;
     }
     QDialog::keyPressEvent(event);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+void WorkoutDialog::showEvent(QShowEvent *event) {
+
+    QDialog::showEvent(event);
+
+    // Build and load the web player once, in the background, just after the
+    // dialog is mapped — while its container is still hidden, so the native
+    // window is realized invisibly and switching to it later never flickers the
+    // dialog closed/reopen. Deferred to the next iteration so the toplevel is
+    // fully mapped first.
+    if (!webPlayerLoaded) {
+        webPlayerLoaded = true;
+        QTimer::singleShot(0, this, [this]() { ensureWebPlayer()->loadHomePageIfNeeded(); });
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
