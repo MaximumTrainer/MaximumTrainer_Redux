@@ -7,13 +7,20 @@
 
 QList<BtleSensorRole> BtleSensorStore::allRoles()
 {
+    // Trainer first: it is the primary device and, when paired, covers the
+    // Power and Cadence/Speed slots listed directly beneath it.
     return {
-        BtleSensorRole::HeartRate,
+        BtleSensorRole::Trainer,
         BtleSensorRole::Power,
         BtleSensorRole::CadenceSpeed,
-        BtleSensorRole::Trainer,
+        BtleSensorRole::HeartRate,
         BtleSensorRole::Oxygen
     };
+}
+
+bool BtleSensorStore::roleCoveredByTrainer(BtleSensorRole role)
+{
+    return role == BtleSensorRole::Power || role == BtleSensorRole::CadenceSpeed;
 }
 
 QString BtleSensorStore::roleKey(BtleSensorRole role)

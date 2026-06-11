@@ -229,6 +229,7 @@ private slots:
 private:
 
     void keyPressEvent(QKeyEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 
     void checkFitFileCreated();
     void showPostWorkoutPanel();
@@ -299,12 +300,13 @@ private:
     QtMediaPlayer *radioPlayer;
 #endif
 
-    // Embedded web video player (QWebEngine-based). Created lazily the first
-    // time the user selects the WebView option, so the heavy Chromium process
-    // is not spun up when the default VLC player is in use.
+    // Embedded web video player (QWebEngine-based), created and loaded in the
+    // background when the dialog opens (see showEvent).
     WebBrowserView *webPlayer = nullptr;
-    /// Returns the web player, creating it (inside widget_webPlayer) on first use.
+    /// Returns the web player, creating it (inside widget_webPlayer) on first call.
     WebBrowserView *ensureWebPlayer();
+    /// Guards the one-time background load of the web player done in showEvent().
+    bool webPlayerLoaded = false;
 
 #ifndef GC_WASM_BUILD
     // Retro ghost-race view, the third content option (display_video == 2). Sits

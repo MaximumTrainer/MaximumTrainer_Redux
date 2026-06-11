@@ -56,6 +56,11 @@ public:
     /// All roles in display order. Single source of truth for iteration.
     static QList<BtleSensorRole> allRoles();
 
+    /// True if a paired FTMS Trainer makes this role's dedicated slot redundant.
+    /// FTMS Indoor Bike Data carries power, cadence and speed over one
+    /// connection, so the Power and Cadence/Speed slots are covered by it.
+    static bool roleCoveredByTrainer(BtleSensorRole role);
+
 private:
     static constexpr const char *kGroup = "btleSensors";
 

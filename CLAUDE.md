@@ -137,18 +137,44 @@ verify step.
 ## Known dormant features (don't extend; slated for removal)
 
 Per `agents.md §7`:
-- **PowerCurve** — removed from the product, ~20 files of dead references remain.
-- **Course** — fully dormant (`main_coursepage` commented out of `ui.pri`).
-  When you see orphaned `on_action*Course*` slots, they're safe to delete.
+- **PowerCurve** — removed from the product. The dead UI/page was deleted in
+  #242, but ~9 files still carry remnant references (`settings.h`,
+  `userstudio.{h,cpp}`, `dialogconfig.{h,cpp,ui}`, `mainwindow.cpp`,
+  `workoutplot.{h,cpp}`) — safe to strip when you're nearby.
+- **Course** — feature fully removed end to end (Group 1 / #230: `course.*`,
+  `main_coursepage.*`, `googlemapwidget.*`, etc.). Only the **FIT-SDK** course
+  message headers (`src/fitness/fit/fit_course_*.hpp`) and the `.workout`
+  "COURSE DATA" parser were intentionally kept. Any stray `on_action*Course*`
+  slot is safe to delete.
+
+**Removed integrations (don't re-add):** SelfLoops & TrainingPeaks uploads
+(#244 — uploads now focus on Strava + Intervals.icu), the maximumtrainer.com
+web frontend (#245), and ANT+ support (#240). Studio mode's old server-hosted
+`QWebEngineView` is gone too (replaced by the native path in #253).
 
 ---
 
-## In-flight work (as of 2026-06-07 — verify with `gh pr list` before relying on this)
+## In-flight work (as of 2026-06-10 — verify with `gh pr list` before relying on this)
 
-Recently merged: #227 (Qt6 combobox fixes + `MaximumTrainer.pro` rename + mini-graph throttle),
-#228 (`QwtSystemClock` → `QElapsedTimer`), #230 (dead-code sweep), #234 (zip error handling),
-#235 (`IntervalsIcuService` → `IntervalsIcuApi` rename), #236 (DataMetric CRTP template),
-#237 (Intervals OAuth URL fix), dark-mode + OpenSSL AppImage fixes, QWT 6.2 → 6.3 bump.
+Two big features shipped and are now in master:
+- **Strava auto-upload** (#246): per-user OAuth via the **system browser**
+  (loopback redirect, not an embedded webview), token exchange/refresh through a
+  **Cloudflare Worker** (`workers/strava-token-proxy/`, holds the client secret),
+  `Account::strava_auto_upload` toggle, and a post-workout upload panel. Worker
+  is deployed and the flow is e2e-tested. Code: `strava_oauth_flow.*`,
+  `strava_service.*`; tests in `tests/strava/`.
+- **Studio mode** (#253): native per-rider config (**up to 15 riders**),
+  per-rider sensors + FTP/LTHR, QSettings persistence, BLE + simulator support,
+  JSON import/export. Replaces the dead server-hosted webview. Code:
+  `studiowidget.*`, `userstudiowidget.*`, `userstudio.*`; tests in `tests/studio/`.
+
+Other recent merges: #237 (Intervals OAuth URL fix), #238 (QLayout/pixmap/AppImage
+warnings), #239 (workout-editor step-type helper), #240 (ANT remnant removal),
+#241/#242 (sensor/trainer config consolidation + dead PowerCurve removal),
+#243 (Intervals OAuth scopes), #244 (drop SelfLoops/TrainingPeaks), #245 (drop
+web frontend), #248 (editor popup UI), #251 (audio output fix), #252 (window-on-top
++ toolbar grouping + FTP-test profile update). Earlier: #227, #228, #230, #234,
+#235, #236, dark-mode + OpenSSL AppImage fixes, QWT 6.2 → 6.3.
 
 The **workout dialog timer** is driven by a `Clock` QObject on a worker
 `QThread` ticking every 25ms; it derives elapsed seconds from a monotonic
