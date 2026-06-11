@@ -463,8 +463,9 @@ void DialogConfig::initUi() {
     ui->spinBox_offsetPower->setValue(account->offset_power);
 
     ui->comboBox_displayVideo->setCurrentIndex(account->display_video);
-    ui->label_homePage->setVisible(account->display_video);
-    ui->lineEdit_homePage->setVisible(account->display_video);
+    // Home-page URL applies to the Web Browser option only (index 1), not Game.
+    ui->label_homePage->setVisible(account->display_video == 1);
+    ui->lineEdit_homePage->setVisible(account->display_video == 1);
 
     QSettings settings;
     settings.beginGroup("webBrowserWorkout");

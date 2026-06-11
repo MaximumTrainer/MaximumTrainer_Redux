@@ -17,6 +17,13 @@
 #include "apptheme.h"
 #include "env_config.h"
 
+#ifndef Q_OS_WASM
+#include <QQuickWidget>
+#include <QQmlContext>
+#include <QUrl>
+#include "retroracecontroller.h"
+#endif
+
 
 
 
@@ -174,6 +181,58 @@ int main(int argc, char *argv[]) {
     const QStringList &cliArgs = QCoreApplication::arguments();
     const bool screenshotMode = cliArgs.contains(QLatin1String("--screenshots"), Qt::CaseInsensitive)
                              || cliArgs.contains(QLatin1String("/screenshots"),  Qt::CaseInsensitive);
+
+#ifndef Q_OS_WASM
+    // --retrorace [file.fit] [--shot out.png]: standalone spike of the retro
+    // ghost-race view. Skips login/MainWindow entirely. With --shot it grabs one
+    // frame to a PNG and quits (headless validation); otherwise it stays open.
+    if (cliArgs.contains(QLatin1String("--retrorace"))) {
+        splash.hide();
+
+        const int raceIdx = cliArgs.indexOf(QLatin1String("--retrorace"));
+        QString fitPath;
+        if (raceIdx >= 0 && raceIdx + 1 < cliArgs.size()
+            && !cliArgs.at(raceIdx + 1).startsWith(QLatin1Char('-')))
+            fitPath = cliArgs.at(raceIdx + 1);
+
+        auto *controller = new RetroRaceController(&app);
+        // --bot [watts] forces a computer pacer; otherwise load your last ride
+        // and fall back to a pacer when there is no history to race.
+        const int botIdx = cliArgs.indexOf(QLatin1String("--bot"));
+        if (botIdx >= 0) {
+            double watts = 180.0;
+            if (botIdx + 1 < cliArgs.size()) {
+                bool ok = false;
+                const double parsed = cliArgs.at(botIdx + 1).toDouble(&ok);
+                if (ok) watts = parsed;
+            }
+            controller->useComputerPacer(watts);
+        } else if (!controller->loadGhost(fitPath)) {
+            controller->useComputerPacer(180.0);
+        }
+
+        auto *view = new QQuickWidget();
+        view->setAttribute(Qt::WA_DeleteOnClose);
+        view->rootContext()->setContextProperty(QStringLiteral("race"), controller);
+        view->setResizeMode(QQuickWidget::SizeRootObjectToView);
+        view->setSource(QUrl(QStringLiteral("qrc:/game/qml/RetroRace.qml")));
+        view->resize(960, 540);
+        view->setWindowTitle(QStringLiteral("MaximumTrainer — Retro Ghost Race (spike)"));
+        view->show();
+        controller->start();
+        controller->beginRace();   // standalone: no workout to fire the gun
+
+        const int shotIdx = cliArgs.indexOf(QLatin1String("--shot"));
+        if (shotIdx >= 0 && shotIdx + 1 < cliArgs.size()) {
+            const QString out = cliArgs.at(shotIdx + 1);
+            QTimer::singleShot(1500, view, [view, out]() {
+                view->grabFramebuffer().save(out);
+                QApplication::quit();
+            });
+        }
+        return app.exec();
+    }
+#endif
 
     // Creates and shows the MainWindow once login has completed (or has been
     // bypassed in screenshot mode). Heap-allocated so it outlives this scope;

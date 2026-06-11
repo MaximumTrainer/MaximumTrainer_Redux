@@ -35,6 +35,10 @@
 
 class DialogConfig;     // forward declaration
 class WebBrowserView;   // forward declaration (lazily created web video player)
+#ifndef GC_WASM_BUILD
+class QQuickWidget;          // retro ghost-race view (desktop only)
+class RetroRaceController;
+#endif
 
 namespace Ui {
 class WorkoutDialog;
@@ -299,6 +303,20 @@ private:
     WebBrowserView *webPlayer = nullptr;
     /// Returns the web player, creating it (inside widget_webPlayer) on first use.
     WebBrowserView *ensureWebPlayer();
+
+#ifndef GC_WASM_BUILD
+    // Retro ghost-race view, the third content option (display_video == 2). Sits
+    // in the same slot as the video player. Opponent is this workout's most
+    // recent past ride, or a computer pacer when there is no history yet; the
+    // player is driven by live trainer power.
+    QQuickWidget        *raceView       = nullptr;
+    RetroRaceController *raceController = nullptr;
+    QQuickWidget *ensureRaceView();
+    QVariantList buildWorkoutProfile() const;   // normalised target-power samples
+    void onToggleGameFullscreen();              // collapse/restore the data panes
+    bool m_gameFullscreen = false;
+    QList<int> m_savedSplitterSizes;
+#endif
 
     DialogConfig *dconfig;
     QList<Radio> lstRadio;
