@@ -107,12 +107,8 @@ Item {
         Rectangle { x: bike.bw*0.23; y: bike.bh*0.34; width: bike.bw*0.54; height: bike.bh*0.16; color: bike.body }
         Rectangle { x: bike.bw*0.27; y: bike.bh*0.24; width: bike.bw*0.46; height: bike.bh*0.12; color: bike.body }
         Rectangle { x: bike.bw*0.30; y: bike.bh*0.17; width: bike.bw*0.40; height: bike.bh*0.10; color: Qt.darker(bike.body, 1.3) }
-        // upper arms / elbows hinted at the sides (jersey sleeves) angling
-        // forward-down. Hands are on the bars out front — hidden from behind.
-        Rectangle { x: bike.bw*0.215; y: bike.bh*0.26; width: bike.bw*0.11; height: bike.bh*0.18; radius: bike.bw*0.05
-                    color: Qt.darker(bike.body, 1.18); rotation: -12; transformOrigin: Item.Top }
-        Rectangle { x: bike.bw*0.675; y: bike.bh*0.26; width: bike.bw*0.11; height: bike.bh*0.18; radius: bike.bw*0.05
-                    color: Qt.darker(bike.body, 1.18); rotation: 12; transformOrigin: Item.Top }
+        // (No arms/hands drawn: from directly behind they sit forward on the
+        // bars, hidden by the torso — drawing stubs read as hands poking out.)
         // aero helmet (rounded) with a darker vent stripe
         Rectangle { x: bike.bw*0.38; y: bike.bh*0.05; width: bike.bw*0.24; height: bike.bh*0.16; radius: bike.bw*0.10; color: bike.helmet }
         Rectangle { x: bike.bw*0.485; y: bike.bh*0.06; width: bike.bw*0.04; height: bike.bh*0.13; color: Qt.darker(bike.helmet, 1.4) }
@@ -463,7 +459,11 @@ Item {
         // Sit in the LEFT lane (offset grows as it nears) so you pull up
         // alongside it rather than staring at its back wheel. Converges toward
         // the centre/vanishing point when it is far up the road.
-        x: root.roadCx(op, oz) - width / 2 - 0.30 * root.maxHalfW * op
+        // Sit just to the LEFT of the player, almost touching — offset by the
+        // riders' own pixel widths (NOT maxHalfW, which scales with the window
+        // and otherwise flings the ghost far away on a wide screen). The player
+        // is centred at width/2 with half-width ≈ 62 px (s = 2.15).
+        x: root.width / 2 - width - 64
         y: root.horizonY + root.roadH * (0.60 + 0.16 * f) - height
     }
     // "ghost ahead" marker chevron when the opponent is too far to render.
