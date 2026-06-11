@@ -3727,14 +3727,16 @@ void WorkoutDialog::showPostWorkoutPanel()
     widgetPostWorkout = new QWidget(this);
     widgetPostWorkout->setObjectName("widgetPostWorkout");
     widgetPostWorkout->setStyleSheet(
-        "QWidget#widgetPostWorkout { background-color: rgba(10,10,10,220); border-radius: 10px; }"
+        "QWidget#widgetPostWorkout { background-color: rgba(10,10,10,220); border-radius: 12px; }"
         "QLabel  { color: white; }"
-        "QPushButton { background-color: #2a6099; color: white; border-radius: 4px; padding: 6px 12px; }"
+        "QPushButton { background-color: #2a6099; color: white; border-radius: 6px; padding: 11px 28px; font-size: 12pt; }"
+        "QPushButton:hover { background-color: #3275bd; }"
         "QPushButton:disabled { background-color: #1a3a59; color: #888; }");
 
     auto *layout = new QVBoxLayout(widgetPostWorkout);
-    layout->setSpacing(6);
-    layout->setContentsMargins(16, 12, 16, 12);
+    layout->setSpacing(10);
+    layout->setContentsMargins(28, 22, 28, 22);
+    widgetPostWorkout->setMinimumWidth(460);
 
     auto *titleLabel = new QLabel(tr("Workout Complete!"), widgetPostWorkout);
     titleLabel->setStyleSheet("font-size: 14pt; font-weight: bold; color: #80c0ff;");
@@ -3761,7 +3763,7 @@ void WorkoutDialog::showPostWorkoutPanel()
 
     if (hasStrava || hasIcu) {
         auto *upHeader = new QLabel(tr("Upload Activity:"), widgetPostWorkout);
-        upHeader->setStyleSheet("font-size: 10pt; font-weight: bold; color: #80c0ff; margin-top: 8px;");
+        upHeader->setStyleSheet("font-size: 11pt; font-weight: bold; color: #80c0ff; margin-top: 10px;");
         layout->addWidget(upHeader);
 
         if (hasStrava) {
@@ -3777,7 +3779,7 @@ void WorkoutDialog::showPostWorkoutPanel()
             auto *lbl = new QLabel(widgetPostWorkout);
             lbl->setObjectName("lblStrava");
             lbl->setWordWrap(true);
-            lbl->setStyleSheet("font-size: 10pt;");
+            lbl->setStyleSheet("font-size: 11pt;");
             // Allow the "View on Strava" link (shown on success) to open the
             // activity in the user's browser.
             lbl->setOpenExternalLinks(true);
