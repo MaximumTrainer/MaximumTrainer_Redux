@@ -151,25 +151,47 @@ Item {
         }
     }
 
-    // Layered hills on the horizon — three depths (farthest bluish → near green).
-    Repeater {   // farthest mountains (hazy blue)
-        model: Math.ceil(root.width / 180) + 2
-        Rectangle { width: 300; height: 130; radius: 150; color: "#7fa6bf"; opacity: 0.72
-            x: index * 180 - 160; y: root.horizonY - 100 }
+    // Mountain horizon — three jagged ranges (far snow-capped peaks → mid teal →
+    // near green forested hills). Drawn once on a Canvas; their bases tuck behind
+    // the green ground fill below.
+    Canvas {
+        id: mountains
+        anchors.left: parent.left; anchors.right: parent.right
+        y: 0; height: root.horizonY + 8
+        onWidthChanged:  requestPaint()
+        onHeightChanged: requestPaint()
+        Component.onCompleted: requestPaint()
+        onPaint: {
+            var ctx = getContext("2d"); ctx.reset();
+            var W = width, base = root.horizonY;
+            function rj(n) { var v = Math.sin(n * 127.1) * 43758.5453; return v - Math.floor(v); }
+            function range(amp, step, color, seed, snow) {
+                var pts = [];
+                for (var x = 0, i = 0; x <= W + step; x += step, i++)
+                    pts.push({ x: x, y: base - amp * (0.30 + 0.70 * rj(i * 1.7 + seed)) });
+                ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, base);
+                for (var k = 0; k < pts.length; k++) ctx.lineTo(pts[k].x, pts[k].y);
+                ctx.lineTo(W, base); ctx.closePath(); ctx.fill();
+                if (snow) {
+                    ctx.fillStyle = "#eef4f7";
+                    for (var m = 1; m < pts.length - 1; m++) {
+                        if (pts[m].y < pts[m - 1].y && pts[m].y < pts[m + 1].y    // a peak
+                            && pts[m].y < base - amp * 0.55) {                    // and a tall one
+                            var capH = (base - pts[m].y) * 0.15;
+                            ctx.beginPath();
+                            ctx.moveTo(pts[m].x, pts[m].y);
+                            ctx.lineTo(pts[m].x - capH * 0.9, pts[m].y + capH);
+                            ctx.lineTo(pts[m].x + capH * 0.9, pts[m].y + capH);
+                            ctx.closePath(); ctx.fill();
+                        }
+                    }
+                }
+            }
+            range(150, W / 12, "#6f8fb0", 2.1,  true);    // far snow-capped peaks
+            range(100, W / 9,  "#56867f", 7.3,  false);   // mid teal-green ridge
+            range(62,  W / 13, "#3f7a52", 13.7, false);   // near green forested hills
+        }
     }
-    Repeater {   // mid hills (blue-green)
-        model: Math.ceil(root.width / 150) + 2
-        Rectangle { width: 240; height: 100; radius: 120; color: "#5a9078"
-            x: index * 150 - 90; y: root.horizonY - 74 }
-    }
-    Repeater {   // near hills (green)
-        model: Math.ceil(root.width / 140) + 2
-        Rectangle { width: 214; height: 76; radius: 110; color: "#3f7a52"
-            x: index * 140 - 50; y: root.horizonY - 46 }
-    }
-    // distant hazy hill band sitting right on the horizon (softens the skyline)
-    Rectangle { anchors.left: parent.left; anchors.right: parent.right
-        y: root.horizonY - 26; height: 30; color: "#4f8a63"; opacity: 0.6 }
 
     // Solid ground fill behind the slices (prevents sub-pixel sky gaps showing).
     Rectangle { anchors.left: parent.left; anchors.right: parent.right
@@ -191,7 +213,7 @@ Item {
             readonly property real cx:   root.width / 2
             readonly property real rW:   Math.max(2, hw * 0.16 + 3)           // rumble width
             readonly property real eW:   Math.max(1, hw * 0.028 + 1)          // edge-line width
-            readonly property real cdW:  Math.max(2, hw * 0.05)               // centre-dash width
+            readonly property real cdW:  Math.max(1.5, hw * 0.028)            // centre-dash width (thin)
             readonly property bool haze: p < 0.18                             // far field: no flicker
             x: 0; width: root.width
             y: root.horizonY + (index / root.slices) * root.roadH
@@ -210,8 +232,8 @@ Item {
             // white edge lines
             Rectangle { x: parent.cx - parent.hw;             width: parent.eW; height: parent.height; color: "#f4f4f4" }
             Rectangle { x: parent.cx + parent.hw - parent.eW; width: parent.eW; height: parent.height; color: "#f4f4f4" }
-            // centre dash (alternate segments only; skip the hazy far field)
-            Rectangle { visible: parent.even && !parent.haze
+            // centre dash (alternate segments only) — runs from near the horizon
+            Rectangle { visible: parent.even && parent.p > 0.05
                 x: parent.cx - parent.cdW / 2; width: parent.cdW; height: parent.height; color: "#e9e9c4" }
         }
     }
@@ -233,18 +255,18 @@ Item {
     // depth/speed cue plus scenery. Three kinds (pine / leafy tree / bush) in
     // varied greens, scattered across the verge. Anchored in world distance.
     Repeater {
-        model: 40
+        model: 54
         Item {
             id: ob
-            readonly property real span: 30 * 40
-            readonly property real az: ((index * 30 - race.visualDist) % span + span) % span + 8  // distance ahead
+            readonly property real span: 26 * 54
+            readonly property real az: ((index * 26 - race.visualDist) % span + span) % span + 8  // distance ahead
             readonly property real p: Math.min(1.0, 38 / az)
             readonly property real r1: root.rnd(index * 1.3 + 3)
             readonly property int  kind: r1 < 0.30 ? 2 : (r1 < 0.62 ? 0 : 1)   // 2 bush · 0 pine · 1 leafy
             readonly property int  side: root.rnd(index * 2.1) < 0.5 ? -1 : 1
             // Lateral world offset from centre: 1.12× road-half (just off the
-            // edge) out to ~3.7× (far across the grass). Scattered, not hugging.
-            readonly property real latWorld: root.maxHalfW * (1.12 + root.rnd(index + 5) * 2.6)
+            // edge) out to ~4.5× (far across the grass). Scattered, not hugging.
+            readonly property real latWorld: root.maxHalfW * (1.12 + root.rnd(index + 5) * 3.4)
             readonly property real cy: root.horizonY + p * root.roadH
             readonly property real baseW: kind === 2 ? (64 + root.rnd(index+1)*42)
                                        : kind === 0 ? (54 + root.rnd(index+2)*30)
@@ -259,7 +281,7 @@ Item {
                                                      0.22 + root.rnd(index+13)*0.12, 1)
             // distance haze: 0 near .. 1 far, fades the object into the horizon
             readonly property real haz: Math.max(0, Math.min(1, (0.26 - p) / 0.24))
-            visible: race.started && p > 0.02
+            visible: race.started && p > 0.03
             x: root.width/2 + side * p * latWorld - tw/2
             y: cy - th
             width: tw; height: th
@@ -284,7 +306,7 @@ Item {
             Rectangle { visible: ob.kind===1; x: ob.tw*0.16; y: 0;          width: ob.tw*0.68; height: ob.th*0.40; radius: ob.tw*0.36; color: Qt.lighter(ob.foliage,1.14) }
 
             // atmospheric haze tint — distant trees melt into the horizon
-            Rectangle { anchors.fill: parent; color: "#a9cdd9"; opacity: ob.haz * 0.75 }
+            Rectangle { anchors.fill: parent; color: "#a9cdd9"; opacity: ob.haz * 0.6 }
         }
     }
 
