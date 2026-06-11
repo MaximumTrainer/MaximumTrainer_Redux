@@ -273,25 +273,25 @@ Item {
     // depth/speed cue plus scenery. Three kinds (pine / leafy tree / bush) in
     // varied greens, scattered across the verge. Anchored in world distance.
     Repeater {
-        model: 72
+        model: 96
         Item {
             id: ob
-            readonly property real span: 24 * 72
-            readonly property real az: ((index * 24 - race.visualDist) % span + span) % span + 8  // distance ahead
+            readonly property real span: 18 * 96
+            readonly property real az: ((index * 18 - race.visualDist) % span + span) % span + 8  // distance ahead
             readonly property real p: Math.min(1.0, 38 / az)
             readonly property real r1: root.rnd(index * 1.3 + 3)
             readonly property int  kind: r1 < 0.35 ? 2 : (r1 < 0.50 ? 0 : 1)   // 2 bush · 0 pine · 1 leafy
             readonly property int  side: root.rnd(index * 2.1) < 0.5 ? -1 : 1
-            // Lateral world offset from centre: 1.12× road-half (just off the
+            // Lateral world offset from centre: 1.1× road-half (just off the
             // edge) out to ~4.5× (far across the grass). Scattered, not hugging.
-            readonly property real latWorld: root.maxHalfW * (1.12 + root.rnd(index + 5) * 3.4)
+            readonly property real latWorld: root.maxHalfW * (1.10 + root.rnd(index + 5) * 3.4)
             readonly property real cy: root.horizonY + p * root.roadH
-            readonly property real baseW: kind === 2 ? (64 + root.rnd(index+1)*42)
-                                       : kind === 0 ? (54 + root.rnd(index+2)*30)
-                                                    : (62 + root.rnd(index+2)*42)
-            readonly property real baseH: kind === 2 ? (38 + root.rnd(index+7)*22)
-                                       : kind === 0 ? (155 + root.rnd(index+4)*110)
-                                                    : (120 + root.rnd(index+4)*90)
+            readonly property real baseW: kind === 2 ? (88 + root.rnd(index+1)*54)
+                                       : kind === 0 ? (74 + root.rnd(index+2)*40)
+                                                    : (86 + root.rnd(index+2)*54)
+            readonly property real baseH: kind === 2 ? (50 + root.rnd(index+7)*30)
+                                       : kind === 0 ? (205 + root.rnd(index+4)*140)
+                                                    : (165 + root.rnd(index+4)*120)
             readonly property real tw: baseW * p
             readonly property real th: baseH * p
             readonly property color baseFoliage: Qt.rgba(0.16 + root.rnd(index+9)*0.12,
@@ -300,10 +300,10 @@ Item {
             // distance haze: 0 near .. 1 far, fades the object into the horizon.
             // Baked into the colours (Qt.tint) rather than a square overlay, which
             // showed a faint box around distant trees.
-            readonly property real haz: Math.max(0, Math.min(1, (0.36 - p) / 0.20))
+            readonly property real haz: Math.max(0, Math.min(1, (0.34 - p) / 0.20))
             readonly property color foliage: Qt.tint(baseFoliage, Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
             readonly property color barkCol: Qt.tint("#5a3a1f", Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
-            visible: race.started && p > 0.155
+            visible: race.started && p > 0.14
             x: root.width/2 + side * p * latWorld - tw/2
             y: cy - th
             width: tw; height: th
