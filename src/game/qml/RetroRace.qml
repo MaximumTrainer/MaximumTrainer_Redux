@@ -92,14 +92,15 @@ Item {
         // rear wheel + a lighter rim stripe down the middle
         Rectangle { x: bike.bw*0.42;  y: bike.bh*0.60; width: bike.bw*0.16; height: bike.bh*0.40; radius: bike.bw*0.05; color: "#16161a" }
         Rectangle { x: bike.bw*0.485; y: bike.bh*0.63; width: bike.bw*0.03; height: bike.bh*0.34; color: "#73737d" }
-        // left leg: thigh (shorts) + calf (skin) + shoe, all pumping together
-        Rectangle { x: bike.bw*0.24; y: bike.bh*0.52 + bike.amp; width: bike.bw*0.17; height: bike.bh*0.18; color: "#23232e" }
-        Rectangle { x: bike.bw*0.26; y: bike.bh*0.66 + bike.amp; width: bike.bw*0.12; height: bike.bh*0.12; color: bike.skin }
-        Rectangle { x: bike.bw*0.24; y: bike.bh*0.76 + bike.amp; width: bike.bw*0.16; height: bike.bh*0.05; color: "#101014" }
+        // left leg (dark tights): thigh + calf + shoe, flanking the wheel and
+        // pumping together. No skin — from behind the legs read as dark tights.
+        Rectangle { x: bike.bw*0.28;  y: bike.bh*0.52 + bike.amp; width: bike.bw*0.15; height: bike.bh*0.18; color: "#23232e" }
+        Rectangle { x: bike.bw*0.295; y: bike.bh*0.66 + bike.amp; width: bike.bw*0.12; height: bike.bh*0.12; color: "#2b2b35" }
+        Rectangle { x: bike.bw*0.28;  y: bike.bh*0.76 + bike.amp; width: bike.bw*0.15; height: bike.bh*0.05; color: "#101014" }
         // right leg (opposite phase)
-        Rectangle { x: bike.bw*0.59; y: bike.bh*0.52 - bike.amp; width: bike.bw*0.17; height: bike.bh*0.18; color: "#23232e" }
-        Rectangle { x: bike.bw*0.62; y: bike.bh*0.66 - bike.amp; width: bike.bw*0.12; height: bike.bh*0.12; color: bike.skin }
-        Rectangle { x: bike.bw*0.60; y: bike.bh*0.76 - bike.amp; width: bike.bw*0.16; height: bike.bh*0.05; color: "#101014" }
+        Rectangle { x: bike.bw*0.57;  y: bike.bh*0.52 - bike.amp; width: bike.bw*0.15; height: bike.bh*0.18; color: "#23232e" }
+        Rectangle { x: bike.bw*0.585; y: bike.bh*0.66 - bike.amp; width: bike.bw*0.12; height: bike.bh*0.12; color: "#2b2b35" }
+        Rectangle { x: bike.bw*0.57;  y: bike.bh*0.76 - bike.amp; width: bike.bw*0.15; height: bike.bh*0.05; color: "#101014" }
         // hips / saddle (dark shorts)
         Rectangle { x: bike.bw*0.26; y: bike.bh*0.46; width: bike.bw*0.48; height: bike.bh*0.12; color: "#1e1e28" }
         // jersey: lower back (widest) → mid back → shoulders (tapered, leaning in)
@@ -449,21 +450,21 @@ Item {
     // Opponent: shown up the road only while ahead of you (you are behind).
     BackBike {
         readonly property real ahead: -race.gapMeters
-        readonly property real f: 50 / (50 + Math.max(0, ahead))     // 1 near .. ->0 far
-        // When the gap is small the ghost sits right beside you (player's level
-        // and size); it recedes up the road as the gap opens.
-        readonly property real op: 0.30 + 0.46 * f                   // 0.30 far .. 0.76 alongside
+        readonly property real f: 55 / (55 + Math.max(0, ahead))     // 1 near .. ->0 far
+        // Keep the ghost riding right beside you (near the player's level and
+        // size) across the whole racing range — the gap is conveyed by the HUD.
+        readonly property real op: 0.60 + 0.16 * f                   // 0.60 .. 0.76 (always close)
         readonly property real oz: (1.0 / Math.max(0.03, op)) * 38 + race.visualDist
-        visible: race.started && !race.finished && ahead > 0.5 && ahead < 200
-        s: Math.min(2.15, 0.8 + 1.5 * f)                             // up to the player's size
+        visible: race.started && !race.finished && ahead > 0.5 && ahead < 250
+        s: Math.min(2.15, 1.45 + 0.7 * f)                            // near the player's size
         body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.85   // cyan so it stands out on grey + the dash
         phase: race.oppCrankRev
         lean: root.curveAt(oz) * 13
         // Sit in the LEFT lane (offset grows as it nears) so you pull up
         // alongside it rather than staring at its back wheel. Converges toward
         // the centre/vanishing point when it is far up the road.
-        x: root.roadCx(op, oz) - width / 2 - 0.34 * root.maxHalfW * op
-        y: root.horizonY + root.roadH * (0.30 + 0.46 * f) - height
+        x: root.roadCx(op, oz) - width / 2 - 0.30 * root.maxHalfW * op
+        y: root.horizonY + root.roadH * (0.60 + 0.16 * f) - height
     }
     // "ghost ahead" marker chevron when the opponent is too far to render.
     Text {
