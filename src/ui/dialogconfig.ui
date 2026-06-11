@@ -458,6 +458,13 @@ QLabel#label_imageCalories {
             </widget>
            </item>
            <item>
+            <widget class="QCheckBox" name="checkBox_showCurrentTarget">
+             <property name="text">
+              <string>Show Current Target</string>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="QGroupBox" name="groupBox_4">
              <property name="title">
               <string>Position</string>
@@ -2226,7 +2233,7 @@ QLabel#label_imageCalories {
          </property>
          <widget class="QWidget" name="tab_13">
           <attribute name="title">
-           <string>Video Player</string>
+           <string>Multimedia</string>
           </attribute>
           <layout class="QVBoxLayout" name="verticalLayout_19">
            <property name="topMargin">

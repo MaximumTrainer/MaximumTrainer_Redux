@@ -51,7 +51,7 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     QListWidgetItem *item2 = new QListWidgetItem(QIcon(":/image/icon/display"), tr("Widgets"), ui->listWidget_settings);
     QListWidgetItem *item3 = new QListWidgetItem(QIcon(":/image/icon/chart"),   tr("Graph"), ui->listWidget_settings);
     QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/sound"),   tr("Sounds"), ui->listWidget_settings);
-    QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/movie"),   tr("Video Player"), ui->listWidget_settings);
+    QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/movie"),   tr("Multimedia"), ui->listWidget_settings);
     QListWidgetItem *item6 = new QListWidgetItem(QIcon(":/image/icon/radio"),   tr("Radio"), ui->listWidget_settings);
     item1->setSizeHint(QSize(35,35));
     item2->setSizeHint(QSize(35,35));
@@ -374,6 +374,7 @@ void DialogConfig::initUi() {
     ui->checkBox_showIntervalRemainingTime->setChecked(account->show_interval_remaining);
     ui->checkBox_showWorkoutRemainingTime->setChecked(account->show_workout_remaining);
     ui->checkBox_showElapsedTime->setChecked(account->show_elapsed);
+    ui->checkBox_showCurrentTarget->setChecked(account->show_current_target);
 
     int startTrigger = account->start_trigger;
     /// 0 - Cadence
@@ -580,6 +581,11 @@ void DialogConfig::on_checkBox_showElapsedTime_clicked(bool checked)
 {
 
     parentDialog->showTimerWorkoutElapsed(checked);
+}
+
+void DialogConfig::on_checkBox_showCurrentTarget_clicked(bool checked)
+{
+    parentDialog->showTimerCurrentTarget(checked);
 }
 
 /// CHANGE DISPLAY WIDGET
@@ -878,6 +884,7 @@ void DialogConfig::saveSettings() {
     account->show_interval_remaining = ui->checkBox_showIntervalRemainingTime->isChecked();
     account->show_workout_remaining =  ui->checkBox_showWorkoutRemainingTime->isChecked();
     account->show_elapsed = ui->checkBox_showElapsedTime->isChecked();
+    account->show_current_target = ui->checkBox_showCurrentTarget->isChecked();
 
 
 

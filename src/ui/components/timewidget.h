@@ -18,6 +18,7 @@ public:
     void showIntervalRemaining(bool);
     void showWorkoutRemaining(bool);
     void showWorkoutElapsed(bool);
+    void showCurrentTarget(bool);
 
 
     void setFreeRideMode();
@@ -41,6 +42,7 @@ private:
     bool hasTargetPower;
     bool hasTargetCad;
     bool hasTargetHr;
+    bool showTargetEnabled = true;
 
 
 };

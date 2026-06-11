@@ -870,6 +870,7 @@ void WorkoutDialog::initUI() {
     showTimerIntervalRemaining(account->show_interval_remaining);
     showTimerWorkoutRemaining(account->show_workout_remaining);
     showTimerWorkoutElapsed(account->show_elapsed);
+    showTimerCurrentTarget(account->show_current_target);
 
     /// Widgets
     showHeartRateDisplayWidget(account->display_hr);
@@ -2728,6 +2729,12 @@ void WorkoutDialog::showTimerWorkoutElapsed(bool show) {
 
     ui->widget_time->showWorkoutElapsed(show);
     ui->widget_topMenu->showWorkoutElapsed(show);
+}
+
+void WorkoutDialog::showTimerCurrentTarget(bool show) {
+
+    ui->widget_time->showCurrentTarget(show);
+    ui->widget_topMenu->showCurrentTarget(show);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

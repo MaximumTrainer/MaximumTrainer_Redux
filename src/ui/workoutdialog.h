@@ -77,6 +77,7 @@ public:
     void showTimerIntervalRemaining(bool);
     void showTimerWorkoutRemaining(bool);
     void showTimerWorkoutElapsed(bool);
+    void showTimerCurrentTarget(bool);
 
 
 
