@@ -42,6 +42,7 @@ public:
     void showIntervalRemaining(bool);
     void showWorkoutRemaining(bool);
     void showWorkoutElapsed(bool);
+    void showCurrentTarget(bool);
 
     //Target
     void setTargetPower(double percentageFTP, int range);
@@ -118,6 +119,7 @@ private:
     bool hasTargetPower;
     bool hasTargetCad;
     bool hasTargetHr;
+    bool showTargetEnabled = true;
 
     bool isMacMenu;
 

@@ -18,6 +18,10 @@ public:
     void showIntervalRemaining(bool);
     void showWorkoutRemaining(bool);
     void showWorkoutElapsed(bool);
+    void showCurrentTarget(bool);
+    // True if any timer element is enabled — the host hides the whole widget
+    // (so it reserves no space) when everything here is turned off.
+    bool hasVisibleContent() const;
 
 
     void setFreeRideMode();
@@ -41,6 +45,10 @@ private:
     bool hasTargetPower;
     bool hasTargetCad;
     bool hasTargetHr;
+    bool showTargetEnabled = true;
+    bool intervalEnabled   = true;
+    bool remainingEnabled  = true;
+    bool elapsedEnabled    = true;
 
 
 };

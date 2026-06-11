@@ -51,7 +51,7 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     QListWidgetItem *item2 = new QListWidgetItem(QIcon(":/image/icon/display"), tr("Widgets"), ui->listWidget_settings);
     QListWidgetItem *item3 = new QListWidgetItem(QIcon(":/image/icon/chart"),   tr("Graph"), ui->listWidget_settings);
     QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/sound"),   tr("Sounds"), ui->listWidget_settings);
-    QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/movie"),   tr("Video Player"), ui->listWidget_settings);
+    QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/movie"),   tr("Multimedia"), ui->listWidget_settings);
     QListWidgetItem *item6 = new QListWidgetItem(QIcon(":/image/icon/radio"),   tr("Radio"), ui->listWidget_settings);
     item1->setSizeHint(QSize(35,35));
     item2->setSizeHint(QSize(35,35));
@@ -374,6 +374,7 @@ void DialogConfig::initUi() {
     ui->checkBox_showIntervalRemainingTime->setChecked(account->show_interval_remaining);
     ui->checkBox_showWorkoutRemainingTime->setChecked(account->show_workout_remaining);
     ui->checkBox_showElapsedTime->setChecked(account->show_elapsed);
+    ui->checkBox_showCurrentTarget->setChecked(account->show_current_target);
 
     int startTrigger = account->start_trigger;
     /// 0 - Cadence
@@ -462,9 +463,15 @@ void DialogConfig::initUi() {
     ui->comboBox_powerAverage->setCurrentIndex(account->averaging_power);
     ui->spinBox_offsetPower->setValue(account->offset_power);
 
-    ui->comboBox_displayVideo->setCurrentIndex(account->display_video);
-    ui->label_homePage->setVisible(account->display_video);
-    ui->lineEdit_homePage->setVisible(account->display_video);
+    // The Game (index 2) is single-rider and unavailable in multi-rider studio
+    // mode — drop it from the selector there so it can't be picked.
+    if (account->enable_studio_mode && ui->comboBox_displayVideo->count() > 2)
+        ui->comboBox_displayVideo->removeItem(2);
+    ui->comboBox_displayVideo->setCurrentIndex(
+        qMin(account->display_video, ui->comboBox_displayVideo->count() - 1));
+    // Home-page URL applies to the Web Browser option only (index 1), not Game.
+    ui->label_homePage->setVisible(account->display_video == 1);
+    ui->lineEdit_homePage->setVisible(account->display_video == 1);
 
     QSettings settings;
     settings.beginGroup("webBrowserWorkout");
@@ -579,6 +586,11 @@ void DialogConfig::on_checkBox_showElapsedTime_clicked(bool checked)
 {
 
     parentDialog->showTimerWorkoutElapsed(checked);
+}
+
+void DialogConfig::on_checkBox_showCurrentTarget_clicked(bool checked)
+{
+    parentDialog->showTimerCurrentTarget(checked);
 }
 
 /// CHANGE DISPLAY WIDGET
@@ -838,6 +850,7 @@ void DialogConfig::saveSettings() {
     account->show_interval_remaining = ui->checkBox_showIntervalRemainingTime->isChecked();
     account->show_workout_remaining =  ui->checkBox_showWorkoutRemainingTime->isChecked();
     account->show_elapsed = ui->checkBox_showElapsedTime->isChecked();
+    account->show_current_target = ui->checkBox_showCurrentTarget->isChecked();
 
 
 

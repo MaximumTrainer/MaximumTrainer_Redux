@@ -70,7 +70,7 @@ void TimeWidget::setTargetPower(double percentageFTP, int range) {
         hasTargetPower = false;
     }
 
-    if (hasTargetPower || hasTargetCad || hasTargetHr) {
+    if (showTargetEnabled && (hasTargetPower || hasTargetCad || hasTargetHr)) {
         ui->groupBox->setVisible(true);
     }
     else {
@@ -99,7 +99,7 @@ void TimeWidget::setTargetCadence(int cadence, int range) {
         hasTargetCad = false;
     }
 
-    if (hasTargetPower || hasTargetCad || hasTargetHr) {
+    if (showTargetEnabled && (hasTargetPower || hasTargetCad || hasTargetHr)) {
         ui->groupBox->setVisible(true);
     }
     else {
@@ -127,7 +127,7 @@ void TimeWidget::setTargetHeartRate(double percentageLTHR, int range) {
         hasTargetHr = false;
     }
 
-    if (hasTargetPower || hasTargetCad || hasTargetHr) {
+    if (showTargetEnabled && (hasTargetPower || hasTargetCad || hasTargetHr)) {
         ui->groupBox->setVisible(true);
     }
     else {
@@ -139,21 +139,35 @@ void TimeWidget::setTargetHeartRate(double percentageLTHR, int range) {
 //-----------------------------------------------------
 void TimeWidget::showIntervalRemaining(bool show) {
 
+    intervalEnabled = show;
     ui->label_intervalTime->setVisible(show);
     //    ui->label_timeInterval_txt->setVisible(show);
 }
 
 void TimeWidget::showWorkoutRemaining(bool show) {
 
+    remainingEnabled = show;
     ui->label_remainingTime->setVisible(show);
     //    ui->label_timeWorkoutRemaining_txt->setVisible(show);
 }
 
 void TimeWidget::showWorkoutElapsed(bool show) {
 
+    elapsedEnabled = show;
     ui->label_timeElapsed->setVisible(show);
     //    ui->label_timeWorkoutElaps_txt->setVisible(show);
 
+}
+
+void TimeWidget::showCurrentTarget(bool show) {
+
+    showTargetEnabled = show;
+    ui->groupBox->setVisible(show && (hasTargetPower || hasTargetCad || hasTargetHr));
+}
+
+bool TimeWidget::hasVisibleContent() const {
+
+    return intervalEnabled || remainingEnabled || elapsedEnabled || showTargetEnabled;
 }
 
 

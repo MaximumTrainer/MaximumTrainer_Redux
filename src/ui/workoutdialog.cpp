@@ -35,6 +35,11 @@
 #include "workoututil.h"
 #include "dialogconfig.h"
 #include "webbrowserview.h"
+#ifndef GC_WASM_BUILD
+#include <QQuickWidget>
+#include <QQmlContext>
+#include "retroracecontroller.h"
+#endif
 #include "dialogcalibrate.h"
 #include "dialogcalibratepm.h"
 #include "dialogkeyboardshortcuts.h"
@@ -505,6 +510,13 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     connect(ui->widget_topMenu, SIGNAL(lap()), this, SLOT(lapButtonPressed()) );
     connect(this, SIGNAL(insideConfig(bool)), ui->widget_topMenu, SLOT(changeConfigIcon(bool)));
 
+    // Make the splitter gutters easy to grab — the 1px default was nearly
+    // impossible to hit. The handle is now 10px (see .ui) with a subtle fill
+    // that highlights on hover so the drag zone is discoverable.
+    ui->splitter->setStyleSheet(
+        QStringLiteral("QSplitter::handle:vertical { background: #3a3f4b; }"
+                       "QSplitter::handle:vertical:hover { background: #5a6473; }"));
+
 
     connect(this, SIGNAL(increaseDifficulty()), ui->widget_workoutPlot, SLOT(increaseDifficulty()) );
     connect(this, SIGNAL(decreaseDifficulty()), ui->widget_workoutPlot, SLOT(decreaseDifficulty()) );
@@ -856,6 +868,7 @@ void WorkoutDialog::initUI() {
     showTimerIntervalRemaining(account->show_interval_remaining);
     showTimerWorkoutRemaining(account->show_workout_remaining);
     showTimerWorkoutElapsed(account->show_elapsed);
+    showTimerCurrentTarget(account->show_current_target);
 
     /// Widgets
     showHeartRateDisplayWidget(account->display_hr);
@@ -1251,6 +1264,13 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
 
         currentIntervalObj = workout.getInterval(currentInterval);
         timeInterval = currentIntervalObj.getDurationQTime();
+
+#ifndef GC_WASM_BUILD
+        if (raceController) {
+            raceController->markIntervalBoundary();   // road line
+            raceController->setIntervalMessage(currentIntervalObj.getDisplayMessage());
+        }
+#endif
     }
 
 
@@ -1569,6 +1589,10 @@ void WorkoutDialog::startWorkout() {
     }
 
     timerCheckToActivateSound->start();
+
+#ifndef GC_WASM_BUILD
+    if (raceController) raceController->beginRace();   // fire the race gun
+#endif
 }
 
 
@@ -1579,6 +1603,10 @@ void WorkoutDialog::workoutOver() {
 
     isWorkoutOver = true;
     stopErgSmoothing();
+
+#ifndef GC_WASM_BUILD
+    if (raceController) raceController->finishRace();   // finish line + celebration
+#endif
 
     qDebug() << "STOPPING WORKOUT";
     if (account->enable_sound && account->sound_end_workout)
@@ -1749,6 +1777,12 @@ void WorkoutDialog::start_or_pause_workout() {
         emit pausePlayer();
         if (webPlayer) webPlayer->pauseVideo();
     }
+
+#ifndef GC_WASM_BUILD
+    // Keep the race in sync with workout pause/resume.
+    if (raceController && isWorkoutStarted && !isWorkoutOver)
+        raceController->setRacePaused(isWorkoutPaused);
+#endif
 }
 
 
@@ -1756,6 +1790,30 @@ void WorkoutDialog::start_or_pause_workout() {
 
 //--------------------------------------------------------------------------------------------------
 void WorkoutDialog::sendLastSecondData(int seconds) {
+
+#ifndef GC_WASM_BUILD
+    if (raceController) {
+        const double tot = Util::convertQTimeToSecD(workout.getDurationQTime());
+        if (tot > 0) raceController->setWorkoutProgress(qBound(0.0, seconds / tot, 1.0));
+        raceController->setWorkoutElapsedSec(seconds);
+        // timeInterval / the timers are decremented just AFTER this call, so the
+        // values here read 1 s high vs the on-screen graph & timer widgets —
+        // subtract 1 so the game's interval/finish countdowns stay in sync.
+        if (tot > 0) raceController->setFinishIn(qMax(0.0, tot - seconds - 1.0));
+
+        // Preview the upcoming interval's target on the road ahead.
+        const double secsToNext = qMax(0.0, Util::convertQTimeToSecD(timeInterval) - 1.0);
+        double nextW = -1.0, nextCad = -1.0;
+        if (currentInterval + 1 < workout.getNbInterval()) {
+            const Interval nxt = workout.getInterval(currentInterval + 1);
+            if (nxt.getPowerStepType() != Interval::NONE && account->FTP > 0)
+                nextW = qRound(nxt.getFTP_start() * account->FTP);
+            if (nxt.getCadenceStepType() != Interval::NONE)
+                nextCad = nxt.getCadence_start();
+        }
+        raceController->setNextInterval(nextW, nextCad, secsToNext);
+    }
+#endif
 
     if (account->enable_studio_mode) {
         for (int i=0; i<account->nb_user_studio; i++) {
@@ -1794,6 +1852,11 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
     }
     if (value < 0)
         return;
+
+#ifndef GC_WASM_BUILD
+    if (raceController && userID == 1)
+        raceController->setLiveHr(value);
+#endif
 
     // Track for sensor dropout detection
     if (!account->enable_studio_mode && isWorkoutStarted && !isWorkoutOver)
@@ -1843,6 +1906,11 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::CadenceDataReceived(int userID, int value) {
 
+#ifndef GC_WASM_BUILD
+    // Animate the race player's legs at the rider's real cadence.
+    if (raceController && userID == 1 && value >= 0 && value <= 250)
+        raceController->setLiveCadenceRpm(value);
+#endif
 
     // invalid value, show "-" to the user
     if (value == -1 || value > 250) {
@@ -2072,6 +2140,12 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
         value = value + account->offset_power;
     if (value < 0)
         return;
+
+#ifndef GC_WASM_BUILD
+    // Drive the player in the retro race with live (solo) power.
+    if (raceController && userID == 1)
+        raceController->setLivePowerWatts(value);
+#endif
 
     // Track for sensor dropout detection (non-studio, user 1 only)
     if (!account->enable_studio_mode && isWorkoutStarted && !isWorkoutOver)
@@ -2460,6 +2534,17 @@ void WorkoutDialog::targetPowerChanged_f(double percentageTarget, int range) {
 
     currentTargetPower = qRound(percentageTarget * account->FTP);
     currentTargetPowerRange =  range;
+#ifndef GC_WASM_BUILD
+    // Keep the workout pacer on the current interval target (rest → soft-pedal
+    // at ~45% FTP so it keeps rolling rather than stopping dead).
+    if (raceController) {
+        raceController->setPacerTargetWatts(currentTargetPower > 0
+                                            ? currentTargetPower
+                                            : qRound(0.45 * account->FTP));
+        // Drive the game's power target indicator (same threshold as the alerts).
+        raceController->setTargetPower(currentTargetPower, currentTargetPowerRange);
+    }
+#endif
     ui->widget_time->setTargetPower(percentageTarget, range);
     ui->widget_topMenu->setTargetPower(percentageTarget, range);
     sendTargetsPower(percentageTarget, range);
@@ -2477,6 +2562,9 @@ void WorkoutDialog::targetCadenceChanged_f(int target, int range) {
     ui->widget_topMenu->setTargetCadence(target, range);
 
     sendTargetsCadence(target, range);
+#ifndef GC_WASM_BUILD
+    if (raceController) raceController->setTargetCadence(target, range);
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2486,6 +2574,14 @@ void WorkoutDialog::targetHrChanged_f(double percentageTarget, int range) {
     ui->widget_topMenu->setTargetHeartRate(percentageTarget, range);
 
     sendTargetsHr(percentageTarget, range);
+#ifndef GC_WASM_BUILD
+    // Convert the %LTHR target to bpm for the game's HR indicator.
+    if (raceController) {
+        const double bpm = (percentageTarget > 0 && account->LTHR > 0)
+                         ? qRound(percentageTarget * account->LTHR) : -1.0;
+        raceController->setTargetHr(bpm, range);
+    }
+#endif
 }
 
 
@@ -2608,26 +2704,44 @@ void WorkoutDialog::showTimerOnTop(bool showOnTop) {
 
     qDebug() << "SHOW TIMER ON TOP?!" << showOnTop;
 
+    m_timerOnTop = showOnTop;
     ui->widget_topMenu->setTimersVisible(showOnTop);
-    ui->widget_time->setVisible(!showOnTop);
+    updateTimeWidgetVisibility();
 }
 
 void WorkoutDialog::showTimerIntervalRemaining(bool show) {
 
     ui->widget_time->showIntervalRemaining(show);
     ui->widget_topMenu->showIntervalRemaining(show);
+    updateTimeWidgetVisibility();
 }
 
 void WorkoutDialog::showTimerWorkoutRemaining(bool show) {
 
     ui->widget_time->showWorkoutRemaining(show);
     ui->widget_topMenu->showWorkoutRemaining(show);
+    updateTimeWidgetVisibility();
 }
 
 void WorkoutDialog::showTimerWorkoutElapsed(bool show) {
 
     ui->widget_time->showWorkoutElapsed(show);
     ui->widget_topMenu->showWorkoutElapsed(show);
+    updateTimeWidgetVisibility();
+}
+
+void WorkoutDialog::showTimerCurrentTarget(bool show) {
+
+    ui->widget_time->showCurrentTarget(show);
+    ui->widget_topMenu->showCurrentTarget(show);
+    updateTimeWidgetVisibility();
+}
+
+// Hide the bottom-left time widget entirely when it's on the top bar or when no
+// timer element is enabled — otherwise it reserves an empty box bottom-left.
+void WorkoutDialog::updateTimeWidgetVisibility() {
+
+    ui->widget_time->setVisible(!m_timerOnTop && ui->widget_time->hasVisibleContent());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -2639,9 +2753,132 @@ WebBrowserView *WorkoutDialog::ensureWebPlayer() {
     return webPlayer;
 }
 
+#ifndef GC_WASM_BUILD
+QQuickWidget *WorkoutDialog::ensureRaceView() {
+    if (!raceController) {
+        raceController = new RetroRaceController(this);
+        raceController->setRiderParams(account->bike_weight_kg + account->weight_kg,
+                                       account->userCda);
+        raceController->setLiveMode(true);
+        raceController->setWorkoutName(workout.getName());   // enables the chooser
+        raceController->setWorkoutProfile(buildWorkoutProfile());  // "what's next" strip
+        raceController->setIntervalMessage(currentIntervalObj.getDisplayMessage());
+        // Seed the workout pacer's target the moment the user picks it.
+        connect(raceController, &RetroRaceController::opponentChanged, this, [this]() {
+            if (currentTargetPower > 0)
+                raceController->setPacerTargetWatts(currentTargetPower);
+        });
+        // QML fullscreen button → collapse/restore the graph + widget panes.
+        connect(raceController, &RetroRaceController::fullscreenToggleRequested,
+                this, &WorkoutDialog::onToggleGameFullscreen);
+    }
+    if (!raceView) {
+        raceView = new QQuickWidget(this);
+        raceView->setResizeMode(QQuickWidget::SizeRootObjectToView);
+        raceView->rootContext()->setContextProperty(QStringLiteral("race"), raceController);
+        raceView->setSource(QUrl(QStringLiteral("qrc:/game/qml/RetroRace.qml")));
+        // Share the content slot with the video / web players.
+        if (QLayout *contentLayout = ui->widgetVideo->parentWidget()->layout())
+            contentLayout->addWidget(raceView);
+        raceController->start();   // armed; rolls on the workout start
+        // If the workout is already running/over (Game selected mid-workout),
+        // bring the race into the right state immediately.
+        if (isWorkoutOver)
+            raceController->finishRace();
+        else if (isWorkoutStarted && !isWorkoutPaused)
+            raceController->beginRace();
+    }
+    return raceView;
+}
+
+// Sample the workout's target-power profile into normalised 0..1 heights so the
+// game can draw a compact "what's next" strip.
+QVariantList WorkoutDialog::buildWorkoutProfile() const {
+    const QList<Interval> &ivs = workout.getLstInterval();
+    QVector<double> startSec, durSec, fStart, fEnd;
+    double acc = 0.0;
+    for (const Interval &iv : ivs) {
+        const double d = Util::convertQTimeToSecD(iv.getDurationQTime());
+        startSec.append(acc);
+        durSec.append(d);
+        const double s = qMax(0.0, iv.getFTP_start());
+        double e = iv.getFTP_end();
+        e = (e <= 0.0) ? s : e;
+        fStart.append(s);
+        fEnd.append(e);
+        acc += d;
+    }
+    const double totalSec = (acc > 0.0) ? acc : 1.0;
+
+    const int N = 120;
+    QVector<double> raw(N, 0.0);
+    double maxF = 0.01;
+    for (int i = 0; i < N; ++i) {
+        const double t = (i + 0.5) / N * totalSec;
+        for (int k = 0; k < durSec.size(); ++k) {
+            if (t < startSec[k] + durSec[k] || k == durSec.size() - 1) {
+                const double f = (durSec[k] > 0.0)
+                               ? qBound(0.0, (t - startSec[k]) / durSec[k], 1.0) : 0.0;
+                raw[i] = fStart[k] + f * (fEnd[k] - fStart[k]);
+                break;
+            }
+        }
+        maxF = qMax(maxF, raw[i]);
+    }
+
+    QVariantList profile;
+    for (double v : raw)
+        profile.append(v / maxF);
+    return profile;
+}
+
+void WorkoutDialog::onToggleGameFullscreen() {
+    QList<int> sizes = ui->splitter->sizes();   // [0]=toolbar [1]=content [2]=graph [3]=widgets
+    if (sizes.size() < 4)
+        return;
+    if (!m_gameFullscreen) {
+        m_savedSplitterSizes = sizes;
+        int total = 0;
+        for (int s : sizes) total += s;
+        sizes[2] = 0;                            // collapse interval graph
+        sizes[3] = 0;                            // collapse bottom widgets
+        sizes[1] = total - sizes[0];             // content (game) takes the rest
+        ui->splitter->setSizes(sizes);
+        m_gameFullscreen = true;
+    } else {
+        if (!m_savedSplitterSizes.isEmpty())
+            ui->splitter->setSizes(m_savedSplitterSizes);
+        m_gameFullscreen = false;
+    }
+    if (raceController)
+        raceController->setGameFullscreen(m_gameFullscreen);
+}
+#endif
+
+/// 0 = Standard video, 1 = Web Browser, 2 = Game (retro race).
 // The web player is already built and loaded in the background (see showEvent),
 // so switching only toggles which player is shown.
 void WorkoutDialog::showVideoPlayer(int choice) {
+
+    // The game is a single-rider ghost race — it has no defined "player" in the
+    // multi-rider studio mode, so it is unavailable there: fall back to video.
+    if (account->enable_studio_mode && choice == 2)
+        choice = 0;
+
+#ifdef GC_WASM_BUILD
+    if (choice == 2) choice = 0;   // Game is desktop-only
+#else
+    if (raceView) raceView->setVisible(false);
+
+    /// Game (retro race) — occupies the video slot.
+    if (choice == 2) {
+        if (webPlayer) webPlayer->pauseVideo();
+        ui->widget_webPlayer->setVisible(false);
+        ui->widgetVideo->setVisible(false);
+        ensureRaceView()->setVisible(true);
+        return;
+    }
+#endif
 
     /// Standard
     if (choice == 0) {
@@ -3515,17 +3752,21 @@ void WorkoutDialog::showPostWorkoutPanel()
 {
     if (widgetPostWorkout) return;  // already shown
 
-    widgetPostWorkout = new QWidget(ui->widget_allSpeedo);
+    // Parent to the whole dialog (not the bottom widget pane) so the panel is
+    // visible even when the data panes are collapsed (e.g. fullscreen game).
+    widgetPostWorkout = new QWidget(this);
     widgetPostWorkout->setObjectName("widgetPostWorkout");
     widgetPostWorkout->setStyleSheet(
-        "QWidget#widgetPostWorkout { background-color: rgba(10,10,10,220); border-radius: 10px; }"
+        "QWidget#widgetPostWorkout { background-color: rgba(10,10,10,220); border-radius: 12px; }"
         "QLabel  { color: white; }"
-        "QPushButton { background-color: #2a6099; color: white; border-radius: 4px; padding: 6px 12px; }"
+        "QPushButton { background-color: #2a6099; color: white; border-radius: 6px; padding: 11px 28px; font-size: 12pt; }"
+        "QPushButton:hover { background-color: #3275bd; }"
         "QPushButton:disabled { background-color: #1a3a59; color: #888; }");
 
     auto *layout = new QVBoxLayout(widgetPostWorkout);
-    layout->setSpacing(6);
-    layout->setContentsMargins(16, 12, 16, 12);
+    layout->setSpacing(10);
+    layout->setContentsMargins(28, 22, 28, 22);
+    widgetPostWorkout->setMinimumWidth(460);
 
     auto *titleLabel = new QLabel(tr("Workout Complete!"), widgetPostWorkout);
     titleLabel->setStyleSheet("font-size: 14pt; font-weight: bold; color: #80c0ff;");
@@ -3552,7 +3793,7 @@ void WorkoutDialog::showPostWorkoutPanel()
 
     if (hasStrava || hasIcu) {
         auto *upHeader = new QLabel(tr("Upload Activity:"), widgetPostWorkout);
-        upHeader->setStyleSheet("font-size: 10pt; font-weight: bold; color: #80c0ff; margin-top: 8px;");
+        upHeader->setStyleSheet("font-size: 11pt; font-weight: bold; color: #80c0ff; margin-top: 10px;");
         layout->addWidget(upHeader);
 
         if (hasStrava) {
@@ -3568,7 +3809,7 @@ void WorkoutDialog::showPostWorkoutPanel()
             auto *lbl = new QLabel(widgetPostWorkout);
             lbl->setObjectName("lblStrava");
             lbl->setWordWrap(true);
-            lbl->setStyleSheet("font-size: 10pt;");
+            lbl->setStyleSheet("font-size: 11pt;");
             // Allow the "View on Strava" link (shown on success) to open the
             // activity in the user's browser.
             lbl->setOpenExternalLinks(true);
@@ -3587,7 +3828,7 @@ void WorkoutDialog::showPostWorkoutPanel()
     }
 
     widgetPostWorkout->adjustSize();
-    const QSize ps = ui->widget_allSpeedo->size();
+    const QSize ps = size();   // centre over the whole workout dialog
     const QSize ws = widgetPostWorkout->size();
     widgetPostWorkout->move((ps.width()  - ws.width())  / 2,
                             (ps.height() - ws.height()) / 2);
@@ -3732,7 +3973,8 @@ void WorkoutDialog::slotPostStravaStatusDone()
                                "href=\"https://www.strava.com/activities/%1\">%2</a>")
                     .arg(activityId)
                     .arg(tr("View on Strava"));
-            setStravaPostStatus(tr("✓ Uploaded to Strava — %1").arg(link), false);
+            // Link on its own line so it never gets clipped on a narrow panel.
+            setStravaPostStatus(tr("✓ Uploaded to Strava") + "<br>" + link, false);
         } else {
             setStravaPostStatus(tr("✓ Uploaded to Strava"), false);
         }
@@ -3869,6 +4111,15 @@ void WorkoutDialog::initDataWorkout() {
     }
     else {
         arrDataWorkout[0] = new DataWorkout(this->workout, account->FTP, this);
+#ifndef GC_WASM_BUILD
+        // Forward whole-ride metrics to the race game (no-op until it exists).
+        connect(arrDataWorkout[0], &DataWorkout::normalizedPowerChanged, this,
+                [this](double v) { if (raceController) raceController->setNp(v); });
+        connect(arrDataWorkout[0], &DataWorkout::intensityFactorChanged, this,
+                [this](double v) { if (raceController) raceController->setIf(v); });
+        connect(arrDataWorkout[0], &DataWorkout::tssChanged, this,
+                [this](double v) { if (raceController) raceController->setTss(v); });
+#endif
     }
 }
 

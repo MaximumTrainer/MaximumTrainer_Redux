@@ -182,10 +182,19 @@ void Clock::timerSpeedTimeout() {
             double powerRequiredWind = calculatePwind(i);
             double powerRequiredGravity = calculatePgravity(i);
 
-
-            double accelerationMs = (currentPowerWatts[i] - (powerRequiredRolling + powerRequiredWind + powerRequiredGravity)) / weightKG[i];
+            // Net power available to accelerate relates to speed by
+            // P_net = m·v·(dv/dt), so dv/dt = P_net / (m·v) — NOT P_net / m
+            // (which omits the ·v and makes acceleration independent of speed).
+            // Floor v in the denominator to avoid a div-by-zero / runaway push
+            // from a standstill.
+            double speedForAccel = currentSpeedMS[i] < 0.5 ? 0.5 : currentSpeedMS[i];
+            double netPowerW = currentPowerWatts[i]
+                             - (powerRequiredRolling + powerRequiredWind + powerRequiredGravity);
+            double accelerationMs = netPowerW / (weightKG[i] * speedForAccel);
             accelerationMs = accelerationMs * fractionSecond;
             currentSpeedMS[i] = currentSpeedMS[i] + accelerationMs;
+            if (currentSpeedMS[i] < 0)
+                currentSpeedMS[i] = 0;
 
 
             //        qDebug() << "fractionSecond:" << fractionSecond << "diffTime" << diffTime;

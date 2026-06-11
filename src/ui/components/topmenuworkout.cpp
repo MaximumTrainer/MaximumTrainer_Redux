@@ -87,6 +87,7 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
 
     ui->label_imageCad->setToolTip(tr("Power - %FTP"));
     ui->label_imagePower->setVisible(false);
+    ui->label_dash4->setVisible(false);   // drop the dangling "-" before the target
     ui->label_targetPower->setToolTip(tr("Power - %FTP"));
     ui->label_targetPower->setText("");
     ui->label_rangePower->setText("");
@@ -468,6 +469,20 @@ void TopMenuWorkout::showWorkoutElapsed(bool show) {
     ui->label_timeElapsed->setVisible(show);
 }
 
+void TopMenuWorkout::showCurrentTarget(bool show) {
+
+    showTargetEnabled = show;
+    ui->label_imagePower->setVisible(show && hasTargetPower);
+    ui->label_targetPower->setVisible(show && hasTargetPower);
+    ui->label_rangePower->setVisible(show && hasTargetPower);
+    ui->label_imageCad->setVisible(show && hasTargetCad);
+    ui->label_targetCad->setVisible(show && hasTargetCad);
+    ui->label_rangeCad->setVisible(show && hasTargetCad);
+    ui->label_imageHr->setVisible(show && hasTargetHr);
+    ui->label_targetHr->setVisible(show && hasTargetHr);
+    ui->label_rangeHr->setVisible(show && hasTargetHr);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////
 void TopMenuWorkout::setTargetPower(double percentageFTP, int range) {
 
@@ -475,9 +490,9 @@ void TopMenuWorkout::setTargetPower(double percentageFTP, int range) {
     if (percentageFTP > 0) {
         ui->label_targetPower->setText(QString::number(percentageFTP*100, 'f', 1) + "%");
         ui->label_rangePower->setText(" ±" + QString::number(range));
-        ui->label_imagePower->setVisible(true);
-        ui->label_targetPower->setVisible(true);
-        ui->label_rangePower->setVisible(true);
+        ui->label_imagePower->setVisible(showTargetEnabled);
+        ui->label_targetPower->setVisible(showTargetEnabled);
+        ui->label_rangePower->setVisible(showTargetEnabled);
         hasTargetPower = true;
     }
     else {
@@ -497,9 +512,9 @@ void TopMenuWorkout::setTargetCadence(int cadence, int range) {
     if (cadence > 0) {
         ui->label_targetCad->setText(QString::number(cadence));
         ui->label_rangeCad->setText(" ±" + QString::number(range));
-        ui->label_imageCad->setVisible(true);
-        ui->label_targetCad->setVisible(true);
-        ui->label_rangeCad->setVisible(true);
+        ui->label_imageCad->setVisible(showTargetEnabled);
+        ui->label_targetCad->setVisible(showTargetEnabled);
+        ui->label_rangeCad->setVisible(showTargetEnabled);
         hasTargetCad = true;
     }
     else {
@@ -519,9 +534,9 @@ void TopMenuWorkout::setTargetHeartRate(double percentageLTHR, int range) {
     if (percentageLTHR > 0) {
         ui->label_targetHr->setText(QString::number(percentageLTHR*100, 'f', 1) + "%");
         ui->label_rangeHr->setText(" ±" + QString::number(range));
-        ui->label_imageHr->setVisible(true);
-        ui->label_targetHr->setVisible(true);
-        ui->label_rangeHr->setVisible(true);
+        ui->label_imageHr->setVisible(showTargetEnabled);
+        ui->label_targetHr->setVisible(showTargetEnabled);
+        ui->label_rangeHr->setVisible(showTargetEnabled);
         hasTargetHr = true;
 
     }

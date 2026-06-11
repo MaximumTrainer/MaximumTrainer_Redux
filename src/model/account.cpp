@@ -144,6 +144,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
     show_interval_remaining = true;
     show_workout_remaining = false;
     show_elapsed = true;
+    show_current_target = true;
 
     averaging_power = 2;
     offset_power = 0;
@@ -319,6 +320,7 @@ void Account::loadDisplayPrefs() {
     show_interval_remaining = settings.value("show_interval_remaining", show_interval_remaining).toBool();
     show_workout_remaining  = settings.value("show_workout_remaining",  show_workout_remaining).toBool();
     show_elapsed            = settings.value("show_elapsed",            show_elapsed).toBool();
+    show_current_target     = settings.value("show_current_target",     show_current_target).toBool();
 
     // Plot target/curve toggles
     show_seperator_interval = settings.value("show_seperator_interval", show_seperator_interval).toBool();
@@ -402,6 +404,7 @@ void Account::saveDisplayPrefs() {
     settings.setValue("show_interval_remaining", show_interval_remaining);
     settings.setValue("show_workout_remaining",  show_workout_remaining);
     settings.setValue("show_elapsed",            show_elapsed);
+    settings.setValue("show_current_target",     show_current_target);
 
     settings.setValue("show_seperator_interval", show_seperator_interval);
     settings.setValue("show_grid",               show_grid);

@@ -313,5 +313,11 @@ include(src/fitness/fitness.pri)
 include(src/ui/ui.pri)
 include(src/workout/workout.pri)
 
+# Retro ghost-race spike: Qt Quick based, desktop only (no Quick on the WASM
+# singlethread target; the feature is an offline ride view anyway).
+!contains(QMAKE_PLATFORM, wasm):!wasm_emscripten:!wasm_emscripten_singlethread {
+    include(src/game/game.pri)
+}
+
 
 RESOURCES += MyResources.qrc

@@ -114,6 +114,7 @@ private slots:
     void on_checkBox_showIntervalRemainingTime_clicked(bool checked);
     void on_checkBox_showWorkoutRemainingTime_clicked(bool checked);
     void on_checkBox_showElapsedTime_clicked(bool checked);
+    void on_checkBox_showCurrentTarget_clicked(bool checked);
 
 
 

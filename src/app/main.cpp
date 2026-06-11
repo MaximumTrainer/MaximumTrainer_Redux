@@ -17,6 +17,15 @@
 #include "apptheme.h"
 #include "env_config.h"
 
+#ifndef Q_OS_WASM
+#include <QQuickWidget>
+#include <QQmlContext>
+#include <QUrl>
+#include <QPainter>
+#include <QImage>
+#include "retroracecontroller.h"
+#endif
+
 
 
 
@@ -174,6 +183,128 @@ int main(int argc, char *argv[]) {
     const QStringList &cliArgs = QCoreApplication::arguments();
     const bool screenshotMode = cliArgs.contains(QLatin1String("--screenshots"), Qt::CaseInsensitive)
                              || cliArgs.contains(QLatin1String("/screenshots"),  Qt::CaseInsensitive);
+
+#ifndef Q_OS_WASM
+    // --retrorace [file.fit] [--shot out.png]: standalone spike of the retro
+    // ghost-race view. Skips login/MainWindow entirely. With --shot it grabs one
+    // frame to a PNG and quits (headless validation); otherwise it stays open.
+    if (cliArgs.contains(QLatin1String("--retrorace"))) {
+        splash.hide();
+
+        const int raceIdx = cliArgs.indexOf(QLatin1String("--retrorace"));
+        QString fitPath;
+        if (raceIdx >= 0 && raceIdx + 1 < cliArgs.size()
+            && !cliArgs.at(raceIdx + 1).startsWith(QLatin1Char('-')))
+            fitPath = cliArgs.at(raceIdx + 1);
+
+        auto *controller = new RetroRaceController(&app);
+        // --bot [watts] forces a computer pacer; otherwise load your last ride
+        // and fall back to a pacer when there is no history to race.
+        const int botIdx = cliArgs.indexOf(QLatin1String("--bot"));
+        if (botIdx >= 0) {
+            double watts = 180.0;
+            if (botIdx + 1 < cliArgs.size()) {
+                bool ok = false;
+                const double parsed = cliArgs.at(botIdx + 1).toDouble(&ok);
+                if (ok) watts = parsed;
+            }
+            controller->useComputerPacer(watts);
+            // Give the standalone spike a target so the effort glow is testable.
+            controller->setTargetPower(watts, watts * 0.06);
+            controller->setTargetCadence(90, 6);
+        } else if (!controller->loadGhost(fitPath)) {
+            controller->useComputerPacer(180.0);
+        }
+
+        auto *view = new QQuickWidget();
+        view->setAttribute(Qt::WA_DeleteOnClose);
+        view->rootContext()->setContextProperty(QStringLiteral("race"), controller);
+        view->setResizeMode(QQuickWidget::SizeRootObjectToView);
+        view->setSource(QUrl(QStringLiteral("qrc:/game/qml/RetroRace.qml")));
+        view->resize(960, 540);
+        view->setWindowTitle(QStringLiteral("MaximumTrainer — Retro Ghost Race (spike)"));
+        view->show();
+        controller->start();
+        controller->beginRace();
+
+        // --sign: simulate a workout feeding an upcoming-interval countdown so
+        // the roadside interval sign can be exercised standalone.
+        if (cliArgs.contains(QLatin1String("--sign"))) {
+            const int sIdx = cliArgs.indexOf(QLatin1String("--sign"));
+            bool holdOk = false;
+            const double hold = (sIdx + 1 < cliArgs.size())
+                ? cliArgs.at(sIdx + 1).toDouble(&holdOk) : 0.0;
+            auto *secs = new double(holdOk ? hold : 24.0);
+            auto *st = new QTimer(view);
+            st->setInterval(1000);
+            QObject::connect(st, &QTimer::timeout, view, [controller, secs, holdOk]() {
+                controller->setNextInterval(275, 90, *secs);
+                if (!holdOk) { *secs -= 1.0; if (*secs < 0.0) *secs = 24.0; }
+            });
+            controller->setNextInterval(275, 90, *secs);
+            st->start();
+        }
+        // --finish [secs]: simulate the workout finish countdown so the
+        // approaching finish line can be exercised standalone.
+        if (cliArgs.contains(QLatin1String("--finish"))) {
+            const int fIdx = cliArgs.indexOf(QLatin1String("--finish"));
+            bool holdOk = false;
+            const double hold = (fIdx + 1 < cliArgs.size())
+                ? cliArgs.at(fIdx + 1).toDouble(&holdOk) : 0.0;
+            auto *fsecs = new double(holdOk ? hold : 50.0);
+            auto *ft = new QTimer(view);
+            ft->setInterval(1000);
+            QObject::connect(ft, &QTimer::timeout, view, [controller, fsecs, holdOk]() {
+                controller->setFinishIn(*fsecs);
+                if (!holdOk) { *fsecs -= 1.0; if (*fsecs < 0.0) *fsecs = 50.0; }
+            });
+            controller->setFinishIn(*fsecs);
+            ft->start();
+        }
+
+        const int shotIdx = cliArgs.indexOf(QLatin1String("--shot"));
+        if (shotIdx >= 0 && shotIdx + 1 < cliArgs.size()) {
+            const QString out = cliArgs.at(shotIdx + 1);
+            QTimer::singleShot(1500, view, [view, out]() {
+                view->grabFramebuffer().save(out);
+                QApplication::quit();
+            });
+        }
+        // --filmstrip out.png: grab a sequence of frames and composite them into
+        // one contact-sheet PNG (a poor-man's video for headless motion review).
+        const int stripIdx = cliArgs.indexOf(QLatin1String("--filmstrip"));
+        if (stripIdx >= 0 && stripIdx + 1 < cliArgs.size()) {
+            const QString out = cliArgs.at(stripIdx + 1);
+            bool intvOk = false;
+            const int intv = (stripIdx + 2 < cliArgs.size())
+                ? cliArgs.at(stripIdx + 2).toInt(&intvOk) : 0;
+            const int cols = 2, rows = 3, cellW = 640, cellH = 360;
+            auto *sheet = new QImage(cols * cellW, rows * cellH, QImage::Format_RGB32);
+            sheet->fill(Qt::black);
+            auto *painter = new QPainter(sheet);
+            painter->setPen(Qt::yellow);
+            auto *counter = new int(0);
+            const int total = cols * rows;
+            auto *t = new QTimer(view);
+            t->setInterval(intvOk && intv > 0 ? intv : 350);
+            QObject::connect(t, &QTimer::timeout, view, [=]() {
+                const QImage f = view->grabFramebuffer();
+                const int i = *counter;
+                const int cx = (i % cols) * cellW, cy = (i / cols) * cellH;
+                painter->drawImage(QRect(cx, cy, cellW, cellH), f);
+                painter->drawText(cx + 6, cy + 18, QString::number(i));
+                if (++(*counter) >= total) {
+                    painter->end();
+                    sheet->save(out);
+                    t->stop();
+                    QApplication::quit();
+                }
+            });
+            QTimer::singleShot(500, t, [t]() { t->start(); });
+        }
+        return app.exec();
+    }
+#endif
 
     // Creates and shows the MainWindow once login has completed (or has been
     // bypassed in screenshot mode). Heap-allocated so it outlives this scope;

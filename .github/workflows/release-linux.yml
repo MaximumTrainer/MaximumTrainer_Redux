@@ -101,6 +101,10 @@ jobs:
         # linuxdeploy-plugin-qt also bundles the QWT .so and any extra libs found
         # on LD_LIBRARY_PATH that the binary links against.
         LD_LIBRARY_PATH: ${{ env.QWT_DIR }}/lib
+        # Point qmlimportscanner at the game's QML so the plugin bundles the
+        # QtQuick / QtQuick.Shapes QML modules the retro-race view loads at
+        # runtime (they live in a qrc, invisible to the static dependency scan).
+        QML_SOURCES_PATHS: ${{ github.workspace }}/src/game/qml
       run: |
         # Create AppDir structure
         mkdir -p AppDir/usr/bin AppDir/usr/lib AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
