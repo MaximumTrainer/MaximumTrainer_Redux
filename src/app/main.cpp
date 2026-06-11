@@ -38,11 +38,6 @@ int main(int argc, char *argv[]) {
     // will override it from QSettings once the application identity is set.
     Logger::install();
 
-    // Spike/dev: don't serve a stale compiled copy of the game scene from the
-    // QML disk cache — Qt6 does not reliably invalidate it for QML embedded in a
-    // qrc resource, so edited scenes can silently keep rendering the old version.
-    qputenv("QML_DISABLE_DISK_CACHE", "1");
-
 #if defined(Q_OS_LINUX) && !defined(Q_OS_WASM)
     // Force the xcb platform (via XWayland) under a native Wayland session.
     // QtWebEngine and embedded native child widgets are markedly more stable

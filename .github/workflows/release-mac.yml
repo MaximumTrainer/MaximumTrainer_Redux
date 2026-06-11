@@ -81,7 +81,9 @@ jobs:
         # build time. (QtMultimedia frameworks are handled by macdeployqt.)
         install_name_tool -add_rpath /usr/local/qwt-6.3.0/lib "$APP" || true
 
-        macdeployqt build/release/MaximumTrainer.app -dmg
+        # -qmldir points macdeployqt at the game's QML so it bundles the QtQuick
+        # / QtQuick.Shapes QML modules the retro-race view loads at runtime.
+        macdeployqt build/release/MaximumTrainer.app -qmldir=src/game/qml -dmg
         mv build/release/MaximumTrainer.dmg MaximumTrainer-macos.dmg
 
     - name: Verify bundled frameworks

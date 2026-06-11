@@ -2268,7 +2268,7 @@ QLabel#label_imageCalories {
                </item>
                <item>
                 <property name="text">
-                 <string>Game (Retro Race)</string>
+                 <string>Game (Retro Race · beta)</string>
                 </property>
                </item>
               </widget>

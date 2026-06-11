@@ -215,6 +215,7 @@ jobs:
         & "$env:QTDIR\bin\windeployqt.exe" --release `
             --no-translations `
             --no-system-d3d-compiler `
+            --qmldir src\game\qml `
             build\release\MaximumTrainer.exe
       shell: powershell
 
