@@ -435,6 +435,26 @@ Item {
         }
     }
 
+    // OVERTAKE! / PASSED! flash when the lead changes hands.
+    property real prevGap: 0
+    Text {
+        id: otText; anchors.centerIn: parent; anchors.verticalCenterOffset: -root.height * 0.18; z: 58
+        text: ""; font.family: "monospace"; font.pixelSize: Math.round(root.height * 0.095); font.bold: true
+        opacity: 0
+        Connections { target: race
+            function onUpdated() {
+                if (!race.started || race.finished) return
+                if (root.prevGap < 0 && race.gapMeters >= 0) { otText.text = "OVERTAKE!"; otText.color = "#5dff5d"; otAnim.restart() }
+                else if (root.prevGap >= 0 && race.gapMeters < 0) { otText.text = "PASSED!"; otText.color = "#ff6b6b"; otAnim.restart() }
+                root.prevGap = race.gapMeters
+            }
+        }
+        SequentialAnimation { id: otAnim
+            NumberAnimation { target: otText; property: "opacity"; from: 1.0; to: 1.0; duration: 800 }
+            NumberAnimation { target: otText; property: "opacity"; to: 0.0; duration: 650 }
+        }
+    }
+
     // ---------------------------------------------------------------- HUD
     Rectangle { anchors { top: parent.top; left: parent.left; right: parent.right }
         height: 72; color: "#000000"; opacity: 0.45 }
