@@ -57,8 +57,7 @@ class RetroRaceController : public QObject
     Q_PROPERTY(double nextSecs      READ nextSecs      NOTIFY nextChanged)
     Q_PROPERTY(double nextSignZ     READ nextSignZ     NOTIFY nextChanged)  // world dist of the sign
     Q_PROPERTY(QString intervalMessage READ intervalMessage NOTIFY nextChanged)
-    // Workout finish line: world distance + seconds until the workout ends.
-    Q_PROPERTY(double finishSignZ   READ finishSignZ   NOTIFY finishChanged)
+    // Seconds until the workout ends (drives the approaching finish line).
     Q_PROPERTY(double finishSecs    READ finishSecs    NOTIFY finishChanged)
     // Whole-ride metrics (from DataWorkout) for the info panel.
     Q_PROPERTY(double np      READ np      NOTIFY metricsChanged)
@@ -70,6 +69,7 @@ class RetroRaceController : public QObject
     // Warped scroll distance for scenery: advances faster than real distance as
     // speed rises, so the world rushes by harder at 30+ km/h (pure visual feel).
     Q_PROPERTY(double  visualDist      READ visualDist      NOTIFY updated)
+    Q_PROPERTY(double  visualSpeed     READ visualSpeed     NOTIFY updated)
     Q_PROPERTY(bool    running         READ running         NOTIFY updated)
     Q_PROPERTY(bool    started         READ started         NOTIFY raceStateChanged)
     Q_PROPERTY(bool    finished        READ finished        NOTIFY raceStateChanged)
@@ -140,7 +140,6 @@ public:
     double  nextTargetCad() const       { return m_nextCad; }
     double  nextSecs() const            { return m_nextSecs; }
     double  nextSignZ() const           { return m_nextSignZ; }
-    double  finishSignZ() const         { return m_finishSignZ; }
     double  finishSecs() const          { return m_finishSecs; }
     QString intervalMessage() const     { return m_intervalMessage; }
     void    setIntervalMessage(const QString &m) { m_intervalMessage = m; emit nextChanged(); }
@@ -153,6 +152,7 @@ public:
     double  playerCrankRev() const  { return m_playerCrankRev; }
     double  oppCrankRev() const     { return m_oppCrankRev; }
     double  visualDist() const      { return m_visualDist; }
+    double  visualSpeed() const     { return m_visualSpeed; }
     bool    running() const         { return m_timer.isActive(); }
     bool    started() const         { return m_started; }
     bool    finished() const        { return m_finished; }
@@ -196,24 +196,12 @@ public slots:
         m_nextSignZ = (secs >= 0.0) ? m_visualDist + m_visualSpeed * secs : -1.0;
         emit nextChanged();
     }
-    /// Seconds remaining until the workout finishes — anchors the approaching
-    /// finish line in warped world distance (like the interval sign).
+    /// Seconds remaining until the workout finishes. The QML places the finish
+    /// line at finishSecs × visualSpeed, so it rides in at the scenery speed and
+    /// arrives exactly when the workout ends (no world-position drift).
     void setFinishIn(double secs)
     {
         m_finishSecs = secs;
-        // Arm the finish line ONCE when it enters the ~30 s approach window, then
-        // leave its world position fixed so it rides in purely on visualDist —
-        // i.e. at exactly the scenery/rumble speed. Re-sampling visualSpeed each
-        // second (and the ≈0 speed at the start line) made it drift / appear early.
-        if (secs >= 0.0 && secs <= 30.0) {
-            if (!m_finishArmed && m_visualSpeed > 0.5) {   // wait until actually rolling
-                m_finishSignZ = m_visualDist + m_visualSpeed * secs;
-                m_finishArmed = true;
-            }
-        } else {
-            m_finishArmed = false;
-            m_finishSignZ = -1.0;
-        }
         emit finishChanged();
     }
 
@@ -280,8 +268,7 @@ private:
     int    m_workoutElapsedSec = 0;
     bool   m_gameFullscreen  = false;
     double m_nextW = -1.0, m_nextCad = -1.0, m_nextSecs = -1.0, m_nextSignZ = -1.0;
-    double m_finishSecs = -1.0, m_finishSignZ = -1.0;
-    bool   m_finishArmed = false;
+    double m_finishSecs = -1.0;
     QString m_intervalMessage;
     double  m_np = 0.0, m_if = 0.0, m_tss = 0.0;
 };

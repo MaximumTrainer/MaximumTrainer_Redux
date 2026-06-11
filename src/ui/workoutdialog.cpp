@@ -1800,10 +1800,13 @@ void WorkoutDialog::sendLastSecondData(int seconds) {
         const double tot = Util::convertQTimeToSecD(workout.getDurationQTime());
         if (tot > 0) raceController->setWorkoutProgress(qBound(0.0, seconds / tot, 1.0));
         raceController->setWorkoutElapsedSec(seconds);
-        if (tot > 0) raceController->setFinishIn(tot - seconds);   // approaching finish line
+        // timeInterval / the timers are decremented just AFTER this call, so the
+        // values here read 1 s high vs the on-screen graph & timer widgets —
+        // subtract 1 so the game's interval/finish countdowns stay in sync.
+        if (tot > 0) raceController->setFinishIn(qMax(0.0, tot - seconds - 1.0));
 
         // Preview the upcoming interval's target on the road ahead.
-        const double secsToNext = Util::convertQTimeToSecD(timeInterval);
+        const double secsToNext = qMax(0.0, Util::convertQTimeToSecD(timeInterval) - 1.0);
         double nextW = -1.0, nextCad = -1.0;
         if (currentInterval + 1 < workout.getNbInterval()) {
             const Interval nxt = workout.getInterval(currentInterval + 1);

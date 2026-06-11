@@ -391,11 +391,16 @@ Item {
     }
 
     // Finish line: a checkered band spanning the road with a "FINISH" banner
-    // overhead, rolling in from the horizon over the last stretch (anchored in
-    // world distance like the interval sign) and sweeping past as the workout ends.
+    // overhead. Its distance = (seconds to finish) × scenery speed, so it rolls
+    // in at the rumble's speed AND arrives exactly when the workout ends.
+    // finishSecs steps each second; interpolate against animT for smooth motion.
+    property real finBaseT: 0
+    Connections { target: race; function onFinishChanged() { root.finBaseT = root.animT } }
     Item {
         id: finishLine
-        readonly property real aheadZ: race.finishSignZ - race.visualDist
+        readonly property real secsNow: race.finishSecs < 0 ? -1
+            : Math.max(0, race.finishSecs - (root.animT - root.finBaseT))
+        readonly property real aheadZ: secsNow * Math.max(4, race.visualSpeed)
         readonly property real p:      Math.min(1.0, 38 / Math.max(6, aheadZ))
         readonly property real halfw:  root.maxHalfW * p
         readonly property real roadW:  2 * halfw
@@ -403,7 +408,7 @@ Item {
         readonly property real bandH:  Math.max(4, 28 * p)
         readonly property real postH:  74 * p
         readonly property int  cols:   12
-        visible: race.started && !race.finished && race.finishSecs >= 0 && aheadZ > 0.5 && aheadZ < 460
+        visible: race.started && !race.finished && secsNow >= 0 && secsNow <= 30
         x: root.width/2 - halfw
         y: cy - bandH
         width: roadW; height: bandH
