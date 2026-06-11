@@ -106,16 +106,12 @@ Item {
         Rectangle { x: bike.bw*0.23; y: bike.bh*0.34; width: bike.bw*0.54; height: bike.bh*0.16; color: bike.body }
         Rectangle { x: bike.bw*0.27; y: bike.bh*0.24; width: bike.bw*0.46; height: bike.bh*0.12; color: bike.body }
         Rectangle { x: bike.bw*0.30; y: bike.bh*0.17; width: bike.bw*0.40; height: bike.bh*0.10; color: Qt.darker(bike.body, 1.3) }
-        // handlebar across the front, with the hands resting on the grips
-        Rectangle { x: bike.bw*0.15; y: bike.bh*0.345; width: bike.bw*0.70; height: bike.bh*0.04; radius: bike.bh*0.02; color: "#23232a" }
-        // upper arms angling out from the shoulders down to the grips
-        Rectangle { x: bike.bw*0.235; y: bike.bh*0.225; width: bike.bw*0.095; height: bike.bh*0.21; radius: bike.bw*0.045
-                    color: bike.skin; rotation: -20; transformOrigin: Item.Top }
-        Rectangle { x: bike.bw*0.67; y: bike.bh*0.225; width: bike.bw*0.095; height: bike.bh*0.21; radius: bike.bw*0.045
-                    color: bike.skin; rotation: 20; transformOrigin: Item.Top }
-        // gloved hands gripping the bar ends
-        Rectangle { x: bike.bw*0.115; y: bike.bh*0.33; width: bike.bw*0.13; height: bike.bh*0.09; radius: bike.bw*0.04; color: "#33333c" }
-        Rectangle { x: bike.bw*0.755; y: bike.bh*0.33; width: bike.bw*0.13; height: bike.bh*0.09; radius: bike.bw*0.04; color: "#33333c" }
+        // upper arms / elbows hinted at the sides (jersey sleeves) angling
+        // forward-down. Hands are on the bars out front — hidden from behind.
+        Rectangle { x: bike.bw*0.215; y: bike.bh*0.26; width: bike.bw*0.11; height: bike.bh*0.18; radius: bike.bw*0.05
+                    color: Qt.darker(bike.body, 1.18); rotation: -12; transformOrigin: Item.Top }
+        Rectangle { x: bike.bw*0.675; y: bike.bh*0.26; width: bike.bw*0.11; height: bike.bh*0.18; radius: bike.bw*0.05
+                    color: Qt.darker(bike.body, 1.18); rotation: 12; transformOrigin: Item.Top }
         // aero helmet (rounded) with a darker vent stripe
         Rectangle { x: bike.bw*0.38; y: bike.bh*0.05; width: bike.bw*0.24; height: bike.bh*0.16; radius: bike.bw*0.10; color: bike.helmet }
         Rectangle { x: bike.bw*0.485; y: bike.bh*0.06; width: bike.bw*0.04; height: bike.bh*0.13; color: Qt.darker(bike.helmet, 1.4) }
@@ -453,19 +449,21 @@ Item {
     // Opponent: shown up the road only while ahead of you (you are behind).
     BackBike {
         readonly property real ahead: -race.gapMeters
-        readonly property real f: 42 / (42 + Math.max(0, ahead))     // 1 near .. ->0 far
-        readonly property real op: 0.14 + 0.82 * f                   // band fraction up the road
+        readonly property real f: 50 / (50 + Math.max(0, ahead))     // 1 near .. ->0 far
+        // When the gap is small the ghost sits right beside you (player's level
+        // and size); it recedes up the road as the gap opens.
+        readonly property real op: 0.30 + 0.46 * f                   // 0.30 far .. 0.76 alongside
         readonly property real oz: (1.0 / Math.max(0.03, op)) * 38 + race.visualDist
-        visible: race.started && !race.finished && ahead > 1 && ahead < 240
-        s: 0.6 + 1.7 * f
+        visible: race.started && !race.finished && ahead > 0.5 && ahead < 200
+        s: Math.min(2.15, 0.8 + 1.5 * f)                             // up to the player's size
         body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.85   // cyan so it stands out on grey + the dash
         phase: race.oppCrankRev
         lean: root.curveAt(oz) * 13
         // Sit in the LEFT lane (offset grows as it nears) so you pull up
         // alongside it rather than staring at its back wheel. Converges toward
         // the centre/vanishing point when it is far up the road.
-        x: root.roadCx(op, oz) - width / 2 - 0.42 * root.maxHalfW * op
-        y: root.horizonY + root.roadH * (0.14 + 0.82 * f) - height
+        x: root.roadCx(op, oz) - width / 2 - 0.34 * root.maxHalfW * op
+        y: root.horizonY + root.roadH * (0.30 + 0.46 * f) - height
     }
     // "ghost ahead" marker chevron when the opponent is too far to render.
     Text {
