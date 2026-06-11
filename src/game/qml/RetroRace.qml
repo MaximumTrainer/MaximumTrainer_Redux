@@ -294,11 +294,15 @@ Item {
                                                     : (120 + root.rnd(index+4)*90)
             readonly property real tw: baseW * p
             readonly property real th: baseH * p
-            readonly property color foliage: Qt.rgba(0.16 + root.rnd(index+9)*0.12,
-                                                     0.44 + root.rnd(index+11)*0.18,
-                                                     0.22 + root.rnd(index+13)*0.12, 1)
-            // distance haze: 0 near .. 1 far, fades the object into the horizon
+            readonly property color baseFoliage: Qt.rgba(0.16 + root.rnd(index+9)*0.12,
+                                                         0.44 + root.rnd(index+11)*0.18,
+                                                         0.22 + root.rnd(index+13)*0.12, 1)
+            // distance haze: 0 near .. 1 far, fades the object into the horizon.
+            // Baked into the colours (Qt.tint) rather than a square overlay, which
+            // showed a faint box around distant trees.
             readonly property real haz: Math.max(0, Math.min(1, (0.36 - p) / 0.20))
+            readonly property color foliage: Qt.tint(baseFoliage, Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
+            readonly property color barkCol: Qt.tint("#5a3a1f", Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
             visible: race.started && p > 0.155
             x: root.width/2 + side * p * latWorld - tw/2
             y: cy - th
@@ -312,7 +316,7 @@ Item {
             Rectangle { visible: ob.kind===2; x: ob.tw*0.18; y: 0;          width: ob.tw*0.64; height: ob.th*0.50; radius: ob.tw*0.34; color: Qt.lighter(ob.foliage,1.16) }
 
             // trunk (both tree kinds)
-            Rectangle { visible: ob.kind!==2; x: ob.tw*0.44; y: ob.th*0.66; width: ob.tw*0.12; height: ob.th*0.36; color: "#5a3a1f" }
+            Rectangle { visible: ob.kind!==2; x: ob.tw*0.44; y: ob.th*0.66; width: ob.tw*0.12; height: ob.th*0.36; color: ob.barkCol }
 
             // pine: three tiers narrowing upward (conical)
             Rectangle { visible: ob.kind===0; x: ob.tw*0.10; y: ob.th*0.40; width: ob.tw*0.80; height: ob.th*0.32; radius: ob.tw*0.10; color: ob.foliage }
@@ -323,9 +327,6 @@ Item {
             Rectangle { visible: ob.kind===1; x: 0;          y: ob.th*0.24; width: ob.tw;      height: ob.th*0.50; radius: ob.tw*0.42; color: ob.foliage }
             Rectangle { visible: ob.kind===1; x: ob.tw*0.10; y: ob.th*0.06; width: ob.tw*0.62; height: ob.th*0.44; radius: ob.tw*0.34; color: Qt.lighter(ob.foliage,1.12) }
             Rectangle { visible: ob.kind===1; x: ob.tw*0.40; y: 0;          width: ob.tw*0.46; height: ob.th*0.34; radius: ob.tw*0.26; color: Qt.lighter(ob.foliage,1.22) }
-
-            // atmospheric haze tint — distant trees melt into the horizon
-            Rectangle { anchors.fill: parent; color: "#9ec3cf"; opacity: ob.haz * 0.5 }
         }
     }
 
