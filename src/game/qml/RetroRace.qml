@@ -106,14 +106,16 @@ Item {
         Rectangle { x: bike.bw*0.23; y: bike.bh*0.34; width: bike.bw*0.54; height: bike.bh*0.16; color: bike.body }
         Rectangle { x: bike.bw*0.27; y: bike.bh*0.24; width: bike.bw*0.46; height: bike.bh*0.12; color: bike.body }
         Rectangle { x: bike.bw*0.30; y: bike.bh*0.17; width: bike.bw*0.40; height: bike.bh*0.10; color: Qt.darker(bike.body, 1.3) }
-        // arms reaching forward to the bars
-        Rectangle { x: bike.bw*0.18; y: bike.bh*0.24; width: bike.bw*0.10; height: bike.bh*0.17; radius: bike.bw*0.03
-                    color: bike.skin; rotation: 13; transformOrigin: Item.Top }
-        Rectangle { x: bike.bw*0.72; y: bike.bh*0.24; width: bike.bw*0.10; height: bike.bh*0.17; radius: bike.bw*0.03
-                    color: bike.skin; rotation: -13; transformOrigin: Item.Top }
-        // handlebar tips poking out at the sides
-        Rectangle { x: bike.bw*0.12; y: bike.bh*0.31; width: bike.bw*0.09; height: bike.bh*0.05; color: "#2a2a30" }
-        Rectangle { x: bike.bw*0.79; y: bike.bh*0.31; width: bike.bw*0.09; height: bike.bh*0.05; color: "#2a2a30" }
+        // handlebar across the front, with the hands resting on the grips
+        Rectangle { x: bike.bw*0.15; y: bike.bh*0.345; width: bike.bw*0.70; height: bike.bh*0.04; radius: bike.bh*0.02; color: "#23232a" }
+        // upper arms angling out from the shoulders down to the grips
+        Rectangle { x: bike.bw*0.235; y: bike.bh*0.225; width: bike.bw*0.095; height: bike.bh*0.21; radius: bike.bw*0.045
+                    color: bike.skin; rotation: -20; transformOrigin: Item.Top }
+        Rectangle { x: bike.bw*0.67; y: bike.bh*0.225; width: bike.bw*0.095; height: bike.bh*0.21; radius: bike.bw*0.045
+                    color: bike.skin; rotation: 20; transformOrigin: Item.Top }
+        // gloved hands gripping the bar ends
+        Rectangle { x: bike.bw*0.115; y: bike.bh*0.33; width: bike.bw*0.13; height: bike.bh*0.09; radius: bike.bw*0.04; color: "#33333c" }
+        Rectangle { x: bike.bw*0.755; y: bike.bh*0.33; width: bike.bw*0.13; height: bike.bh*0.09; radius: bike.bw*0.04; color: "#33333c" }
         // aero helmet (rounded) with a darker vent stripe
         Rectangle { x: bike.bw*0.38; y: bike.bh*0.05; width: bike.bw*0.24; height: bike.bh*0.16; radius: bike.bw*0.10; color: bike.helmet }
         Rectangle { x: bike.bw*0.485; y: bike.bh*0.06; width: bike.bw*0.04; height: bike.bh*0.13; color: Qt.darker(bike.helmet, 1.4) }
@@ -390,17 +392,28 @@ Item {
         Rectangle { x: -ivSign.sw*0.46; y: -ivSign.sh*0.24; width: ivSign.sw*0.32; height: ivSign.sh*0.28; radius: ivSign.sw*0.15; color: "#2f7a3a" }
     }
 
-    // Finish line: a checkered band spanning the road with a "FINISH" banner
-    // overhead. Its distance = (seconds to finish) × scenery speed, so it rolls
-    // in at the rumble's speed AND arrives exactly when the workout ends.
-    // finishSecs steps each second; interpolate against animT for smooth motion.
-    property real finBaseT: 0
-    Connections { target: race; function onFinishChanged() { root.finBaseT = root.animT } }
+    // Finish line: a checkered band spanning the road with a "FINISH" banner.
+    // It is anchored at a fixed WORLD distance (finWorldZ) — exactly like the
+    // roadside trees — so it scrolls at the same speed as the road/rumble border.
+    // Re-predicted each second from (visualDist + secs × visualSpeed) but only
+    // ever pulled CLOSER (never receded), so it never appears to slow down vs the
+    // road; sprinting the final stretch just reaches it a touch early.
+    property real finWorldZ: -1
+    Connections {
+        target: race
+        function onFinishChanged() {
+            if (race.started && !race.finished && race.finishSecs >= 0
+                && race.finishSecs <= 30 && race.visualSpeed > 0.3) {
+                var pred = race.visualDist + race.finishSecs * race.visualSpeed
+                if (root.finWorldZ < 0 || pred < root.finWorldZ) root.finWorldZ = pred
+            } else if (race.finishSecs < 0 || race.finishSecs > 31) {
+                root.finWorldZ = -1
+            }
+        }
+    }
     Item {
         id: finishLine
-        readonly property real secsNow: race.finishSecs < 0 ? -1
-            : Math.max(0, race.finishSecs - (root.animT - root.finBaseT))
-        readonly property real aheadZ: secsNow * Math.max(4, race.visualSpeed)
+        readonly property real aheadZ: root.finWorldZ < 0 ? -1 : (root.finWorldZ - race.visualDist)
         readonly property real p:      Math.min(1.0, 38 / Math.max(6, aheadZ))
         readonly property real halfw:  root.maxHalfW * p
         readonly property real roadW:  2 * halfw
@@ -408,7 +421,7 @@ Item {
         readonly property real bandH:  Math.max(4, 28 * p)
         readonly property real postH:  74 * p
         readonly property int  cols:   12
-        visible: race.started && !race.finished && secsNow >= 0 && secsNow <= 30
+        visible: race.started && !race.finished && root.finWorldZ >= 0 && aheadZ > 0.5 && aheadZ < 480
         x: root.width/2 - halfw
         y: cy - bandH
         width: roadW; height: bandH
@@ -440,11 +453,11 @@ Item {
     // Opponent: shown up the road only while ahead of you (you are behind).
     BackBike {
         readonly property real ahead: -race.gapMeters
-        readonly property real f: 30 / (30 + Math.max(0, ahead))     // 1 near .. ->0 far
-        readonly property real op: 0.10 + 0.74 * f                   // band fraction up the road
+        readonly property real f: 42 / (42 + Math.max(0, ahead))     // 1 near .. ->0 far
+        readonly property real op: 0.14 + 0.82 * f                   // band fraction up the road
         readonly property real oz: (1.0 / Math.max(0.03, op)) * 38 + race.visualDist
-        visible: race.started && !race.finished && ahead > 1 && ahead < 220
-        s: 0.45 + 1.35 * f
+        visible: race.started && !race.finished && ahead > 1 && ahead < 240
+        s: 0.6 + 1.7 * f
         body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.85   // cyan so it stands out on grey + the dash
         phase: race.oppCrankRev
         lean: root.curveAt(oz) * 13
@@ -452,7 +465,7 @@ Item {
         // alongside it rather than staring at its back wheel. Converges toward
         // the centre/vanishing point when it is far up the road.
         x: root.roadCx(op, oz) - width / 2 - 0.42 * root.maxHalfW * op
-        y: root.horizonY + root.roadH * (0.10 + 0.74 * f) - height
+        y: root.horizonY + root.roadH * (0.14 + 0.82 * f) - height
     }
     // "ghost ahead" marker chevron when the opponent is too far to render.
     Text {
