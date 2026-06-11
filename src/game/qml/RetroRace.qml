@@ -14,6 +14,11 @@ Item {
     readonly property real horizonY: Math.round(height * 0.40)
     readonly property real roadH:    height - horizonY
     readonly property real maxHalfW: width * 0.60
+
+    // Free-running wall clock (≈ seconds) that drives ambient motion (clouds,
+    // birds) independently of the race physics tick.
+    property real animT: 0
+    NumberAnimation on animT { from: 0; to: 100000; duration: 100000000; loops: Animation.Infinite; running: true }
     function fmtTime(s) { var m = Math.floor(s / 60); var ss = Math.floor(s % 60); return m + ":" + (ss < 10 ? "0" : "") + ss; }
     // Deterministic pseudo-random in [0,1) from an index (stable per object).
     function rnd(n) { var x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); }
@@ -122,32 +127,42 @@ Item {
         }
     }
 
-    // a few distant birds (simple shallow chevrons) for a touch of life
+    // Soft clouds drifting slowly across the sky (wrap cleanly via the animT clock).
+    Repeater {
+        model: 5
+        Item {
+            id: cloud
+            readonly property real px:    [110, 360, 600, 840, 200][index] / 960 * root.width
+            readonly property real py:    [60, 118, 48, 140, 92][index]
+            readonly property real sc:    [1.0, 0.78, 1.12, 0.7, 0.9][index]
+            readonly property real drift: [9, 6, 12, 5, 7.5][index]      // px/sec
+            readonly property real cw:    100 * sc
+            readonly property real lane:  root.width + cw + 60
+            x: ((px + root.animT * drift) % lane + lane) % lane - cw
+            y: py
+            Rectangle { x: 0;           y: 10*cloud.sc; width: 72*cloud.sc; height: 26*cloud.sc; radius: 13*cloud.sc; color: "#ffffff"; opacity: 0.82 }
+            Rectangle { x: 24*cloud.sc; y: 0;           width: 52*cloud.sc; height: 34*cloud.sc; radius: 17*cloud.sc; color: "#ffffff"; opacity: 0.9 }
+            Rectangle { x: 52*cloud.sc; y: 8*cloud.sc;  width: 46*cloud.sc; height: 24*cloud.sc; radius: 12*cloud.sc; color: "#eef4ff"; opacity: 0.82 }
+        }
+    }
+
+    // A few birds: drift across the sky and flap their wings (animT-driven).
     Repeater {
         model: 3
         Item {
             id: bird
-            readonly property real bx: [236, 300, 520][index]
-            readonly property real by: [118, 134, 98][index]
-            readonly property real bs: [1.0, 0.8, 1.15][index]
-            x: bx; y: by
-            Rectangle { x: 0;            width: 13*bird.bs; height: 3*bird.bs; radius: 1.5; color: "#2a3c54"; rotation: 20; antialiasing: true }
-            Rectangle { x: 9.5*bird.bs;  width: 13*bird.bs; height: 3*bird.bs; radius: 1.5; color: "#2a3c54"; rotation: -20; antialiasing: true }
-        }
-    }
-
-    // drifting-looking soft clouds (static positions — cheap, reads well)
-    Repeater {
-        model: 4
-        Item {
-            id: cloud
-            readonly property real px: [110, 360, 600, 840][index]
-            readonly property real py: [66, 120, 54, 150][index]
-            readonly property real sc: [1.0, 0.78, 1.12, 0.7][index]
-            x: px; y: py
-            Rectangle { x: 0;            y: 10*cloud.sc; width: 72*cloud.sc; height: 26*cloud.sc; radius: 13*cloud.sc; color: "#ffffff"; opacity: 0.82 }
-            Rectangle { x: 24*cloud.sc;  y: 0;           width: 52*cloud.sc; height: 34*cloud.sc; radius: 17*cloud.sc; color: "#ffffff"; opacity: 0.9 }
-            Rectangle { x: 52*cloud.sc;  y: 8*cloud.sc;  width: 46*cloud.sc; height: 24*cloud.sc; radius: 12*cloud.sc; color: "#eef4ff"; opacity: 0.82 }
+            readonly property real py:    [118, 134, 98][index]
+            readonly property real bs:    [1.0, 0.8, 1.15][index]
+            readonly property real drift: [22, 17, 26][index]            // px/sec
+            readonly property real phase: [0, 2.1, 4.0][index]
+            readonly property real lane:  root.width + 80
+            readonly property real flap:  16 + 12 * Math.sin(root.animT * 5 + phase)
+            x: ((index*330 + root.animT * drift) % lane + lane) % lane - 40
+            y: py + 5 * Math.sin(root.animT * 1.1 + phase)
+            Rectangle { x: 0;           width: 13*bird.bs; height: 3*bird.bs; radius: 1.5; color: "#2a3c54"; antialiasing: true
+                        rotation: bird.flap;  transformOrigin: Item.Right }
+            Rectangle { x: 9.5*bird.bs; width: 13*bird.bs; height: 3*bird.bs; radius: 1.5; color: "#2a3c54"; antialiasing: true
+                        rotation: -bird.flap; transformOrigin: Item.Left }
         }
     }
 
@@ -165,31 +180,23 @@ Item {
             var ctx = getContext("2d"); ctx.reset();
             var W = width, base = root.horizonY;
             function rj(n) { var v = Math.sin(n * 127.1) * 43758.5453; return v - Math.floor(v); }
-            function range(amp, step, color, seed, snow) {
+            // One jagged range: filled body + a sunlit ridge highlight along the top.
+            function range(amp, step, fill, hi, seed) {
                 var pts = [];
-                for (var x = 0, i = 0; x <= W + step; x += step, i++)
-                    pts.push({ x: x, y: base - amp * (0.30 + 0.70 * rj(i * 1.7 + seed)) });
-                ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, base);
+                for (var x = -step, i = 0; x <= W + step; x += step, i++)
+                    pts.push({ x: x, y: base - amp * (0.34 + 0.66 * rj(i * 1.7 + seed)) });
+                ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(pts[0].x, base);
                 for (var k = 0; k < pts.length; k++) ctx.lineTo(pts[k].x, pts[k].y);
-                ctx.lineTo(W, base); ctx.closePath(); ctx.fill();
-                if (snow) {
-                    ctx.fillStyle = "#eef4f7";
-                    for (var m = 1; m < pts.length - 1; m++) {
-                        if (pts[m].y < pts[m - 1].y && pts[m].y < pts[m + 1].y    // a peak
-                            && pts[m].y < base - amp * 0.55) {                    // and a tall one
-                            var capH = (base - pts[m].y) * 0.15;
-                            ctx.beginPath();
-                            ctx.moveTo(pts[m].x, pts[m].y);
-                            ctx.lineTo(pts[m].x - capH * 0.9, pts[m].y + capH);
-                            ctx.lineTo(pts[m].x + capH * 0.9, pts[m].y + capH);
-                            ctx.closePath(); ctx.fill();
-                        }
-                    }
-                }
+                ctx.lineTo(pts[pts.length - 1].x, base); ctx.closePath(); ctx.fill();
+                ctx.strokeStyle = hi; ctx.lineWidth = 2.5; ctx.lineJoin = "round";
+                ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+                for (var j = 1; j < pts.length; j++) ctx.lineTo(pts[j].x, pts[j].y);
+                ctx.stroke();
             }
-            range(150, W / 12, "#6f8fb0", 2.1,  true);    // far snow-capped peaks
-            range(100, W / 9,  "#56867f", 7.3,  false);   // mid teal-green ridge
-            range(62,  W / 13, "#3f7a52", 13.7, false);   // near green forested hills
+            range(165, W / 11, "#566f9e", "#8ea6cc", 2.1);   // far blue mountains
+            range(112, W / 8,  "#4d857e", "#79b3aa", 7.3);   // mid teal ridge
+            range(64,  W / 12, "#3f7a52", "#5fa46c", 13.7);  // near green hills
+            range(40,  W / 52, "#356b41", "#3f7a4c", 21.5);  // distant forest treeline (fine bumps)
         }
     }
 
@@ -213,7 +220,7 @@ Item {
             readonly property real cx:   root.width / 2
             readonly property real rW:   Math.max(2, hw * 0.16 + 3)           // rumble width
             readonly property real eW:   Math.max(1, hw * 0.028 + 1)          // edge-line width
-            readonly property real cdW:  Math.max(1.5, hw * 0.028)            // centre-dash width (thin)
+            readonly property real cdW:  Math.max(1.5, hw * 0.032)            // centre-dash width (thin)
             readonly property bool haze: p < 0.18                             // far field: no flicker
             x: 0; width: root.width
             y: root.horizonY + (index / root.slices) * root.roadH
@@ -234,7 +241,7 @@ Item {
             Rectangle { x: parent.cx + parent.hw - parent.eW; width: parent.eW; height: parent.height; color: "#f4f4f4" }
             // centre dash (alternate segments only) — runs from near the horizon
             Rectangle { visible: parent.even && parent.p > 0.05
-                x: parent.cx - parent.cdW / 2; width: parent.cdW; height: parent.height; color: "#e9e9c4" }
+                x: parent.cx - parent.cdW / 2; width: parent.cdW; height: parent.height; color: "#f3f1d6" }
         }
     }
 
@@ -255,14 +262,14 @@ Item {
     // depth/speed cue plus scenery. Three kinds (pine / leafy tree / bush) in
     // varied greens, scattered across the verge. Anchored in world distance.
     Repeater {
-        model: 54
+        model: 72
         Item {
             id: ob
-            readonly property real span: 26 * 54
-            readonly property real az: ((index * 26 - race.visualDist) % span + span) % span + 8  // distance ahead
+            readonly property real span: 24 * 72
+            readonly property real az: ((index * 24 - race.visualDist) % span + span) % span + 8  // distance ahead
             readonly property real p: Math.min(1.0, 38 / az)
             readonly property real r1: root.rnd(index * 1.3 + 3)
-            readonly property int  kind: r1 < 0.30 ? 2 : (r1 < 0.62 ? 0 : 1)   // 2 bush · 0 pine · 1 leafy
+            readonly property int  kind: r1 < 0.35 ? 2 : (r1 < 0.50 ? 0 : 1)   // 2 bush · 0 pine · 1 leafy
             readonly property int  side: root.rnd(index * 2.1) < 0.5 ? -1 : 1
             // Lateral world offset from centre: 1.12× road-half (just off the
             // edge) out to ~4.5× (far across the grass). Scattered, not hugging.
@@ -280,8 +287,8 @@ Item {
                                                      0.44 + root.rnd(index+11)*0.18,
                                                      0.22 + root.rnd(index+13)*0.12, 1)
             // distance haze: 0 near .. 1 far, fades the object into the horizon
-            readonly property real haz: Math.max(0, Math.min(1, (0.26 - p) / 0.24))
-            visible: race.started && p > 0.03
+            readonly property real haz: Math.max(0, Math.min(1, (0.36 - p) / 0.20))
+            visible: race.started && p > 0.155
             x: root.width/2 + side * p * latWorld - tw/2
             y: cy - th
             width: tw; height: th
@@ -301,12 +308,13 @@ Item {
             Rectangle { visible: ob.kind===0; x: ob.tw*0.18; y: ob.th*0.20; width: ob.tw*0.64; height: ob.th*0.28; radius: ob.tw*0.10; color: Qt.lighter(ob.foliage,1.10) }
             Rectangle { visible: ob.kind===0; x: ob.tw*0.30; y: 0;          width: ob.tw*0.40; height: ob.th*0.26; radius: ob.tw*0.10; color: Qt.lighter(ob.foliage,1.20) }
 
-            // leafy tree: round canopy in two blobs
-            Rectangle { visible: ob.kind===1; x: 0;          y: ob.th*0.26; width: ob.tw;      height: ob.th*0.46; radius: ob.tw*0.40; color: ob.foliage }
-            Rectangle { visible: ob.kind===1; x: ob.tw*0.16; y: 0;          width: ob.tw*0.68; height: ob.th*0.40; radius: ob.tw*0.36; color: Qt.lighter(ob.foliage,1.14) }
+            // leafy tree: full round canopy (base blob + two lighter highlights)
+            Rectangle { visible: ob.kind===1; x: 0;          y: ob.th*0.24; width: ob.tw;      height: ob.th*0.50; radius: ob.tw*0.42; color: ob.foliage }
+            Rectangle { visible: ob.kind===1; x: ob.tw*0.10; y: ob.th*0.06; width: ob.tw*0.62; height: ob.th*0.44; radius: ob.tw*0.34; color: Qt.lighter(ob.foliage,1.12) }
+            Rectangle { visible: ob.kind===1; x: ob.tw*0.40; y: 0;          width: ob.tw*0.46; height: ob.th*0.34; radius: ob.tw*0.26; color: Qt.lighter(ob.foliage,1.22) }
 
             // atmospheric haze tint — distant trees melt into the horizon
-            Rectangle { anchors.fill: parent; color: "#a9cdd9"; opacity: ob.haz * 0.6 }
+            Rectangle { anchors.fill: parent; color: "#9ec3cf"; opacity: ob.haz * 0.5 }
         }
     }
 

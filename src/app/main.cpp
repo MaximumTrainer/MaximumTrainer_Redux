@@ -21,6 +21,8 @@
 #include <QQuickWidget>
 #include <QQmlContext>
 #include <QUrl>
+#include <QPainter>
+#include <QImage>
 #include "retroracecontroller.h"
 #endif
 
@@ -229,6 +231,35 @@ int main(int argc, char *argv[]) {
                 view->grabFramebuffer().save(out);
                 QApplication::quit();
             });
+        }
+        // --filmstrip out.png: grab a sequence of frames and composite them into
+        // one contact-sheet PNG (a poor-man's video for headless motion review).
+        const int stripIdx = cliArgs.indexOf(QLatin1String("--filmstrip"));
+        if (stripIdx >= 0 && stripIdx + 1 < cliArgs.size()) {
+            const QString out = cliArgs.at(stripIdx + 1);
+            const int cols = 2, rows = 3, cellW = 640, cellH = 360;
+            auto *sheet = new QImage(cols * cellW, rows * cellH, QImage::Format_RGB32);
+            sheet->fill(Qt::black);
+            auto *painter = new QPainter(sheet);
+            painter->setPen(Qt::yellow);
+            auto *counter = new int(0);
+            const int total = cols * rows;
+            auto *t = new QTimer(view);
+            t->setInterval(350);
+            QObject::connect(t, &QTimer::timeout, view, [=]() {
+                const QImage f = view->grabFramebuffer();
+                const int i = *counter;
+                const int cx = (i % cols) * cellW, cy = (i / cols) * cellH;
+                painter->drawImage(QRect(cx, cy, cellW, cellH), f);
+                painter->drawText(cx + 6, cy + 18, QString::number(i));
+                if (++(*counter) >= total) {
+                    painter->end();
+                    sheet->save(out);
+                    t->stop();
+                    QApplication::quit();
+                }
+            });
+            QTimer::singleShot(500, t, [t]() { t->start(); });
         }
         return app.exec();
     }
