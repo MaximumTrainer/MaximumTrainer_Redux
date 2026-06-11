@@ -25,9 +25,12 @@ Item {
     readonly property int effortState: (race.targetPower <= 0 || !race.started || race.finished) ? 0
         : (race.playerPowerW > race.targetPower + race.targetPowerRange) ?  1
         : (race.playerPowerW < race.targetPower - race.targetPowerRange) ? -1 : 0
-    readonly property color effortColor: effortState === 1 ? "#ff2f2f" : "#2f74ff"
-    readonly property real effortGlow: effortState === 1 ? (0.34 + 0.20 * Math.sin(animT * 6.5))
-                                     : effortState === -1 ? 0.28 : 0.0
+    readonly property color effortColor: effortState === 1 ? "#ff2a2a" : "#2f74ff"
+    readonly property real effortGlow: effortState === 1 ? (0.52 + 0.28 * Math.sin(animT * 7.0))
+                                     : effortState === -1 ? (0.46 + 0.16 * Math.sin(animT * 4.5)) : 0.0
+    // How far out of the zone (0..1+), to scale the glow size with the miss.
+    readonly property real effortMiss: race.targetPower <= 0 ? 0
+        : Math.min(1.0, Math.abs(race.playerPowerW - race.targetPower) / Math.max(40, race.targetPower * 0.35))
     // Race position (1st / 2nd) from the gap sign — a racing-game staple.
     readonly property bool leading: race.gapMeters >= 0
     function fmtTime(s) { var m = Math.floor(s / 60); var ss = Math.floor(s % 60); return m + ":" + (ss < 10 ? "0" : "") + ss; }
@@ -408,18 +411,25 @@ Item {
     // game-like nudge to hold the prescribed effort. Drawn under the HUD.
     Item {
         anchors.fill: parent; visible: root.effortGlow > 0.01; opacity: root.effortGlow
-        Rectangle { anchors { left: parent.left; top: parent.top; bottom: parent.bottom } width: parent.width * 0.15
+        readonly property real sideW: parent.width * (0.15 + 0.07 * root.effortMiss)
+        readonly property real botH:  parent.height * (0.34 + 0.16 * root.effortMiss)
+        Rectangle { anchors { left: parent.left; top: parent.top; bottom: parent.bottom } width: parent.sideW
             gradient: Gradient { orientation: Gradient.Horizontal
                 GradientStop { position: 0.0; color: root.effortColor }
                 GradientStop { position: 1.0; color: "#00000000" } } }
-        Rectangle { anchors { right: parent.right; top: parent.top; bottom: parent.bottom } width: parent.width * 0.15
+        Rectangle { anchors { right: parent.right; top: parent.top; bottom: parent.bottom } width: parent.sideW
             gradient: Gradient { orientation: Gradient.Horizontal
                 GradientStop { position: 0.0; color: "#00000000" }
                 GradientStop { position: 1.0; color: root.effortColor } } }
-        Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: parent.height * 0.20
+        Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: parent.botH
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "#00000000" }
                 GradientStop { position: 1.0; color: root.effortColor } } }
+        // a matching wash along the top edge for a fuller "alert" frame
+        Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top } height: parent.height * 0.12
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: root.effortColor }
+                GradientStop { position: 1.0; color: "#00000000" } } }
     }
 
     // "GO!" splash when the gun fires (race transitions to started).
@@ -454,6 +464,38 @@ Item {
             NumberAnimation { target: otText; property: "opacity"; from: 1.0; to: 1.0; duration: 800 }
             NumberAnimation { target: otText; property: "opacity"; to: 0.0; duration: 650 }
         }
+    }
+
+    // Distance-milestone flash: a "X KM" pop each whole kilometre (progress reward).
+    property int lastKm: 0
+    Text {
+        id: kmText; anchors.horizontalCenter: parent.horizontalCenter; y: root.height * 0.30; z: 58
+        text: ""; color: "#7ee0ff"; font.family: "monospace"; font.pixelSize: Math.round(root.height * 0.085); font.bold: true
+        opacity: 0
+        Connections { target: race
+            function onUpdated() {
+                if (!race.started || race.finished) return
+                var km = Math.floor(race.playerDistanceM / 1000)
+                if (km > root.lastKm) { root.lastKm = km; kmText.text = km + " KM"; kmAnim.restart() }
+            }
+        }
+        SequentialAnimation { id: kmAnim
+            NumberAnimation { target: kmText; property: "opacity"; from: 1.0; to: 1.0; duration: 800 }
+            NumberAnimation { target: kmText; property: "opacity"; to: 0.0; duration: 800 }
+        }
+    }
+
+    // Effort-zone coaching pill (top-left): a clear, game-like cue to push,
+    // ease off, or hold — colour-matched to the effort glow.
+    Rectangle {
+        visible: race.started && !race.finished && race.targetPower > 0
+        anchors { left: parent.left; leftMargin: 12; top: parent.top; topMargin: 78 }
+        width: zoneTxt.implicitWidth + 22; height: 26; radius: 13
+        color: root.effortState === 1 ? "#b02525" : root.effortState === -1 ? "#1f4f9e" : "#1f7a37"
+        border.color: "#ffffff"; border.width: 1
+        Text { id: zoneTxt; anchors.centerIn: parent
+            text: root.effortState === 1 ? "▼ EASE OFF" : root.effortState === -1 ? "▲ PUSH!" : "✓ IN ZONE"
+            color: "white"; font.family: "monospace"; font.pixelSize: 13; font.bold: true }
     }
 
     // ---------------------------------------------------------------- HUD
