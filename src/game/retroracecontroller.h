@@ -200,8 +200,20 @@ public slots:
     /// finish line in warped world distance (like the interval sign).
     void setFinishIn(double secs)
     {
-        m_finishSecs  = secs;
-        m_finishSignZ = (secs >= 0.0) ? m_visualDist + m_visualSpeed * secs : -1.0;
+        m_finishSecs = secs;
+        // Arm the finish line ONCE when it enters the ~30 s approach window, then
+        // leave its world position fixed so it rides in purely on visualDist —
+        // i.e. at exactly the scenery/rumble speed. Re-sampling visualSpeed each
+        // second (and the ≈0 speed at the start line) made it drift / appear early.
+        if (secs >= 0.0 && secs <= 30.0) {
+            if (!m_finishArmed && m_visualSpeed > 0.5) {   // wait until actually rolling
+                m_finishSignZ = m_visualDist + m_visualSpeed * secs;
+                m_finishArmed = true;
+            }
+        } else {
+            m_finishArmed = false;
+            m_finishSignZ = -1.0;
+        }
         emit finishChanged();
     }
 
@@ -269,6 +281,7 @@ private:
     bool   m_gameFullscreen  = false;
     double m_nextW = -1.0, m_nextCad = -1.0, m_nextSecs = -1.0, m_nextSignZ = -1.0;
     double m_finishSecs = -1.0, m_finishSignZ = -1.0;
+    bool   m_finishArmed = false;
     QString m_intervalMessage;
     double  m_np = 0.0, m_if = 0.0, m_tss = 0.0;
 };

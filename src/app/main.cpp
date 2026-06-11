@@ -251,12 +251,12 @@ int main(int argc, char *argv[]) {
             bool holdOk = false;
             const double hold = (fIdx + 1 < cliArgs.size())
                 ? cliArgs.at(fIdx + 1).toDouble(&holdOk) : 0.0;
-            auto *fsecs = new double(holdOk ? hold : 30.0);
+            auto *fsecs = new double(holdOk ? hold : 50.0);
             auto *ft = new QTimer(view);
             ft->setInterval(1000);
             QObject::connect(ft, &QTimer::timeout, view, [controller, fsecs, holdOk]() {
                 controller->setFinishIn(*fsecs);
-                if (!holdOk) { *fsecs -= 1.0; if (*fsecs < 0.0) *fsecs = 30.0; }
+                if (!holdOk) { *fsecs -= 1.0; if (*fsecs < 0.0) *fsecs = 50.0; }
             });
             controller->setFinishIn(*fsecs);
             ft->start();

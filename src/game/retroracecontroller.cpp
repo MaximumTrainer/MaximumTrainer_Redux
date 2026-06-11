@@ -132,6 +132,9 @@ void RetroRaceController::start()
     m_playerCrankRev = 0.0;
     m_oppCrankRev    = 0.0;
     m_visualDist     = 0.0;
+    m_finishArmed    = false;
+    m_finishSignZ    = -1.0;
+    m_finishSecs     = -1.0;
     m_started  = false;
     m_finished = false;
     m_intervalMarks.clear();

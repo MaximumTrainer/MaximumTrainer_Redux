@@ -443,7 +443,10 @@ Item {
         body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.85   // cyan so it stands out on grey + the dash
         phase: race.oppCrankRev
         lean: root.curveAt(oz) * 13
-        x: root.roadCx(op, oz) - width / 2          // on the road, following the curve
+        // Sit in the LEFT lane (offset grows as it nears) so you pull up
+        // alongside it rather than staring at its back wheel. Converges toward
+        // the centre/vanishing point when it is far up the road.
+        x: root.roadCx(op, oz) - width / 2 - 0.42 * root.maxHalfW * op
         y: root.horizonY + root.roadH * (0.10 + 0.74 * f) - height
     }
     // "ghost ahead" marker chevron when the opponent is too far to render.
