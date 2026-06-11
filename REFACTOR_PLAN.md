@@ -7,19 +7,27 @@ acting — line numbers drift as the tree changes.
 
 Status legend: ☐ todo · ◐ in progress · ☑ done
 
-## Progress snapshot (2026-06-06)
+## Progress snapshot (updated 2026-06-10)
 
 | Group | Status | PR |
 |-------|--------|----|
 | 1 — Dead-code sweep | ☑ done | #230 |
 | 2 — Hot-path guards | ☑ done (2 of 4 items; 2 evaluated and intentionally skipped) | #227 |
-| 3 — De-duplication via templates | ◐ partial (singletons done; editors in progress) | #236 |
+| 3 — De-duplication via templates | ◐ partial (singletons done; editor step-type helper shipped #239) | #236, #239 |
 | 4 — Latent naming hazard | ☑ done | #235 |
 | 5 — Quick correctness fixes | ☑ done (1 of 3; 2 dropped after inspection) | #234 |
 | 6 — Large mechanical modernization | ☐ todo | — |
 
-Related work already merged/open: QWT 6.3 bump, AppImage dark-mode + OpenSSL
-fixes, `QwtSystemClock` → `QElapsedTimer` (#228), `CLAUDE.md` (#229).
+Related work already merged: QWT 6.3 bump, AppImage dark-mode + OpenSSL fixes,
+`QwtSystemClock` → `QElapsedTimer` (#228), `CLAUDE.md` (#229). Adjacent cleanup
+that has since landed: dead PowerCurve UI + sensor/trainer config consolidation
+(#241, #242), ANT+ remnant removal (#240), and removal of the SelfLoops/
+TrainingPeaks integrations (#244) and the dead web frontend (#245).
+
+Two large features also shipped in this window (tracked outside this plan, now
+done): **Strava auto-upload** (#246) and **native Studio mode** (#253). Their
+planning docs (`STRAVA_INTEGRATION_PLAN.md`, `STUDIO_MODE_TODO.md`) were removed
+once complete — see git history if you need them.
 
 ---
 
