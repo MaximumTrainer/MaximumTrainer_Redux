@@ -209,6 +209,9 @@ int main(int argc, char *argv[]) {
                 if (ok) watts = parsed;
             }
             controller->useComputerPacer(watts);
+            // Give the standalone spike a target so the effort glow is testable.
+            controller->setTargetPower(watts, watts * 0.06);
+            controller->setTargetCadence(90, 6);
         } else if (!controller->loadGhost(fitPath)) {
             controller->useComputerPacer(180.0);
         }

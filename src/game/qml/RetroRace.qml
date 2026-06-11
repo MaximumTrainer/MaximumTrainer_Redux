@@ -19,6 +19,17 @@ Item {
     // birds) independently of the race physics tick.
     property real animT: 0
     NumberAnimation on animT { from: 0; to: 100000; duration: 100000000; loops: Animation.Infinite; running: true }
+
+    // Effort vs target → a screen-edge glow (gamifies holding the target):
+    // red when over, blue when under, nothing when in the zone (calm = reward).
+    readonly property int effortState: (race.targetPower <= 0 || !race.started || race.finished) ? 0
+        : (race.playerPowerW > race.targetPower + race.targetPowerRange) ?  1
+        : (race.playerPowerW < race.targetPower - race.targetPowerRange) ? -1 : 0
+    readonly property color effortColor: effortState === 1 ? "#ff2f2f" : "#2f74ff"
+    readonly property real effortGlow: effortState === 1 ? (0.34 + 0.20 * Math.sin(animT * 6.5))
+                                     : effortState === -1 ? 0.28 : 0.0
+    // Race position (1st / 2nd) from the gap sign — a racing-game staple.
+    readonly property bool leading: race.gapMeters >= 0
     function fmtTime(s) { var m = Math.floor(s / 60); var ss = Math.floor(s % 60); return m + ":" + (ss < 10 ? "0" : "") + ss; }
     // Deterministic pseudo-random in [0,1) from an index (stable per object).
     function rnd(n) { var x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); }
@@ -391,6 +402,39 @@ Item {
         y: root.height - height - (profileStrip.visible ? 78 : 12)
     }
 
+    // Effort glow: a screen-edge wash that turns red when you're over the
+    // target power and blue when under (nothing when in the zone) — a constant,
+    // game-like nudge to hold the prescribed effort. Drawn under the HUD.
+    Item {
+        anchors.fill: parent; visible: root.effortGlow > 0.01; opacity: root.effortGlow
+        Rectangle { anchors { left: parent.left; top: parent.top; bottom: parent.bottom } width: parent.width * 0.15
+            gradient: Gradient { orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: root.effortColor }
+                GradientStop { position: 1.0; color: "#00000000" } } }
+        Rectangle { anchors { right: parent.right; top: parent.top; bottom: parent.bottom } width: parent.width * 0.15
+            gradient: Gradient { orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: "#00000000" }
+                GradientStop { position: 1.0; color: root.effortColor } } }
+        Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: parent.height * 0.20
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#00000000" }
+                GradientStop { position: 1.0; color: root.effortColor } } }
+    }
+
+    // "GO!" splash when the gun fires (race transitions to started).
+    Text {
+        id: goText; anchors.centerIn: parent; z: 60
+        text: "GO!"; color: "#ffe24a"; font.family: "monospace"
+        font.pixelSize: Math.round(root.height * 0.22); font.bold: true
+        opacity: 0; scale: 1
+        Connections { target: race
+            function onRaceStateChanged() { if (race.started && !race.finished) goAnim.restart() } }
+        ParallelAnimation { id: goAnim
+            NumberAnimation { target: goText; property: "opacity"; from: 1.0; to: 0.0; duration: 1100 }
+            NumberAnimation { target: goText; property: "scale";   from: 0.6; to: 2.4; duration: 1100; easing.type: Easing.OutQuad }
+        }
+    }
+
     // ---------------------------------------------------------------- HUD
     Rectangle { anchors { top: parent.top; left: parent.left; right: parent.right }
         height: 72; color: "#000000"; opacity: 0.45 }
@@ -442,8 +486,16 @@ Item {
     // Right: gap headline + battle bar.
     Column {
         anchors.right: parent.right; anchors.rightMargin: 18
-        anchors.top: parent.top; anchors.topMargin: 8
-        spacing: 4
+        anchors.top: parent.top; anchors.topMargin: 6
+        spacing: 3
+        // Race-position medallion (1st / 2nd) — racing-game staple.
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: 56; height: 26; radius: 6
+            color: root.leading ? "#1f7a37" : "#7a1f2a"; border.color: "#ffffff"; border.width: 1
+            Text { anchors.centerIn: parent; text: root.leading ? "P1" : "P2"
+                   color: "white"; font.family: "monospace"; font.pixelSize: 17; font.bold: true }
+        }
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
             text: race.gapMeters >= 0 ? "AHEAD +" + race.gapMeters.toFixed(0) + " m"
