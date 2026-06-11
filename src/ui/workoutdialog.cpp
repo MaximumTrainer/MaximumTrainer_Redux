@@ -2853,6 +2853,11 @@ void WorkoutDialog::onToggleGameFullscreen() {
 /// 0 = Standard video, 1 = Web Browser, 2 = Game (retro race).
 void WorkoutDialog::showVideoPlayer(int choice) {
 
+    // The game is a single-rider ghost race — it has no defined "player" in the
+    // multi-rider studio mode, so it is unavailable there: fall back to video.
+    if (account->enable_studio_mode && choice == 2)
+        choice = 0;
+
 #ifdef GC_WASM_BUILD
     if (choice == 2) choice = 0;   // Game is desktop-only
 #else

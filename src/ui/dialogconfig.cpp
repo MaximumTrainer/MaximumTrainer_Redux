@@ -463,7 +463,12 @@ void DialogConfig::initUi() {
     ui->comboBox_powerAverage->setCurrentIndex(account->averaging_power);
     ui->spinBox_offsetPower->setValue(account->offset_power);
 
-    ui->comboBox_displayVideo->setCurrentIndex(account->display_video);
+    // The Game (index 2) is single-rider and unavailable in multi-rider studio
+    // mode — drop it from the selector there so it can't be picked.
+    if (account->enable_studio_mode && ui->comboBox_displayVideo->count() > 2)
+        ui->comboBox_displayVideo->removeItem(2);
+    ui->comboBox_displayVideo->setCurrentIndex(
+        qMin(account->display_video, ui->comboBox_displayVideo->count() - 1));
     // Home-page URL applies to the Web Browser option only (index 1), not Game.
     ui->label_homePage->setVisible(account->display_video == 1);
     ui->lineEdit_homePage->setVisible(account->display_video == 1);
