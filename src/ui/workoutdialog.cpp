@@ -2709,32 +2709,44 @@ void WorkoutDialog::showTimerOnTop(bool showOnTop) {
 
     qDebug() << "SHOW TIMER ON TOP?!" << showOnTop;
 
+    m_timerOnTop = showOnTop;
     ui->widget_topMenu->setTimersVisible(showOnTop);
-    ui->widget_time->setVisible(!showOnTop);
+    updateTimeWidgetVisibility();
 }
 
 void WorkoutDialog::showTimerIntervalRemaining(bool show) {
 
     ui->widget_time->showIntervalRemaining(show);
     ui->widget_topMenu->showIntervalRemaining(show);
+    updateTimeWidgetVisibility();
 }
 
 void WorkoutDialog::showTimerWorkoutRemaining(bool show) {
 
     ui->widget_time->showWorkoutRemaining(show);
     ui->widget_topMenu->showWorkoutRemaining(show);
+    updateTimeWidgetVisibility();
 }
 
 void WorkoutDialog::showTimerWorkoutElapsed(bool show) {
 
     ui->widget_time->showWorkoutElapsed(show);
     ui->widget_topMenu->showWorkoutElapsed(show);
+    updateTimeWidgetVisibility();
 }
 
 void WorkoutDialog::showTimerCurrentTarget(bool show) {
 
     ui->widget_time->showCurrentTarget(show);
     ui->widget_topMenu->showCurrentTarget(show);
+    updateTimeWidgetVisibility();
+}
+
+// Hide the bottom-left time widget entirely when it's on the top bar or when no
+// timer element is enabled — otherwise it reserves an empty box bottom-left.
+void WorkoutDialog::updateTimeWidgetVisibility() {
+
+    ui->widget_time->setVisible(!m_timerOnTop && ui->widget_time->hasVisibleContent());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

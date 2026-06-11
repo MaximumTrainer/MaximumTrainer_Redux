@@ -78,6 +78,7 @@ public:
     void showTimerWorkoutRemaining(bool);
     void showTimerWorkoutElapsed(bool);
     void showTimerCurrentTarget(bool);
+    void updateTimeWidgetVisibility();
 
 
 
@@ -527,6 +528,8 @@ private:
     int currMAPInterval;
     int totalSecOffTargetInInterval;
     int totalConsecutiveOffTarget;
+
+    bool m_timerOnTop = false;   // timers shown on the top bar (vs bottom-left)
 
     int currentTargetPower;
     int currentTargetPowerRange;
