@@ -247,7 +247,8 @@ void RetroRaceController::tick()
     // ~1× at/under 20 km/h, ramping to ~2.4× at high speed.
     const double kmh  = m_playerV * 3.6;
     const double gain = qBound(1.0, 1.0 + (kmh - 20.0) * 0.055, 2.4);
-    m_visualDist += m_playerV * gain * dt;
+    m_visualSpeed = m_playerV * gain;
+    m_visualDist += m_visualSpeed * dt;
     // Live cadence drives the legs; otherwise mirror the opponent's pace.
     m_playerCadence = (m_liveCadenceRpm >= 0.0) ? m_liveCadenceRpm : m_oppCadence;
     m_playerCrankRev += (m_playerCadence / 60.0) * dt;

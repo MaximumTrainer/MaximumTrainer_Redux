@@ -55,6 +55,7 @@ class RetroRaceController : public QObject
     Q_PROPERTY(double nextTargetW   READ nextTargetW   NOTIFY nextChanged)
     Q_PROPERTY(double nextTargetCad READ nextTargetCad NOTIFY nextChanged)
     Q_PROPERTY(double nextSecs      READ nextSecs      NOTIFY nextChanged)
+    Q_PROPERTY(double nextSignZ     READ nextSignZ     NOTIFY nextChanged)  // world dist of the sign
     Q_PROPERTY(QString intervalMessage READ intervalMessage NOTIFY nextChanged)
     // Whole-ride metrics (from DataWorkout) for the info panel.
     Q_PROPERTY(double np      READ np      NOTIFY metricsChanged)
@@ -135,6 +136,7 @@ public:
     double  nextTargetW() const         { return m_nextW; }
     double  nextTargetCad() const       { return m_nextCad; }
     double  nextSecs() const            { return m_nextSecs; }
+    double  nextSignZ() const           { return m_nextSignZ; }
     QString intervalMessage() const     { return m_intervalMessage; }
     void    setIntervalMessage(const QString &m) { m_intervalMessage = m; emit nextChanged(); }
     double  np() const      { return m_np; }
@@ -182,7 +184,13 @@ public slots:
     /// Upcoming interval preview: target watts, cadence (<=0 = none) and seconds
     /// until it starts (<0 = no next interval).
     void setNextInterval(double watts, double cad, double secs)
-    { m_nextW = watts; m_nextCad = cad; m_nextSecs = secs; emit nextChanged(); }
+    {
+        m_nextW = watts; m_nextCad = cad; m_nextSecs = secs;
+        // Anchor the road sign to a world distance so it scrolls in smoothly with
+        // visualDist (not in 1 s jumps). Predict where the interval starts.
+        m_nextSignZ = (secs >= 0.0) ? m_visualDist + m_visualSpeed * secs : -1.0;
+        emit nextChanged();
+    }
 
 signals:
     void updated();
@@ -232,6 +240,7 @@ private:
     double m_playerCrankRev = 0.0;
     double m_oppCrankRev    = 0.0;
     double m_visualDist     = 0.0;   // warped scroll distance (speed-amplified)
+    double m_visualSpeed    = 0.0;   // d(visualDist)/dt, for the sign prediction
     double m_liveCadenceRpm = -1.0; // <0 = derive cadence from the opponent
     double m_playerHr       = 0.0;
     double m_tPower = -1.0, m_tPowerRange = 0.0;
@@ -244,7 +253,7 @@ private:
     double m_workoutProgress = 0.0; // 0..1 through the workout
     int    m_workoutElapsedSec = 0;
     bool   m_gameFullscreen  = false;
-    double m_nextW = -1.0, m_nextCad = -1.0, m_nextSecs = -1.0;
+    double m_nextW = -1.0, m_nextCad = -1.0, m_nextSecs = -1.0, m_nextSignZ = -1.0;
     QString m_intervalMessage;
     double  m_np = 0.0, m_if = 0.0, m_tss = 0.0;
 };

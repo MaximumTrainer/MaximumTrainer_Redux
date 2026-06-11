@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
         view->setWindowTitle(QStringLiteral("MaximumTrainer — Retro Ghost Race (spike)"));
         view->show();
         controller->start();
-        controller->beginRace();   // standalone: no workout to fire the gun
+        controller->beginRace();
 
         const int shotIdx = cliArgs.indexOf(QLatin1String("--shot"));
         if (shotIdx >= 0 && shotIdx + 1 < cliArgs.size()) {
