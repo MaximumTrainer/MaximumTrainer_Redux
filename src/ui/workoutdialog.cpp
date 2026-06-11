@@ -1800,6 +1800,7 @@ void WorkoutDialog::sendLastSecondData(int seconds) {
         const double tot = Util::convertQTimeToSecD(workout.getDurationQTime());
         if (tot > 0) raceController->setWorkoutProgress(qBound(0.0, seconds / tot, 1.0));
         raceController->setWorkoutElapsedSec(seconds);
+        if (tot > 0) raceController->setFinishIn(tot - seconds);   // approaching finish line
 
         // Preview the upcoming interval's target on the road ahead.
         const double secsToNext = Util::convertQTimeToSecD(timeInterval);

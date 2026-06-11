@@ -390,6 +390,47 @@ Item {
         Rectangle { x: -ivSign.sw*0.46; y: -ivSign.sh*0.24; width: ivSign.sw*0.32; height: ivSign.sh*0.28; radius: ivSign.sw*0.15; color: "#2f7a3a" }
     }
 
+    // Finish line: a checkered band spanning the road with a "FINISH" banner
+    // overhead, rolling in from the horizon over the last stretch (anchored in
+    // world distance like the interval sign) and sweeping past as the workout ends.
+    Item {
+        id: finishLine
+        readonly property real aheadZ: race.finishSignZ - race.visualDist
+        readonly property real p:      Math.min(1.0, 38 / Math.max(6, aheadZ))
+        readonly property real halfw:  root.maxHalfW * p
+        readonly property real roadW:  2 * halfw
+        readonly property real cy:     root.horizonY + p * root.roadH
+        readonly property real bandH:  Math.max(4, 28 * p)
+        readonly property real postH:  74 * p
+        readonly property int  cols:   12
+        visible: race.started && !race.finished && race.finishSecs >= 0 && aheadZ > 0.5 && aheadZ < 460
+        x: root.width/2 - halfw
+        y: cy - bandH
+        width: roadW; height: bandH
+        // checkered band (two rows of alternating squares)
+        Repeater {
+            model: finishLine.cols * 2
+            Rectangle {
+                readonly property int col:  index % finishLine.cols
+                readonly property int rowi: Math.floor(index / finishLine.cols)
+                x: col * (finishLine.roadW / finishLine.cols)
+                y: rowi * (finishLine.bandH / 2)
+                width:  finishLine.roadW / finishLine.cols + 0.6
+                height: finishLine.bandH / 2 + 0.6
+                color: ((col + rowi) % 2 === 0) ? "#f4f4f4" : "#161616"
+            }
+        }
+        // posts
+        Rectangle { x: -6*finishLine.p;        y: -finishLine.postH; width: 6*finishLine.p; height: finishLine.postH; color: "#cfcfcf" }
+        Rectangle { x: finishLine.roadW;       y: -finishLine.postH; width: 6*finishLine.p; height: finishLine.postH; color: "#cfcfcf" }
+        // overhead FINISH banner
+        Rectangle { x: -6*finishLine.p; y: -finishLine.postH - 26*finishLine.p
+            width: finishLine.roadW + 12*finishLine.p; height: 26*finishLine.p
+            color: "#16324a"; border.color: "#ffce3a"; border.width: Math.max(1, 2*finishLine.p)
+            Text { anchors.centerIn: parent; text: "FINISH"; color: "white"
+                   font.family: "monospace"; font.bold: true; font.pixelSize: Math.max(7, 17*finishLine.p) } }
+    }
+
     // ---------------------------------------------------------------- riders
     // Opponent: shown up the road only while ahead of you (you are behind).
     BackBike {

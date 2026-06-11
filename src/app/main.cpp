@@ -244,6 +244,23 @@ int main(int argc, char *argv[]) {
             controller->setNextInterval(275, 90, *secs);
             st->start();
         }
+        // --finish [secs]: simulate the workout finish countdown so the
+        // approaching finish line can be exercised standalone.
+        if (cliArgs.contains(QLatin1String("--finish"))) {
+            const int fIdx = cliArgs.indexOf(QLatin1String("--finish"));
+            bool holdOk = false;
+            const double hold = (fIdx + 1 < cliArgs.size())
+                ? cliArgs.at(fIdx + 1).toDouble(&holdOk) : 0.0;
+            auto *fsecs = new double(holdOk ? hold : 30.0);
+            auto *ft = new QTimer(view);
+            ft->setInterval(1000);
+            QObject::connect(ft, &QTimer::timeout, view, [controller, fsecs, holdOk]() {
+                controller->setFinishIn(*fsecs);
+                if (!holdOk) { *fsecs -= 1.0; if (*fsecs < 0.0) *fsecs = 30.0; }
+            });
+            controller->setFinishIn(*fsecs);
+            ft->start();
+        }
 
         const int shotIdx = cliArgs.indexOf(QLatin1String("--shot"));
         if (shotIdx >= 0 && shotIdx + 1 < cliArgs.size()) {

@@ -57,6 +57,9 @@ class RetroRaceController : public QObject
     Q_PROPERTY(double nextSecs      READ nextSecs      NOTIFY nextChanged)
     Q_PROPERTY(double nextSignZ     READ nextSignZ     NOTIFY nextChanged)  // world dist of the sign
     Q_PROPERTY(QString intervalMessage READ intervalMessage NOTIFY nextChanged)
+    // Workout finish line: world distance + seconds until the workout ends.
+    Q_PROPERTY(double finishSignZ   READ finishSignZ   NOTIFY finishChanged)
+    Q_PROPERTY(double finishSecs    READ finishSecs    NOTIFY finishChanged)
     // Whole-ride metrics (from DataWorkout) for the info panel.
     Q_PROPERTY(double np      READ np      NOTIFY metricsChanged)
     Q_PROPERTY(double ifactor READ ifactor NOTIFY metricsChanged)
@@ -137,6 +140,8 @@ public:
     double  nextTargetCad() const       { return m_nextCad; }
     double  nextSecs() const            { return m_nextSecs; }
     double  nextSignZ() const           { return m_nextSignZ; }
+    double  finishSignZ() const         { return m_finishSignZ; }
+    double  finishSecs() const          { return m_finishSecs; }
     QString intervalMessage() const     { return m_intervalMessage; }
     void    setIntervalMessage(const QString &m) { m_intervalMessage = m; emit nextChanged(); }
     double  np() const      { return m_np; }
@@ -191,6 +196,14 @@ public slots:
         m_nextSignZ = (secs >= 0.0) ? m_visualDist + m_visualSpeed * secs : -1.0;
         emit nextChanged();
     }
+    /// Seconds remaining until the workout finishes — anchors the approaching
+    /// finish line in warped world distance (like the interval sign).
+    void setFinishIn(double secs)
+    {
+        m_finishSecs  = secs;
+        m_finishSignZ = (secs >= 0.0) ? m_visualDist + m_visualSpeed * secs : -1.0;
+        emit finishChanged();
+    }
 
 signals:
     void updated();
@@ -202,6 +215,7 @@ signals:
     void fullscreenChanged();
     void fullscreenToggleRequested();
     void nextChanged();
+    void finishChanged();
     void metricsChanged();
 
 private:
@@ -254,6 +268,7 @@ private:
     int    m_workoutElapsedSec = 0;
     bool   m_gameFullscreen  = false;
     double m_nextW = -1.0, m_nextCad = -1.0, m_nextSecs = -1.0, m_nextSignZ = -1.0;
+    double m_finishSecs = -1.0, m_finishSignZ = -1.0;
     QString m_intervalMessage;
     double  m_np = 0.0, m_if = 0.0, m_tss = 0.0;
 };
