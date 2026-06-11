@@ -318,30 +318,44 @@ Item {
         }
     }
 
-    // Roadside warning: a sign (flanked by bushes) rolls in on the right verge
-    // as the next interval approaches, showing its target watts.
+    // Roadside warning: a big sign (flanked by bushes) on the right verge that
+    // rolls in from the horizon and sweeps past the rider exactly as the next
+    // interval begins. Anchored in world distance (nextSignZ) so it scrolls
+    // smoothly with the scenery; it becomes visible far out for a calm approach.
     Item {
         id: ivSign
         readonly property real aheadZ: race.nextSignZ - race.visualDist   // smooth (visualDist)
-        readonly property real p: Math.min(1.0, 38 / Math.max(8, aheadZ))
-        readonly property real halfw: root.maxHalfW * p
-        readonly property real cy: root.horizonY + p * root.roadH
-        readonly property real sw: 90 * p
-        readonly property real sh: 60 * p
+        readonly property real p:      Math.min(1.0, 34 / Math.max(6, aheadZ))
+        readonly property real halfw:  root.maxHalfW * p
+        readonly property real cy:     root.horizonY + p * root.roadH
+        readonly property real sw:     root.width * 0.12 * p              // panel width (scales with view)
+        readonly property real sh:     sw * 0.66
+        readonly property real postH:  sw * 1.05
         visible: race.started && !race.finished && race.nextTargetW > 0
-                 && race.nextSecs >= 0 && aheadZ > 3 && aheadZ < 150
-        x: root.width/2 + (halfw + sw * 0.7)
+                 && race.nextSecs >= 0 && aheadZ > 1.5 && aheadZ < 420
+        // Follow the road's right edge, but clamp to the screen so the sign
+        // stays fully visible (hugging the right margin and growing) right up to
+        // the moment the interval starts — instead of sliding off-screen early
+        // because the road is wider than the view near the rider.
+        readonly property real rawX: root.width/2 + halfw + sw * 0.5
+        x: Math.min(rawX, root.width - sw * 0.55)
         y: cy
-        Rectangle { x: -3*ivSign.p; y: -46*ivSign.p; width: 6*ivSign.p; height: 46*ivSign.p; color: "#999999" }   // post
-        Rectangle { x: -ivSign.sw/2; y: -46*ivSign.p - ivSign.sh; width: ivSign.sw; height: ivSign.sh
-                    radius: 5*ivSign.p; color: "#16324a"; border.color: "#ffce3a"; border.width: Math.max(1, 2*ivSign.p) }
-        Text { x: -ivSign.sw/2; y: -46*ivSign.p - ivSign.sh; width: ivSign.sw; height: ivSign.sh
+        // post
+        Rectangle { x: -ivSign.sw*0.05; y: -ivSign.postH; width: ivSign.sw*0.10; height: ivSign.postH; color: "#8c8c8c" }
+        // panel
+        Rectangle { x: -ivSign.sw/2; y: -ivSign.postH - ivSign.sh; width: ivSign.sw; height: ivSign.sh
+                    radius: ivSign.sw*0.06; color: "#16324a"; border.color: "#ffce3a"; border.width: Math.max(1, ivSign.sw*0.028) }
+        Text { x: -ivSign.sw/2; y: -ivSign.postH - ivSign.sh; width: ivSign.sw; height: ivSign.sh*0.62
                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                text: Math.round(race.nextTargetW) + "W"; color: "white"; font.family: "monospace"
-               font.pixelSize: Math.max(6, 22*ivSign.p); font.bold: true }
-        // bushes at the foot of the sign and across the road
-        Rectangle { x: ivSign.sw*0.2; y: -16*ivSign.p; width: 30*ivSign.p; height: 18*ivSign.p; radius: 9*ivSign.p; color: "#357d40" }
-        Rectangle { x: -(2*ivSign.halfw + 40*ivSign.p); y: -14*ivSign.p; width: 28*ivSign.p; height: 16*ivSign.p; radius: 8*ivSign.p; color: "#2f7a3a" }
+               font.pixelSize: Math.max(8, ivSign.sw*0.34); font.bold: true }
+        Text { x: -ivSign.sw/2; y: -ivSign.postH - ivSign.sh*0.40; width: ivSign.sw; height: ivSign.sh*0.40
+               horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+               text: "NEXT"; color: "#ffce3a"; font.family: "monospace"
+               font.pixelSize: Math.max(6, ivSign.sw*0.16); font.bold: true }
+        // bushes at the foot of the post
+        Rectangle { x: ivSign.sw*0.10;  y: -ivSign.sh*0.30; width: ivSign.sw*0.38; height: ivSign.sh*0.34; radius: ivSign.sw*0.18; color: "#357d40" }
+        Rectangle { x: -ivSign.sw*0.46; y: -ivSign.sh*0.24; width: ivSign.sw*0.32; height: ivSign.sh*0.28; radius: ivSign.sw*0.15; color: "#2f7a3a" }
     }
 
     // ---------------------------------------------------------------- riders

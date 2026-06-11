@@ -224,6 +224,24 @@ int main(int argc, char *argv[]) {
         controller->start();
         controller->beginRace();
 
+        // --sign: simulate a workout feeding an upcoming-interval countdown so
+        // the roadside interval sign can be exercised standalone.
+        if (cliArgs.contains(QLatin1String("--sign"))) {
+            const int sIdx = cliArgs.indexOf(QLatin1String("--sign"));
+            bool holdOk = false;
+            const double hold = (sIdx + 1 < cliArgs.size())
+                ? cliArgs.at(sIdx + 1).toDouble(&holdOk) : 0.0;
+            auto *secs = new double(holdOk ? hold : 24.0);
+            auto *st = new QTimer(view);
+            st->setInterval(1000);
+            QObject::connect(st, &QTimer::timeout, view, [controller, secs, holdOk]() {
+                controller->setNextInterval(275, 90, *secs);
+                if (!holdOk) { *secs -= 1.0; if (*secs < 0.0) *secs = 24.0; }
+            });
+            controller->setNextInterval(275, 90, *secs);
+            st->start();
+        }
+
         const int shotIdx = cliArgs.indexOf(QLatin1String("--shot"));
         if (shotIdx >= 0 && shotIdx + 1 < cliArgs.size()) {
             const QString out = cliArgs.at(shotIdx + 1);
@@ -237,6 +255,9 @@ int main(int argc, char *argv[]) {
         const int stripIdx = cliArgs.indexOf(QLatin1String("--filmstrip"));
         if (stripIdx >= 0 && stripIdx + 1 < cliArgs.size()) {
             const QString out = cliArgs.at(stripIdx + 1);
+            bool intvOk = false;
+            const int intv = (stripIdx + 2 < cliArgs.size())
+                ? cliArgs.at(stripIdx + 2).toInt(&intvOk) : 0;
             const int cols = 2, rows = 3, cellW = 640, cellH = 360;
             auto *sheet = new QImage(cols * cellW, rows * cellH, QImage::Format_RGB32);
             sheet->fill(Qt::black);
@@ -245,7 +266,7 @@ int main(int argc, char *argv[]) {
             auto *counter = new int(0);
             const int total = cols * rows;
             auto *t = new QTimer(view);
-            t->setInterval(350);
+            t->setInterval(intvOk && intv > 0 ? intv : 350);
             QObject::connect(t, &QTimer::timeout, view, [=]() {
                 const QImage f = view->grabFramebuffer();
                 const int i = *counter;
