@@ -33,6 +33,23 @@ Item {
         : Math.min(1.0, Math.abs(race.playerPowerW - race.targetPower) / Math.max(40, race.targetPower * 0.35))
     // Race position (1st / 2nd) from the gap sign — a racing-game staple.
     readonly property bool leading: race.gapMeters >= 0
+
+    // In-zone hold streak: seconds spent continuously inside the target band —
+    // rewards precise, sustained effort (the core gamified-training loop).
+    property real zoneSince: -1
+    property real zoneHoldSec: 0
+    Connections {
+        target: race
+        function onUpdated() {
+            if (race.started && !race.finished && race.targetPower > 0 && root.effortState === 0) {
+                if (root.zoneSince < 0) root.zoneSince = root.animT
+                root.zoneHoldSec = root.animT - root.zoneSince
+            } else {
+                root.zoneSince = -1
+                root.zoneHoldSec = 0
+            }
+        }
+    }
     function fmtTime(s) { var m = Math.floor(s / 60); var ss = Math.floor(s % 60); return m + ":" + (ss < 10 ? "0" : "") + ss; }
     // Deterministic pseudo-random in [0,1) from an index (stable per object).
     function rnd(n) { var x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); }
@@ -491,10 +508,14 @@ Item {
         visible: race.started && !race.finished && race.targetPower > 0
         anchors { left: parent.left; leftMargin: 12; top: parent.top; topMargin: 78 }
         width: zoneTxt.implicitWidth + 22; height: 26; radius: 13
-        color: root.effortState === 1 ? "#b02525" : root.effortState === -1 ? "#1f4f9e" : "#1f7a37"
-        border.color: "#ffffff"; border.width: 1
+        readonly property bool hot: root.effortState === 0 && root.zoneHoldSec >= 10
+        color: root.effortState === 1 ? "#b02525" : root.effortState === -1 ? "#1f4f9e"
+             : (hot ? "#1f8f3f" : "#1f7a37")
+        border.color: hot ? "#ffe24a" : "#ffffff"; border.width: hot ? 2 : 1
         Text { id: zoneTxt; anchors.centerIn: parent
-            text: root.effortState === 1 ? "▼ EASE OFF" : root.effortState === -1 ? "▲ PUSH!" : "✓ IN ZONE"
+            text: root.effortState === 1 ? "▼ EASE OFF"
+                : root.effortState === -1 ? "▲ PUSH!"
+                : "✓ IN ZONE " + Math.floor(root.zoneHoldSec) + "s" + (parent.hot ? "  🔥" : "")
             color: "white"; font.family: "monospace"; font.pixelSize: 13; font.bold: true }
     }
 
