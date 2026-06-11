@@ -87,6 +87,7 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
 
     ui->label_imageCad->setToolTip(tr("Power - %FTP"));
     ui->label_imagePower->setVisible(false);
+    ui->label_dash4->setVisible(false);   // drop the dangling "-" before the target
     ui->label_targetPower->setToolTip(tr("Power - %FTP"));
     ui->label_targetPower->setText("");
     ui->label_rangePower->setText("");
