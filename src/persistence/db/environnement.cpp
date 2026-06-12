@@ -76,21 +76,31 @@ QString Environnement::getURLStravaAuthorize(const QString &redirectUri) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Build the full Intervals.icu OAuth2 authorization URL.
 ///
-/// Both desktop and WASM builds use the same redirect_uri — the GitHub Pages
-/// callback page (Environnement::getWasmOAuthRedirectUri).  On WASM the page
-/// is loaded in a popup that posts the authorization code back via
-/// window.opener.postMessage.  On desktop the embedded QWebEngineView
-/// (IntervalsIcuOAuthWidget) detects the redirect to oauth_callback.html and
-/// extracts the code from its query string.
+/// On WASM the GitHub Pages callback page (getWasmOAuthRedirectUri) is the
+/// redirect_uri: it is loaded in a popup that posts the authorization code
+/// back via window.opener.postMessage.  On desktop, IntervalsIcuOAuthFlow
+/// passes its localhost loopback listener as the redirect_uri instead
+/// (intervals.icu always allows http://localhost/).
 ///
 /// In both cases the subsequent /oauth/token POST goes through the
 /// Cloudflare Worker proxy (see URL_TOKEN_ICV in environnement.h).
 ///
-/// @param state  A per-request random token for CSRF protection.  The caller
-///               must store this value and validate it matches the state
-///               parameter on the redirect callback.
-QString Environnement::getURLIntervalsIcuAuthorize(const QString &state) {
-    return getURLIntervalsIcuAuthorizeWasm(state);
+/// @param state        A per-request random token for CSRF protection.  The
+///                     caller must store this value and validate it matches
+///                     the state parameter on the redirect callback.
+/// @param redirectUri  The redirect_uri to register for this request.
+QString Environnement::getURLIntervalsIcuAuthorize(const QString &state,
+                                                   const QString &redirectUri) {
+    QUrl url(urlIntervalsIcuOAuthAuthorize);
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("response_type"), QStringLiteral("code"));
+    query.addQueryItem(QStringLiteral("scope"), intervalsIcuOAuthScope);
+    query.addQueryItem(QStringLiteral("client_id"), getIntervalsIcuClientId());
+    query.addQueryItem(QStringLiteral("redirect_uri"), redirectUri);
+    if (!state.isEmpty())
+        query.addQueryItem(QStringLiteral("state"), state);
+    url.setQuery(query);
+    return url.toString(QUrl::FullyEncoded);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -99,16 +109,7 @@ QString Environnement::getURLIntervalsIcuAuthorize(const QString &state) {
 /// sends the authorization code back to the main window via window.opener.postMessage.
 /// @param state  A per-request random token for CSRF protection.
 QString Environnement::getURLIntervalsIcuAuthorizeWasm(const QString &state) {
-    QUrl url(urlIntervalsIcuOAuthAuthorize);
-    QUrlQuery query;
-    query.addQueryItem(QStringLiteral("response_type"), QStringLiteral("code"));
-    query.addQueryItem(QStringLiteral("scope"), intervalsIcuOAuthScope);
-    query.addQueryItem(QStringLiteral("client_id"), getIntervalsIcuClientId());
-    query.addQueryItem(QStringLiteral("redirect_uri"), getWasmOAuthRedirectUri());
-    if (!state.isEmpty())
-        query.addQueryItem(QStringLiteral("state"), state);
-    url.setQuery(query);
-    return url.toString(QUrl::FullyEncoded);
+    return getURLIntervalsIcuAuthorize(state, getWasmOAuthRedirectUri());
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

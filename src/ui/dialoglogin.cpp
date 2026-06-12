@@ -2,9 +2,11 @@
 #include "ui_dialoglogin.h"
 
 #include <QDebug>
+#include <QDesktopServices>
 #include <QMessageBox>
 #include <QRegularExpression>
 #include <QSettings>
+#include <QUrl>
 #include <QUuid>
 
 #include "logger.h"
@@ -17,7 +19,7 @@
 #include "intervalsicudao.h"
 #include "extrequest.h"
 #include "credential_store.h"
-#include "intervalsicuoauthwidget.h"
+#include "intervals_icu_oauth_flow.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WASM: Emscripten bridge for the OAuth popup flow.
@@ -211,16 +213,15 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     }
 #endif
 
-    // Create the embedded OAuth widget and insert it into the placeholder page.
-    m_oauthWidget = new IntervalsIcuOAuthWidget(this);
-    ui->widget_oauthPage->layout()->addWidget(m_oauthWidget);
+    m_testMode = testMode;
 
-    connect(m_oauthWidget, &IntervalsIcuOAuthWidget::authSucceeded,
-            this, &DialogLogin::onOAuthSucceeded);
-    connect(m_oauthWidget, &IntervalsIcuOAuthWidget::authFailed,
-            this, &DialogLogin::onOAuthFailed);
-    connect(m_oauthWidget, &IntervalsIcuOAuthWidget::cancelRequested,
+    // Browser-wait page (page 1) controls — desktop system-browser OAuth flow.
+    connect(ui->pushButton_cancelOAuth, &QPushButton::clicked,
             this, &DialogLogin::onOAuthCancelRequested);
+    connect(ui->pushButton_reopenBrowser, &QPushButton::clicked, this, [this]() {
+        if (m_oauthFlow)
+            QDesktopServices::openUrl(QUrl(m_oauthFlow->authorizationUrl()));
+    });
 
     // Primary sign-in button
     connect(ui->pushButton_loginIntervalsIcu, &QPushButton::clicked,
@@ -246,7 +247,7 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
 
 #ifdef Q_OS_WASM
     // ── WASM: OAuth popup flow ─────────────────────────────────────────────
-    // The embedded IntervalsIcuOAuthWidget (QWebEngineView) is desktop-only.
+    // The system-browser loopback flow (IntervalsIcuOAuthFlow) is desktop-only.
     // On WASM the "Sign in with Intervals.icu" button is rewired to open a
     // browser popup to the authorization URL; the popup redirects to
     // oauth_callback.html which posts the code back via window.opener.postMessage.
@@ -524,17 +525,34 @@ void DialogLogin::onTokenRefreshFinished()
 // ─────────────────────────────────────────────────────────────────────────────
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// Switches to the embedded OAuth WebView (page 1) and loads the auth URL.
+/// Opens the Intervals.icu login in the system browser (loopback redirect)
+/// and switches to the browser-wait page (page 1).
 void DialogLogin::onLoginWithIntervalsIcuClicked()
 {
     LOG_INFO("DialogLogin", QStringLiteral("User clicked 'Sign in with Intervals.icu'"));
 
-    const QString oauthState = QUuid::createUuid().toString(QUuid::Id128).left(16);
-    const QString oauthUrl   = Environnement::getURLIntervalsIcuAuthorize(oauthState);
+    resetOAuthFlow();
+    m_oauthFlow = new IntervalsIcuOAuthFlow(this);
+    m_oauthFlow->setOpenExternalBrowser(!m_testMode);
+    connect(m_oauthFlow, &IntervalsIcuOAuthFlow::succeeded,
+            this, &DialogLogin::onOAuthSucceeded);
+    connect(m_oauthFlow, &IntervalsIcuOAuthFlow::failed,
+            this, &DialogLogin::onOAuthFailed);
+    connect(m_oauthFlow, &IntervalsIcuOAuthFlow::cancelled,
+            this, &DialogLogin::onOAuthCancelRequested);
+
+    if (!m_oauthFlow->start()) {
+        m_oauthFlow->deleteLater();
+        m_oauthFlow = nullptr;
+        QMessageBox::warning(
+            this,
+            tr("Intervals.icu Login Failed"),
+            tr("Could not start the local sign-in listener. Please try again."));
+        return;
+    }
 
     ui->label_sessionExpired->setVisible(false);
-    m_oauthWidget->startAuth(oauthUrl, oauthState);
-    ui->stackedWidget_main->setCurrentIndex(1); // OAuth WebView page
+    ui->stackedWidget_main->setCurrentIndex(1); // browser-wait page
 
     emit intervalsIcuOAuthStarted();
 }
@@ -543,6 +561,7 @@ void DialogLogin::onLoginWithIntervalsIcuClicked()
 void DialogLogin::onOAuthSucceeded()
 {
     LOG_INFO("DialogLogin", QStringLiteral("Intervals.icu OAuth2 authorization successful"));
+    resetOAuthFlow();
     m_loggingInViaIntervalsIcu = true;
     fetchIntervalsIcuDataOAuth(); // switches stacked widget to page 2 (loading)
 }
@@ -551,7 +570,7 @@ void DialogLogin::onOAuthSucceeded()
 void DialogLogin::onOAuthFailed()
 {
     LOG_WARN("DialogLogin", QStringLiteral("Intervals.icu OAuth2 authorization denied or failed"));
-    m_oauthWidget->reset();
+    resetOAuthFlow();
     showLoginForm(false);
 #ifndef Q_OS_WASM
     QMessageBox::warning(
@@ -569,7 +588,18 @@ void DialogLogin::onOAuthFailed()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void DialogLogin::onOAuthCancelRequested()
 {
+    resetOAuthFlow();
     showLoginForm(false);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void DialogLogin::resetOAuthFlow()
+{
+    if (!m_oauthFlow)
+        return;
+    m_oauthFlow->abort();
+    m_oauthFlow->deleteLater();
+    m_oauthFlow = nullptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -609,7 +639,7 @@ void DialogLogin::onSwitchAccountClicked()
     settings->lastLoggedUsername.clear();
     settings->saveGeneralSettings();
 
-    m_oauthWidget->reset();
+    resetOAuthFlow();
 
     ui->widget_returningUser->setVisible(false);
     ui->label_welcomeHeading->setText(tr("Sign in with Intervals.icu"));

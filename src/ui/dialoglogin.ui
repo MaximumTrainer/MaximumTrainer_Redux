@@ -462,21 +462,96 @@ QPushButton#pushButton_loginIntervalsIcu:pressed {
           </item>
          </layout>
         </widget>
-        <!-- Page 1: OAuth WebView placeholder (IntervalsIcuOAuthWidget added in constructor) -->
+        <!-- Page 1: OAuth in the system browser — waiting state (desktop only) -->
         <widget class="QWidget" name="widget_oauthPage">
          <layout class="QVBoxLayout" name="verticalLayout_oauthPage">
           <property name="leftMargin">
-           <number>0</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
+           <number>48</number>
           </property>
           <property name="rightMargin">
-           <number>0</number>
+           <number>48</number>
           </property>
-          <property name="bottomMargin">
-           <number>0</number>
-          </property>
+          <item>
+           <spacer name="verticalSpacer_oauth_top">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::Expanding</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_oauthBrowserHeading">
+            <property name="text">
+             <string>Continue in your browser</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">font-size: 15px; font-weight: bold;</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_oauthBrowserInfo">
+            <property name="text">
+             <string>We opened the Intervals.icu sign-in page in your web browser. Complete the sign-in there, then return to this window.</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pushButton_reopenBrowser">
+            <property name="toolTip">
+             <string>Open the Intervals.icu sign-in page in your browser again</string>
+            </property>
+            <property name="text">
+             <string>Browser did not open? Click here</string>
+            </property>
+            <property name="flat">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">color: #666; font-size: 11px; text-decoration: underline;</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pushButton_cancelOAuth">
+            <property name="text">
+             <string>Cancel</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="verticalSpacer_oauth_bottom">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::Expanding</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
          </layout>
         </widget>
         <!-- Page 2: Loading / reconnecting state -->

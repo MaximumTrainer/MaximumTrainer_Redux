@@ -134,9 +134,12 @@ public:
 
 
     static QString getURLStravaAuthorize(const QString &redirectUri);
-    /// Build the Intervals.icu OAuth2 authorization URL (desktop — redirect to maximumtrainer.com backend).
-    /// @param state  Per-request CSRF token; pass an empty string to omit.
-    static QString getURLIntervalsIcuAuthorize(const QString &state = QString());
+    /// Build the Intervals.icu OAuth2 authorization URL.
+    /// @param state        Per-request CSRF token; pass an empty string to omit.
+    /// @param redirectUri  Redirect URI for this request (localhost loopback on
+    ///                     desktop, GitHub Pages callback page on WASM).
+    static QString getURLIntervalsIcuAuthorize(const QString &state,
+                                               const QString &redirectUri);
     /// Build the Intervals.icu OAuth2 authorization URL for the WASM popup flow.
     /// Uses a GitHub Pages callback page as the redirect_uri so the popup can
     /// post the authorization code back to the main WASM window via postMessage.
