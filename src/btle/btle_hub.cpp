@@ -444,6 +444,9 @@ void BtleHub::handleFtmsControlPointResponse(const QByteArray &value)
     } else if (requestOp == 0x00) {   // Request Control granted
         m_ftmsControlGranted = true;
         LOG_INFO("BtleHub", QStringLiteral("FTMS control granted by trainer"));
+    } else {
+        LOG_DEBUG("BtleHub", QStringLiteral("FTMS op 0x%1 acknowledged by trainer")
+                                 .arg(requestOp, 2, 16, QLatin1Char('0')));
     }
 
     // Send the command that queued up while this op was in flight (a target
