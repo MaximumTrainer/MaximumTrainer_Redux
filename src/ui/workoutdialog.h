@@ -55,6 +55,13 @@ public:
 
     void reject();
 
+    /// Mark a controllable trainer (FTMS / simulator) as wired for this solo
+    /// workout so sendLoads()/sendSlopes() emit ERG targets.  Historically
+    /// the FE-C id came from the removed maximumtrainer.com sensor list,
+    /// which left trainerControlUserId at -1 and silently disabled trainer control
+    /// for every BLE workout.  Solo hubs ignore the id (1 = solo rider).
+    void enableTrainerControl() { trainerControlUserId = 1; }
+
     void showVideoPlayer(int choice);
 
     void showHeartRateDisplayWidget(int display);
@@ -187,8 +194,6 @@ public slots:
     void activateSoundCadenceTooHigh();
 
     // QNetwork reply
-    void slotPutAccountFinished();
-    void slotGetSensorListFinished();
     void slotFinishedGetPixmap();
 
 
@@ -405,7 +410,7 @@ private:
     bool usingFEC;
     bool usingOxygen;
 
-    int idFecMainUser;
+    int trainerControlUserId;
 
 
     void checkPairingCompleted();
@@ -434,10 +439,6 @@ private:
 
     QTimer *timer_sec;
     QNetworkReply *replyGetBixmap;
-    QNetworkReply *replyPutAccountToCheckSessionExpired;
-    int numberFailCheckSessionExpired;
-    QNetworkReply *replyGetListSensor;
-    int numberFailGetListSensor;
 
     Account *account;
     Settings *settings;

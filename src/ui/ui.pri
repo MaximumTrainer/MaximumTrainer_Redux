@@ -12,7 +12,6 @@ $$PWD/workoutdialog.cpp \
     $$PWD/dialoglogin.cpp \
     $$PWD/z_stylesheet.cpp \
     $$PWD/updatedialog.cpp \
-    $$PWD/savingwindow.cpp \
     $$PWD/splashscreen.cpp \
     $$PWD/dialogmainwindowconfig.cpp \
     $$PWD/dialog_connection_method.cpp \
@@ -33,7 +32,6 @@ $$PWD/workoutdialog.h \
     $$PWD/dialoglogin.h \
     $$PWD/z_stylesheet.h \
     $$PWD/updatedialog.h \
-    $$PWD/savingwindow.h \
     $$PWD/splashscreen.h \
     $$PWD/dialogmainwindowconfig.h \
     $$PWD/dialog_connection_method.h \
@@ -66,7 +64,6 @@ FORMS    += $$PWD/mainwindow.ui \
     $$PWD/dialoglogin.ui \
     $$PWD/z_stylesheet.ui \
     $$PWD/updatedialog.ui \
-    $$PWD/savingwindow.ui \
     $$PWD/dialogmainwindowconfig.ui \
     $$PWD/tab_intervals_icu.ui
 

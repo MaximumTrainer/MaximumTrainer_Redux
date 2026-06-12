@@ -19,7 +19,6 @@
 #include "workout.h"
 #include "settings.h"
 #include "dialogmainwindowconfig.h"
-#include "savingwindow.h"
 #include "userstudio.h"
 #include "myconstants.h"
 #include "tab_intervals_icu.h"
@@ -122,9 +121,6 @@ public slots:
 
     void checkToUploadFile(const QString& filename, const QString& nameOnly, const QString& description);
 
-    //tempo
-    void postDataAccountFinished();
-
 
 
 private slots:
@@ -202,11 +198,6 @@ private:
     QList<Radio> lstRadio;
 
     PlanObject *planObject;
-
-    QEventLoop loop;
-    QNetworkReply *replySaveAccount;
-    int saveAccountTry;
-    SavingWindow savingWindow;
 
     QNetworkReply *replyVersionCheck = nullptr;
 
