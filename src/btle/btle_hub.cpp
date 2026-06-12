@@ -116,6 +116,8 @@ void BtleHub::connectToDevice(const QBluetoothDeviceInfo &device)
     m_ftmsControlGranted    = false;
     m_ftmsOpInFlight        = false;
     m_ftmsPendingCmd.clear();
+    m_ftmsLastSentCmd.clear();
+    m_ftmsLastAckedCmd.clear();
     m_reconnectDevice   = device;
     m_reconnectAttempts = 0;
 
@@ -205,6 +207,14 @@ void BtleHub::setSlope(int antID, double grade)
 // (or before control is granted) are deferred; a newer one replaces an older.
 void BtleHub::sendFtmsCommand(const QByteArray &cmd)
 {
+    // Identical to what the trainer already confirmed, with nothing newer on
+    // the wire or queued — re-sending would be pure BLE noise (the ERG
+    // smoothing layer re-emits unchanged targets every second during ramps).
+    if (cmd == m_ftmsLastAckedCmd && !m_ftmsOpInFlight && m_ftmsPendingCmd.isEmpty()) {
+        LOG_DEBUG("BtleHub", QStringLiteral("FTMS duplicate of confirmed op 0x%1 skipped")
+                                 .arg(quint8(cmd[0]), 2, 16, QLatin1Char('0')));
+        return;
+    }
     if (!m_ftmsControlGranted || m_ftmsOpInFlight) {
         m_ftmsPendingCmd = cmd;
         return;
@@ -221,7 +231,8 @@ void BtleHub::writeFtmsCommandNow(const QByteArray &cmd)
     if (!cp.isValid())
         return;
 
-    m_ftmsOpInFlight = true;
+    m_ftmsOpInFlight  = true;
+    m_ftmsLastSentCmd = cmd;
     m_ftmsService->writeCharacteristic(cp, cmd,
                                        QLowEnergyService::WriteWithResponse);
     LOG_DEBUG("BtleHub", QStringLiteral("FTMS op 0x%1 sent (%2 bytes)")
@@ -347,6 +358,24 @@ void BtleHub::setupService(QLowEnergyService *service)
                 LOG_WARN("BtleHub", QStringLiteral("Service error %1 on %2")
                                         .arg(int(error))
                                         .arg(service->serviceUuid().toString()));
+                // A failed control-point write never gets a response
+                // indication — free the slot now (instead of waiting for the
+                // timeout) and let the freshest queued command retry.  The
+                // failed payload is NOT marked confirmed, so an identical
+                // re-send passes the duplicate filter.
+                if (service == m_ftmsService &&
+                    error == QLowEnergyService::CharacteristicWriteError &&
+                    m_ftmsOpInFlight) {
+                    m_ftmsOpInFlight = false;
+                    if (m_ftmsOpTimeout) m_ftmsOpTimeout->stop();
+                    if (m_ftmsPendingCmd.isEmpty())
+                        m_ftmsPendingCmd = m_ftmsLastSentCmd;   // retry the failed op
+                    if (m_ftmsControlGranted && !m_ftmsPendingCmd.isEmpty()) {
+                        const QByteArray next = m_ftmsPendingCmd;
+                        m_ftmsPendingCmd.clear();
+                        writeFtmsCommandNow(next);
+                    }
+                }
             });
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
@@ -445,6 +474,7 @@ void BtleHub::handleFtmsControlPointResponse(const QByteArray &value)
         m_ftmsControlGranted = true;
         LOG_INFO("BtleHub", QStringLiteral("FTMS control granted by trainer"));
     } else {
+        m_ftmsLastAckedCmd = m_ftmsLastSentCmd;
         LOG_DEBUG("BtleHub", QStringLiteral("FTMS op 0x%1 acknowledged by trainer")
                                  .arg(requestOp, 2, 16, QLatin1Char('0')));
     }

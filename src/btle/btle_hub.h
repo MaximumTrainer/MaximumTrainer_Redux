@@ -138,6 +138,8 @@ private:
     // m_ftmsPendingCmd (a newer target supersedes an older queued one).
     bool       m_ftmsOpInFlight = false;
     QByteArray m_ftmsPendingCmd;
+    QByteArray m_ftmsLastSentCmd;   ///< payload of the op currently/last on the wire
+    QByteArray m_ftmsLastAckedCmd;  ///< last payload the trainer confirmed — duplicates are skipped
     QTimer    *m_ftmsOpTimeout = nullptr; ///< releases a write whose response never came
     static constexpr int FTMS_OP_TIMEOUT_MS = 2500;
 
