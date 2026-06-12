@@ -570,7 +570,10 @@ export class WasmAppPage {
     };
 
     await this.page.route(
-      /^https:\/\/(?:intervals\.icu\/oauth\/token|mt-intervals-proxy\.intervals-login\.workers\.dev\/proxy\/oauth\/token)(?:\?.*)?$/,
+      // Token endpoint is /api/oauth/token (#261).  Deliberately exact: if
+      // the app ever calls a different token URL again, the request escapes
+      // the mock and the login test fails — the regression signal we want.
+      /^https:\/\/(?:intervals\.icu\/api\/oauth\/token|mt-intervals-proxy\.intervals-login\.workers\.dev\/proxy\/api\/oauth\/token)(?:\?.*)?$/,
       async (route) => {
         if (route.request().method() === 'OPTIONS') {
           await route.fulfill({ status: 204, headers: corsHeaders });
