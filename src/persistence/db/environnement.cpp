@@ -82,8 +82,8 @@ QString Environnement::getURLStravaAuthorize(const QString &redirectUri) {
 /// passes its localhost loopback listener as the redirect_uri instead
 /// (intervals.icu always allows http://localhost/).
 ///
-/// In both cases the subsequent /oauth/token POST goes through the
-/// Cloudflare Worker proxy (see URL_TOKEN_ICV in environnement.h).
+/// The subsequent token POST goes to /api/oauth/token — directly or through
+/// the Cloudflare Worker proxy (see getIntervalsIcuTokenUrl()).
 ///
 /// @param state        A per-request random token for CSRF protection.  The
 ///                     caller must store this value and validate it matches
@@ -130,6 +130,16 @@ QString Environnement::getIntervalsIcuClientId() {
 QString Environnement::getIntervalsIcuClientSecret() {
     const QString stored = CredentialStore::load("intervals_icu_app", "client_secret");
     return stored.isEmpty() ? CLIENT_SECRET_ICV : stored;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+QString Environnement::getIntervalsIcuTokenUrl() {
+#ifdef Q_OS_WASM
+    return URL_TOKEN_ICV_PROXY;
+#else
+    return getIntervalsIcuClientSecret().isEmpty() ? URL_TOKEN_ICV_PROXY
+                                                   : URL_TOKEN_ICV_DIRECT;
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

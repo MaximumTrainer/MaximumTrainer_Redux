@@ -879,10 +879,17 @@ private slots:
         dialog.resize(1280, 720);
         QTest::qWait(100);
 
+        // The dialog restores the developer's persisted "work offline" choice
+        // (QSettings login/workOffline), so normalize to unchecked instead of
+        // asserting on machine-dependent state.
+        if (checkBox->isChecked()) {
+            checkBox->click();
+            QCoreApplication::processEvents();
+        }
         QVERIFY2(!checkBox->isChecked(),
-                 "checkBox_workOffline must start unchecked");
+                 "checkBox_workOffline must be unchecked before the test");
         QVERIFY2(!btnOffline->isVisible(),
-                 "pushButton_startOffline must start hidden");
+                 "pushButton_startOffline must be hidden while unchecked");
 
         // Click the checkbox to enter offline mode.
         // Use QAbstractButton::click() instead of QTest::mouseClick() — the

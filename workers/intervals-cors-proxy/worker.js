@@ -14,11 +14,20 @@
  * Routing:
  *   /proxy/<path>?<query>  →  https://intervals.icu/<path>?<query>
  *
+ * OAuth token exchange:
+ *   intervals.icu REQUIRES the client_secret on /api/oauth/token requests
+ *   (HTTP 422 without it).  The WASM app cannot ship the secret (anyone can
+ *   extract it from the .wasm binary), so this worker injects it server-side
+ *   when the INTERVALS_CLIENT_SECRET secret is configured:
+ *     npx wrangler secret put INTERVALS_CLIENT_SECRET
+ *
  * Security:
  *   - Only the allowed origin list can read responses via the browser.
  *   - Requests from other origins (including absent-Origin server calls)
  *     receive a 403 to prevent this from becoming a public open proxy.
  *   - Only the headers needed for OAuth and API access are forwarded.
+ *   - The client_secret is only ever attached to requests for the
+ *     intervals.icu token endpoint, never echoed back to callers.
  *
  * Deployment:
  *   cd workers/intervals-cors-proxy
@@ -78,7 +87,7 @@ function forbidden() {
 }
 
 export default {
-  async fetch(request, _env, _ctx) {
+  async fetch(request, env, _ctx) {
     const origin = request.headers.get('Origin') || '';
     const client = (request.headers.get(CLIENT_HEADER) || '').toLowerCase();
     const hasOrigin = origin !== '';
@@ -127,10 +136,23 @@ export default {
     }
 
     const isBodyMethod = !['GET', 'HEAD'].includes(request.method);
+    let body = isBodyMethod ? await request.arrayBuffer() : undefined;
+
+    // Token endpoint: inject the OAuth client_secret server-side so neither
+    // the WASM nor the desktop binary has to carry it.
+    if (targetPath === '/api/oauth/token' && env.INTERVALS_CLIENT_SECRET) {
+      const params = new URLSearchParams(new TextDecoder().decode(body ?? new ArrayBuffer(0)));
+      if (!params.get('client_secret')) {
+        params.set('client_secret', env.INTERVALS_CLIENT_SECRET);
+        body = new TextEncoder().encode(params.toString());
+        forwardHeaders.set('content-type', 'application/x-www-form-urlencoded');
+      }
+    }
+
     const proxyReq = new Request(targetUrl, {
       method:  request.method,
       headers: forwardHeaders,
-      body:    isBodyMethod ? await request.arrayBuffer() : undefined,
+      body:    body,
       redirect: 'follow',
     });
 
