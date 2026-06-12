@@ -97,6 +97,7 @@
 #include "../../src/btle/simulator_hub.h"
 #include "../../src/persistence/db/environnement.h"
 #include "../../src/persistence/db/intervals_icu_oauth_flow.h"
+#include "../../src/app/util.h"
 #include "../../src/model/account.h"
 #include "../../src/model/settings.h"
 #include "../../src/ui/dialoglogin.h"
@@ -657,6 +658,54 @@ private slots:
     // testIntervalsIcuApiLogin
     //
     // Validates the online login path by making a real HTTPS request to the
+    // -----------------------------------------------------------------------
+    // testParseSportSettingsProfileSync
+    //
+    // Validates Util::parseJsonIntervalsIcuSettings() against the real shape
+    // of GET /athlete/{id}/sport-settings (an ARRAY of per-sport objects):
+    //   • The "Ride" entry is selected (not the first/Run entry).
+    //   • indoor_ftp is preferred over ftp; outdoor ftp is the fallback.
+    //   • LTHR is applied; power_zones (% of FTP) convert to absolute watts;
+    //     hr_zones (bpm) pass through.
+    //   • Invalid / empty payloads return false and leave the account intact.
+    // -----------------------------------------------------------------------
+    void testParseSportSettingsProfileSync()
+    {
+        Account *account = qApp->property("Account").value<Account *>();
+        QVERIFY(account != nullptr);
+
+        const QString payload = QStringLiteral(R"([
+            {"types":["Run","TrailRun"],"ftp":300,"lthr":172},
+            {"types":["Ride","VirtualRide"],"ftp":250,"indoor_ftp":240,"lthr":165,
+             "power_zones":[55,75,90,105,120,150],
+             "hr_zones":[120,140,155,165,175]}
+        ])");
+
+        QVERIFY2(Util::parseJsonIntervalsIcuSettings(payload),
+                 "Parser must report that FTP/LTHR were applied");
+        QCOMPARE(account->FTP, 240);   // indoor_ftp preferred over ftp (250)
+        QCOMPARE(account->LTHR, 165);  // from the Ride entry, not Run's 172
+        QCOMPARE(account->hr_zones, (QList<int>{120, 140, 155, 165, 175}));
+        // 55% … 150% of the applied 240 W FTP
+        QCOMPARE(account->power_zones, (QList<int>{132, 180, 216, 252, 288, 360}));
+
+        // Outdoor ftp is the fallback when indoor_ftp is absent.
+        QVERIFY(Util::parseJsonIntervalsIcuSettings(
+            QStringLiteral(R"([{"types":["Ride"],"ftp":260,"lthr":160}])")));
+        QCOMPARE(account->FTP, 260);
+        QCOMPARE(account->LTHR, 160);
+
+        // Invalid / empty payloads change nothing and return false.
+        QVERIFY(!Util::parseJsonIntervalsIcuSettings(QStringLiteral("not json")));
+        QVERIFY(!Util::parseJsonIntervalsIcuSettings(QStringLiteral("{}")));
+        QVERIFY(!Util::parseJsonIntervalsIcuSettings(QStringLiteral("[]")));
+        QCOMPARE(account->FTP, 260);
+        QCOMPARE(account->LTHR, 160);
+
+        qDebug().noquote() << "[ParseSportSettings] PASS";
+    }
+
+
     // intervals.icu API using credentials from environment variables.
     //
     // Credentials are read from:
