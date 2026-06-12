@@ -23,7 +23,7 @@ jobs:
         id: deploy
         working-directory: workers/intervals-cors-proxy
         # --config pinned: wrangler v4 can otherwise resolve the repo-root
-        # wrangler.jsonc (the docs static site) and deploy THAT over the proxy.
+        # wrangler.jsonc (the Workers Builds config) instead of this directory.
         run: |
           DEPLOY_OUTPUT=$(npx wrangler deploy --config wrangler.toml 2>&1)
           echo "$DEPLOY_OUTPUT"

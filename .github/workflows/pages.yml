@@ -45,7 +45,7 @@ jobs:
           fi
           npm install -g wrangler
           # --config pinned: wrangler v4 can otherwise resolve the repo-root
-          # wrangler.jsonc (docs static site) and deploy THAT over the proxy.
+          # wrangler.jsonc (the Workers Builds config) instead of this directory.
           DEPLOY_OUTPUT=$(wrangler deploy --config wrangler.toml 2>&1)
           echo "$DEPLOY_OUTPUT"
           # Extract the workers.dev URL from wrangler output

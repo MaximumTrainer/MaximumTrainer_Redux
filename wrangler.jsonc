@@ -1,23 +1,23 @@
-// Cloudflare config for hosting the docs/ static site (assets-only worker).
+// Root Wrangler config — used by the Cloudflare *Workers Builds* Git
+// integration, which builds this repo on every push as the Worker
+// "mt-intervals-proxy" (the maintainer's dashboard connection; see #264).
 //
-// ⚠️ The name here must NEVER be "mt-intervals-proxy": that is the
-// intervals.icu CORS proxy (workers/intervals-cors-proxy/wrangler.toml).
-// This file previously reused that name, so any `wrangler deploy` that
-// resolved this root config silently REPLACED the proxy with the static
-// site (empty 404s on /proxy/* → broken Intervals.icu login, #207).
-// Wrangler v4 can resolve this root config even when run from a worker
-// subdirectory — always pass --config explicitly in CI.
+// It MUST therefore deploy the real intervals.icu CORS proxy.  An earlier
+// revision served docs/ as static assets under the proxy's name, so every
+// master push silently REPLACED the proxy with the landing page (empty 404s
+// on /proxy/* → broken Intervals.icu login, #207).  Keep this config and
+// workers/intervals-cors-proxy/wrangler.toml pointing at the same code.
+//
+// CI deploys (deploy-intervals-proxy.yml, pages.yml) pin
+// `--config workers/intervals-cors-proxy/wrangler.toml` explicitly and also
+// install the INTERVALS_CLIENT_SECRET Worker secret; secrets persist across
+// deployments, so builds from this config keep it.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "mt-docs-site",
+  "name": "mt-intervals-proxy",
+  "main": "workers/intervals-cors-proxy/worker.js",
   "compatibility_date": "2026-06-04",
   "observability": {
     "enabled": true
-  },
-  "assets": {
-    "directory": "docs"
-  },
-  "compatibility_flags": [
-    "nodejs_compat"
-  ]
+  }
 }

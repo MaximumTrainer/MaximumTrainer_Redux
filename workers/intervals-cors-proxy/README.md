@@ -63,10 +63,11 @@ easiest way to deploy correctly.
 >   -d 'grant_type=authorization_code&client_id=259&code=x&redirect_uri=http://localhost:1/'
 > ```
 > should return an intervals.icu JSON error (e.g. *invalid code*), **not** an
-> empty 404.  As of 2026-06-12, `mt-intervals-proxy.intervals-login.workers.dev`
-> serves the GitHub Pages landing page instead of this worker — the proxy must
-> be (re)deployed for WASM login and the no-local-secret desktop fallback to
-> work.
+> empty 404.  (That empty-404 failure happened in production until 2026-06-12:
+> the Cloudflare Workers Builds Git integration deployed the repo-root
+> `wrangler.jsonc` — then a static-assets config — under this worker's name on
+> every master push.  The root config now deploys this same worker, so both
+> paths agree; see the comments in `/wrangler.jsonc`.)
 
 ### 5 — Note the worker URL
 
