@@ -105,6 +105,13 @@ private:
                           const QLowEnergyCharacteristic &characteristic);
     void requestFtmsControl();
     void handleFtmsControlPointResponse(const QByteArray &value);
+    /// Queue (or send) an FTMS control-point command.  Ops are serialized —
+    /// one in flight until the trainer's response indication — and held back
+    /// until control is granted; overlapping writes are answered with ATT
+    /// error 0x80 by real trainers.  Queued commands coalesce: only the
+    /// newest target matters.
+    void sendFtmsCommand(const QByteArray &cmd);
+    void writeFtmsCommandNow(const QByteArray &cmd);
 
     void parseHrMeasurement(const QByteArray &data);
     void parseCscMeasurement(const QByteArray &data);
@@ -126,11 +133,15 @@ private:
     bool m_ftmsControlRequested = false;
     bool m_ftmsControlGranted   = false;
 
-    // Last commanded target, re-sent once the trainer grants control so a
-    // target issued before the grant is not silently lost.
-    enum class FtmsCommand { None, TargetPower, Slope };
-    FtmsCommand m_lastFtmsCommand      = FtmsCommand::None;
-    double      m_lastFtmsCommandValue = 0.0;
+    // Control-point serialization: one op in flight until the trainer's
+    // response indication arrives; the newest deferred command waits in
+    // m_ftmsPendingCmd (a newer target supersedes an older queued one).
+    bool       m_ftmsOpInFlight = false;
+    QByteArray m_ftmsPendingCmd;
+    QByteArray m_ftmsLastSentCmd;   ///< payload of the op currently/last on the wire
+    QByteArray m_ftmsLastAckedCmd;  ///< last payload the trainer confirmed — duplicates are skipped
+    QTimer    *m_ftmsOpTimeout = nullptr; ///< releases a write whose response never came
+    static constexpr int FTMS_OP_TIMEOUT_MS = 2500;
 
     // Zero-out cadence / speed after a few missed messages
     QTimer *m_cscStopTimer = nullptr;
