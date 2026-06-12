@@ -78,5 +78,53 @@
         "bitrate": "192",
         "lang": "FR",
         "url": "https://icecast.radiofrance.fr/francemusique-midfi.mp3"
+    },
+    {
+        "name": "SomaFM The Trip",
+        "genre": "Progressive House / Trance",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://ice1.somafm.com/thetrip-128-mp3"
+    },
+    {
+        "name": "Dance Wave!",
+        "genre": "Dance / EDM",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://dancewave.online/dance.mp3"
+    },
+    {
+        "name": "TechnoBase.FM",
+        "genre": "Techno / HandsUp / Dance",
+        "gotAds": "0",
+        "bitrate": "192",
+        "lang": "DE/EN",
+        "url": "https://listen.technobase.fm/tunein-mp3"
+    },
+    {
+        "name": "HouseTime.FM",
+        "genre": "House / Electro / EDM",
+        "gotAds": "0",
+        "bitrate": "192",
+        "lang": "DE/EN",
+        "url": "https://listen.housetime.fm/tunein-mp3"
+    },
+    {
+        "name": "90s90s Dance",
+        "genre": "90s Dance / EuroDance",
+        "gotAds": "1",
+        "bitrate": "192",
+        "lang": "DE",
+        "url": "https://streams.90s90s.de/dance/mp3-192/"
+    },
+    {
+        "name": "Nightride FM",
+        "genre": "Synthwave / Retro Electro",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://stream.nightride.fm/nightride.mp3"
     }
 ]

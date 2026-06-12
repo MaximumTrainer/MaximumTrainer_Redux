@@ -1260,6 +1260,22 @@ QList<Radio> Util::loadLocalRadioList() {
     if (path.isEmpty())
         return fallbackToDefaults();
 
+    // One-time refresh when the bundled default list changes: overwrite the
+    // user's radios.json with the new defaults (users re-add their custom
+    // stations).  Bump kRadioDefaultsVersion whenever default_radios.json
+    // gains/changes stations that existing installs should pick up.
+    constexpr int kRadioDefaultsVersion = 2;
+    {
+        QSettings settings;
+        const int seenVersion =
+            settings.value(QStringLiteral("radios/defaultsVersion"), 1).toInt();
+        if (seenVersion < kRadioDefaultsVersion) {
+            settings.setValue(QStringLiteral("radios/defaultsVersion"),
+                              kRadioDefaultsVersion);
+            return fallbackToDefaults();
+        }
+    }
+
     QFile file(path);
     if (!file.exists())
         return fallbackToDefaults();
