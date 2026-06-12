@@ -87,6 +87,16 @@ int main(int argc, char *argv[]) {
     // surfaced only after the Qt6 migration.
     QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
+    // The workout view mixes QQuickWidget (retro race) with NATIVE siblings
+    // (QVideoWidget, QtWebEngine). By default Qt forces every sibling of a
+    // native child widget to go native too — a native QQuickWidget cannot
+    // render at all (it warns "QQuickWidget cannot be used as a native child
+    // widget" on every frame and stays blank), and the media player's overlay
+    // hint label stops compositing until a hide/show cycle. This attribute
+    // stops the nativeness from propagating; the video/web widgets themselves
+    // stay native and keep working.
+    QApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
+
     QApplication app(argc, argv);
 
     // Do NOT auto-quit when the last window closes. On Qt6, QtWebEngine spins up
