@@ -38,6 +38,21 @@ Item {
     // rewards precise, sustained effort (the core gamified-training loop).
     property real zoneSince: -1
     property real zoneHoldSec: 0
+    // Arcade score: 10 pts/s while in the zone, scaled by a streak multiplier
+    // (10 s → ×2, 30 s → ×3, 60 s → ×4); overtakes and km milestones pay a
+    // bonus. Resets when the gun fires.
+    property real score: 0
+    property real bestStreakSec: 0
+    property real lastScoreT: -1
+    readonly property int zoneMult: zoneHoldSec >= 60 ? 4 : zoneHoldSec >= 30 ? 3 : zoneHoldSec >= 10 ? 2 : 1
+    // Gap trend (m/s, positive = you are gaining ground), sampled coarsely so
+    // the avatar bubble's »/« arrow is stable rather than flickering per tick.
+    property real gapTrend: 0
+    property real trendPrevGap: 0
+    Timer {
+        interval: 1500; repeat: true; running: race.started && !race.finished
+        onTriggered: { root.gapTrend = (race.gapMeters - root.trendPrevGap) / 1.5; root.trendPrevGap = race.gapMeters }
+    }
     Connections {
         target: race
         function onUpdated() {
@@ -47,6 +62,18 @@ Item {
             } else {
                 root.zoneSince = -1
                 root.zoneHoldSec = 0
+            }
+            if (root.zoneHoldSec > root.bestStreakSec) root.bestStreakSec = root.zoneHoldSec
+            // dt clamped so a pause/resume cannot pay out one giant tick.
+            if (root.lastScoreT >= 0 && race.started && !race.finished && race.running
+                && race.targetPower > 0 && root.effortState === 0)
+                root.score += Math.min(0.5, root.animT - root.lastScoreT) * 10 * root.zoneMult
+            root.lastScoreT = root.animT
+        }
+        function onRaceStateChanged() {
+            if (race.started && !race.finished) {
+                root.score = 0; root.bestStreakSec = 0; root.lastScoreT = root.animT
+                root.lastKm = 0; root.gapTrend = 0; root.trendPrevGap = race.gapMeters
             }
         }
     }
@@ -445,6 +472,7 @@ Item {
     // ---------------------------------------------------------------- riders
     // Opponent: shown up the road only while ahead of you (you are behind).
     BackBike {
+        id: oppBike
         readonly property real ahead: -race.gapMeters
         readonly property real f: 55 / (55 + Math.max(0, ahead))     // 1 near .. ->0 far
         // Keep the ghost riding right beside you (near the player's level and
@@ -466,15 +494,9 @@ Item {
         x: root.width / 2 - width - 64
         y: root.horizonY + root.roadH * (0.60 + 0.16 * f) - height
     }
-    // "ghost ahead" marker chevron when the opponent is too far to render.
-    Text {
-        visible: race.started && !race.finished && (-race.gapMeters) >= 220
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: root.horizonY + 6
-        text: "▲ " + race.oppName; color: "#e8e8ff"; font.family: "monospace"; font.pixelSize: 12; font.bold: true
-    }
     // Player: fixed near the bottom centre, large.
     BackBike {
+        id: playerBike
         s: 2.15
         body: "#e23b3b"
         phase: race.playerCrankRev
@@ -482,6 +504,79 @@ Item {
         x: root.width/2 - width/2
         // Sit above the profile strip so the graph never hides the rider.
         y: root.height - height - (profileStrip.visible ? 78 : 12)
+    }
+    // Gap bubble pinned above the player — the race state lives where the eyes
+    // already are (the avatar), not in a corner HUD: who you are racing, the
+    // gap, and a »/« trend arrow (gaining/losing). Pulses when an overtake is
+    // within reach; flips to NECK & NECK in a close duel.
+    Rectangle {
+        id: gapChip
+        readonly property real absGap: Math.abs(race.gapMeters)
+        readonly property bool duel: absGap < 3
+        readonly property bool hot: !root.leading && absGap < 15
+        visible: race.started && !race.finished
+        z: 40
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: playerBike.y - height - 12
+        width: gapTxt.implicitWidth + 26; height: 30; radius: 15
+        color: "#000000"; opacity: 0.82
+        border.width: 2
+        border.color: duel ? "#ffe24a" : root.leading ? "#5dff5d" : "#ff6b6b"
+        scale: hot ? 1.0 + 0.05 * Math.sin(root.animT * 8) : 1.0
+        Text {
+            id: gapTxt; anchors.centerIn: parent
+            text: gapChip.duel ? "⚡ NECK & NECK"
+                : (root.leading ? "▼ " : "▲ ") + race.oppName + " "
+                  + gapChip.absGap.toFixed(0) + " m " + (root.leading ? "behind" : "ahead")
+                  + (root.gapTrend > 0.15 ? "  »" : root.gapTrend < -0.15 ? "  «" : "")
+            color: gapChip.border.color
+            font.family: "monospace"; font.pixelSize: 14; font.bold: true
+        }
+    }
+    // Rear-view mirror — once you take the lead the ghost no longer renders on
+    // the road ahead, so show it chasing you here instead; it grows in the
+    // glass as it closes back in.
+    Item {
+        id: mirror
+        readonly property real behindM: race.gapMeters
+        readonly property real f: 30 / (30 + Math.max(0, behindM))   // 1 close .. →0 far
+        visible: race.started && !race.finished && behindM > 0.5
+        z: 40   // above the effort glow, like the HUD
+        width: 148; height: 88
+        anchors.right: parent.right; anchors.rightMargin: 14
+        anchors.top: parent.top; anchors.topMargin: 158
+        Rectangle { anchors.fill: parent; radius: 10
+                    color: "#10161f"; border.color: "#cfd8e2"; border.width: 3 }
+        Item {
+            id: glass
+            x: 5; y: 5; width: parent.width - 10; height: parent.height - 10
+            clip: true
+            readonly property real mHorizon: height * 0.38
+            Rectangle { width: glass.width; height: glass.mHorizon
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "#5f93cf" }
+                    GradientStop { position: 1.0; color: "#a9d8ef" } } }
+            Rectangle { y: glass.mHorizon; width: glass.width; height: glass.height - glass.mHorizon; color: "#3c7548" }
+            Shape {
+                anchors.fill: parent
+                ShapePath {
+                    strokeWidth: -1; fillColor: "#5b5b66"
+                    startX: glass.width * -0.22; startY: glass.height
+                    PathLine { x: glass.width * 0.44; y: glass.mHorizon }
+                    PathLine { x: glass.width * 0.56; y: glass.mHorizon }
+                    PathLine { x: glass.width * 1.22; y: glass.height }
+                }
+            }
+            BackBike {
+                s: 0.30 + 0.78 * mirror.f
+                body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.95
+                phase: race.oppCrankRev
+                x: glass.width/2 - width/2
+                y: glass.mHorizon + mirror.f * (glass.height - glass.mHorizon) - height
+            }
+            Text { x: 4; y: 2; text: "REAR"; color: "#ffffff"; opacity: 0.55
+                   font.family: "monospace"; font.pixelSize: 8; font.bold: true }
+        }
     }
 
     // Effort glow: a screen-edge wash that turns red when you're over the
@@ -533,7 +628,7 @@ Item {
         Connections { target: race
             function onUpdated() {
                 if (!race.started || race.finished) return
-                if (root.prevGap < 0 && race.gapMeters >= 0) { otText.text = "OVERTAKE!"; otText.color = "#5dff5d"; otAnim.restart() }
+                if (root.prevGap < 0 && race.gapMeters >= 0) { root.score += 250; otText.text = "OVERTAKE! +250"; otText.color = "#5dff5d"; otAnim.restart() }
                 else if (root.prevGap >= 0 && race.gapMeters < 0) { otText.text = "PASSED!"; otText.color = "#ff6b6b"; otAnim.restart() }
                 root.prevGap = race.gapMeters
             }
@@ -554,7 +649,7 @@ Item {
             function onUpdated() {
                 if (!race.started || race.finished) return
                 var km = Math.floor(race.playerDistanceM / 1000)
-                if (km > root.lastKm) { root.lastKm = km; kmText.text = km + " KM"; kmAnim.restart() }
+                if (km > root.lastKm) { root.lastKm = km; root.score += 100; kmText.text = km + " KM  +100"; kmAnim.restart() }
             }
         }
         SequentialAnimation { id: kmAnim
@@ -576,7 +671,8 @@ Item {
         Text { id: zoneTxt; anchors.centerIn: parent
             text: root.effortState === 1 ? "▼ EASE OFF"
                 : root.effortState === -1 ? "▲ PUSH!"
-                : "✓ IN ZONE " + Math.floor(root.zoneHoldSec) + "s" + (parent.hot ? "  🔥" : "")
+                : "✓ IN ZONE " + Math.floor(root.zoneHoldSec) + "s"
+                  + (root.zoneMult > 1 ? "  ×" + root.zoneMult : "") + (parent.hot ? " 🔥" : "")
             color: "white"; font.family: "monospace"; font.pixelSize: 13; font.bold: true }
     }
 
@@ -590,12 +686,14 @@ Item {
         spacing: 16
         component Stat: Column {
             property string label; property string value
+            property color vcolor: "white"
             Text { text: label; color: "#bcd"; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
-            Text { text: value; color: "white"; font.family: "monospace"; font.pixelSize: 18; font.bold: true }
+            Text { text: value; color: vcolor; font.family: "monospace"; font.pixelSize: 18; font.bold: true }
         }
         Stat { label: "TIME";  value: root.fmtTime(race.workoutElapsedSec) }
         Stat { label: "DIST";  value: (race.playerDistanceM / 1000).toFixed(2) + " km" }
         Stat { label: "SPEED"; value: race.playerSpeedKmh.toFixed(1) + " km/h" }
+        Stat { label: "SCORE"; value: Math.floor(root.score).toString(); vcolor: "#ffe24a" }
     }
 
     // Centre: live effort, coloured vs target (red = high, blue = low, white = in range).
@@ -800,5 +898,9 @@ Item {
         Text { anchors.horizontalCenter: parent.horizontalCenter
                text: (race.playerDistanceM / 1000).toFixed(2) + " km   ·   vs " + race.oppName
                color: "#cde"; font.family: "monospace"; font.pixelSize: 14 }
+        Text { anchors.horizontalCenter: parent.horizontalCenter
+               text: "SCORE " + Math.floor(root.score)
+                     + "   ·   BEST ZONE STREAK " + root.fmtTime(root.bestStreakSec)
+               color: "#ffe24a"; font.family: "monospace"; font.pixelSize: 16; font.bold: true }
     }
 }
