@@ -9,7 +9,7 @@
 // subdirectory — always pass --config explicitly in CI.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "mt-docs-site",
+  "name": "mt-intervals-proxy",
   "compatibility_date": "2026-06-04",
   "observability": {
     "enabled": true
