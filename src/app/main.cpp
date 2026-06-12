@@ -261,6 +261,14 @@ int main(int argc, char *argv[]) {
             controller->setFinishIn(*fsecs);
             ft->start();
         }
+        // --progress [0..1]: hold the workout-progress fraction (drives the
+        // golden-hour sky) so it can be eyeballed standalone.
+        const int progIdx = cliArgs.indexOf(QLatin1String("--progress"));
+        if (progIdx >= 0 && progIdx + 1 < cliArgs.size()) {
+            bool progOk = false;
+            const double frac = cliArgs.at(progIdx + 1).toDouble(&progOk);
+            if (progOk) controller->setWorkoutProgress(qBound(0.0, frac, 1.0));
+        }
 
         const int shotIdx = cliArgs.indexOf(QLatin1String("--shot"));
         if (shotIdx >= 0 && shotIdx + 1 < cliArgs.size()) {
