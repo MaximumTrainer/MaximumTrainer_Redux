@@ -33,11 +33,53 @@ Item {
         : Math.min(1.0, Math.abs(race.playerPowerW - race.targetPower) / Math.max(40, race.targetPower * 0.35))
     // Race position (1st / 2nd) from the gap sign — a racing-game staple.
     readonly property bool leading: race.gapMeters >= 0
+    // Final sprint: the last 15 s before the finish line.
+    readonly property bool finalSprint: race.started && !race.finished
+        && race.finishSecs > 0 && race.finishSecs <= 15
 
     // In-zone hold streak: seconds spent continuously inside the target band —
     // rewards precise, sustained effort (the core gamified-training loop).
     property real zoneSince: -1
     property real zoneHoldSec: 0
+    // Arcade score: 10 pts/s while in the zone, scaled by a streak multiplier
+    // (10 s → ×2, 30 s → ×3, 60 s → ×4); overtakes and km milestones pay a
+    // bonus. Resets when the gun fires.
+    property real score: 0
+    property real bestStreakSec: 0
+    property real lastScoreT: -1
+    readonly property int zoneMult: zoneHoldSec >= 60 ? 4 : zoneHoldSec >= 30 ? 3 : zoneHoldSec >= 10 ? 2 : 1
+    // Gap trend (m/s, positive = you are gaining ground), sampled coarsely so
+    // the avatar bubble's »/« arrow is stable rather than flickering per tick.
+    property real gapTrend: 0
+    property real trendPrevGap: 0
+    // Ghost reactions (drives the mirror sprite): 1 = salute — you just
+    // dropped him (fires once per drop, re-arms when he claws back inside
+    // 6 m); 2 = road-rash elbow + sway — he's closing in to pass.
+    property int  ghostMood: 0
+    property bool ghostDropped: false
+    property real moodUntil: 0
+    // The on-road ghost throws an arm up for a moment after passing YOU.
+    property real oppCelebrateUntil: -1
+    Timer {
+        interval: 1500; repeat: true; running: race.started && !race.finished
+        onTriggered: {
+            root.gapTrend = (race.gapMeters - root.trendPrevGap) / 1.5
+            root.trendPrevGap = race.gapMeters
+            if (root.leading) {
+                if (!root.ghostDropped && race.gapMeters > 15 && root.gapTrend > 0.2) {
+                    root.ghostDropped = true; root.ghostMood = 1; root.moodUntil = root.animT + 3.5
+                } else if (race.gapMeters < 6) {
+                    root.ghostDropped = false
+                }
+                if (root.ghostMood === 1 && root.animT > root.moodUntil) root.ghostMood = 0
+                if (root.ghostMood !== 1)
+                    root.ghostMood = (race.gapMeters < 12 && root.gapTrend < -0.2) ? 2 : 0
+            } else {
+                root.ghostMood = 0
+                root.ghostDropped = false
+            }
+        }
+    }
     Connections {
         target: race
         function onUpdated() {
@@ -48,9 +90,32 @@ Item {
                 root.zoneSince = -1
                 root.zoneHoldSec = 0
             }
+            if (root.zoneHoldSec > root.bestStreakSec) root.bestStreakSec = root.zoneHoldSec
+            // dt clamped so a pause/resume cannot pay out one giant tick.
+            if (root.lastScoreT >= 0 && race.started && !race.finished && race.running
+                && race.targetPower > 0 && root.effortState === 0)
+                root.score += Math.min(0.5, root.animT - root.lastScoreT) * 10 * root.zoneMult
+            root.lastScoreT = root.animT
+        }
+        function onRaceStateChanged() {
+            if (race.started && !race.finished) {
+                root.score = 0; root.bestStreakSec = 0; root.lastScoreT = root.animT
+                root.lastKm = 0; root.gapTrend = 0; root.trendPrevGap = race.gapMeters
+                root.ghostMood = 0; root.ghostDropped = false; root.oppCelebrateUntil = -1
+            }
         }
     }
     function fmtTime(s) { var m = Math.floor(s / 60); var ss = Math.floor(s % 60); return m + ":" + (ss < 10 ? "0" : "") + ss; }
+    // Golden hour: 0 for the first 60% of the workout, then ramps to 1 at the
+    // finish — the sky warms and the sun sinks, so a long ride visibly ends at
+    // sunset (a quiet "almost there" cue).
+    readonly property real dusk: Math.max(0, (race.workoutProgress - 0.6) / 0.4)
+    function mixCol(a, b, t) {
+        var c1 = Qt.color(a), c2 = Qt.color(b)
+        return Qt.rgba(c1.r + (c2.r - c1.r) * t, c1.g + (c2.g - c1.g) * t, c1.b + (c2.b - c1.b) * t, 1)
+    }
+    // Ghost names can be whole history filenames — keep HUD chips readable.
+    function shortName(n, max) { return n.length > max ? n.substring(0, max - 1) + "…" : n }
     // Deterministic pseudo-random in [0,1) from an index (stable per object).
     function rnd(n) { var x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); }
 
@@ -79,6 +144,8 @@ Item {
         property real  alpha: 1.0
         property real  phase: 0
         property real  lean: 0
+        property real  armUp: 0      // 0..1 — right arm raised (salute / celebration)
+        Behavior on armUp { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
         width: 58 * s; height: 74 * s; opacity: alpha
         rotation: lean; transformOrigin: Item.Bottom
         readonly property real bw: width
@@ -109,6 +176,13 @@ Item {
         Rectangle { x: bike.bw*0.30; y: bike.bh*0.17; width: bike.bw*0.40; height: bike.bh*0.10; color: Qt.darker(bike.body, 1.3) }
         // (No arms/hands drawn: from directly behind they sit forward on the
         // bars, hidden by the torso — drawing stubs read as hands poking out.)
+        // raised right arm + fist (salute), rising from behind the shoulder
+        Rectangle { visible: bike.armUp > 0.01; opacity: bike.armUp
+                    x: bike.bw*0.64; y: bike.bh*(0.22 - 0.20*bike.armUp)
+                    width: bike.bw*0.09; height: bike.bh*0.20; radius: bike.bw*0.04; color: bike.skin }
+        Rectangle { visible: bike.armUp > 0.01; opacity: bike.armUp
+                    x: bike.bw*0.615; y: bike.bh*(0.19 - 0.20*bike.armUp)
+                    width: bike.bw*0.14; height: bike.bw*0.14; radius: bike.bw*0.07; color: bike.skin }
         // aero helmet (rounded) with a darker vent stripe
         Rectangle { x: bike.bw*0.38; y: bike.bh*0.05; width: bike.bw*0.24; height: bike.bh*0.16; radius: bike.bw*0.10; color: bike.helmet }
         Rectangle { x: bike.bw*0.485; y: bike.bh*0.06; width: bike.bw*0.04; height: bike.bh*0.13; color: Qt.darker(bike.helmet, 1.4) }
@@ -138,18 +212,21 @@ Item {
     Rectangle {
         anchors.fill: parent
         gradient: Gradient {
-            GradientStop { position: 0.0;  color: "#1f3566" }
-            GradientStop { position: 0.30; color: "#5f93cf" }
-            GradientStop { position: 0.62; color: "#a9d8ef" }
-            GradientStop { position: 1.0;  color: "#cdeaf6" }
+            GradientStop { position: 0.0;  color: root.mixCol("#1f3566", "#2a2150", root.dusk) }
+            GradientStop { position: 0.30; color: root.mixCol("#5f93cf", "#a6608c", root.dusk) }
+            GradientStop { position: 0.62; color: root.mixCol("#a9d8ef", "#ef9f66", root.dusk) }
+            GradientStop { position: 1.0;  color: root.mixCol("#cdeaf6", "#ffd9a0", root.dusk) }
         }
     }
-    // warm low sun with a soft halo and a top-lit → orange gradient
-    Rectangle { x: root.width*0.77 - 22; y: 38; width: 104; height: 104; radius: 52; color: "#ffd98a"; opacity: 0.30 }
-    Rectangle { x: root.width*0.77;      y: 56; width: 60;  height: 60;  radius: 30
+    // warm low sun with a soft halo; sinks toward the ridge line at golden
+    // hour (capped so it never disappears behind the mountain ranges)
+    readonly property real sunY: 56 + dusk * 38
+    Rectangle { x: root.width*0.77 - 22; y: root.sunY - 18; width: 104; height: 104; radius: 52
+                color: root.mixCol("#ffd98a", "#ff9e5e", root.dusk); opacity: 0.30 }
+    Rectangle { x: root.width*0.77;      y: root.sunY; width: 60;  height: 60;  radius: 30
         gradient: Gradient {
-            GradientStop { position: 0.0; color: "#fff1b4" }
-            GradientStop { position: 1.0; color: "#ffb259" }
+            GradientStop { position: 0.0; color: root.mixCol("#fff1b4", "#ffd27a", root.dusk) }
+            GradientStop { position: 1.0; color: root.mixCol("#ffb259", "#ff7a3c", root.dusk) }
         }
     }
 
@@ -285,17 +362,20 @@ Item {
     }
 
     // Roadside nature that rushes past and scales up as it approaches — a strong
-    // depth/speed cue plus scenery. Three kinds (pine / leafy tree / bush) in
-    // varied greens, scattered across the verge. Anchored in world distance.
+    // depth/speed cue plus scenery. Six kinds (pine / leafy / bush / birch /
+    // rock / flower patch) in varied greens (some leafy trees turn autumn),
+    // scattered across the verge. Anchored in world distance.
     Repeater {
-        model: 96
+        model: 156
         Item {
             id: ob
-            readonly property real span: 18 * 96
-            readonly property real az: ((index * 18 - race.visualDist) % span + span) % span + 8  // distance ahead
+            readonly property real span: 13 * 156
+            readonly property real az: ((index * 13 - race.visualDist) % span + span) % span + 8  // distance ahead
             readonly property real p: Math.min(1.0, 38 / az)
             readonly property real r1: root.rnd(index * 1.3 + 3)
-            readonly property int  kind: r1 < 0.35 ? 2 : (r1 < 0.50 ? 0 : 1)   // 2 bush · 0 pine · 1 leafy
+            // 0 pine · 1 leafy · 2 bush · 3 birch · 4 rock · 5 flower patch
+            readonly property int  kind: r1 < 0.22 ? 2 : r1 < 0.40 ? 0 : r1 < 0.62 ? 1
+                                       : r1 < 0.74 ? 3 : r1 < 0.86 ? 4 : 5
             readonly property int  side: root.rnd(index * 2.1) < 0.5 ? -1 : 1
             // Lateral world offset from centre: 1.1× road-half (just off the
             // edge) out to ~4.5× (far across the grass). Scattered, not hugging.
@@ -303,21 +383,35 @@ Item {
             readonly property real cy: root.horizonY + p * root.roadH
             readonly property real baseW: kind === 2 ? (88 + root.rnd(index+1)*54)
                                        : kind === 0 ? (74 + root.rnd(index+2)*40)
-                                                    : (86 + root.rnd(index+2)*54)
+                                       : kind === 1 ? (86 + root.rnd(index+2)*54)
+                                       : kind === 3 ? (58 + root.rnd(index+2)*30)
+                                       : kind === 4 ? (66 + root.rnd(index+1)*58)
+                                                    : (64 + root.rnd(index+1)*46)
             readonly property real baseH: kind === 2 ? (50 + root.rnd(index+7)*30)
                                        : kind === 0 ? (205 + root.rnd(index+4)*140)
-                                                    : (165 + root.rnd(index+4)*120)
+                                       : kind === 1 ? (165 + root.rnd(index+4)*120)
+                                       : kind === 3 ? (185 + root.rnd(index+4)*110)
+                                       : kind === 4 ? (34 + root.rnd(index+7)*26)
+                                                    : (16 + root.rnd(index+7)*10)
             readonly property real tw: baseW * p
             readonly property real th: baseH * p
-            readonly property color baseFoliage: Qt.rgba(0.16 + root.rnd(index+9)*0.12,
-                                                         0.44 + root.rnd(index+11)*0.18,
-                                                         0.22 + root.rnd(index+13)*0.12, 1)
+            // a few leafy trees turn warm autumn colours for variety
+            readonly property bool autumn: kind === 1 && root.rnd(index + 17) < 0.14
+            readonly property color baseFoliage: autumn
+                ? Qt.rgba(0.72 + root.rnd(index+9)*0.12, 0.40 + root.rnd(index+11)*0.16, 0.10 + root.rnd(index+13)*0.08, 1)
+                : Qt.rgba(0.16 + root.rnd(index+9)*0.12, 0.44 + root.rnd(index+11)*0.18, 0.22 + root.rnd(index+13)*0.12, 1)
             // distance haze: 0 near .. 1 far, fades the object into the horizon.
             // Baked into the colours (Qt.tint) rather than a square overlay, which
             // showed a faint box around distant trees.
             readonly property real haz: Math.max(0, Math.min(1, (0.34 - p) / 0.20))
             readonly property color foliage: Qt.tint(baseFoliage, Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
             readonly property color barkCol: Qt.tint("#5a3a1f", Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
+            readonly property color birchBark: Qt.tint("#e8e4da", Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
+            readonly property color rockCol: Qt.tint(Qt.rgba(0.48 + root.rnd(index+19)*0.14,
+                                                             0.49 + root.rnd(index+19)*0.14,
+                                                             0.53 + root.rnd(index+19)*0.14, 1),
+                                                     Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
+            readonly property color petal: ["#ff7bb1", "#ffd84a", "#ff5a5a", "#f2f2f2"][Math.floor(root.rnd(index+23)*4)]
             visible: race.started && p > 0.14
             x: root.width/2 + side * p * latWorld - tw/2
             y: cy - th
@@ -330,8 +424,8 @@ Item {
             Rectangle { visible: ob.kind===2; x: 0;          y: ob.th*0.22; width: ob.tw;      height: ob.th*0.78; radius: ob.tw*0.40; color: ob.foliage }
             Rectangle { visible: ob.kind===2; x: ob.tw*0.18; y: 0;          width: ob.tw*0.64; height: ob.th*0.50; radius: ob.tw*0.34; color: Qt.lighter(ob.foliage,1.16) }
 
-            // trunk (both tree kinds)
-            Rectangle { visible: ob.kind!==2; x: ob.tw*0.44; y: ob.th*0.66; width: ob.tw*0.12; height: ob.th*0.36; color: ob.barkCol }
+            // trunk (pine + leafy)
+            Rectangle { visible: ob.kind===0 || ob.kind===1; x: ob.tw*0.44; y: ob.th*0.66; width: ob.tw*0.12; height: ob.th*0.36; color: ob.barkCol }
 
             // pine: three tiers narrowing upward (conical)
             Rectangle { visible: ob.kind===0; x: ob.tw*0.10; y: ob.th*0.40; width: ob.tw*0.80; height: ob.th*0.32; radius: ob.tw*0.10; color: ob.foliage }
@@ -342,6 +436,27 @@ Item {
             Rectangle { visible: ob.kind===1; x: 0;          y: ob.th*0.24; width: ob.tw;      height: ob.th*0.50; radius: ob.tw*0.42; color: ob.foliage }
             Rectangle { visible: ob.kind===1; x: ob.tw*0.10; y: ob.th*0.06; width: ob.tw*0.62; height: ob.th*0.44; radius: ob.tw*0.34; color: Qt.lighter(ob.foliage,1.12) }
             Rectangle { visible: ob.kind===1; x: ob.tw*0.40; y: 0;          width: ob.tw*0.46; height: ob.th*0.34; radius: ob.tw*0.26; color: Qt.lighter(ob.foliage,1.22) }
+
+            // birch: slim pale trunk with dark bark dashes, airy light canopy
+            Rectangle { visible: ob.kind===3; x: ob.tw*0.45; y: ob.th*0.24; width: ob.tw*0.10; height: ob.th*0.78; color: ob.birchBark }
+            Rectangle { visible: ob.kind===3; x: ob.tw*0.45; y: ob.th*0.46; width: ob.tw*0.06; height: ob.th*0.030; color: "#3c3a34" }
+            Rectangle { visible: ob.kind===3; x: ob.tw*0.49; y: ob.th*0.62; width: ob.tw*0.06; height: ob.th*0.030; color: "#3c3a34" }
+            Rectangle { visible: ob.kind===3; x: ob.tw*0.45; y: ob.th*0.80; width: ob.tw*0.06; height: ob.th*0.030; color: "#3c3a34" }
+            Rectangle { visible: ob.kind===3; x: ob.tw*0.08; y: ob.th*0.10; width: ob.tw*0.84; height: ob.th*0.26; radius: ob.tw*0.30; color: Qt.lighter(ob.foliage,1.28) }
+            Rectangle { visible: ob.kind===3; x: 0;          y: ob.th*0.02; width: ob.tw*0.60; height: ob.th*0.20; radius: ob.tw*0.24; color: Qt.lighter(ob.foliage,1.42) }
+            Rectangle { visible: ob.kind===3; x: ob.tw*0.42; y: 0;          width: ob.tw*0.55; height: ob.th*0.18; radius: ob.tw*0.22; color: Qt.lighter(ob.foliage,1.18) }
+
+            // rock: two grey boulders with a sunlit top facet
+            Rectangle { visible: ob.kind===4; x: 0;          y: ob.th*0.25; width: ob.tw*0.72; height: ob.th*0.75; radius: ob.th*0.30; color: ob.rockCol }
+            Rectangle { visible: ob.kind===4; x: ob.tw*0.40; y: 0;          width: ob.tw*0.60; height: ob.th*0.88; radius: ob.th*0.34; color: Qt.lighter(ob.rockCol,1.12) }
+            Rectangle { visible: ob.kind===4; x: ob.tw*0.50; y: ob.th*0.10; width: ob.tw*0.28; height: ob.th*0.24; radius: ob.th*0.12; color: Qt.lighter(ob.rockCol,1.30) }
+
+            // flower patch: low green pad with bright blossoms poking out
+            Rectangle { visible: ob.kind===5; x: 0;          y: ob.th*0.35; width: ob.tw;      height: ob.th*0.65; radius: ob.th*0.32; color: ob.foliage }
+            Rectangle { visible: ob.kind===5; x: ob.tw*0.10; y: ob.th*0.18; width: ob.tw*0.14; height: ob.tw*0.14; radius: ob.tw*0.07; color: ob.petal }
+            Rectangle { visible: ob.kind===5; x: ob.tw*0.36; y: ob.th*0.02; width: ob.tw*0.14; height: ob.tw*0.14; radius: ob.tw*0.07; color: Qt.lighter(ob.petal,1.15) }
+            Rectangle { visible: ob.kind===5; x: ob.tw*0.62; y: ob.th*0.22; width: ob.tw*0.14; height: ob.tw*0.14; radius: ob.tw*0.07; color: ob.petal }
+            Rectangle { visible: ob.kind===5; x: ob.tw*0.80; y: ob.th*0.06; width: ob.tw*0.12; height: ob.tw*0.12; radius: ob.tw*0.06; color: Qt.lighter(ob.petal,1.25) }
         }
     }
 
@@ -386,27 +501,33 @@ Item {
     }
 
     // Finish line: a checkered band spanning the road with a "FINISH" banner.
-    // It is anchored at a fixed WORLD distance (finWorldZ) — exactly like the
-    // roadside trees — so it scrolls at the same speed as the road/rumble border.
-    // Re-predicted each second from (visualDist + secs × visualSpeed) but only
-    // ever pulled CLOSER (never receded), so it never appears to slow down vs the
-    // road; sprinting the final stretch just reaches it a touch early.
-    property real finWorldZ: -1
+    // Anchored in TIME, not world distance: it rides in from the horizon over
+    // the last 15 s and lands ON THE RIDER'S WHEEL LINE exactly when the
+    // countdown hits zero, whatever the pace. (A world anchor predicted from
+    // current speed pops in mid-road and then crawls when the workout ends on
+    // a slow cool-down.) finishSecs ticks once a second, so interpolate with
+    // animT between updates — frozen while paused.
+    property real finishSecsSmooth: -1
+    property real finishSyncT: 0
     Connections {
         target: race
         function onFinishChanged() {
-            if (race.started && !race.finished && race.finishSecs >= 0
-                && race.finishSecs <= 30 && race.visualSpeed > 0.3) {
-                var pred = race.visualDist + race.finishSecs * race.visualSpeed
-                if (root.finWorldZ < 0 || pred < root.finWorldZ) root.finWorldZ = pred
-            } else if (race.finishSecs < 0 || race.finishSecs > 31) {
-                root.finWorldZ = -1
+            if (race.started && !race.finished && race.finishSecs >= 0 && race.finishSecs <= 15) {
+                root.finishSecsSmooth = race.finishSecs
+                root.finishSyncT = root.animT
+            } else if (race.finishSecs < 0 || race.finishSecs > 16) {
+                root.finishSecsSmooth = -1
             }
         }
     }
+    readonly property real finishLeft: finishSecsSmooth < 0 ? -1
+        : Math.max(0, finishSecsSmooth - (race.running ? animT - finishSyncT : 0))
     Item {
         id: finishLine
-        readonly property real aheadZ: root.finWorldZ < 0 ? -1 : (root.finWorldZ - race.visualDist)
+        readonly property real riderP: (playerBike.y + playerBike.height - root.horizonY) / root.roadH
+        readonly property real riderZ: 38 / Math.max(0.2, riderP)
+        readonly property real aheadZ: root.finishLeft < 0 ? -1
+                                     : riderZ + (root.finishLeft / 15) * (470 - riderZ)
         readonly property real p:      Math.min(1.0, 38 / Math.max(6, aheadZ))
         readonly property real halfw:  root.maxHalfW * p
         readonly property real roadW:  2 * halfw
@@ -414,7 +535,7 @@ Item {
         readonly property real bandH:  Math.max(4, 28 * p)
         readonly property real postH:  74 * p
         readonly property int  cols:   12
-        visible: race.started && !race.finished && root.finWorldZ >= 0 && aheadZ > 0.5 && aheadZ < 480
+        visible: race.started && !race.finished && root.finishLeft > 0
         x: root.width/2 - halfw
         y: cy - bandH
         width: roadW; height: bandH
@@ -445,6 +566,7 @@ Item {
     // ---------------------------------------------------------------- riders
     // Opponent: shown up the road only while ahead of you (you are behind).
     BackBike {
+        id: oppBike
         readonly property real ahead: -race.gapMeters
         readonly property real f: 55 / (55 + Math.max(0, ahead))     // 1 near .. ->0 far
         // Keep the ghost riding right beside you (near the player's level and
@@ -456,6 +578,7 @@ Item {
         body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.85   // cyan so it stands out on grey + the dash
         phase: race.oppCrankRev
         lean: root.curveAt(oz) * 13
+        armUp: root.animT < root.oppCelebrateUntil ? 1 : 0   // brief flex after passing you
         // Sit in the LEFT lane (offset grows as it nears) so you pull up
         // alongside it rather than staring at its back wheel. Converges toward
         // the centre/vanishing point when it is far up the road.
@@ -466,15 +589,9 @@ Item {
         x: root.width / 2 - width - 64
         y: root.horizonY + root.roadH * (0.60 + 0.16 * f) - height
     }
-    // "ghost ahead" marker chevron when the opponent is too far to render.
-    Text {
-        visible: race.started && !race.finished && (-race.gapMeters) >= 220
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: root.horizonY + 6
-        text: "▲ " + race.oppName; color: "#e8e8ff"; font.family: "monospace"; font.pixelSize: 12; font.bold: true
-    }
     // Player: fixed near the bottom centre, large.
     BackBike {
+        id: playerBike
         s: 2.15
         body: "#e23b3b"
         phase: race.playerCrankRev
@@ -482,6 +599,84 @@ Item {
         x: root.width/2 - width/2
         // Sit above the profile strip so the graph never hides the rider.
         y: root.height - height - (profileStrip.visible ? 78 : 12)
+    }
+    // Gap bubble pinned above the player — the race state lives where the eyes
+    // already are (the avatar), not in a corner HUD: who you are racing, the
+    // gap, and a »/« trend arrow (gaining/losing). Pulses when an overtake is
+    // within reach.
+    Rectangle {
+        id: gapChip
+        readonly property real absGap: Math.abs(race.gapMeters)
+        readonly property bool hot: !root.leading && absGap < 15
+        // A 1-2 m lead is noise, not news — drop the "behind" bubble until the
+        // ghost actually loses contact (it still shows in the mirror).
+        visible: race.started && !race.finished && (!root.leading || absGap >= 3)
+        z: 40
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: playerBike.y - height - 12
+        width: gapTxt.implicitWidth + 26; height: 30; radius: 15
+        color: "#000000"; opacity: 0.82
+        border.width: 2
+        border.color: root.leading ? "#5dff5d" : "#ff6b6b"
+        scale: hot ? 1.0 + 0.05 * Math.sin(root.animT * 8) : 1.0
+        Text {
+            id: gapTxt; anchors.centerIn: parent
+            text: (root.leading ? "▼ " : "▲ ") + root.shortName(race.oppName, 16) + " "
+                  + gapChip.absGap.toFixed(0) + " m " + (root.leading ? "behind" : "ahead")
+                  + (root.gapTrend > 0.15 ? "  »" : root.gapTrend < -0.15 ? "  «" : "")
+            color: gapChip.border.color
+            font.family: "monospace"; font.pixelSize: 14; font.bold: true
+        }
+    }
+    // Rear-view mirror — once you take the lead the ghost no longer renders on
+    // the road ahead, so show it chasing you here instead; it grows in the
+    // glass as it closes back in.
+    Item {
+        id: mirror
+        readonly property real behindM: race.gapMeters
+        readonly property real f: 30 / (30 + Math.max(0, behindM))   // 1 close .. →0 far
+        visible: race.started && !race.finished && behindM > 0.5
+        z: 40   // above the effort glow, like the HUD
+        width: 148; height: 88
+        // Ride just off the player's right shoulder, like a bar-end mirror —
+        // close to where the eyes already are during the race.
+        x: playerBike.x + playerBike.width + 70
+        y: playerBike.y + playerBike.height/2 - height/2
+        Rectangle { anchors.fill: parent; radius: 10
+                    color: "#10161f"; border.color: "#cfd8e2"; border.width: 3 }
+        Item {
+            id: glass
+            x: 5; y: 5; width: parent.width - 10; height: parent.height - 10
+            clip: true
+            readonly property real mHorizon: height * 0.38
+            Rectangle { width: glass.width; height: glass.mHorizon
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "#5f93cf" }
+                    GradientStop { position: 1.0; color: "#a9d8ef" } } }
+            Rectangle { y: glass.mHorizon; width: glass.width; height: glass.height - glass.mHorizon; color: "#3c7548" }
+            Shape {
+                anchors.fill: parent
+                ShapePath {
+                    strokeWidth: -1; fillColor: "#5b5b66"
+                    startX: glass.width * -0.22; startY: glass.height
+                    PathLine { x: glass.width * 0.44; y: glass.mHorizon }
+                    PathLine { x: glass.width * 0.56; y: glass.mHorizon }
+                    PathLine { x: glass.width * 1.22; y: glass.height }
+                }
+            }
+            BackBike {
+                s: 0.30 + 0.78 * mirror.f
+                body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.95
+                phase: race.oppCrankRev
+                armUp: root.ghostMood === 1 ? 1 : 0
+                // weaves side to side hunting for a way past
+                x: glass.width/2 - width/2
+                   + (root.ghostMood === 2 ? Math.sin(root.animT*5.5) * glass.width * 0.07 : 0)
+                y: glass.mHorizon + mirror.f * (glass.height - glass.mHorizon) - height
+            }
+            Text { x: 4; y: 2; text: "REAR"; color: "#ffffff"; opacity: 0.55
+                   font.family: "monospace"; font.pixelSize: 8; font.bold: true }
+        }
     }
 
     // Effort glow: a screen-edge wash that turns red when you're over the
@@ -510,6 +705,37 @@ Item {
                 GradientStop { position: 1.0; color: "#00000000" } } }
     }
 
+    // Final-sprint hype: a one-shot "FINAL SPRINT!" flash when the last 15 s
+    // begin, plus a pulsing gold edge glow for the whole window.
+    Item {
+        anchors.fill: parent; visible: root.finalSprint
+        opacity: 0.30 + 0.12 * Math.sin(root.animT * 6)
+        Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top } height: parent.height * 0.10
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#ffce3a" }
+                GradientStop { position: 1.0; color: "#00000000" } } }
+        Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: parent.height * 0.10
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#00000000" }
+                GradientStop { position: 1.0; color: "#ffce3a" } } }
+    }
+    property bool sprintFlashed: false
+    Text {
+        id: sprintText; anchors.centerIn: parent; anchors.verticalCenterOffset: -root.height * 0.07; z: 58
+        text: "FINAL SPRINT!"; color: "#ffce3a"; font.family: "monospace"
+        font.pixelSize: Math.round(root.height * 0.09); font.bold: true; opacity: 0
+        Connections { target: race
+            function onFinishChanged() {
+                if (root.finalSprint && !root.sprintFlashed) { root.sprintFlashed = true; sprintAnim.restart() }
+                else if (race.finishSecs > 16 || race.finishSecs < 0) root.sprintFlashed = false
+            }
+        }
+        SequentialAnimation { id: sprintAnim
+            NumberAnimation { target: sprintText; property: "opacity"; from: 1.0; to: 1.0; duration: 900 }
+            NumberAnimation { target: sprintText; property: "opacity"; to: 0.0; duration: 700 }
+        }
+    }
+
     // "GO!" splash when the gun fires (race transitions to started).
     Text {
         id: goText; anchors.centerIn: parent; z: 60
@@ -534,7 +760,7 @@ Item {
             function onUpdated() {
                 if (!race.started || race.finished) return
                 if (root.prevGap < 0 && race.gapMeters >= 0) { otText.text = "OVERTAKE!"; otText.color = "#5dff5d"; otAnim.restart() }
-                else if (root.prevGap >= 0 && race.gapMeters < 0) { otText.text = "PASSED!"; otText.color = "#ff6b6b"; otAnim.restart() }
+                else if (root.prevGap >= 0 && race.gapMeters < 0) { otText.text = "PASSED!"; otText.color = "#ff6b6b"; otAnim.restart(); root.oppCelebrateUntil = root.animT + 2.5 }
                 root.prevGap = race.gapMeters
             }
         }
@@ -554,7 +780,7 @@ Item {
             function onUpdated() {
                 if (!race.started || race.finished) return
                 var km = Math.floor(race.playerDistanceM / 1000)
-                if (km > root.lastKm) { root.lastKm = km; kmText.text = km + " KM"; kmAnim.restart() }
+                if (km > root.lastKm) { root.lastKm = km; root.score += 100; kmText.text = km + " KM  +100"; kmAnim.restart() }
             }
         }
         SequentialAnimation { id: kmAnim
@@ -576,7 +802,8 @@ Item {
         Text { id: zoneTxt; anchors.centerIn: parent
             text: root.effortState === 1 ? "▼ EASE OFF"
                 : root.effortState === -1 ? "▲ PUSH!"
-                : "✓ IN ZONE " + Math.floor(root.zoneHoldSec) + "s" + (parent.hot ? "  🔥" : "")
+                : "✓ IN ZONE " + Math.floor(root.zoneHoldSec) + "s"
+                  + (root.zoneMult > 1 ? "  ×" + root.zoneMult : "") + (parent.hot ? " 🔥" : "")
             color: "white"; font.family: "monospace"; font.pixelSize: 13; font.bold: true }
     }
 
@@ -590,12 +817,14 @@ Item {
         spacing: 16
         component Stat: Column {
             property string label; property string value
+            property color vcolor: "white"
             Text { text: label; color: "#bcd"; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
-            Text { text: value; color: "white"; font.family: "monospace"; font.pixelSize: 18; font.bold: true }
+            Text { text: value; color: vcolor; font.family: "monospace"; font.pixelSize: 18; font.bold: true }
         }
         Stat { label: "TIME";  value: root.fmtTime(race.workoutElapsedSec) }
         Stat { label: "DIST";  value: (race.playerDistanceM / 1000).toFixed(2) + " km" }
         Stat { label: "SPEED"; value: race.playerSpeedKmh.toFixed(1) + " km/h" }
+        Stat { label: "SCORE"; value: Math.floor(root.score).toString(); vcolor: "#ffe24a" }
     }
 
     // Centre: live effort, coloured vs target (red = high, blue = low, white = in range).
@@ -628,38 +857,7 @@ Item {
         BigStat { label: "HR";      value: race.playerHr;      unit: "bpm"; target: race.targetHr;      range: race.targetHrRange }
     }
 
-    // Right: gap headline + battle bar.
-    Column {
-        anchors.right: parent.right; anchors.rightMargin: 18
-        anchors.top: parent.top; anchors.topMargin: 6
-        spacing: 3
-        // Race-position medallion (1st / 2nd) — racing-game staple.
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: 56; height: 26; radius: 6
-            color: root.leading ? "#1f7a37" : "#7a1f2a"; border.color: "#ffffff"; border.width: 1
-            Text { anchors.centerIn: parent; text: root.leading ? "P1" : "P2"
-                   color: "white"; font.family: "monospace"; font.pixelSize: 17; font.bold: true }
-        }
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: race.gapMeters >= 0 ? "AHEAD +" + race.gapMeters.toFixed(0) + " m"
-                                      : "BEHIND " + race.gapMeters.toFixed(0) + " m"
-            color: race.gapMeters >= 0 ? "#5dff5d" : "#ff6b6b"
-            font.family: "monospace"; font.pixelSize: 24; font.bold: true
-        }
-        Rectangle {
-            width: 240; height: 8; radius: 4; color: "#ffffff"; opacity: 0.25
-            anchors.horizontalCenter: parent.horizontalCenter
-            Rectangle {
-                readonly property real frac: Math.max(-1, Math.min(1, race.gapMeters / 60))
-                height: parent.height; radius: 4
-                color: frac >= 0 ? "#5dff5d" : "#ff6b6b"
-                x: frac >= 0 ? parent.width/2 : parent.width/2 + frac * (parent.width/2)
-                width: Math.abs(frac) * (parent.width/2)
-            }
-        }
-    }
+    // (No top-right gap cluster: position and gap live in the avatar bubble.)
 
     // NEXT-interval target card (right side).
     Rectangle {
@@ -708,7 +906,7 @@ Item {
 
     Text {
         anchors { bottom: parent.bottom; left: parent.left; leftMargin: 8; bottomMargin: 72 }
-        text: (race.oppIsBot ? "🤖 " : "👻 ") + race.oppName + "   ·   " + race.oppPowerW.toFixed(0) + " W"
+        text: (race.oppIsBot ? "🤖 " : "👻 ") + root.shortName(race.oppName, 34) + "   ·   " + race.oppPowerW.toFixed(0) + " W"
         color: "#e8e8e8"; font.family: "monospace"; font.pixelSize: 12
     }
     Text {
@@ -774,23 +972,25 @@ Item {
                color: "white"; font.family: "monospace"; font.pixelSize: 16 }
     }
 
-    Repeater {   // confetti
+    Repeater {   // confetti — a reward, so it only rains when you actually won
         model: 28
         Rectangle {
-            visible: race.finished
+            readonly property bool celebrate: race.finished && race.gapMeters >= 0
+            visible: celebrate
             width: 8; height: 8
             color: ["#e23b3b", "#5dff5d", "#3aa0ff", "#ffe08a", "#ff6bd6"][index % 5]
             x: Math.random() * root.width; y: -20
-            NumberAnimation on y { running: race.finished; loops: Animation.Infinite
+            NumberAnimation on y { running: celebrate; loops: Animation.Infinite
                 from: -20; to: root.height + 20; duration: 1700 + (index % 7) * 280 }
-            NumberAnimation on rotation { running: race.finished; loops: Animation.Infinite
+            NumberAnimation on rotation { running: celebrate; loops: Animation.Infinite
                 from: 0; to: 360; duration: 700 + (index % 5) * 220 }
         }
     }
     Rectangle { anchors.fill: parent; color: "#000000"; opacity: 0.4; visible: race.finished }
     Column {
         anchors.centerIn: parent; spacing: 10; visible: race.finished
-        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "🏁  FINISH!"
+        Text { anchors.horizontalCenter: parent.horizontalCenter
+               text: race.gapMeters >= 0 ? "🏆  YOU WIN!" : "🏁  FINISH!"
                color: "#ffe08a"; font.family: "monospace"; font.pixelSize: 46; font.bold: true }
         Text { anchors.horizontalCenter: parent.horizontalCenter
                text: race.gapMeters >= 0 ? "You won by " + race.gapMeters.toFixed(0) + " m! 🎉"
@@ -798,7 +998,11 @@ Item {
                color: race.gapMeters >= 0 ? "#5dff5d" : "#ff6b6b"
                font.family: "monospace"; font.pixelSize: 22; font.bold: true }
         Text { anchors.horizontalCenter: parent.horizontalCenter
-               text: (race.playerDistanceM / 1000).toFixed(2) + " km   ·   vs " + race.oppName
+               text: (race.playerDistanceM / 1000).toFixed(2) + " km   ·   vs " + root.shortName(race.oppName, 24)
                color: "#cde"; font.family: "monospace"; font.pixelSize: 14 }
+        Text { anchors.horizontalCenter: parent.horizontalCenter
+               text: "SCORE " + Math.floor(root.score)
+                     + "   ·   BEST ZONE STREAK " + root.fmtTime(root.bestStreakSec)
+               color: "#ffe24a"; font.family: "monospace"; font.pixelSize: 16; font.bold: true }
     }
 }
