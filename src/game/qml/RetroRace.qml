@@ -316,11 +316,11 @@ Item {
     // rock / flower patch) in varied greens (some leafy trees turn autumn),
     // scattered across the verge. Anchored in world distance.
     Repeater {
-        model: 132
+        model: 156
         Item {
             id: ob
-            readonly property real span: 15 * 132
-            readonly property real az: ((index * 15 - race.visualDist) % span + span) % span + 8  // distance ahead
+            readonly property real span: 13 * 156
+            readonly property real az: ((index * 13 - race.visualDist) % span + span) % span + 8  // distance ahead
             readonly property real p: Math.min(1.0, 38 / az)
             readonly property real r1: root.rnd(index * 1.3 + 3)
             // 0 pine · 1 leafy · 2 bush · 3 birch · 4 rock · 5 flower patch
