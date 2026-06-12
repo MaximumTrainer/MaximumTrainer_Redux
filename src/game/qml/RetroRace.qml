@@ -501,32 +501,30 @@ Item {
     }
 
     // Finish line: a checkered band spanning the road with a "FINISH" banner.
-    // It is anchored at a fixed WORLD distance (finWorldZ) — exactly like the
-    // roadside trees — so it scrolls at the same speed as the road/rumble border.
-    // Re-predicted each second from (visualDist + secs × visualSpeed) and
-    // BLENDED toward that prediction from both sides, with a weight that grows
-    // as the countdown runs out (exact over the last couple of seconds). The
-    // old closer-only ratchet banked every momentary speed-up, so the line
-    // arrived seconds early; gentle two-way corrections stay unnoticeable
-    // against the rushing road.
-    property real finWorldZ: -1
+    // Anchored in TIME, not world distance: it rides in from the horizon over
+    // the last 30 s at a fixed visual rate and lands exactly when the
+    // countdown hits zero, whatever the rider's pace. (A world anchor
+    // predicted from current speed pops in mid-road and then crawls when the
+    // workout ends on a slow cool-down.) finishSecs ticks once a second, so
+    // interpolate with animT between updates — frozen while paused.
+    property real finishSecsSmooth: -1
+    property real finishSyncT: 0
     Connections {
         target: race
         function onFinishChanged() {
-            if (race.started && !race.finished && race.finishSecs >= 0
-                && race.finishSecs <= 30 && race.visualSpeed > 0.3) {
-                var pred = race.visualDist + race.finishSecs * race.visualSpeed
-                var alpha = 2 / Math.max(2, race.finishSecs)
-                root.finWorldZ = root.finWorldZ < 0 ? pred
-                    : root.finWorldZ + (pred - root.finWorldZ) * alpha
+            if (race.started && !race.finished && race.finishSecs >= 0 && race.finishSecs <= 30) {
+                root.finishSecsSmooth = race.finishSecs
+                root.finishSyncT = root.animT
             } else if (race.finishSecs < 0 || race.finishSecs > 31) {
-                root.finWorldZ = -1
+                root.finishSecsSmooth = -1
             }
         }
     }
+    readonly property real finishLeft: finishSecsSmooth < 0 ? -1
+        : Math.max(0, finishSecsSmooth - (race.running ? animT - finishSyncT : 0))
     Item {
         id: finishLine
-        readonly property real aheadZ: root.finWorldZ < 0 ? -1 : (root.finWorldZ - race.visualDist)
+        readonly property real aheadZ: root.finishLeft < 0 ? -1 : root.finishLeft * 15.2
         readonly property real p:      Math.min(1.0, 38 / Math.max(6, aheadZ))
         readonly property real halfw:  root.maxHalfW * p
         readonly property real roadW:  2 * halfw
@@ -534,7 +532,7 @@ Item {
         readonly property real bandH:  Math.max(4, 28 * p)
         readonly property real postH:  74 * p
         readonly property int  cols:   12
-        visible: race.started && !race.finished && root.finWorldZ >= 0 && aheadZ > 0.5 && aheadZ < 480
+        visible: race.started && !race.finished && root.finishLeft > 0
         x: root.width/2 - halfw
         y: cy - bandH
         width: roadW; height: bandH
