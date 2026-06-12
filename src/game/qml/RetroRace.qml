@@ -508,11 +508,10 @@ Item {
     // Gap bubble pinned above the player — the race state lives where the eyes
     // already are (the avatar), not in a corner HUD: who you are racing, the
     // gap, and a »/« trend arrow (gaining/losing). Pulses when an overtake is
-    // within reach; flips to NECK & NECK in a close duel.
+    // within reach.
     Rectangle {
         id: gapChip
         readonly property real absGap: Math.abs(race.gapMeters)
-        readonly property bool duel: absGap < 3
         readonly property bool hot: !root.leading && absGap < 15
         visible: race.started && !race.finished
         z: 40
@@ -521,12 +520,11 @@ Item {
         width: gapTxt.implicitWidth + 26; height: 30; radius: 15
         color: "#000000"; opacity: 0.82
         border.width: 2
-        border.color: duel ? "#ffe24a" : root.leading ? "#5dff5d" : "#ff6b6b"
+        border.color: root.leading ? "#5dff5d" : "#ff6b6b"
         scale: hot ? 1.0 + 0.05 * Math.sin(root.animT * 8) : 1.0
         Text {
             id: gapTxt; anchors.centerIn: parent
-            text: gapChip.duel ? "⚡ NECK & NECK"
-                : (root.leading ? "▼ " : "▲ ") + race.oppName + " "
+            text: (root.leading ? "▼ " : "▲ ") + race.oppName + " "
                   + gapChip.absGap.toFixed(0) + " m " + (root.leading ? "behind" : "ahead")
                   + (root.gapTrend > 0.15 ? "  »" : root.gapTrend < -0.15 ? "  «" : "")
             color: gapChip.border.color
@@ -543,8 +541,10 @@ Item {
         visible: race.started && !race.finished && behindM > 0.5
         z: 40   // above the effort glow, like the HUD
         width: 148; height: 88
-        anchors.right: parent.right; anchors.rightMargin: 14
-        anchors.top: parent.top; anchors.topMargin: 158
+        // Ride just off the player's right shoulder, like a bar-end mirror —
+        // close to where the eyes already are during the race.
+        x: playerBike.x + playerBike.width + 70
+        y: playerBike.y + playerBike.height/2 - height/2
         Rectangle { anchors.fill: parent; radius: 10
                     color: "#10161f"; border.color: "#cfd8e2"; border.width: 3 }
         Item {
@@ -739,13 +739,8 @@ Item {
             Text { anchors.centerIn: parent; text: root.leading ? "P1" : "P2"
                    color: "white"; font.family: "monospace"; font.pixelSize: 17; font.bold: true }
         }
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: race.gapMeters >= 0 ? "AHEAD +" + race.gapMeters.toFixed(0) + " m"
-                                      : "BEHIND " + race.gapMeters.toFixed(0) + " m"
-            color: race.gapMeters >= 0 ? "#5dff5d" : "#ff6b6b"
-            font.family: "monospace"; font.pixelSize: 24; font.bold: true
-        }
+        // (The gap headline lives in the avatar bubble now; only the battle bar
+        // stays up here as a compact ±60 m trend view.)
         Rectangle {
             width: 240; height: 8; radius: 4; color: "#ffffff"; opacity: 0.25
             anchors.horizontalCenter: parent.horizontalCenter
