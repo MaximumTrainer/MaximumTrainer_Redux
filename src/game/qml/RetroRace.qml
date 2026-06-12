@@ -312,17 +312,20 @@ Item {
     }
 
     // Roadside nature that rushes past and scales up as it approaches — a strong
-    // depth/speed cue plus scenery. Three kinds (pine / leafy tree / bush) in
-    // varied greens, scattered across the verge. Anchored in world distance.
+    // depth/speed cue plus scenery. Six kinds (pine / leafy / bush / birch /
+    // rock / flower patch) in varied greens (some leafy trees turn autumn),
+    // scattered across the verge. Anchored in world distance.
     Repeater {
-        model: 96
+        model: 132
         Item {
             id: ob
-            readonly property real span: 18 * 96
-            readonly property real az: ((index * 18 - race.visualDist) % span + span) % span + 8  // distance ahead
+            readonly property real span: 15 * 132
+            readonly property real az: ((index * 15 - race.visualDist) % span + span) % span + 8  // distance ahead
             readonly property real p: Math.min(1.0, 38 / az)
             readonly property real r1: root.rnd(index * 1.3 + 3)
-            readonly property int  kind: r1 < 0.35 ? 2 : (r1 < 0.50 ? 0 : 1)   // 2 bush · 0 pine · 1 leafy
+            // 0 pine · 1 leafy · 2 bush · 3 birch · 4 rock · 5 flower patch
+            readonly property int  kind: r1 < 0.22 ? 2 : r1 < 0.40 ? 0 : r1 < 0.62 ? 1
+                                       : r1 < 0.74 ? 3 : r1 < 0.86 ? 4 : 5
             readonly property int  side: root.rnd(index * 2.1) < 0.5 ? -1 : 1
             // Lateral world offset from centre: 1.1× road-half (just off the
             // edge) out to ~4.5× (far across the grass). Scattered, not hugging.
@@ -330,21 +333,35 @@ Item {
             readonly property real cy: root.horizonY + p * root.roadH
             readonly property real baseW: kind === 2 ? (88 + root.rnd(index+1)*54)
                                        : kind === 0 ? (74 + root.rnd(index+2)*40)
-                                                    : (86 + root.rnd(index+2)*54)
+                                       : kind === 1 ? (86 + root.rnd(index+2)*54)
+                                       : kind === 3 ? (58 + root.rnd(index+2)*30)
+                                       : kind === 4 ? (66 + root.rnd(index+1)*58)
+                                                    : (64 + root.rnd(index+1)*46)
             readonly property real baseH: kind === 2 ? (50 + root.rnd(index+7)*30)
                                        : kind === 0 ? (205 + root.rnd(index+4)*140)
-                                                    : (165 + root.rnd(index+4)*120)
+                                       : kind === 1 ? (165 + root.rnd(index+4)*120)
+                                       : kind === 3 ? (185 + root.rnd(index+4)*110)
+                                       : kind === 4 ? (34 + root.rnd(index+7)*26)
+                                                    : (16 + root.rnd(index+7)*10)
             readonly property real tw: baseW * p
             readonly property real th: baseH * p
-            readonly property color baseFoliage: Qt.rgba(0.16 + root.rnd(index+9)*0.12,
-                                                         0.44 + root.rnd(index+11)*0.18,
-                                                         0.22 + root.rnd(index+13)*0.12, 1)
+            // a few leafy trees turn warm autumn colours for variety
+            readonly property bool autumn: kind === 1 && root.rnd(index + 17) < 0.14
+            readonly property color baseFoliage: autumn
+                ? Qt.rgba(0.72 + root.rnd(index+9)*0.12, 0.40 + root.rnd(index+11)*0.16, 0.10 + root.rnd(index+13)*0.08, 1)
+                : Qt.rgba(0.16 + root.rnd(index+9)*0.12, 0.44 + root.rnd(index+11)*0.18, 0.22 + root.rnd(index+13)*0.12, 1)
             // distance haze: 0 near .. 1 far, fades the object into the horizon.
             // Baked into the colours (Qt.tint) rather than a square overlay, which
             // showed a faint box around distant trees.
             readonly property real haz: Math.max(0, Math.min(1, (0.34 - p) / 0.20))
             readonly property color foliage: Qt.tint(baseFoliage, Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
             readonly property color barkCol: Qt.tint("#5a3a1f", Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
+            readonly property color birchBark: Qt.tint("#e8e4da", Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
+            readonly property color rockCol: Qt.tint(Qt.rgba(0.48 + root.rnd(index+19)*0.14,
+                                                             0.49 + root.rnd(index+19)*0.14,
+                                                             0.53 + root.rnd(index+19)*0.14, 1),
+                                                     Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
+            readonly property color petal: ["#ff7bb1", "#ffd84a", "#ff5a5a", "#f2f2f2"][Math.floor(root.rnd(index+23)*4)]
             visible: race.started && p > 0.14
             x: root.width/2 + side * p * latWorld - tw/2
             y: cy - th
@@ -357,8 +374,8 @@ Item {
             Rectangle { visible: ob.kind===2; x: 0;          y: ob.th*0.22; width: ob.tw;      height: ob.th*0.78; radius: ob.tw*0.40; color: ob.foliage }
             Rectangle { visible: ob.kind===2; x: ob.tw*0.18; y: 0;          width: ob.tw*0.64; height: ob.th*0.50; radius: ob.tw*0.34; color: Qt.lighter(ob.foliage,1.16) }
 
-            // trunk (both tree kinds)
-            Rectangle { visible: ob.kind!==2; x: ob.tw*0.44; y: ob.th*0.66; width: ob.tw*0.12; height: ob.th*0.36; color: ob.barkCol }
+            // trunk (pine + leafy)
+            Rectangle { visible: ob.kind===0 || ob.kind===1; x: ob.tw*0.44; y: ob.th*0.66; width: ob.tw*0.12; height: ob.th*0.36; color: ob.barkCol }
 
             // pine: three tiers narrowing upward (conical)
             Rectangle { visible: ob.kind===0; x: ob.tw*0.10; y: ob.th*0.40; width: ob.tw*0.80; height: ob.th*0.32; radius: ob.tw*0.10; color: ob.foliage }
@@ -369,6 +386,27 @@ Item {
             Rectangle { visible: ob.kind===1; x: 0;          y: ob.th*0.24; width: ob.tw;      height: ob.th*0.50; radius: ob.tw*0.42; color: ob.foliage }
             Rectangle { visible: ob.kind===1; x: ob.tw*0.10; y: ob.th*0.06; width: ob.tw*0.62; height: ob.th*0.44; radius: ob.tw*0.34; color: Qt.lighter(ob.foliage,1.12) }
             Rectangle { visible: ob.kind===1; x: ob.tw*0.40; y: 0;          width: ob.tw*0.46; height: ob.th*0.34; radius: ob.tw*0.26; color: Qt.lighter(ob.foliage,1.22) }
+
+            // birch: slim pale trunk with dark bark dashes, airy light canopy
+            Rectangle { visible: ob.kind===3; x: ob.tw*0.45; y: ob.th*0.24; width: ob.tw*0.10; height: ob.th*0.78; color: ob.birchBark }
+            Rectangle { visible: ob.kind===3; x: ob.tw*0.45; y: ob.th*0.46; width: ob.tw*0.06; height: ob.th*0.030; color: "#3c3a34" }
+            Rectangle { visible: ob.kind===3; x: ob.tw*0.49; y: ob.th*0.62; width: ob.tw*0.06; height: ob.th*0.030; color: "#3c3a34" }
+            Rectangle { visible: ob.kind===3; x: ob.tw*0.45; y: ob.th*0.80; width: ob.tw*0.06; height: ob.th*0.030; color: "#3c3a34" }
+            Rectangle { visible: ob.kind===3; x: ob.tw*0.08; y: ob.th*0.10; width: ob.tw*0.84; height: ob.th*0.26; radius: ob.tw*0.30; color: Qt.lighter(ob.foliage,1.28) }
+            Rectangle { visible: ob.kind===3; x: 0;          y: ob.th*0.02; width: ob.tw*0.60; height: ob.th*0.20; radius: ob.tw*0.24; color: Qt.lighter(ob.foliage,1.42) }
+            Rectangle { visible: ob.kind===3; x: ob.tw*0.42; y: 0;          width: ob.tw*0.55; height: ob.th*0.18; radius: ob.tw*0.22; color: Qt.lighter(ob.foliage,1.18) }
+
+            // rock: two grey boulders with a sunlit top facet
+            Rectangle { visible: ob.kind===4; x: 0;          y: ob.th*0.25; width: ob.tw*0.72; height: ob.th*0.75; radius: ob.th*0.30; color: ob.rockCol }
+            Rectangle { visible: ob.kind===4; x: ob.tw*0.40; y: 0;          width: ob.tw*0.60; height: ob.th*0.88; radius: ob.th*0.34; color: Qt.lighter(ob.rockCol,1.12) }
+            Rectangle { visible: ob.kind===4; x: ob.tw*0.50; y: ob.th*0.10; width: ob.tw*0.28; height: ob.th*0.24; radius: ob.th*0.12; color: Qt.lighter(ob.rockCol,1.30) }
+
+            // flower patch: low green pad with bright blossoms poking out
+            Rectangle { visible: ob.kind===5; x: 0;          y: ob.th*0.35; width: ob.tw;      height: ob.th*0.65; radius: ob.th*0.32; color: ob.foliage }
+            Rectangle { visible: ob.kind===5; x: ob.tw*0.10; y: ob.th*0.18; width: ob.tw*0.14; height: ob.tw*0.14; radius: ob.tw*0.07; color: ob.petal }
+            Rectangle { visible: ob.kind===5; x: ob.tw*0.36; y: ob.th*0.02; width: ob.tw*0.14; height: ob.tw*0.14; radius: ob.tw*0.07; color: Qt.lighter(ob.petal,1.15) }
+            Rectangle { visible: ob.kind===5; x: ob.tw*0.62; y: ob.th*0.22; width: ob.tw*0.14; height: ob.tw*0.14; radius: ob.tw*0.07; color: ob.petal }
+            Rectangle { visible: ob.kind===5; x: ob.tw*0.80; y: ob.th*0.06; width: ob.tw*0.12; height: ob.tw*0.12; radius: ob.tw*0.06; color: Qt.lighter(ob.petal,1.25) }
         }
     }
 
@@ -415,9 +453,12 @@ Item {
     // Finish line: a checkered band spanning the road with a "FINISH" banner.
     // It is anchored at a fixed WORLD distance (finWorldZ) — exactly like the
     // roadside trees — so it scrolls at the same speed as the road/rumble border.
-    // Re-predicted each second from (visualDist + secs × visualSpeed) but only
-    // ever pulled CLOSER (never receded), so it never appears to slow down vs the
-    // road; sprinting the final stretch just reaches it a touch early.
+    // Re-predicted each second from (visualDist + secs × visualSpeed) and
+    // BLENDED toward that prediction from both sides, with a weight that grows
+    // as the countdown runs out (exact over the last couple of seconds). The
+    // old closer-only ratchet banked every momentary speed-up, so the line
+    // arrived seconds early; gentle two-way corrections stay unnoticeable
+    // against the rushing road.
     property real finWorldZ: -1
     Connections {
         target: race
@@ -425,7 +466,9 @@ Item {
             if (race.started && !race.finished && race.finishSecs >= 0
                 && race.finishSecs <= 30 && race.visualSpeed > 0.3) {
                 var pred = race.visualDist + race.finishSecs * race.visualSpeed
-                if (root.finWorldZ < 0 || pred < root.finWorldZ) root.finWorldZ = pred
+                var alpha = 2 / Math.max(2, race.finishSecs)
+                root.finWorldZ = root.finWorldZ < 0 ? pred
+                    : root.finWorldZ + (pred - root.finWorldZ) * alpha
             } else if (race.finishSecs < 0 || race.finishSecs > 31) {
                 root.finWorldZ = -1
             }
@@ -513,7 +556,9 @@ Item {
         id: gapChip
         readonly property real absGap: Math.abs(race.gapMeters)
         readonly property bool hot: !root.leading && absGap < 15
-        visible: race.started && !race.finished
+        // A 1-2 m lead is noise, not news — drop the "behind" bubble until the
+        // ghost actually loses contact (it still shows in the mirror).
+        visible: race.started && !race.finished && (!root.leading || absGap >= 3)
         z: 40
         anchors.horizontalCenter: parent.horizontalCenter
         y: playerBike.y - height - 12
