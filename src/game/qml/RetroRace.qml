@@ -49,9 +49,33 @@ Item {
     // the avatar bubble's »/« arrow is stable rather than flickering per tick.
     property real gapTrend: 0
     property real trendPrevGap: 0
+    // Ghost reactions (drives the mirror sprite): 1 = salute — you just
+    // dropped him (fires once per drop, re-arms when he claws back inside
+    // 6 m); 2 = road-rash elbow + sway — he's closing in to pass.
+    property int  ghostMood: 0
+    property bool ghostDropped: false
+    property real moodUntil: 0
+    // The on-road ghost throws an arm up for a moment after passing YOU.
+    property real oppCelebrateUntil: -1
     Timer {
         interval: 1500; repeat: true; running: race.started && !race.finished
-        onTriggered: { root.gapTrend = (race.gapMeters - root.trendPrevGap) / 1.5; root.trendPrevGap = race.gapMeters }
+        onTriggered: {
+            root.gapTrend = (race.gapMeters - root.trendPrevGap) / 1.5
+            root.trendPrevGap = race.gapMeters
+            if (root.leading) {
+                if (!root.ghostDropped && race.gapMeters > 15 && root.gapTrend > 0.2) {
+                    root.ghostDropped = true; root.ghostMood = 1; root.moodUntil = root.animT + 3.5
+                } else if (race.gapMeters < 6) {
+                    root.ghostDropped = false
+                }
+                if (root.ghostMood === 1 && root.animT > root.moodUntil) root.ghostMood = 0
+                if (root.ghostMood !== 1)
+                    root.ghostMood = (race.gapMeters < 12 && root.gapTrend < -0.2) ? 2 : 0
+            } else {
+                root.ghostMood = 0
+                root.ghostDropped = false
+            }
+        }
     }
     Connections {
         target: race
@@ -74,6 +98,7 @@ Item {
             if (race.started && !race.finished) {
                 root.score = 0; root.bestStreakSec = 0; root.lastScoreT = root.animT
                 root.lastKm = 0; root.gapTrend = 0; root.trendPrevGap = race.gapMeters
+                root.ghostMood = 0; root.ghostDropped = false; root.oppCelebrateUntil = -1
             }
         }
     }
@@ -106,6 +131,9 @@ Item {
         property real  alpha: 1.0
         property real  phase: 0
         property real  lean: 0
+        property real  armUp: 0      // 0..1 — right arm raised (salute / celebration)
+        property bool  elbow: false  // elbow thrown out + jabbing (road-rash chase)
+        Behavior on armUp { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
         width: 58 * s; height: 74 * s; opacity: alpha
         rotation: lean; transformOrigin: Item.Bottom
         readonly property real bw: width
@@ -136,6 +164,18 @@ Item {
         Rectangle { x: bike.bw*0.30; y: bike.bh*0.17; width: bike.bw*0.40; height: bike.bh*0.10; color: Qt.darker(bike.body, 1.3) }
         // (No arms/hands drawn: from directly behind they sit forward on the
         // bars, hidden by the torso — drawing stubs read as hands poking out.)
+        // raised right arm + fist (salute), rising from behind the shoulder
+        Rectangle { visible: bike.armUp > 0.01; opacity: bike.armUp
+                    x: bike.bw*0.64; y: bike.bh*(0.22 - 0.20*bike.armUp)
+                    width: bike.bw*0.09; height: bike.bh*0.20; radius: bike.bw*0.04; color: bike.skin }
+        Rectangle { visible: bike.armUp > 0.01; opacity: bike.armUp
+                    x: bike.bw*0.615; y: bike.bh*(0.19 - 0.20*bike.armUp)
+                    width: bike.bw*0.14; height: bike.bw*0.14; radius: bike.bw*0.07; color: bike.skin }
+        // elbow jab out to the left (road-rash aggression), pumping
+        Rectangle { visible: bike.elbow
+                    x: -bike.bw*0.02 + Math.sin(root.animT*9)*bike.bw*0.05
+                    y: bike.bh*0.30; width: bike.bw*0.34; height: bike.bh*0.06
+                    radius: bike.bh*0.03; color: bike.skin }
         // aero helmet (rounded) with a darker vent stripe
         Rectangle { x: bike.bw*0.38; y: bike.bh*0.05; width: bike.bw*0.24; height: bike.bh*0.16; radius: bike.bw*0.10; color: bike.helmet }
         Rectangle { x: bike.bw*0.485; y: bike.bh*0.06; width: bike.bw*0.04; height: bike.bh*0.13; color: Qt.darker(bike.helmet, 1.4) }
@@ -527,6 +567,7 @@ Item {
         body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.85   // cyan so it stands out on grey + the dash
         phase: race.oppCrankRev
         lean: root.curveAt(oz) * 13
+        armUp: root.animT < root.oppCelebrateUntil ? 1 : 0   // brief flex after passing you
         // Sit in the LEFT lane (offset grows as it nears) so you pull up
         // alongside it rather than staring at its back wheel. Converges toward
         // the centre/vanishing point when it is far up the road.
@@ -616,7 +657,11 @@ Item {
                 s: 0.30 + 0.78 * mirror.f
                 body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.95
                 phase: race.oppCrankRev
+                armUp: root.ghostMood === 1 ? 1 : 0
+                elbow: root.ghostMood === 2
+                // weaves side to side hunting for a way past
                 x: glass.width/2 - width/2
+                   + (root.ghostMood === 2 ? Math.sin(root.animT*5.5) * glass.width * 0.07 : 0)
                 y: glass.mHorizon + mirror.f * (glass.height - glass.mHorizon) - height
             }
             Text { x: 4; y: 2; text: "REAR"; color: "#ffffff"; opacity: 0.55
@@ -674,7 +719,7 @@ Item {
             function onUpdated() {
                 if (!race.started || race.finished) return
                 if (root.prevGap < 0 && race.gapMeters >= 0) { root.score += 250; otText.text = "OVERTAKE! +250"; otText.color = "#5dff5d"; otAnim.restart() }
-                else if (root.prevGap >= 0 && race.gapMeters < 0) { otText.text = "PASSED!"; otText.color = "#ff6b6b"; otAnim.restart() }
+                else if (root.prevGap >= 0 && race.gapMeters < 0) { otText.text = "PASSED!"; otText.color = "#ff6b6b"; otAnim.restart(); root.oppCelebrateUntil = root.animT + 2.5 }
                 root.prevGap = race.gapMeters
             }
         }
