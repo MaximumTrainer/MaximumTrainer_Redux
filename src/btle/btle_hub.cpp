@@ -63,6 +63,22 @@ BtleHub::BtleHub(QObject *parent)
     m_reconnectTimer = new QTimer(this);
     m_reconnectTimer->setSingleShot(true);
     connect(m_reconnectTimer, &QTimer::timeout, this, &BtleHub::onReconnectTimer);
+
+    // Frees the FTMS control point if a response indication never arrives
+    // (marginal signal, trainer quirk) so commands don't queue forever.
+    m_ftmsOpTimeout = new QTimer(this);
+    m_ftmsOpTimeout->setSingleShot(true);
+    connect(m_ftmsOpTimeout, &QTimer::timeout, this, [this]() {
+        if (!m_ftmsOpInFlight)
+            return;
+        LOG_WARN("BtleHub", QStringLiteral("FTMS response indication timed out — releasing control point"));
+        m_ftmsOpInFlight = false;
+        if (m_ftmsControlGranted && !m_ftmsPendingCmd.isEmpty()) {
+            const QByteArray next = m_ftmsPendingCmd;
+            m_ftmsPendingCmd.clear();
+            writeFtmsCommandNow(next);
+        }
+    });
 }
 
 BtleHub::~BtleHub()
@@ -98,7 +114,8 @@ void BtleHub::connectToDevice(const QBluetoothDeviceInfo &device)
     m_firstCscMeasurement   = true;
     m_ftmsControlRequested  = false;
     m_ftmsControlGranted    = false;
-    m_lastFtmsCommand       = FtmsCommand::None;
+    m_ftmsOpInFlight        = false;
+    m_ftmsPendingCmd.clear();
     m_reconnectDevice   = device;
     m_reconnectAttempts = 0;
 
@@ -150,26 +167,13 @@ void BtleHub::setLoad(int antID, double watts)
     if (!m_ftmsService)
         return;
 
-    // Remember the target so it can be re-sent once the trainer grants
-    // control (commands sent before the grant are rejected by the trainer).
-    m_lastFtmsCommand      = FtmsCommand::TargetPower;
-    m_lastFtmsCommandValue = watts;
-
     // FTMS: Set Target Power (opcode 0x05), value = int16 watts
-    QLowEnergyCharacteristic cp =
-        m_ftmsService->characteristic(BtleUuid::FtmsControlPoint);
-    if (!cp.isValid())
-        return;
-
     qint16 w = static_cast<qint16>(qBound(-32768.0, watts, 32767.0));
     QByteArray cmd(3, '\0');
     cmd[0] = 0x05;                      // Set Target Power opcode
     cmd[1] = static_cast<char>(w & 0xFF);
     cmd[2] = static_cast<char>((w >> 8) & 0xFF);
-    m_ftmsService->writeCharacteristic(cp, cmd,
-                                       QLowEnergyService::WriteWithResponse);
-    LOG_DEBUG("BtleHub", QStringLiteral("FTMS Set Target Power: %1 W (control granted: %2)")
-                             .arg(w).arg(m_ftmsControlGranted));
+    sendFtmsCommand(cmd);
 }
 
 void BtleHub::setSlope(int antID, double grade)
@@ -180,16 +184,8 @@ void BtleHub::setSlope(int antID, double grade)
     if (!m_ftmsService)
         return;
 
-    m_lastFtmsCommand      = FtmsCommand::Slope;
-    m_lastFtmsCommandValue = grade;
-
     // FTMS: Set Indoor Bike Simulation (opcode 0x11)
     // Parameters: wind speed (int16, 0.001 m/s), grade (int16, 0.01 %), crr, cw
-    QLowEnergyCharacteristic cp =
-        m_ftmsService->characteristic(BtleUuid::FtmsControlPoint);
-    if (!cp.isValid())
-        return;
-
     // grade parameter is int16 in units of 0.01%, range ±327.67% (FTMS spec max is ±200%)
     qint16 gradeParam = static_cast<qint16>(
         qBound(-32768.0, grade * 100.0, 32767.0));
@@ -200,8 +196,39 @@ void BtleHub::setSlope(int antID, double grade)
     cmd[4] = static_cast<char>((gradeParam >> 8) & 0xFF);
     cmd[5] = 0x00;                             // crr (uint8, 0.0001)
     cmd[6] = 0x00;                             // cw  (uint8, 0.01)
+    sendFtmsCommand(cmd);
+}
+
+// One control-point op in flight at a time: real trainers reject overlapping
+// writes with ATT error 0x80, and every op completes only when its response
+// indication ([0x80, opcode, result]) arrives.  Commands issued while waiting
+// (or before control is granted) are deferred; a newer one replaces an older.
+void BtleHub::sendFtmsCommand(const QByteArray &cmd)
+{
+    if (!m_ftmsControlGranted || m_ftmsOpInFlight) {
+        m_ftmsPendingCmd = cmd;
+        return;
+    }
+    writeFtmsCommandNow(cmd);
+}
+
+void BtleHub::writeFtmsCommandNow(const QByteArray &cmd)
+{
+    if (!m_ftmsService)
+        return;
+    QLowEnergyCharacteristic cp =
+        m_ftmsService->characteristic(BtleUuid::FtmsControlPoint);
+    if (!cp.isValid())
+        return;
+
+    m_ftmsOpInFlight = true;
     m_ftmsService->writeCharacteristic(cp, cmd,
                                        QLowEnergyService::WriteWithResponse);
+    LOG_DEBUG("BtleHub", QStringLiteral("FTMS op 0x%1 sent (%2 bytes)")
+                             .arg(quint8(cmd[0]), 2, 16, QLatin1Char('0'))
+                             .arg(cmd.size()));
+    if (m_ftmsOpTimeout)
+        m_ftmsOpTimeout->start(FTMS_OP_TIMEOUT_MS);
 }
 
 void BtleHub::stopDecodingMsg()
@@ -365,9 +392,12 @@ void BtleHub::requestFtmsControl()
         return;
 
     // Opcode 0x00 = Request Control
+    m_ftmsOpInFlight = true;
     m_ftmsService->writeCharacteristic(cp, QByteArray(1, '\x00'),
                                        QLowEnergyService::WriteWithResponse);
     m_ftmsControlRequested = true;
+    if (m_ftmsOpTimeout)
+        m_ftmsOpTimeout->start(FTMS_OP_TIMEOUT_MS);
     LOG_INFO("BtleHub", QStringLiteral("FTMS Request Control sent"));
 }
 
@@ -396,26 +426,32 @@ void BtleHub::handleFtmsControlPointResponse(const QByteArray &value)
     const quint8 requestOp = quint8(value[1]);
     const quint8 result    = quint8(value[2]);
 
+    // Whatever the verdict, the op is complete — the control point is free.
+    m_ftmsOpInFlight = false;
+    if (m_ftmsOpTimeout)
+        m_ftmsOpTimeout->stop();
+
     if (result != 0x01) {
         LOG_WARN("BtleHub", QStringLiteral("FTMS control point refused opcode 0x%1 (result 0x%2)")
                                 .arg(requestOp, 2, 16, QLatin1Char('0'))
                                 .arg(result, 2, 16, QLatin1Char('0')));
-        if (requestOp == 0x00)
+        if (requestOp == 0x00) {
             m_ftmsControlGranted = false;
-        return;
-    }
-
-    if (requestOp == 0x00) {   // Request Control granted
+            return;
+        }
+        // A refused target falls through: the pending (newer) command still
+        // deserves its attempt.
+    } else if (requestOp == 0x00) {   // Request Control granted
         m_ftmsControlGranted = true;
         LOG_INFO("BtleHub", QStringLiteral("FTMS control granted by trainer"));
-        // Re-issue the last target: anything commanded before the grant was
-        // rejected, which previously left the trainer stuck on its default
-        // resistance for the rest of the interval.
-        switch (m_lastFtmsCommand) {
-        case FtmsCommand::TargetPower: setLoad(m_userID, m_lastFtmsCommandValue);  break;
-        case FtmsCommand::Slope:       setSlope(m_userID, m_lastFtmsCommandValue); break;
-        case FtmsCommand::None:        break;
-        }
+    }
+
+    // Send the command that queued up while this op was in flight (a target
+    // issued before the grant, or one that superseded an older write).
+    if (m_ftmsControlGranted && !m_ftmsPendingCmd.isEmpty()) {
+        const QByteArray next = m_ftmsPendingCmd;
+        m_ftmsPendingCmd.clear();
+        writeFtmsCommandNow(next);
     }
 }
 
