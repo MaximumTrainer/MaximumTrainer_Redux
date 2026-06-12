@@ -3,6 +3,7 @@
 #include <QWebEngineView>
 #include <QWebEnginePage>
 #include <QWebEngineSettings>
+#include <QWebEngineFullScreenRequest>
 #include <QGridLayout>
 #include <QToolBar>
 #include <QLineEdit>
@@ -27,12 +28,24 @@ WebBrowserView::WebBrowserView(QWidget *parent) : QWidget(parent)
 
     webEngineView = new QWebEngineView(this);
     webEngineView->settings()->setAttribute(QWebEngineSettings::PluginsEnabled, true);
+    // Without FullScreenSupportEnabled + an accepted fullScreenRequested,
+    // YouTube greys out its fullscreen button ("Full screen is unavailable").
+    webEngineView->settings()->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, true);
 
 #ifndef GC_WASM_BUILD
     // On WASM the QWebEngineView stub opens URLs in a browser tab and emits none
     // of these signals, so the connections are desktop-only.
     connect(webEngineView, &QWebEngineView::loadFinished, this, &WebBrowserView::adjustLocation);
     connect(webEngineView, &QWebEngineView::urlChanged, this, &WebBrowserView::updateUrlOfLineEdit);
+    connect(webEngineView->page(), &QWebEnginePage::fullScreenRequested,
+            this, [this](QWebEngineFullScreenRequest request) {
+                request.accept();
+                // The video element now fills the webview; hide the browser
+                // chrome so "fullscreen" means the whole workout video area
+                // (it reappears on mouse/keyboard activity as usual).
+                if (request.toggleOn())
+                    toolBar->hide();
+            });
 #endif
 
     toolBar = new QToolBar(this);
