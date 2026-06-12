@@ -19,6 +19,8 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QDateTime>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include "interval.h"
 #include "workout.h"
@@ -3820,10 +3822,24 @@ void WorkoutDialog::showPostWorkoutPanel()
                 QTimer::singleShot(0, this, &WorkoutDialog::uploadToStrava);
         }
         if (hasIcu) {
-            auto *btn = new QPushButton(tr("Upload to Intervals.icu"), widgetPostWorkout);
-            btn->setObjectName("btnIntervalsIcu");
-            connect(btn, &QPushButton::clicked, this, &WorkoutDialog::uploadToIntervalsIcu);
-            layout->addWidget(btn);
+            if (!account->intervals_icu_auto_upload) {
+                auto *btn = new QPushButton(tr("Upload to Intervals.icu"), widgetPostWorkout);
+                btn->setObjectName("btnIntervalsIcu");
+                connect(btn, &QPushButton::clicked, this, &WorkoutDialog::uploadToIntervalsIcu);
+                layout->addWidget(btn);
+            }
+            auto *lbl = new QLabel(widgetPostWorkout);
+            lbl->setObjectName("lblIntervalsIcu");
+            lbl->setWordWrap(true);
+            lbl->setStyleSheet("font-size: 11pt;");
+            // Allow the "View on Intervals.icu" link (shown on success) to
+            // open the activity in the user's browser.
+            lbl->setOpenExternalLinks(true);
+            if (account->intervals_icu_auto_upload)
+                lbl->setText(tr("Uploading to Intervals.icu…"));
+            layout->addWidget(lbl);
+            if (account->intervals_icu_auto_upload)
+                QTimer::singleShot(0, this, &WorkoutDialog::uploadToIntervalsIcu);
         }
     }
 
@@ -3986,11 +4002,23 @@ void WorkoutDialog::slotPostStravaStatusDone()
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Updates the post-workout Intervals.icu status — the manual button
+// (auto-upload off) or the status label (auto-upload on), whichever is present.
+void WorkoutDialog::setIntervalsIcuPostStatus(const QString &text, bool retryable)
+{
+    if (!widgetPostWorkout) return;
+    if (auto *lbl = widgetPostWorkout->findChild<QLabel*>("lblIntervalsIcu"))
+        lbl->setText(text);
+    if (auto *btn = widgetPostWorkout->findChild<QPushButton*>("btnIntervalsIcu"))
+        btn->setEnabled(retryable);
+    widgetPostWorkout->adjustSize();
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::uploadToIntervalsIcu()
 {
     if (fitFilePath.isEmpty()) return;
-    auto *btn = widgetPostWorkout ? widgetPostWorkout->findChild<QPushButton*>("btnIntervalsIcu") : nullptr;
 
     auto *svc = new IntervalsIcuService(this);
     svc->setCredentials(account->intervals_icu_api_key, account->intervals_icu_athlete_id);
@@ -4000,10 +4028,10 @@ void WorkoutDialog::uploadToIntervalsIcu()
     svc->deleteLater();
 
     if (!replyPostIntervalsIcuUpload) {
-        if (btn) btn->setText(tr("Upload to Intervals.icu (Failed — Retry)"));
+        setIntervalsIcuPostStatus(tr("✗ Intervals.icu upload could not start — check your connection."), true);
         return;
     }
-    if (btn) { btn->setEnabled(false); btn->setText(tr("Uploading…")); }
+    setIntervalsIcuPostStatus(tr("Uploading to Intervals.icu…"), false);
     connect(replyPostIntervalsIcuUpload, &QNetworkReply::finished,
             this, &WorkoutDialog::slotPostIntervalsIcuUploadDone);
 }
@@ -4015,19 +4043,37 @@ void WorkoutDialog::slotPostIntervalsIcuUploadDone()
     reply->deleteLater();
     replyPostIntervalsIcuUpload = nullptr;
 
-    auto *btn = widgetPostWorkout ? widgetPostWorkout->findChild<QPushButton*>("btnIntervalsIcu") : nullptr;
     if (reply->error() != QNetworkReply::NoError) {
         const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (httpStatus == 409) {
-            if (btn) btn->setText(tr("✓ Activity already on Intervals.icu"));
+            setIntervalsIcuPostStatus(tr("✓ Activity already on Intervals.icu"), false);
         } else {
             LOG_WARN("WorkoutDialog", QStringLiteral("Intervals.icu upload failed: ") + reply->errorString());
-            if (btn) { btn->setEnabled(true); btn->setText(tr("Upload to Intervals.icu (Failed — Retry)")); }
+            setIntervalsIcuPostStatus(tr("✗ Intervals.icu upload failed: %1").arg(reply->errorString()), true);
         }
         return;
     }
-    if (btn) btn->setText(tr("✓ Uploaded to Intervals.icu"));
-    LOG_INFO("WorkoutDialog", "Intervals.icu upload succeeded");
+
+    // HTTP 201 returns the created activity object; deep-link to it like the
+    // Strava panel does (link colour ≈ the intervals.icu logo red).
+    const QJsonObject activity = QJsonDocument::fromJson(reply->readAll()).object();
+    const QJsonValue idValue = activity.value(QStringLiteral("id"));
+    const QString activityId = idValue.isString()
+            ? idValue.toString()
+            : (idValue.isDouble() ? QString::number(static_cast<qint64>(idValue.toDouble()))
+                                  : QString());
+    if (!activityId.isEmpty()) {
+        const QString link =
+            QStringLiteral("<a style=\"color:#e8485c; text-decoration:underline;\" "
+                           "href=\"https://intervals.icu/activities/%1\">%2</a>")
+                .arg(activityId)
+                .arg(tr("View on Intervals.icu"));
+        setIntervalsIcuPostStatus(tr("✓ Uploaded to Intervals.icu") + "<br>" + link, false);
+    } else {
+        setIntervalsIcuPostStatus(tr("✓ Uploaded to Intervals.icu"), false);
+    }
+    LOG_INFO("WorkoutDialog",
+             QStringLiteral("Intervals.icu upload succeeded (activity ") + activityId + QStringLiteral(")"));
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////

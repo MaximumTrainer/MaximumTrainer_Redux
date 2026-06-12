@@ -219,6 +219,7 @@ private slots:
     void doStravaUpload();   ///< the actual upload, after any token refresh
     void setStravaPostStatus(const QString &text, bool retryable);
     void uploadToIntervalsIcu();
+    void setIntervalsIcuPostStatus(const QString &text, bool retryable);
     void slotPostIntervalsIcuUploadDone();
     void slotPostStravaUploadDone();
     void slotPostStravaCheckStatus();
