@@ -22,8 +22,10 @@ jobs:
       - name: Deploy worker
         id: deploy
         working-directory: workers/intervals-cors-proxy
+        # --config pinned: wrangler v4 can otherwise resolve the repo-root
+        # wrangler.jsonc (the docs static site) and deploy THAT over the proxy.
         run: |
-          DEPLOY_OUTPUT=$(npx wrangler deploy 2>&1)
+          DEPLOY_OUTPUT=$(npx wrangler deploy --config wrangler.toml 2>&1)
           echo "$DEPLOY_OUTPUT"
           WORKER_URL=$(echo "$DEPLOY_OUTPUT" | grep -oE 'https://[^[:space:]]+\.workers\.dev' | head -n1)
           echo "worker_url=$WORKER_URL" >> "$GITHUB_OUTPUT"
@@ -43,7 +45,7 @@ jobs:
             echo "a baked-in secret (qmake INTERVALS_OAUTH_CLIENT_SECRET)."
             exit 0
           fi
-          printf '%s' "$INTERVALS_OAUTH_CLIENT_SECRET" | npx wrangler secret put INTERVALS_CLIENT_SECRET
+          printf '%s' "$INTERVALS_OAUTH_CLIENT_SECRET" | npx wrangler secret put INTERVALS_CLIENT_SECRET --config wrangler.toml
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -58,7 +60,7 @@ jobs:
           if [ -z "$WORKER_URL" ]; then
             echo "Could not determine worker URL from wrangler output"; exit 1
           fi
-          BODY=$(curl -s -X POST "$WORKER_URL/proxy/api/oauth/token" \
+          BODY=$(curl -s --compressed -X POST "$WORKER_URL/proxy/api/oauth/token" \
             -H 'X-MT-Client: desktop' \
             -H 'Content-Type: application/x-www-form-urlencoded' \
             -d 'grant_type=authorization_code&client_id=259&code=ci-verify&redirect_uri=http://localhost:1/')

@@ -15,9 +15,9 @@ class QNetworkReply;
 ///
 /// A short-lived localhost loopback listener catches the redirect, validates
 /// the CSRF state, grabs the authorization code, and exchanges it for tokens
-/// (ExtRequest::intervalsIcuOAuthExchange — direct or via the Cloudflare
-/// proxy, see Environnement::getIntervalsIcuTokenUrl()). On success the
-/// tokens are stored on Account and succeeded() is emitted.
+/// via the Cloudflare Worker (ExtRequest::intervalsIcuOAuthExchange; the
+/// Worker injects the client_secret server-side). On success the tokens are
+/// stored on Account and succeeded() is emitted.
 ///
 /// Intervals.icu always accepts http://localhost/ as a redirect URI, so no
 /// per-app redirect registration is needed.

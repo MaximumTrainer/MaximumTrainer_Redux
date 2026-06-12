@@ -69,14 +69,11 @@ QNetworkReply* ExtRequest::stravaDeauthorization(QString access_token) {
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// POST <token endpoint>  (grant_type=authorization_code)
+/// POST URL_TOKEN_ICV  (grant_type=authorization_code)
 /// Exchanges an authorization code for an OAuth2 access + refresh token pair.
-///
-/// intervals.icu REQUIRES the client_secret here (HTTP 422 without it).
-/// When one is configured locally (qmake INTERVALS_OAUTH_CLIENT_SECRET or
-/// CredentialStore) the desktop posts to intervals.icu directly with it;
-/// otherwise the request goes through the Cloudflare proxy, which injects
-/// the secret server-side (see Environnement::getIntervalsIcuTokenUrl()).
+/// All platforms go through the Cloudflare Worker, which injects the
+/// client_secret server-side (single source of truth, like the Strava token
+/// Worker — see URL_TOKEN_ICV in environnement.h).
 QNetworkReply* ExtRequest::intervalsIcuOAuthExchange(const QString &code, const QString &redirectUri)
 {
     QNetworkAccessManager *managerWS = qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
@@ -94,20 +91,15 @@ QNetworkReply* ExtRequest::intervalsIcuOAuthExchange(const QString &code, const 
     if (!secret.isEmpty())
         postData.addQueryItem("client_secret", secret);
 
-    const QString tokenUrl = Environnement::getIntervalsIcuTokenUrl();
-    LOG_INFO("ExtRequest",
-             QStringLiteral("intervalsIcuOAuthExchange via ") + tokenUrl);
-
     QNetworkRequest request;
-    request.setUrl(QUrl(tokenUrl));
+    request.setUrl(QUrl(URL_TOKEN_ICV));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 #ifndef Q_OS_WASM
-    // When routed through the proxy, identify ourselves to its allow-list.
-    // We deliberately do NOT set Origin: the desktop build is not a browser
-    // and is not subject to CORS.  (On WASM the browser sets Origin itself.)
-    if (tokenUrl == URL_TOKEN_ICV_PROXY)
-        request.setRawHeader(INTERVALS_PROXY_CLIENT_HEADER.toUtf8(),
-                             INTERVALS_PROXY_DESKTOP_CLIENT_VALUE.toUtf8());
+    // Identify ourselves to the proxy's allow-list.  We deliberately do NOT
+    // set Origin: the desktop build is not a browser and is not subject to
+    // CORS.  (On WASM the browser sets Origin itself.)
+    request.setRawHeader(INTERVALS_PROXY_CLIENT_HEADER.toUtf8(),
+                         INTERVALS_PROXY_DESKTOP_CLIENT_VALUE.toUtf8());
 #endif
 
     return managerWS->post(request, postData.toString(QUrl::FullyEncoded).toUtf8());
@@ -136,15 +128,12 @@ QNetworkReply* ExtRequest::intervalsIcuOAuthRefresh(const QString &refreshToken)
     if (!secret.isEmpty())
         postData.addQueryItem("client_secret", secret);
 
-    const QString tokenUrl = Environnement::getIntervalsIcuTokenUrl();
-
     QNetworkRequest request;
-    request.setUrl(QUrl(tokenUrl));
+    request.setUrl(QUrl(URL_TOKEN_ICV));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 #ifndef Q_OS_WASM
-    if (tokenUrl == URL_TOKEN_ICV_PROXY)
-        request.setRawHeader(INTERVALS_PROXY_CLIENT_HEADER.toUtf8(),
-                             INTERVALS_PROXY_DESKTOP_CLIENT_VALUE.toUtf8());
+    request.setRawHeader(INTERVALS_PROXY_CLIENT_HEADER.toUtf8(),
+                         INTERVALS_PROXY_DESKTOP_CLIENT_VALUE.toUtf8());
 #endif
 
     LOG_INFO("ExtRequest", QStringLiteral("intervalsIcuOAuthRefresh: refreshing access token"));

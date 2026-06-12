@@ -85,15 +85,18 @@ const static QString INTERVALS_PROXY_DESKTOP_CLIENT_VALUE =
 /// OAuth2 token endpoint, used for both the authorization-code exchange and
 /// refresh-token requests in ExtRequest::intervalsIcuOAuthExchange/Refresh.
 ///
-/// The endpoint is /api/oauth/token — NOT /oauth/token, which only serves
-/// the authorize flow (POST there returns 405/404).  intervals.icu also
-/// REQUIRES the client_secret on token requests (422 without it); client 259
-/// is a confidential client, see getIntervalsIcuClientSecret().
-/// Callers pick between the two URLs via getIntervalsIcuTokenUrl().
-const static QString URL_TOKEN_ICV_DIRECT =
-    QStringLiteral("https://intervals.icu/api/oauth/token");
-const static QString URL_TOKEN_ICV_PROXY =
-    INTERVALS_PROXY_BASE + "/proxy/api/oauth/token";
+/// Single source of truth for ALL platforms (same architecture as the Strava
+/// token Worker): every build posts to the Cloudflare Worker, which proxies
+/// to https://intervals.icu/api/oauth/token — NOT /oauth/token, which only
+/// serves the authorize flow (POST there returns 405/404).
+///
+/// intervals.icu REQUIRES the client_secret on token requests (422 without
+/// it); client 259 is confidential.  The Worker injects the secret
+/// server-side (wrangler secret INTERVALS_CLIENT_SECRET), so no app binary
+/// has to carry it.  If a secret IS configured locally (self-registered
+/// OAuth client, see getIntervalsIcuClientSecret()) it is sent along and the
+/// Worker forwards it untouched.
+const static QString URL_TOKEN_ICV = INTERVALS_PROXY_BASE + "/proxy/api/oauth/token";
 
 /// Sentinel athlete ID meaning "the currently authenticated OAuth2 user".
 /// Pass this to Bearer-token API calls when the real athlete ID is not yet known.
@@ -162,13 +165,9 @@ public:
     /// Return the Intervals.icu OAuth2 client_secret.
     /// Checks CredentialStore("intervals_icu_app","client_secret") first; falls back
     /// to the build-time constant (INTERVALS_OAUTH_CLIENT_SECRET / "").
+    /// Normally empty: the token Worker injects the secret server-side (see
+    /// URL_TOKEN_ICV).  Only set for self-registered OAuth clients.
     static QString getIntervalsIcuClientSecret();
-    /// Return the OAuth2 token endpoint to use for this build/configuration.
-    /// WASM always uses the CORS proxy (the browser enforces same-origin).
-    /// Desktop calls intervals.icu directly when a client_secret is configured
-    /// locally; without one it routes through the proxy, which injects the
-    /// secret server-side (Strava-style — the binary never carries it).
-    static QString getIntervalsIcuTokenUrl();
 
 };
 

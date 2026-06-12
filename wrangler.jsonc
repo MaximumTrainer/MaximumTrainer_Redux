@@ -1,6 +1,15 @@
+// Cloudflare config for hosting the docs/ static site (assets-only worker).
+//
+// ⚠️ The name here must NEVER be "mt-intervals-proxy": that is the
+// intervals.icu CORS proxy (workers/intervals-cors-proxy/wrangler.toml).
+// This file previously reused that name, so any `wrangler deploy` that
+// resolved this root config silently REPLACED the proxy with the static
+// site (empty 404s on /proxy/* → broken Intervals.icu login, #207).
+// Wrangler v4 can resolve this root config even when run from a worker
+// subdirectory — always pass --config explicitly in CI.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "mt-intervals-proxy",
+  "name": "mt-docs-site",
   "compatibility_date": "2026-06-04",
   "observability": {
     "enabled": true
