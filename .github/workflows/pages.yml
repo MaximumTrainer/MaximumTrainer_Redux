@@ -44,7 +44,9 @@ jobs:
             exit 0
           fi
           npm install -g wrangler
-          DEPLOY_OUTPUT=$(wrangler deploy 2>&1)
+          # --config pinned: wrangler v4 can otherwise resolve the repo-root
+          # wrangler.jsonc (docs static site) and deploy THAT over the proxy.
+          DEPLOY_OUTPUT=$(wrangler deploy --config wrangler.toml 2>&1)
           echo "$DEPLOY_OUTPUT"
           # Extract the workers.dev URL from wrangler output
           PROXY_URL=$(echo "$DEPLOY_OUTPUT" | grep -oE 'https://mt-intervals-proxy\.[^[:space:]]+' | head -n1)

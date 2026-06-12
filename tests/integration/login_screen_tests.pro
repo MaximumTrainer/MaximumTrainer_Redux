@@ -21,8 +21,8 @@
 #      object is set to offline mode.
 #   6. DialogLogin Intervals.icu button: verifies the button is visible and
 #      enabled when the widget is in test mode.
-#   7. DialogLogin Intervals.icu OAuth dialog: clicks the button and verifies
-#      the OAuth child dialog is created with the correct URL.
+#   7. DialogLogin Intervals.icu OAuth flow: clicks the button and verifies
+#      the browser-wait page is shown and the loopback OAuth flow is started.
 #
 # A labelled 1280×720 screenshot is saved as build evidence for each test.
 #
@@ -38,7 +38,7 @@
 #   .\build\tests\login_screen_tests.exe -v2
 ###############################################################################
 
-QT       += core gui widgets network webenginewidgets testlib
+QT       += core gui widgets network testlib
 CONFIG   += qt c++17
 CONFIG   -= app_bundle
 
@@ -105,10 +105,10 @@ SOURCES += \
     ../../src/persistence/db/userdao.cpp \
     ../../src/persistence/db/versiondao.cpp \
     ../../src/persistence/db/intervalsicudao.cpp \
+    ../../src/persistence/db/intervals_icu_oauth_flow.cpp \
     ../../src/persistence/file/xmlutil.cpp \
     ../../src/ui/dialoglogin.cpp \
     ../../src/ui/updatedialog.cpp \
-    ../../src/ui/intervalsicuoauthwidget.cpp \
     ../../src/ui/workout_editor/repeatwidget.cpp \
     ../intervals_icu/credential_store_stub.cpp \
     tst_login_screen.cpp
@@ -117,11 +117,10 @@ HEADERS += \
     ../../src/btle/simulator_hub.h \
     ../../src/model/account.h \
     ../../src/model/settings.h \
+    ../../src/persistence/db/intervals_icu_oauth_flow.h \
     ../../src/persistence/file/xmlutil.h \
     ../../src/ui/dialoglogin.h \
     ../../src/ui/updatedialog.h \
-    ../../src/ui/intervalsicuoauthwidget.h \
-    ../../src/ui/components/myqwebenginepage.h \
     ../../src/ui/workout_editor/repeatwidget.h
 
 FORMS += \

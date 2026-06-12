@@ -91,13 +91,15 @@
 #include <QPushButton>
 #include <QSignalSpy>
 #include <QStackedWidget>
+#include <QTcpSocket>
+#include <QHostAddress>
 
 #include "../../src/btle/simulator_hub.h"
 #include "../../src/persistence/db/environnement.h"
+#include "../../src/persistence/db/intervals_icu_oauth_flow.h"
 #include "../../src/model/account.h"
 #include "../../src/model/settings.h"
 #include "../../src/ui/dialoglogin.h"
-#include "../../src/ui/intervalsicuoauthwidget.h"
 
 // ---------------------------------------------------------------------------
 // Compile-time platform tag used in screenshots and window titles
@@ -568,20 +570,34 @@ private slots:
     //   • Path starts with "/oauth/authorize".
     //   • Query contains client_id, response_type, scope, redirect_uri,
     //     and state (the per-login CSRF token passed by the caller).
-    //   • redirect_uri contains "oauth_callback.html" (unified github.io
-    //     callback used by both desktop and WASM flows).
+    //   • redirect_uri contains "oauth_callback.html" for the WASM popup
+    //     builder, and matches the caller-supplied localhost loopback URI
+    //     for the desktop system-browser flow.
     //   • state matches the value passed to the function.
     // -----------------------------------------------------------------------
     void testIntervalsIcuOAuthUrlGeneration()
     {
         const QString testState = QStringLiteral("abc123teststate");
 
+        // Desktop flow: the redirect_uri is the loopback listener's address
+        // and must round-trip through the builder unchanged.
+        {
+            const QString loopbackUri = QStringLiteral("http://localhost:43210/");
+            const QUrlQuery desktopQ(QUrl(Environnement::getURLIntervalsIcuAuthorize(
+                testState, loopbackUri)));
+            QCOMPARE(desktopQ.queryItemValue(QStringLiteral("redirect_uri"),
+                                             QUrl::FullyDecoded),
+                     loopbackUri);
+            QCOMPARE(desktopQ.queryItemValue(QStringLiteral("state")), testState);
+        }
+
+        // WASM popup flow: redirect_uri is the GitHub Pages callback page.
         // Call the real production URL builder directly so this test verifies
-        // Environnement::getURLIntervalsIcuAuthorize() rather than duplicating
-        // its string-assembly logic.  Any regression in the production function
-        // will immediately cause this test to fail.
+        // Environnement::getURLIntervalsIcuAuthorizeWasm() rather than
+        // duplicating its string-assembly logic.  Any regression in the
+        // production function will immediately cause this test to fail.
         const QString urlStr =
-            Environnement::getURLIntervalsIcuAuthorize(testState);
+            Environnement::getURLIntervalsIcuAuthorizeWasm(testState);
 
         QVERIFY2(!urlStr.isEmpty(),
                  "OAuth authorization URL must not be empty");
@@ -863,10 +879,17 @@ private slots:
         dialog.resize(1280, 720);
         QTest::qWait(100);
 
+        // The dialog restores the developer's persisted "work offline" choice
+        // (QSettings login/workOffline), so normalize to unchecked instead of
+        // asserting on machine-dependent state.
+        if (checkBox->isChecked()) {
+            checkBox->click();
+            QCoreApplication::processEvents();
+        }
         QVERIFY2(!checkBox->isChecked(),
-                 "checkBox_workOffline must start unchecked");
+                 "checkBox_workOffline must be unchecked before the test");
         QVERIFY2(!btnOffline->isVisible(),
-                 "pushButton_startOffline must start hidden");
+                 "pushButton_startOffline must be hidden while unchecked");
 
         // Click the checkbox to enter offline mode.
         // Use QAbstractButton::click() instead of QTest::mouseClick() — the
@@ -954,14 +977,18 @@ private slots:
     // testDialogLoginIntervalsIcuOAuthDialog
     //
     // Verifies that clicking "Sign in with Intervals.icu" on the real
-    // DialogLogin widget (test mode) switches the stacked widget to the OAuth
-    // page and emits intervalsIcuOAuthStarted().  The embedded
-    // IntervalsIcuOAuthWidget is found and cancel() is called to return to
-    // the login form without blocking the test.
+    // DialogLogin widget (test mode) starts the system-browser OAuth flow,
+    // switches the stacked widget to the browser-wait page, and emits
+    // intervalsIcuOAuthStarted().  Test mode suppresses the actual browser
+    // launch; the loopback listener still runs.  Clicking Cancel returns to
+    // the login form.
     //
     // Acceptance criteria:
-    //   • Clicking pushButton_loginIntervalsIcu emits intervalsIcuOAuthStarted().
-    //   • An IntervalsIcuOAuthWidget child exists in the dialog.
+    //   • Clicking pushButton_loginIntervalsIcu emits intervalsIcuOAuthStarted()
+    //     and switches stackedWidget_main to page 1 (browser-wait page).
+    //   • An IntervalsIcuOAuthFlow child exists, listens on a loopback port,
+    //     and built a localhost redirect_uri into its authorization URL.
+    //   • Clicking pushButton_cancelOAuth returns to page 0 (login form).
     //   • Screenshot saved and non-empty.
     // -----------------------------------------------------------------------
     void testDialogLoginIntervalsIcuOAuthDialog()
@@ -979,20 +1006,31 @@ private slots:
                          [&oauthStarted]() { oauthStarted = true; });
 
         // Click the button — triggers onLoginWithIntervalsIcuClicked() which
-        // switches the stacked widget to the OAuth page and emits
-        // intervalsIcuOAuthStarted().
+        // starts the loopback flow, switches the stacked widget to the
+        // browser-wait page, and emits intervalsIcuOAuthStarted().
         QTest::mouseClick(btn, Qt::LeftButton);
         QCoreApplication::processEvents();
 
         QVERIFY2(oauthStarted,
                  "Clicking 'Sign in with Intervals.icu' must emit intervalsIcuOAuthStarted()");
 
-        // Find the embedded OAuth widget and cancel the flow so it doesn't block.
-        auto *oauthWidget = dialog.findChild<IntervalsIcuOAuthWidget *>();
-        QVERIFY2(oauthWidget != nullptr,
-                 "An IntervalsIcuOAuthWidget child must exist in DialogLogin");
-        oauthWidget->cancel();
-        QCoreApplication::processEvents();
+        auto *stackedWidget = dialog.findChild<QStackedWidget *>("stackedWidget_main");
+        QVERIFY2(stackedWidget != nullptr,
+                 "stackedWidget_main must exist in DialogLogin");
+        QVERIFY2(stackedWidget->currentIndex() == 1,
+                 "stackedWidget_main must show page 1 (browser-wait) after click");
+
+        auto *oauthFlow = dialog.findChild<IntervalsIcuOAuthFlow *>();
+        QVERIFY2(oauthFlow != nullptr,
+                 "An IntervalsIcuOAuthFlow child must exist in DialogLogin");
+        QVERIFY2(oauthFlow->listenPort() != 0,
+                 "The OAuth flow must be listening on a loopback port");
+        const QString expectedRedirect =
+            QStringLiteral("http://localhost:%1/").arg(oauthFlow->listenPort());
+        const QUrlQuery authQ{QUrl(oauthFlow->authorizationUrl())};
+        QCOMPARE(authQ.queryItemValue(QStringLiteral("redirect_uri"),
+                                      QUrl::FullyDecoded),
+                 expectedRedirect);
 
         const QString screenshotName =
             QString("dialoglogin-intervals-oauth-dialog-%1-%2.png")
@@ -1001,7 +1039,80 @@ private slots:
         QTest::qWait(50);
         saveScreenshot(dialog, screenshotName, m_outDir);
 
+        // Cancel the flow and verify we return to the login form.
+        auto *cancelBtn = dialog.findChild<QPushButton *>("pushButton_cancelOAuth");
+        QVERIFY2(cancelBtn != nullptr,
+                 "pushButton_cancelOAuth must exist on the browser-wait page");
+        QTest::mouseClick(cancelBtn, Qt::LeftButton);
+        QCoreApplication::processEvents();
+        QVERIFY2(stackedWidget->currentIndex() == 0,
+                 "Cancel must return stackedWidget_main to page 0 (login form)");
+
         qDebug().noquote() << "[DialogLoginIntervalsIcuOAuthDialog] PASS";
+    }
+
+
+    // -----------------------------------------------------------------------
+    // testIntervalsIcuOAuthFlowLoopback
+    //
+    // Drives the IntervalsIcuOAuthFlow loopback listener directly with a
+    // QTcpSocket, simulating the browser redirect — no network access and no
+    // real browser involved (setOpenExternalBrowser(false)).
+    //
+    // Acceptance criteria:
+    //   • Requests without OAuth params (e.g. /favicon.ico) are ignored and
+    //     the listener keeps running.
+    //   • A redirect carrying error=access_denied emits cancelled().
+    //   • A redirect with a code but a wrong CSRF state emits failed()
+    //     without attempting a token exchange.
+    // -----------------------------------------------------------------------
+    void testIntervalsIcuOAuthFlowLoopback()
+    {
+        const auto simulateRedirect = [](quint16 port, const QString &target) {
+            QTcpSocket socket;
+            socket.connectToHost(QHostAddress::LocalHost, port);
+            QVERIFY2(socket.waitForConnected(3000),
+                     "Must be able to connect to the loopback listener");
+            socket.write(QStringLiteral("GET %1 HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                             .arg(target).toUtf8());
+            QVERIFY(socket.waitForBytesWritten(3000));
+            socket.waitForReadyRead(3000);
+            socket.close();
+        };
+
+        // access_denied → cancelled()
+        {
+            IntervalsIcuOAuthFlow flow;
+            flow.setOpenExternalBrowser(false);
+            QVERIFY2(flow.start(), "Loopback flow must start");
+            QSignalSpy cancelledSpy(&flow, &IntervalsIcuOAuthFlow::cancelled);
+            QSignalSpy failedSpy(&flow, &IntervalsIcuOAuthFlow::failed);
+
+            // A stray request first — must be ignored, listener stays up.
+            simulateRedirect(flow.listenPort(), QStringLiteral("/favicon.ico"));
+            QCoreApplication::processEvents();
+            QCOMPARE(cancelledSpy.count(), 0);
+            QCOMPARE(failedSpy.count(), 0);
+
+            simulateRedirect(flow.listenPort(),
+                             QStringLiteral("/?error=access_denied"));
+            QTRY_COMPARE(cancelledSpy.count(), 1);
+            QCOMPARE(failedSpy.count(), 0);
+        }
+
+        // code with mismatching CSRF state → failed()
+        {
+            IntervalsIcuOAuthFlow flow;
+            flow.setOpenExternalBrowser(false);
+            QVERIFY2(flow.start(), "Loopback flow must start");
+            QSignalSpy failedSpy(&flow, &IntervalsIcuOAuthFlow::failed);
+
+            simulateRedirect(flow.listenPort(),
+                             QStringLiteral("/?code=abc&state=wrong-state"));
+            QTRY_COMPARE(failedSpy.count(), 1);
+        }
+
+        qDebug().noquote() << "[IntervalsIcuOAuthFlowLoopback] PASS";
     }
 };
 

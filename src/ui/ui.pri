@@ -24,8 +24,7 @@ $$PWD/workoutdialog.cpp \
     $$PWD/criticalpowerdialog.cpp \
     $$PWD/pmcdialog.cpp \
     $$PWD/workoutcountdowndialog.cpp \
-    $$PWD/queuepanelwidget.cpp \
-    $$PWD/intervalsicuoauthwidget.cpp
+    $$PWD/queuepanelwidget.cpp
 
 HEADERS += $$PWD/mainwindow.h\
 $$PWD/workoutdialog.h \
@@ -47,8 +46,7 @@ $$PWD/workoutdialog.h \
     $$PWD/workoutcountdowndialog.h \
     $$PWD/queuepanelwidget.h \
     $$PWD/apptheme.h \
-    $$PWD/planadherencewidget.h \
-    $$PWD/intervalsicuoauthwidget.h
+    $$PWD/planadherencewidget.h
 
 # Sensors main-window page. Compiled on all platforms (the .cpp guards its
 # BLE-scanner use with GC_WASM_BUILD) so the promoted widget in mainwindow.ui

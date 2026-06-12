@@ -38,6 +38,36 @@ cd workers/intervals-cors-proxy
 npx wrangler deploy --account-id <YOUR_ACCOUNT_ID>
 ```
 
+### 4b — Set the OAuth client_secret (REQUIRED for login)
+
+intervals.icu **requires the `client_secret`** on `/api/oauth/token` requests
+(HTTP 422 without it).  Store it as a Worker secret so the worker can inject
+it server-side — neither the WASM nor the desktop binary then needs to carry
+it:
+
+```bash
+cd workers/intervals-cors-proxy
+npx wrangler secret put INTERVALS_CLIENT_SECRET
+# paste the client_secret for intervals.icu OAuth client 259
+```
+
+The `deploy-intervals-proxy.yml` workflow does this automatically from the
+`INTERVALS_OAUTH_CLIENT_SECRET` repository secret (and verifies the deployed
+URL actually proxies), so a `workflow_dispatch` run of that workflow is the
+easiest way to deploy correctly.
+
+> ⚠️ Verify what is actually deployed:
+> ```bash
+> curl -s -X POST https://<worker-url>/proxy/api/oauth/token \
+>   -H 'X-MT-Client: desktop' \
+>   -d 'grant_type=authorization_code&client_id=259&code=x&redirect_uri=http://localhost:1/'
+> ```
+> should return an intervals.icu JSON error (e.g. *invalid code*), **not** an
+> empty 404.  As of 2026-06-12, `mt-intervals-proxy.intervals-login.workers.dev`
+> serves the GitHub Pages landing page instead of this worker — the proxy must
+> be (re)deployed for WASM login and the no-local-secret desktop fallback to
+> work.
+
 ### 5 — Note the worker URL
 
 After deployment, Wrangler prints something like:

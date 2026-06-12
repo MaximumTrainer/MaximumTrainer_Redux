@@ -20,8 +20,52 @@ jobs:
           node-version: '20'
 
       - name: Deploy worker
+        id: deploy
         working-directory: workers/intervals-cors-proxy
-        run: npx wrangler deploy
+        # --config pinned: wrangler v4 can otherwise resolve the repo-root
+        # wrangler.jsonc (the docs static site) and deploy THAT over the proxy.
+        run: |
+          DEPLOY_OUTPUT=$(npx wrangler deploy --config wrangler.toml 2>&1)
+          echo "$DEPLOY_OUTPUT"
+          WORKER_URL=$(echo "$DEPLOY_OUTPUT" | grep -oE 'https://[^[:space:]]+\.workers\.dev' | head -n1)
+          echo "worker_url=$WORKER_URL" >> "$GITHUB_OUTPUT"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # intervals.icu requires the client_secret on /api/oauth/token (HTTP 422
+      # without it).  Install it as a Worker secret so the worker injects it
+      # server-side and no app binary has to carry it (see worker.js).
+      - name: Install OAuth client_secret on the worker
+        working-directory: workers/intervals-cors-proxy
+        run: |
+          if [ -z "$INTERVALS_OAUTH_CLIENT_SECRET" ]; then
+            echo "INTERVALS_OAUTH_CLIENT_SECRET secret not configured — the worker"
+            echo "cannot inject it; token exchange then only works for builds with"
+            echo "a baked-in secret (qmake INTERVALS_OAUTH_CLIENT_SECRET)."
+            exit 0
+          fi
+          printf '%s' "$INTERVALS_OAUTH_CLIENT_SECRET" | npx wrangler secret put INTERVALS_CLIENT_SECRET --config wrangler.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          INTERVALS_OAUTH_CLIENT_SECRET: ${{ secrets.INTERVALS_OAUTH_CLIENT_SECRET }}
+
+      # Catch silent mis-deployments (e.g. the worker URL serving a static
+      # site): a bogus token request must reach intervals.icu and come back
+      # as a JSON error, never an empty 404 or HTML.
+      - name: Verify deployed proxy forwards to intervals.icu
+        run: |
+          WORKER_URL="${{ steps.deploy.outputs.worker_url }}"
+          if [ -z "$WORKER_URL" ]; then
+            echo "Could not determine worker URL from wrangler output"; exit 1
+          fi
+          BODY=$(curl -s --compressed -X POST "$WORKER_URL/proxy/api/oauth/token" \
+            -H 'X-MT-Client: desktop' \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            -d 'grant_type=authorization_code&client_id=259&code=ci-verify&redirect_uri=http://localhost:1/')
+          echo "Response: $BODY"
+          case "$BODY" in
+            \{*) echo "OK — proxy forwards to intervals.icu" ;;
+            *)  echo "FAIL — expected a JSON error from intervals.icu; the worker is not proxying"; exit 1 ;;
+          esac

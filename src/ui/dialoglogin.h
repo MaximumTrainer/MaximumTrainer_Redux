@@ -12,7 +12,7 @@
 #include "account.h"
 #include "settings.h"
 
-class IntervalsIcuOAuthWidget;
+class IntervalsIcuOAuthFlow;
 
 namespace Ui {
 class DialogLogin;
@@ -44,7 +44,7 @@ private slots:
     /// Called when the user clicks "Sign in with Intervals.icu".
     void onLoginWithIntervalsIcuClicked();
 
-    // ── OAuth widget callbacks ───────────────────────────────────────────────
+    // ── System-browser OAuth flow callbacks ─────────────────────────────────
     void onOAuthSucceeded();
     void onOAuthFailed();
     void onOAuthCancelRequested();
@@ -71,7 +71,7 @@ private slots:
 #endif
 
 signals:
-    /// Emitted when the Intervals.icu OAuth WebView page becomes active.
+    /// Emitted when the Intervals.icu OAuth browser-wait page becomes active.
     /// Integration tests connect to this to detect the start of the OAuth flow.
     void intervalsIcuOAuthStarted();
 
@@ -95,6 +95,9 @@ private:
     /// Clear OAuth tokens from CredentialStore and Account in-memory state.
     void clearTokens();
 
+    /// Abort and discard the current system-browser OAuth flow, if any.
+    void resetOAuthFlow();
+
     Ui::DialogLogin          *ui;
 
     Account  *account;
@@ -102,7 +105,7 @@ private:
 
     QMovie *movie;
 
-    IntervalsIcuOAuthWidget *m_oauthWidget;
+    IntervalsIcuOAuthFlow *m_oauthFlow = nullptr;
 
     QNetworkReply *replyVersion;
     QNetworkReply *replyIntervalsIcuAthlete;
@@ -115,6 +118,7 @@ private:
     QTimer *m_silentAuthTimeout;
 
     bool gotUpdateDialog;
+    bool m_testMode = false;
     bool m_silentAuthCancelled = false;
     int  m_pendingIntervalsIcuReplies;
 

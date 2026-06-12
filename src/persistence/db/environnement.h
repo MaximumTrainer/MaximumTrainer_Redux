@@ -70,24 +70,33 @@ const static QString INTERVALS_PROXY_BASE =
     QStringLiteral("https://mt-intervals-proxy.intervals-login.workers.dev");
 
 /// Header name + value used by the native desktop client to identify itself
-/// to the Cloudflare proxy's allow-list.  The desktop build is not a browser
-/// and is not subject to CORS, so it does NOT send an Origin header; instead
-/// it sends `X-MT-Client: desktop`, which the worker checks against its
-/// ALLOWED_CLIENTS list (workers/intervals-cors-proxy/worker.js).
-/// This is not a security boundary — any HTTP client can forge the header —
-/// it just keeps the proxy from acting as a fully open relay.
+/// to the Cloudflare proxy's allow-list when routing token requests through
+/// it.  The desktop build is not a browser and is not subject to CORS, so it
+/// does NOT send an Origin header; instead it sends `X-MT-Client: desktop`,
+/// which the worker checks against its ALLOWED_CLIENTS list
+/// (workers/intervals-cors-proxy/worker.js).  This is not a security
+/// boundary — any HTTP client can forge the header — it just keeps the proxy
+/// from acting as a fully open relay.
 const static QString INTERVALS_PROXY_CLIENT_HEADER =
     QStringLiteral("X-MT-Client");
 const static QString INTERVALS_PROXY_DESKTOP_CLIENT_VALUE =
     QStringLiteral("desktop");
 
-/// OAuth2 token endpoint, proxied through the Cloudflare Worker.  Used for
-/// both the authorization-code exchange and refresh-token requests in
-/// ExtRequest::intervalsIcuOAuthExchange/Refresh.  Desktop and WASM use the
-/// same URL; WASM browsers set Origin automatically (github.io) and the
-/// worker enforces CORS, while desktop sets INTERVALS_PROXY_CLIENT_HEADER
-/// instead.
-const static QString URL_TOKEN_ICV  = INTERVALS_PROXY_BASE + "/proxy/oauth/token";
+/// OAuth2 token endpoint, used for both the authorization-code exchange and
+/// refresh-token requests in ExtRequest::intervalsIcuOAuthExchange/Refresh.
+///
+/// Single source of truth for ALL platforms (same architecture as the Strava
+/// token Worker): every build posts to the Cloudflare Worker, which proxies
+/// to https://intervals.icu/api/oauth/token — NOT /oauth/token, which only
+/// serves the authorize flow (POST there returns 405/404).
+///
+/// intervals.icu REQUIRES the client_secret on token requests (422 without
+/// it); client 259 is confidential.  The Worker injects the secret
+/// server-side (wrangler secret INTERVALS_CLIENT_SECRET), so no app binary
+/// has to carry it.  If a secret IS configured locally (self-registered
+/// OAuth client, see getIntervalsIcuClientSecret()) it is sent along and the
+/// Worker forwards it untouched.
+const static QString URL_TOKEN_ICV = INTERVALS_PROXY_BASE + "/proxy/api/oauth/token";
 
 /// Sentinel athlete ID meaning "the currently authenticated OAuth2 user".
 /// Pass this to Bearer-token API calls when the real athlete ID is not yet known.
@@ -134,9 +143,12 @@ public:
 
 
     static QString getURLStravaAuthorize(const QString &redirectUri);
-    /// Build the Intervals.icu OAuth2 authorization URL (desktop — redirect to maximumtrainer.com backend).
-    /// @param state  Per-request CSRF token; pass an empty string to omit.
-    static QString getURLIntervalsIcuAuthorize(const QString &state = QString());
+    /// Build the Intervals.icu OAuth2 authorization URL.
+    /// @param state        Per-request CSRF token; pass an empty string to omit.
+    /// @param redirectUri  Redirect URI for this request (localhost loopback on
+    ///                     desktop, GitHub Pages callback page on WASM).
+    static QString getURLIntervalsIcuAuthorize(const QString &state,
+                                               const QString &redirectUri);
     /// Build the Intervals.icu OAuth2 authorization URL for the WASM popup flow.
     /// Uses a GitHub Pages callback page as the redirect_uri so the popup can
     /// post the authorization code back to the main WASM window via postMessage.
@@ -153,6 +165,8 @@ public:
     /// Return the Intervals.icu OAuth2 client_secret.
     /// Checks CredentialStore("intervals_icu_app","client_secret") first; falls back
     /// to the build-time constant (INTERVALS_OAUTH_CLIENT_SECRET / "").
+    /// Normally empty: the token Worker injects the secret server-side (see
+    /// URL_TOKEN_ICV).  Only set for self-registered OAuth clients.
     static QString getIntervalsIcuClientSecret();
 
 };
