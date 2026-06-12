@@ -8,6 +8,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
+#include <QCryptographicHash>
 
 #include "account.h"
 #include "settings.h"
@@ -1259,6 +1260,27 @@ QList<Radio> Util::loadLocalRadioList() {
 
     if (path.isEmpty())
         return fallbackToDefaults();
+
+    // Whenever the bundled default list changes (any release that edits
+    // default_radios.json), the user's radios.json is REPLACED wholesale with
+    // the new defaults — nothing from the old file is kept; users re-add
+    // their custom stations.  Keyed on a content hash of the bundled JSON so
+    // no version constant has to be bumped by hand.
+    {
+        QFile bundled(QStringLiteral(":/data/resources/data/default_radios.json"));
+        if (bundled.open(QIODevice::ReadOnly)) {
+            const QString bundledHash = QString::fromLatin1(
+                QCryptographicHash::hash(bundled.readAll(),
+                                         QCryptographicHash::Sha256).toHex());
+            QSettings settings;
+            const QString seenHash =
+                settings.value(QStringLiteral("radios/defaultsHash")).toString();
+            if (seenHash != bundledHash) {
+                settings.setValue(QStringLiteral("radios/defaultsHash"), bundledHash);
+                return fallbackToDefaults();
+            }
+        }
+    }
 
     QFile file(path);
     if (!file.exists())

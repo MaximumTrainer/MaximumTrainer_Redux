@@ -112,8 +112,27 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     ui->tableView_radio->verticalHeader()->setDefaultSectionSize(30);
     ui->tableView_radio->verticalHeader()->setVisible(false);
 
-    //first one
-    currentRadioIndex = ui->tableView_radio->model()->index(0, 0);
+    // Preselect the station from the last session (falls back to the first
+    // row), so play resumes on the same radio after reopening the workout.
+    {
+        QSettings radioSettings;
+        radioSettings.beginGroup(QStringLiteral("radioPlayer"));
+        const QString lastStation =
+            radioSettings.value(QStringLiteral("lastStation")).toString();
+        radioSettings.endGroup();
+
+        int lastRow = 0;
+        for (int row = 0; row < lstRadio.size(); ++row) {
+            if (!lastStation.isEmpty() && lstRadio.at(row).getName() == lastStation) {
+                lastRow = row;
+                break;
+            }
+        }
+        currentRadioIndex = ui->tableView_radio->model()->index(lastRow, 0);
+        ui->tableView_radio->selectionModel()->select(
+            currentRadioIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        ui->tableView_radio->scrollTo(currentRadioIndex);
+    }
 
 
     //    ui->tableView_radio->sortByColumn(0, Qt::AscendingOrder);
@@ -217,6 +236,14 @@ void DialogConfig::RadioDoubleClicked(QModelIndex index) {
     qDebug() << "Done getting radio from model...";
     currentRadioName = radio.getName();
     qDebug() << "Radio url is" << radio.getUrl();
+
+    // Remember the station so the next workout session starts on the same one.
+    {
+        QSettings radioSettings;
+        radioSettings.beginGroup(QStringLiteral("radioPlayer"));
+        radioSettings.setValue(QStringLiteral("lastStation"), currentRadioName);
+        radioSettings.endGroup();
+    }
 
 
     isConnecting = true;

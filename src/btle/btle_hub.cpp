@@ -97,6 +97,8 @@ void BtleHub::connectToDevice(const QBluetoothDeviceInfo &device)
 
     m_firstCscMeasurement   = true;
     m_ftmsControlRequested  = false;
+    m_ftmsControlGranted    = false;
+    m_lastFtmsCommand       = FtmsCommand::None;
     m_reconnectDevice   = device;
     m_reconnectAttempts = 0;
 
@@ -148,6 +150,11 @@ void BtleHub::setLoad(int antID, double watts)
     if (!m_ftmsService)
         return;
 
+    // Remember the target so it can be re-sent once the trainer grants
+    // control (commands sent before the grant are rejected by the trainer).
+    m_lastFtmsCommand      = FtmsCommand::TargetPower;
+    m_lastFtmsCommandValue = watts;
+
     // FTMS: Set Target Power (opcode 0x05), value = int16 watts
     QLowEnergyCharacteristic cp =
         m_ftmsService->characteristic(BtleUuid::FtmsControlPoint);
@@ -161,6 +168,8 @@ void BtleHub::setLoad(int antID, double watts)
     cmd[2] = static_cast<char>((w >> 8) & 0xFF);
     m_ftmsService->writeCharacteristic(cp, cmd,
                                        QLowEnergyService::WriteWithResponse);
+    LOG_DEBUG("BtleHub", QStringLiteral("FTMS Set Target Power: %1 W (control granted: %2)")
+                             .arg(w).arg(m_ftmsControlGranted));
 }
 
 void BtleHub::setSlope(int antID, double grade)
@@ -170,6 +179,9 @@ void BtleHub::setSlope(int antID, double grade)
 
     if (!m_ftmsService)
         return;
+
+    m_lastFtmsCommand      = FtmsCommand::Slope;
+    m_lastFtmsCommandValue = grade;
 
     // FTMS: Set Indoor Bike Simulation (opcode 0x11)
     // Parameters: wind speed (int16, 0.001 m/s), grade (int16, 0.01 %), crr, cw
@@ -301,6 +313,14 @@ void BtleHub::setupService(QLowEnergyService *service)
             this, &BtleHub::onServiceStateChanged);
     connect(service, &QLowEnergyService::characteristicChanged,
             this, &BtleHub::onCharacteristicChanged);
+    connect(service, &QLowEnergyService::descriptorWritten,
+            this, &BtleHub::onDescriptorWritten);
+    connect(service, &QLowEnergyService::errorOccurred,
+            this, [this, service](QLowEnergyService::ServiceError error) {
+                LOG_WARN("BtleHub", QStringLiteral("Service error %1 on %2")
+                                        .arg(int(error))
+                                        .arg(service->serviceUuid().toString()));
+            });
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     if (service->state() == QLowEnergyService::RemoteService)
@@ -322,6 +342,18 @@ void BtleHub::enableNotification(QLowEnergyService *service,
         service->writeDescriptor(cccd, QByteArray::fromHex("0100")); // enable notifications
 }
 
+void BtleHub::enableIndication(QLowEnergyService *service,
+                               const QLowEnergyCharacteristic &characteristic)
+{
+    if (!characteristic.isValid())
+        return;
+
+    QLowEnergyDescriptor cccd =
+        characteristic.descriptor(BtleUuid::ClientCharacteristicConfig);
+    if (cccd.isValid())
+        service->writeDescriptor(cccd, QByteArray::fromHex("0200")); // enable indications
+}
+
 void BtleHub::requestFtmsControl()
 {
     if (!m_ftmsService || m_ftmsControlRequested)
@@ -336,6 +368,55 @@ void BtleHub::requestFtmsControl()
     m_ftmsService->writeCharacteristic(cp, QByteArray(1, '\x00'),
                                        QLowEnergyService::WriteWithResponse);
     m_ftmsControlRequested = true;
+    LOG_INFO("BtleHub", QStringLiteral("FTMS Request Control sent"));
+}
+
+void BtleHub::onDescriptorWritten(const QLowEnergyDescriptor &descriptor,
+                                  const QByteArray &value)
+{
+    // The FTMS Control Point requires indications (CCCD = 0x0200) to be
+    // enabled before the trainer will process commands; Request Control is
+    // therefore only sent once that descriptor write is confirmed.
+    if (m_ftmsService &&
+        descriptor.uuid() == BtleUuid::ClientCharacteristicConfig &&
+        value == QByteArray::fromHex("0200")) {
+        LOG_INFO("BtleHub", QStringLiteral("FTMS Control Point indications enabled"));
+        requestFtmsControl();
+    }
+}
+
+void BtleHub::handleFtmsControlPointResponse(const QByteArray &value)
+{
+    // Indication format: [0x80, request opcode, result code]
+    // result 0x01 = success; anything else is a refusal (0x02 not supported,
+    // 0x03 invalid parameter, 0x04 operation failed, 0x05 control not permitted).
+    if (value.size() < 3 || quint8(value[0]) != 0x80)
+        return;
+
+    const quint8 requestOp = quint8(value[1]);
+    const quint8 result    = quint8(value[2]);
+
+    if (result != 0x01) {
+        LOG_WARN("BtleHub", QStringLiteral("FTMS control point refused opcode 0x%1 (result 0x%2)")
+                                .arg(requestOp, 2, 16, QLatin1Char('0'))
+                                .arg(result, 2, 16, QLatin1Char('0')));
+        if (requestOp == 0x00)
+            m_ftmsControlGranted = false;
+        return;
+    }
+
+    if (requestOp == 0x00) {   // Request Control granted
+        m_ftmsControlGranted = true;
+        LOG_INFO("BtleHub", QStringLiteral("FTMS control granted by trainer"));
+        // Re-issue the last target: anything commanded before the grant was
+        // rejected, which previously left the trainer stuck on its default
+        // resistance for the rest of the interval.
+        switch (m_lastFtmsCommand) {
+        case FtmsCommand::TargetPower: setLoad(m_userID, m_lastFtmsCommandValue);  break;
+        case FtmsCommand::Slope:       setSlope(m_userID, m_lastFtmsCommandValue); break;
+        case FtmsCommand::None:        break;
+        }
+    }
 }
 
 void BtleHub::onServiceStateChanged(QLowEnergyService::ServiceState state)
@@ -367,7 +448,12 @@ void BtleHub::onServiceStateChanged(QLowEnergyService::ServiceState state)
     else if (service == m_ftmsService) {
         enableNotification(service,
             service->characteristic(BtleUuid::FtmsIndoorBikeData));
-        requestFtmsControl();
+        // Control Point needs INDICATIONS, and Request Control must wait for
+        // the descriptor write to be confirmed (see onDescriptorWritten) —
+        // trainers ignore/refuse control commands on an unconfigured control
+        // point, which left ERG mode stuck at the trainer's default load.
+        enableIndication(service,
+            service->characteristic(BtleUuid::FtmsControlPoint));
     }
     else if (service == m_moxyService) {
         enableNotification(service,
@@ -401,6 +487,8 @@ void BtleHub::onCharacteristicChanged(const QLowEnergyCharacteristic &characteri
         parsePowerMeasurement(value);
     else if (uuid == BtleUuid::FtmsIndoorBikeData)
         parseFtmsIndoorBikeData(value);
+    else if (uuid == BtleUuid::FtmsControlPoint)
+        handleFtmsControlPointResponse(value);
     else if (uuid == BtleUuid::MoxyMeasurement)
         parseMoxyMeasurement(value);
     else if (uuid == BtleUuid::BatteryLevel)
