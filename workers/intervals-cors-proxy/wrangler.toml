@@ -1,4 +1,4 @@
-name            = "mt-intervals-proxy"
+name = "mt-intervals-proxy"
 main            = "worker.js"
 compatibility_date = "2024-01-01"
 
