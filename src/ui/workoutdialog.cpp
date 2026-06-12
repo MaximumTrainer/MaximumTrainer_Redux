@@ -30,8 +30,6 @@
 #include "datapower.h"
 #include "dataheartrate.h"
 #include "dataspeed.h"
-#include "userdao.h"
-#include "sensordao.h"
 #include "faderlabel.h"
 #include "clock.h"
 #include "workoututil.h"
@@ -145,7 +143,7 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     fecPairingDone = false;
     oxygenPairingDone = false;
 
-    idFecMainUser = -1;
+    trainerControlUserId = -1;
 
     isUsingSlopeMode = false;
     timerAlertCalibrateCt = new QTimer(this);
@@ -378,18 +376,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     ///----------------------------- End Calibration widgets ------------------------
 
 
-    //-- Check Session_ID is in DB and session is not expired
-    numberFailCheckSessionExpired = 0;
-    if (!account->isOffline) {
-        labelPairHr->setText(tr(" Checking Session..."));
-        labelPairHr->setVisible(true);
-        labelPairHr->fadeIn(500);
-
-        replyPutAccountToCheckSessionExpired = UserDAO::putAccount(account);
-        connect(replyPutAccountToCheckSessionExpired, SIGNAL(finished()), this, SLOT(slotPutAccountFinished()) );
-    }
-
-
     ///-------------------------- Battery widgets ----------------------
     widgetBattery = new QWidget(ui->widget_allSpeedo);
     widgetBattery->setAttribute(Qt::WA_TransparentForMouseEvents,true);
@@ -616,7 +602,7 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     timeElapsedTotal = QTime(0,0,0,0);
     nbUpdate1Sec = 0;
 
-    idFecMainUser = -1;
+    trainerControlUserId = -1;
     currentTargetPower = -1;
     currentTargetPowerRange = -1;
     currentTargetCadence = -1;
@@ -1641,10 +1627,6 @@ void WorkoutDialog::workoutOver() {
 
     // Set workout to done
     account->hashWorkoutDone.insert(workout.getName());
-
-    // Save data DB (update Achievements, stats etc.)
-    if (!account->isOffline)
-        UserDAO::putAccount(account);
 }
 
 
@@ -2409,8 +2391,8 @@ void WorkoutDialog::sendSlopes(double slope) {
         }
     }
     else {
-        if (idFecMainUser != -1) {
-            emit setSlope(idFecMainUser, slope);
+        if (trainerControlUserId != -1) {
+            emit setSlope(trainerControlUserId, slope);
         }
     }
 
@@ -2433,7 +2415,7 @@ void WorkoutDialog::sendLoads(double percentageFTP) {
         return;
     }
 
-    if (idFecMainUser == -1) {
+    if (trainerControlUserId == -1) {
         stopErgSmoothing();
         return;
     }
@@ -2445,7 +2427,7 @@ void WorkoutDialog::sendLoads(double percentageFTP) {
     if (account->erg_smoothing_duration_s <= 0 || targetWatts <= 0) {
         stopErgSmoothing();
         m_ergSmoothLast = targetWatts;
-        emit setLoad(idFecMainUser, qRound(targetWatts));
+        emit setLoad(trainerControlUserId, qRound(targetWatts));
         return;
     }
 
@@ -2476,7 +2458,7 @@ void WorkoutDialog::startErgSmoothing(double fromWatts, double toWatts)
     m_ergSmoothStep  = 0;
     // Use (duration + 1) steps: step 0 is the immediate command, steps 1..N are timer-driven.
     m_ergSmoothSteps = qMax(1, account->erg_smoothing_duration_s);
-    m_ergSmoothAntID = idFecMainUser;
+    m_ergSmoothAntID = trainerControlUserId;
 
     if (!m_ergSmoothTimer) {
         m_ergSmoothTimer = new QTimer(this);
@@ -3191,188 +3173,6 @@ void WorkoutDialog::achievementReceived(Achievement achievement) {
     }
 }
 
-
-
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WorkoutDialog::slotGetSensorListFinished() {
-
-
-    qDebug() << "slotGetSensorListFinished!-------------------------\n-------------------------------\n";
-
-    //success, process data
-    if (replyGetListSensor->error() == QNetworkReply::NoError) {
-        qDebug() << "no error slotGetSensorListFinished!";
-    }
-    // error, retry request
-    else {
-        if (numberFailGetListSensor > 3) {
-            LOG_WARN("WorkoutDialog",
-                     QStringLiteral("getSensorList: 3 retries exhausted — closing dialog: ")
-                     + replyGetListSensor->errorString());
-            QMessageBox msgBox(this);
-            msgBox.setIcon(QMessageBox::Warning);
-            msgBox.setText(tr("Could not retrieve sensors from our server<br/>"
-                              "Please re-open the workout again."));
-            msgBox.setStandardButtons(QMessageBox::Ok);
-            msgBox.setDefaultButton(QMessageBox::Ok);
-            msgBox.exec();
-            this->close();
-            return;
-        }
-        else {
-            numberFailGetListSensor++;
-            LOG_WARN("WorkoutDialog",
-                     QStringLiteral("getSensorList error (attempt ")
-                     + QString::number(numberFailGetListSensor) + QStringLiteral("): ")
-                     + replyGetListSensor->errorString());
-            replyGetListSensor = SensorDAO::getActiveSensorList(account->id);
-            connect(replyGetListSensor, SIGNAL(finished()), this, SLOT(slotGetSensorListFinished()) );
-            return;
-        }
-    }
-
-
-    // No error if we got here, process sensor data...
-    QByteArray arrayData =  replyGetListSensor->readAll();
-
-    QString replyMsg(arrayData);
-    qDebug() << replyMsg;
-
-    QList<Sensor> lstSensor =  Util::parseJsonSensorList(replyMsg);
-
-    if (lstSensor.size() < 1) {
-        labelPairHr->setText("");
-        labelPairHr->fadeOut(500);
-        return;
-    }
-
-
-    foreach (Sensor sensor, lstSensor) {
-        /// HR
-        if (sensor.getDeviceType() == constants::hrDeviceType) {
-            sensorHr = sensor;
-            usingHr = true;
-        }
-        /// SC
-        else if (sensor.getDeviceType() == constants::speedCadDeviceType) {
-            sensorSpeedCadence = sensor;
-            usingSpeedCadence = true;
-        }
-        /// Cadence
-        else if (sensor.getDeviceType() == constants::cadDeviceType) {
-            sensorCadence = sensor;
-            usingCadence = true;
-        }
-        /// Speed
-        else if (sensor.getDeviceType() == constants::speedDeviceType) {
-            sensorSpeed = sensor;
-            usingSpeed = true;
-        }
-        /// Power
-        else if (sensor.getDeviceType() == constants::powerDeviceType) {
-            sensorPower = sensor;
-            usingPower = true;
-        }
-        /// FE-C
-        else if (sensor.getDeviceType() == constants::fecDeviceType ) {
-            sensorFEC = sensor;
-            usingFEC = true;
-            idFecMainUser = sensor.getAntId();
-        }
-        /// Oxygen
-        else if (sensor.getDeviceType() == constants::oxyDeviceType ) {
-            sensorOxygen = sensor;
-            usingOxygen = true;
-        }
-    }
-
-
-    /// If not using specific sensor, dont check for pairing completion
-    if (!usingHr)
-        hrPairingDone = true;
-    if (!usingSpeedCadence)
-        scPairingDone = true;
-    if (!usingCadence)
-        cadencePairingDone = true;
-    if (!usingSpeed)
-        speedPairingDone = true;
-    if (!usingPower)
-        powerPairingDone = true;
-    if (!usingFEC)
-        fecPairingDone = true;
-    if (!usingOxygen)
-        oxygenPairingDone = true;
-
-
-    if (usingPower)
-        ui->widget_topMenu->setButtonCalibratePMVisible(true);
-    if (usingFEC)
-        ui->widget_topMenu->setButtonCalibrationFECVisible(true);
-
-
-
-    //// --------------- Show pairing window --------
-    QString pairingWithMsg = tr(" Pairing with %1 sensor (%2, %3)...");
-
-    labelPairHr->setText(""); //Erase previous msg
-
-    if (usingHr) {
-        QString pairingMsgHr = pairingWithMsg.arg(Sensor::getName(Sensor::SENSOR_HR), QString::number(sensorHr.getAntId()) , sensorHr.getName());
-        labelPairHr->setText(pairingMsgHr);
-        labelPairHr->setVisible(true);
-    }
-    if (usingSpeedCadence) {
-        QString pairingMsgSC = pairingWithMsg.arg(Sensor::getName(Sensor::SENSOR_SPEED_CADENCE), QString::number(sensorSpeedCadence.getAntId()) , sensorSpeedCadence.getName());
-        labelSpeedCadence->setText(pairingMsgSC);
-        labelSpeedCadence->setVisible(true);
-    }
-    if (usingCadence) {
-        QString pairingMsgCadence = pairingWithMsg.arg(Sensor::getName(Sensor::SENSOR_CADENCE), QString::number(sensorCadence.getAntId()) , sensorCadence.getName());
-        labelCadence->setText(pairingMsgCadence);
-        labelCadence->setVisible(true);
-    }
-    if (usingSpeed) {
-        QString pairingMsgSpeed = pairingWithMsg.arg(Sensor::getName(Sensor::SENSOR_SPEED), QString::number(sensorSpeed.getAntId()) , sensorSpeed.getName());
-        labelSpeed->setText(pairingMsgSpeed);
-        labelSpeed->setVisible(true);
-    }
-    if (usingFEC) {
-        QString pairingMsgFEC = pairingWithMsg.arg(Sensor::getName(Sensor::SENSOR_FEC), QString::number(sensorFEC.getAntId()) , sensorFEC.getName());
-        labelFEC->setText(pairingMsgFEC);
-        labelFEC->setVisible(true);
-    }
-    if (usingOxygen) {
-        QString pairingMsgOxy = pairingWithMsg.arg(Sensor::getName(Sensor::SENSOR_OXYGEN), QString::number(sensorOxygen.getAntId()) , sensorOxygen.getName());
-        labelOxygen->setText(pairingMsgOxy);
-        labelOxygen->setVisible(true);
-    }
-    if (usingPower) {
-        QString pairingMsgPower = pairingWithMsg.arg(Sensor::getName(Sensor::SENSOR_POWER), QString::number(sensorPower.getAntId()) , sensorPower.getName());
-        labelPower->setText(pairingMsgPower);
-        labelPower->setVisible(true);
-    }
-
-
-    labelPairHr->fadeIn(500);
-    labelSpeedCadence->fadeIn(500);
-    labelCadence->fadeIn(500);
-    labelSpeed->fadeIn(500);
-    labelFEC->fadeIn(500);
-    labelOxygen->fadeIn(500);
-    labelPower->fadeIn(500);
-    //////////////////////////
-
-
-    qDebug() << "Ok start sensors now !";
-    sendSoloData(account->wheel_circ, lstSensor, account->use_pm_for_cadence, account->use_pm_for_speed);
-
-
-
-    qDebug() << "slotGetSensorListFinished";
-    replyGetListSensor->deleteLater();
-}
 //---------------------------------------------------------------------------------
 void WorkoutDialog::checkPairingCompleted() {
 
@@ -3391,84 +3191,6 @@ void WorkoutDialog::checkPairingCompleted() {
     }
 }
 
-
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WorkoutDialog::slotPutAccountFinished() {
-
-    qDebug() << "slotPutAccountFinished!-------------------------\n-----------------------------------\n";
-
-    //success, process data
-    if (replyPutAccountToCheckSessionExpired->error() == QNetworkReply::NoError) {
-        qDebug() << "no error postDataAccountFinished!";
-        if (account->enable_studio_mode) {
-            labelPairHr->fadeOut(500);
-
-            emit sendDataUserStudio(vecUserStudio);
-        }
-    }
-    // error, retry request
-    else {
-        if (numberFailCheckSessionExpired > 3) {
-            LOG_WARN("WorkoutDialog",
-                     QStringLiteral("putAccount: 3 retries exhausted — closing dialog: ")
-                     + replyPutAccountToCheckSessionExpired->errorString());
-            QMessageBox msgBox(this);
-            msgBox.setIcon(QMessageBox::Warning);
-            msgBox.setText(tr("Could not retrieve your session data.<br/>"
-                              "Please reconnect to MaximumTrainer."));
-            msgBox.setStandardButtons(QMessageBox::Ok);
-            msgBox.setDefaultButton(QMessageBox::Ok);
-            msgBox.exec();
-            this->close();
-            return;
-        }
-        else {
-            numberFailCheckSessionExpired++;
-            LOG_WARN("WorkoutDialog",
-                     QStringLiteral("putAccount error (attempt ")
-                     + QString::number(numberFailCheckSessionExpired) + QStringLiteral("): ")
-                     + replyPutAccountToCheckSessionExpired->errorString());
-            replyPutAccountToCheckSessionExpired = UserDAO::putAccount(account);
-            connect(replyPutAccountToCheckSessionExpired, SIGNAL(finished()), this, SLOT(slotPutAccountFinished()) );
-            return;
-        }
-    }
-
-    // No error if we got here, process data...
-    QByteArray arrayData =  replyPutAccountToCheckSessionExpired->readAll();
-
-    QString replyMsg(arrayData);
-    qDebug() << replyMsg;
-
-    // Error message returned?
-    // 555= Session ID and ID not present in DB (another user logged with this username, sessionID no longer good)
-    // 666= Session_MT_expired < today (user kept program open more than 1 day)
-    if (replyMsg.contains("##555") || replyMsg.contains("##666")) {
-        qDebug() << "SESSION_ID AND ID NOT PRESENT IN DB!, kick out!";
-        QMessageBox msgBox(this);
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setText(tr("Your session has expired.<br/>"
-                          "Please reconnect to MaximumTrainer."));
-        msgBox.setStandardButtons(QMessageBox::Ok);
-        msgBox.setDefaultButton(QMessageBox::Ok);
-        msgBox.exec();
-        this->close();
-        return;
-    }
-    // User is legit, retrieve User data
-    else {
-        if (!account->enable_studio_mode) {
-            numberFailGetListSensor = 0;
-            labelPairHr->setText(tr(" Retrieving Sensors..."));
-            replyGetListSensor = SensorDAO::getActiveSensorList(account->id);
-            connect(replyGetListSensor, SIGNAL(finished()), this, SLOT(slotGetSensorListFinished()) );
-        }
-    }
-
-    replyPutAccountToCheckSessionExpired->deleteLater();
-}
 
 
 
@@ -3610,9 +3332,6 @@ void WorkoutDialog::sureYouWantToQuit() {
                 closeFitFiles(timeElapsed_sec);
             }
 
-            /// Save data DB (update Achievements, stats etc.)
-            if (!account->isOffline)
-                UserDAO::putAccount(account);
             QDialog::accept();
         }
         else if (reply == QMessageBox::No) {

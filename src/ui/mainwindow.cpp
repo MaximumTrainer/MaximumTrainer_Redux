@@ -19,10 +19,8 @@
 #include "logger.h"
 #include "environnement.h"
 #include "userdao.h"
-#include "savingwindow.h"
 #include "soundplayer.h"
 #include "dialogmainwindowconfig.h"
-#include "savingwindow.h"
 #include "workoutdialog.h"
 #include "workout.h"
 #include "radiodao.h"
@@ -162,7 +160,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // ------------------------------------- BTLE ready ---------------------------------
 
 
-    saveAccountTry = 0;
 
     ftb = new FancyTabBar(FancyTabBar::TabBarPosition::Left, ui->widget_fancyMenu);
     ftb->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -1083,55 +1080,17 @@ void MainWindow::closeEvent(QCloseEvent *event) {
     saveSettings();
     this->setVisible(false);
 
-    savingWindow.show();
-
-    //Save Settings and Account List workout done to xml file
+    // Save Settings and Account List workout done to xml file. Everything is
+    // local and synchronous now — the old maximumtrainer.com server PUT
+    // (backend removed in #245) used to retry here for ~6 minutes behind a
+    // blocking "Saving your data…" window before giving up.
     XmlUtil::saveLocalSaveFile(account);
 
-
-    // Put updated account data to server (skip when running in offline mode –
-    // there is no server to reach and the blocking event loop would time out).
-    if (!account->isOffline) {
-        replySaveAccount = UserDAO::putAccount(account);
-        QObject::connect(replySaveAccount, SIGNAL(finished()), this, SLOT(postDataAccountFinished()) );
-        loop.exec(); //dont leave until data uploaded to server
-    }
-
-
-    savingWindow.hide();
     qDebug () << "closeEvent Done mainWindow";
 
     // quitOnLastWindowClosed is disabled (see main.cpp), so quit explicitly
     // once the main window has finished closing.
     qApp->quit();
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::postDataAccountFinished() {
-
-    //success, process data
-    if (replySaveAccount->error() == QNetworkReply::NoError) {
-        qDebug() << "no error postDataAccountFinished!";
-        loop.quit();
-    }
-
-    // error, retry request
-    else {
-        if (saveAccountTry > 5) {
-            savingWindow.setMessage("Could not save on server");
-            LOG_WARN("MainWindow", QStringLiteral("putAccount: 5 retries exhausted — giving up"));
-            loop.quit();
-        }
-        else {
-            saveAccountTry++;
-            LOG_WARN("MainWindow",
-                     QStringLiteral("putAccount error (attempt ") + QString::number(saveAccountTry)
-                     + QStringLiteral("): ") + replySaveAccount->errorString());
-            replySaveAccount = UserDAO::putAccount(account);
-            connect(replySaveAccount, SIGNAL(finished()), this, SLOT(postDataAccountFinished()) );
-        }
-    }
-
 }
 
 //QMENUBAR
@@ -1344,6 +1303,7 @@ void MainWindow::executeWorkout(Workout workout) {
 
             simHubs.append(simHub);
         }
+        w->enableTrainerControl();
 
         connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
         connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
@@ -1496,6 +1456,9 @@ void MainWindow::executeWorkout(Workout workout) {
     connect(w, SIGNAL(setLoad(int,double)),  btleHub, SLOT(setLoad(int,double)));
     connect(w, SIGNAL(setSlope(int,double)), btleHub, SLOT(setSlope(int,double)));
     connect(w, SIGNAL(stopDecodingMsgHub()), btleHub, SLOT(stopDecodingMsg()));
+    // Harmless when the device is not a trainer: BtleHub::setLoad() no-ops
+    // without an FTMS service.
+    w->enableTrainerControl();
 
 #ifdef Q_OS_WASM
     // On WASM, BtleHub is aliased to BtleHubWasm which exposes scanForDevice().
@@ -1607,6 +1570,7 @@ void MainWindow::wireHubsToDialog(WorkoutDialog *w,
         wireSpeed(hub);
         connect(w, SIGNAL(setLoad(int,double)),  hub, SLOT(setLoad(int,double)));
         connect(w, SIGNAL(setSlope(int,double)), hub, SLOT(setSlope(int,double)));
+        w->enableTrainerControl();
     }
     if (hubsByRole.contains(BtleSensorRole::Power))
         wirePower(hubsByRole.value(BtleSensorRole::Power));
