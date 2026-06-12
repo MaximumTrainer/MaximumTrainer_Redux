@@ -720,8 +720,16 @@ jobs:
         name: windows
         path: build
 
+    # QTest stdout from Windows GUI-subsystem processes is not reliably
+    # captured by the runner; write results to a file and print it so
+    # failures are diagnosable from the log.
     - name: Run workout UI test
-      run: .\build\tests\workout_ui_tests.exe -v2
+      run: |
+        .\build\tests\workout_ui_tests.exe -v2 -o workout_ui_results.txt,txt
+        $code = $LASTEXITCODE
+        Write-Host "QTest exit code: $code"
+        if (Test-Path workout_ui_results.txt) { Get-Content workout_ui_results.txt }
+        exit $code
       shell: powershell
 
     - name: Upload workout UI screenshot
