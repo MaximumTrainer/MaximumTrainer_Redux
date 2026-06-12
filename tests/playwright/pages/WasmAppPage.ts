@@ -570,7 +570,10 @@ export class WasmAppPage {
     };
 
     await this.page.route(
-      /^https:\/\/(?:intervals\.icu\/oauth\/token|mt-intervals-proxy\.intervals-login\.workers\.dev\/proxy\/oauth\/token)(?:\?.*)?$/,
+      // Token endpoint moved to /api/oauth/token (#261); keep matching the old
+      // /oauth/token path too so the mock can't silently stop intercepting
+      // again if the path changes back.
+      /^https:\/\/(?:intervals\.icu\/(?:api\/)?oauth\/token|mt-intervals-proxy\.intervals-login\.workers\.dev\/proxy\/(?:api\/)?oauth\/token)(?:\?.*)?$/,
       async (route) => {
         if (route.request().method() === 'OPTIONS') {
           await route.fulfill({ status: 204, headers: corsHeaders });
