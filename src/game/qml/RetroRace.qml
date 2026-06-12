@@ -33,10 +33,6 @@ Item {
         : Math.min(1.0, Math.abs(race.playerPowerW - race.targetPower) / Math.max(40, race.targetPower * 0.35))
     // Race position (1st / 2nd) from the gap sign — a racing-game staple.
     readonly property bool leading: race.gapMeters >= 0
-    // Drafting: tucked in the ghost's slipstream (0.5–8 m back) — pays a small
-    // score trickle, like the real-world free watts.
-    readonly property bool drafting: race.started && !race.finished
-        && race.gapMeters < -0.5 && race.gapMeters > -8
     // Final sprint: the last 15 s before the finish line.
     readonly property bool finalSprint: race.started && !race.finished
         && race.finishSecs > 0 && race.finishSecs <= 15
@@ -96,13 +92,9 @@ Item {
             }
             if (root.zoneHoldSec > root.bestStreakSec) root.bestStreakSec = root.zoneHoldSec
             // dt clamped so a pause/resume cannot pay out one giant tick.
-            var scoreDt = Math.min(0.5, root.animT - root.lastScoreT)
-            if (root.lastScoreT >= 0 && race.started && !race.finished && race.running) {
-                if (race.targetPower > 0 && root.effortState === 0)
-                    root.score += scoreDt * 10 * root.zoneMult
-                if (root.drafting)
-                    root.score += scoreDt * 2
-            }
+            if (root.lastScoreT >= 0 && race.started && !race.finished && race.running
+                && race.targetPower > 0 && root.effortState === 0)
+                root.score += Math.min(0.5, root.animT - root.lastScoreT) * 10 * root.zoneMult
             root.lastScoreT = root.animT
         }
         function onRaceStateChanged() {
@@ -641,18 +633,6 @@ Item {
             font.family: "monospace"; font.pixelSize: 14; font.bold: true
         }
     }
-    // Slipstream pill under the gap bubble while tucked behind the ghost.
-    Rectangle {
-        visible: root.drafting
-        z: 40
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: gapChip.y + gapChip.height + 6
-        width: draftTxt.implicitWidth + 20; height: 22; radius: 11
-        color: "#0e2733"; border.color: "#7fd0ff"; border.width: 1
-        opacity: 0.75 + 0.20 * Math.sin(root.animT * 5)
-        Text { id: draftTxt; anchors.centerIn: parent; text: "≋ DRAFTING +2/s"
-               color: "#7fd0ff"; font.family: "monospace"; font.pixelSize: 12; font.bold: true }
-    }
     // Rear-view mirror — once you take the lead the ghost no longer renders on
     // the road ahead, so show it chasing you here instead; it grows in the
     // glass as it closes back in.
@@ -883,33 +863,7 @@ Item {
         BigStat { label: "HR";      value: race.playerHr;      unit: "bpm"; target: race.targetHr;      range: race.targetHrRange }
     }
 
-    // Right: gap headline + battle bar.
-    Column {
-        anchors.right: parent.right; anchors.rightMargin: 18
-        anchors.top: parent.top; anchors.topMargin: 6
-        spacing: 3
-        // Race-position medallion (1st / 2nd) — racing-game staple.
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: 56; height: 26; radius: 6
-            color: root.leading ? "#1f7a37" : "#7a1f2a"; border.color: "#ffffff"; border.width: 1
-            Text { anchors.centerIn: parent; text: root.leading ? "P1" : "P2"
-                   color: "white"; font.family: "monospace"; font.pixelSize: 17; font.bold: true }
-        }
-        // (The gap headline lives in the avatar bubble now; only the battle bar
-        // stays up here as a compact ±60 m trend view.)
-        Rectangle {
-            width: 240; height: 8; radius: 4; color: "#ffffff"; opacity: 0.25
-            anchors.horizontalCenter: parent.horizontalCenter
-            Rectangle {
-                readonly property real frac: Math.max(-1, Math.min(1, race.gapMeters / 60))
-                height: parent.height; radius: 4
-                color: frac >= 0 ? "#5dff5d" : "#ff6b6b"
-                x: frac >= 0 ? parent.width/2 : parent.width/2 + frac * (parent.width/2)
-                width: Math.abs(frac) * (parent.width/2)
-            }
-        }
-    }
+    // (No top-right gap cluster: position and gap live in the avatar bubble.)
 
     // NEXT-interval target card (right side).
     Rectangle {
