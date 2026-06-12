@@ -149,9 +149,6 @@ private slots:
     void on_actionSingle_Workout_triggered();
     void on_actionMultiple_Workouts_triggered();
 
-    //-Intervals.icu
-    void slotIntervalsIcuUploadFinished();
-
     void onNetworkOnlineChanged(bool isOnline);
 
     void createWebChannelPlan();
@@ -211,8 +208,6 @@ private:
     int saveAccountTry;
     SavingWindow savingWindow;
 
-    //Intervals.icu
-    QNetworkReply *replyIntervalsIcuUpload;
     QNetworkReply *replyVersionCheck = nullptr;
 
 

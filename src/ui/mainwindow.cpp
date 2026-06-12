@@ -31,7 +31,6 @@
 #include "importerworkout.h"
 #include "importerworkoutzwo.h"
 #include "intervalsicudao.h"
-#include "intervalsicuservice.h"
 #include "xmlutil.h"
 #include "managerachievement.h"
 #include "simulator_hub.h"
@@ -107,7 +106,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     planObject = new PlanObject(this);         ///Used with QWebView Plan page
 
     replyIntervalsIcuZwo    = nullptr;
-    replyIntervalsIcuUpload = nullptr;
 
 
     createWebChannelPlan();
@@ -1740,6 +1738,7 @@ void MainWindow::on_actionMultiple_Workouts_triggered()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::checkToUploadFile(const QString& filename, const QString& nameOnly, const QString& description) {
 
+    Q_UNUSED(description);
     qDebug() << "check to upload Fit file";
 
     // ── Plan adherence: auto-mark this workout as completed ──────────────────
@@ -1748,61 +1747,11 @@ void MainWindow::checkToUploadFile(const QString& filename, const QString& nameO
         m_adherenceStore->addCompleted(today, nameOnly, filename);
     }
 
-    // Strava auto-upload is handled in WorkoutDialog's post-workout panel
-    // (so the status shows there and the manual button is replaced), which
-    // avoids uploading the same activity twice. Only Intervals.icu auto-uploads
-    // here.
-
-    // Intervals.icu
-    if (account->intervals_icu_auto_upload &&
-        !account->intervals_icu_athlete_id.isEmpty() &&
-        (!account->intervals_icu_api_key.isEmpty() ||
-         !account->intervals_icu_access_token.isEmpty()) &&
-        NetworkMonitor::instance()->isOnline()) {
-
-        ui->widget_bottomMenu->setGeneralMessage(tr("Uploading your activity to Intervals.icu..."));
-        IntervalsIcuService *svc = new IntervalsIcuService(this);
-        svc->setCredentials(account->intervals_icu_api_key, account->intervals_icu_athlete_id);
-        svc->setAccessToken(account->intervals_icu_access_token);
-        const QString externalId = QFileInfo(filename).baseName();
-        replyIntervalsIcuUpload = svc->uploadActivity(filename, nameOnly, externalId);
-        if (replyIntervalsIcuUpload) {
-            connect(replyIntervalsIcuUpload, SIGNAL(finished()), this, SLOT(slotIntervalsIcuUploadFinished()));
-        }
-        svc->deleteLater();
-    }
-
+    // Strava and Intervals.icu auto-uploads are both handled in WorkoutDialog's
+    // post-workout panel (so the status — and the "View on …" link — shows
+    // there, and the manual button is replaced), which also avoids uploading
+    // the same activity twice.
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindow::slotIntervalsIcuUploadFinished()
-{
-    qDebug() << "slotIntervalsIcuUploadFinished";
-
-    if (replyIntervalsIcuUpload->error() == QNetworkReply::NoError) {
-        ui->widget_bottomMenu->setGeneralMessage(
-            tr("Your activity was successfully uploaded to Intervals.icu"), 5000);
-    } else {
-        const int httpStatus = replyIntervalsIcuUpload
-            ->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        if (httpStatus == 401) {
-            ui->widget_bottomMenu->setGeneralMessage(
-                tr("Intervals.icu upload failed: invalid API key (401)"), 5000);
-        } else if (httpStatus == 409) {
-            ui->widget_bottomMenu->setGeneralMessage(
-                tr("Activity already present on Intervals.icu"), 5000);
-        } else {
-            ui->widget_bottomMenu->setGeneralMessage(
-                "Intervals.icu: " + replyIntervalsIcuUpload->errorString(), 5000);
-        }
-        LOG_WARN("MainWindow",
-                 QStringLiteral("Intervals.icu upload failed: ")
-                 + replyIntervalsIcuUpload->errorString()
-                 + QStringLiteral(" HTTP ") + QString::number(httpStatus));
-    }
-    replyIntervalsIcuUpload->deleteLater();
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::onNetworkOnlineChanged(bool isOnline)
