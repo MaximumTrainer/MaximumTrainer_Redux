@@ -2,6 +2,21 @@
 
 An open-source, high-performance indoor cycling training application built with the **Qt framework (C++17)**. MaximumTrainer delivers structured interval workouts with real-time power, cadence, heart rate, and speed feedback, and controls smart trainers automatically via FTMS ERG mode. Browse and sync workouts from [intervals.icu](https://www.intervals.icu), or import your own `.erg` / `.mrc` / `.zwo` files.
 
+> 📖 **Want to use the app?** See the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)** — pairing sensors, finding & building workouts, training, Studio mode, and more.
+
+## Download
+
+Prebuilt binaries for each release live on the [**Releases**](https://github.com/MaximumTrainer/MaximumTrainer_Redux/releases) page — you don't need to build from source unless you want to. Grab the asset for your platform from the latest release:
+
+| Platform | Asset | Notes |
+|----------|-------|-------|
+| **Linux** | `MaximumTrainer-linux-x86_64.AppImage` | `chmod +x` it and run — self-contained, no install |
+| **Windows** | `MaximumTrainer-windows-x64.msi` (installer) or `-windows-x64.zip` (portable) | Windows 10 1703+ |
+| **macOS** | `MaximumTrainer-macos.dmg` | Open and drag to Applications |
+| **Web (WASM)** | `MaximumTrainer-wasm.zip` | Runs in a WebAssembly-capable browser |
+
+Prefer to compile it yourself? See [Building](#building) below.
+
 ## Technical Overview
 
 | Item | Details |
@@ -15,172 +30,39 @@ An open-source, high-performance indoor cycling training application built with 
 | **Workout formats** | `.erg`, `.mrc`, `.zwo` (imported and converted to the native XML format) · Intervals.icu calendar sync · export as `.fit` |
 | **Workout source** | Integrated intervals.icu for online workout plans |
 
-## Hardware Setup
+## Using MaximumTrainer
 
-### 1 — Wake up your sensors
+For everything about **using** the app — pairing sensors, finding / importing / creating workouts, ERG vs Slope, the workout player (video · web · Retro Race game), Studio mode, activity uploads, and troubleshooting — see the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)**.
 
-| Device | How to wake it |
-|--------|---------------|
-| Smart trainer | Start pedalling for a few seconds |
-| Power meter | Start pedalling |
-| Heart rate strap | Moisten the electrode contacts and put it on |
-| Speed / cadence sensor | Spin the crank or wheel |
-
-### 2 — Connect in the app
-
-1. Launch MaximumTrainer and log in.
-2. From the main window open **Preferences → Device Connections** (or press the gear icon).
-3. Click **Scan / Add Devices**. The BTLE scanner lists every nearby Bluetooth LE device.
-4. Select the correct profile for each sensor:
-
-| Profile | UUID | Data provided | Smart-trainer ERG control |
-|---------|------|--------------|--------------------------|
-| Heart Rate Monitor | 0x180D | Heart rate (bpm) | No |
-| Cycling Speed & Cadence | 0x1816 | Speed (km/h) · Cadence (RPM) | No |
-| Cycling Power | 0x1818 | Power (W) | No |
-| **Fitness Machine (FTMS)** | **0x1826** | Speed · Cadence · Power | **Yes — enables ERG mode** |
-| Moxy Muscle Oxygen | 0xAAB0 | SmO₂ (%) · tHb (g/dL) | No |
-
-> **Important:** Select the **Fitness Machine (FTMS / 0x1826)** profile for your smart trainer if you want the app to set resistance automatically. Choosing a plain Power or Speed profile disables ERG control.
-
-5. Paired sensors appear with a green indicator. You can pair multiple sensors simultaneously (e.g. FTMS trainer + HR strap).
-
-### Simulation mode
-
-If you have no hardware — or want to test a new workout — choose **Simulation** in the connection dialog. The software hub emits realistic drifting values:
-
-| Channel | Base value | Range |
-|---------|-----------|-------|
-| Heart rate | 140 bpm | 125–165 bpm |
-| Cadence | 90 rpm | 80–100 rpm |
-| Speed | 28 km/h | 23–33 km/h |
-| Power | 200 W | 170–260 W |
-
-The simulator responds to ERG load commands from the workout player, making it a full end-to-end test of the training logic without any Bluetooth hardware.
-
-## User Guide
-
-### Selecting a workout
-
-**Option A — Intervals.icu calendar sync (integrated)**
-
-1. On the login screen click **Connect with Intervals.icu** and authorise the app via OAuth (one-time setup).
-2. Click the **Intervals.icu** tab in the left sidebar.
-3. Click **Refresh** to load your planned workouts for the current week.
-4. Select a workout and click **Load Selected Workout** to download it to your local library.
-
-**Option B — Import a custom file**
-
-1. Go to **File → Import Workout**.
-2. Select one or more `.erg` or `.mrc` files.
-3. MaximumTrainer converts them to its native format and adds them to your library.
-
-> `.zwo` workouts are imported automatically via Intervals.icu calendar sync; the manual File → Import dialog accepts `.erg` and `.mrc`.
-
-**Option C — Create your own**
-
-Use the built-in **Workout Creator** (toolbar → pencil icon) to build structured intervals with configurable power, cadence, or HR targets.
-
-### Workout modes
-
-| Mode | How it works | Best for |
-|------|-------------|---------|
-| **ERG** | App automatically adjusts trainer resistance so your actual power matches the target wattage. You control only cadence. | Structured interval workouts |
-| **Slope / Manual** | App sends a constant incline grade to the trainer. Resistance changes naturally with speed, just like riding outdoors. | Free-riding, ramp tests, courses |
-
-The workout dialog switches to Slope mode automatically when the current interval has no power target, or when you press **Increase / Decrease Difficulty** to override ERG.
-
-### The Workout Player
-
-Once a workout starts you will see:
-
-- **Interval countdown** — time remaining in the current interval, and total workout time elapsed / remaining.
-- **Target vs. Actual Power graph** — a QWT-based real-time plot showing the structured intervals as coloured zones and your live power overlaid on top.
-- **Metrics widgets** — live Heart Rate · Cadence · Speed · Power · Left/Right Power Balance (if a dual-sided power meter is connected) · SmO₂ / tHb (if a Moxy muscle-oxygen sensor is connected).
-- **Controls** — Start/Pause, Skip Interval, Adjust Difficulty (±5 % FTP increments), and Lap.
-
-Completed workout data is saved as a FIT activity file and can be uploaded to **Strava**, **TrainingPeaks**, **SelfLoops**, or **Intervals.icu** from the post-workout screen.
-
-> **Video & radio:** the workout view has a built-in media player (QtMultimedia) for local video files and internet-radio audio streams. Right-click the video area to open a file or URL and to adjust volume.
+> **No hardware?** A built-in **Simulation** mode emits realistic drifting power / HR / cadence /
+> speed and responds to ERG commands, so you can exercise the full workout flow — handy for
+> development and CI — without any Bluetooth devices.
 
 ## Screenshots
 
-| Workout list | Workout in progress |
-|--------------|---------------------|
-| ![Main window — workout library with power graphs and metrics](docs/assets/screenshots/screenshot_main_window.png) | ![Workout player — video, interval graph, and live power, heart rate, and cadence](docs/assets/screenshots/screenshot_workout_running.png) |
+| Workout library |
+|-----------------|
+| ![Main window — workout library with power graphs and metrics](docs/assets/screenshots/screenshot_main_window.png) |
 
-| Studio mode | Activity history |
-|-------------|------------------|
-| ![Studio mode — multiple riders with live power, heart rate, and cadence](docs/assets/screenshots/screenshot_studio_mode.png) | ![Activity history with weekly totals and upload status](docs/assets/screenshots/screenshot_activity_history.png) |
+| Workout editor |
+|----------------|
+| ![Workout editor — build custom intervals with Add / Repeat / Copy / Delete](docs/assets/screenshots/screenshot_workout_editor.png) |
 
-## Linux — Bluetooth Setup
+| Devices — pairing & trainer config |
+|------------------------------------|
+| ![Devices tab — pair a sensor per role, toggle ERG control, and set dropout and battery options](docs/assets/screenshots/screenshot_devices.png) |
 
-Before running MaximumTrainer on Linux, ensure the following prerequisites are met:
+| Workout in progress |
+|---------------------|
+| ![Workout player — video, interval graph, and live power, heart rate, and cadence](docs/assets/screenshots/screenshot_workout_running.png) |
 
-### 1 — BlueZ daemon
+| Studio mode — per-rider configuration |
+|---------------------------------------|
+| ![Studio mode configuration — per-rider name, FTP/LTHR, sensors, and ERG control for up to 8 riders](docs/assets/screenshots/screenshot_studio_mode.png) |
 
-BlueZ is the Linux Bluetooth stack. Install it and make sure the daemon starts automatically:
-
-```bash
-sudo apt-get install -y bluez
-sudo systemctl enable --now bluetooth
-```
-
-Verify the daemon is active:
-
-```bash
-sudo systemctl status bluetooth
-```
-
-### 2 — Add your user to the `bluetooth` group
-
-If the BLE device scanner shows an empty list and no error, the most common cause is that your account is not in the `bluetooth` group:
-
-```bash
-sudo usermod -aG bluetooth $USER
-```
-
-> **Important:** Group changes take effect only after you **log out and back in** (or reboot). You can apply the change to the current shell session immediately — without logging out — by running:
-> ```bash
-> newgrp bluetooth
-> ```
-
-### 3 — Confirm your adapter supports Bluetooth LE (4.0+)
-
-MaximumTrainer requires a Bluetooth 4.0 or newer adapter to communicate with BLE sensors and trainers. Check your adapter:
-
-```bash
-hciconfig -a
-```
-
-Look for `LMP Version: 6` (BT 4.0) or higher in the output. If `hciconfig` is not available, use:
-
-```bash
-bluetoothctl show
-```
-
-### 4 — Verify required kernel modules are loaded
-
-The following kernel modules must be loaded:
-
-| Module | Purpose |
-|--------|---------|
-| `bluetooth` | Core BLE/Bluetooth stack |
-| `hci_uart` | UART-attached adapters (most USB dongles) |
-| `btusb` | USB Bluetooth adapters |
-
-Check and load if needed:
-
-```bash
-lsmod | grep -E "bluetooth|hci_uart|btusb"
-# If missing, load manually:
-sudo modprobe bluetooth
-sudo modprobe btusb
-```
-
-On most modern distributions (Ubuntu 20.04+, Fedora 36+) these modules load automatically when a Bluetooth adapter is detected.
-
----
+| Retro Race — ghost-race game mode |
+|-----------------------------------|
+| ![Retro Race — a pseudo-3D ghost race in the workout player; your live power drives your rider against a ghost replay](docs/assets/screenshots/screenshot_retro_race.png) |
 
 ## Building
 
@@ -246,7 +128,7 @@ cd /tmp && curl -L -o qwt.tar.bz2 \
 tar xf qwt.tar.bz2 && cd qwt-6.3.0
 qmake6 qwt.pro && make -j$(nproc)
 make install INSTALL_ROOT=/tmp/qwt6-stage
-mv /tmp/qwt6-stage/usr/local/qwt-6.3.0 /tmp/qwt6
+mkdir -p /tmp/qwt6 && mv /tmp/qwt6-stage/usr/local/qwt-6.3.0/* /tmp/qwt6/
 
 # Build MaximumTrainer
 cd /path/to/MaximumTrainer_Redux
@@ -291,7 +173,7 @@ MaximumTrainer has a multi-tier test suite covering BLE parsing, service APIs, U
 | Suite | Location | What is tested |
 |-------|----------|----------------|
 | BLE unit tests | `tests/btle/` | BLE characteristic parsing (HR, CSC, Power, FTMS), SimulatorHub signal emission, trainer simulations (Elite, Wahoo KICKR, Garmin Tacx), battery level, interval summary |
-| Service unit tests | `tests/strava/`, `tests/trainingpeaks/`, `tests/selfloops/`, `tests/intervals_icu/` | HTTP request construction, auth headers, URL patterns, null-manager guards for all cloud upload services |
+| Service unit tests | `tests/strava/`, `tests/intervals_icu/` | HTTP request construction, auth headers, URL patterns, null-manager guards for the Strava and Intervals.icu upload services |
 | ZWO importer tests | `tests/intervals_icu/` | Parsing of SteadyState, Ramp, IntervalsT, FreeRide, mixed, and malformed ZWO workout files |
 | Credential store tests | `tests/credential_store/` | Round-trip read/write, overwrite, remove, missing key, multi-service, WASM no-op |
 | Plan adherence tests | `tests/plan_adherence/` | Completed/skipped/substituted entries, adherence %, encode-decode, change signals |
@@ -317,7 +199,7 @@ The BLE suite has **51 test cases** across HR parsing, CSC, Power, FTMS, trainer
 
 MaximumTrainer writes diagnostic messages (network errors, BLE events, OAuth login steps) to a log
 file. File logging is **enabled by default** on first launch; you can adjust the level or disable it
-in **Preferences → Preferences & Profile → Logging**.
+in **Preferences → Logging**.
 
 | Platform | Default log file path |
 |----------|-----------------------|
@@ -328,7 +210,7 @@ in **Preferences → Preferences & Profile → Logging**.
 Set the log level to **Debug** before reproducing an issue, then attach the log file to your bug report.
 The **Open log file** button in the Logging settings page opens the file directly in your default text editor.
 
-For full troubleshooting guidance (including the Intervals.icu login page) see the
+For full troubleshooting guidance see the
 [User Guide — Log Files & Troubleshooting](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html#log-files)
 section.
 

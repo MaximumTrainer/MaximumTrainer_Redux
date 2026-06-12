@@ -177,9 +177,8 @@
         <div class="feature-card">
           <div class="feature-icon">☁️</div>
           <h3>Activity Upload</h3>
-          <p>Post-workout upload to <strong>Strava</strong>, <strong>TrainingPeaks</strong>,
-             <strong>SelfLoops</strong>, and <strong>Intervals.icu</strong> directly from the app.
-             Intervals.icu auto-upload can be toggled in Settings.</p>
+          <p>Post-workout upload to <strong>Strava</strong> and <strong>Intervals.icu</strong>
+             directly from the app. Auto-upload can be toggled in Settings.</p>
         </div>
 
       </div>
@@ -193,12 +192,12 @@
           </thead>
           <tbody>
             <tr><td>Language</td><td>C++17 (≈ 95 %)</td></tr>
-            <tr><td>Framework</td><td>Qt 5.15.2 (Windows · Linux) &nbsp;·&nbsp; Qt 6.7.3 (macOS) &nbsp;·&nbsp; Qt 6.6.3 (WebAssembly / browser)</td></tr>
+            <tr><td>Framework</td><td>Qt 6 (6.7+) — Windows · Linux · macOS · WebAssembly (browser)</td></tr>
             <tr><td>Build file</td><td><code>MaximumTrainer.pro</code> (qmake)</td></tr>
             <tr><td>Trainer protocol</td><td>Bluetooth LE FTMS (0x1826) — ERG automatic resistance control</td></tr>
             <tr><td>Sensor profiles</td><td>Heart Rate (0x180D) · CSC (0x1816) · Power (0x1818) · Moxy NIRS (0xAAB0)</td></tr>
             <tr><td>Workout formats</td><td><code>.erg</code> · <code>.mrc</code> · <code>.zwo</code> · <code>.fit</code> (native XML) · Intervals.icu calendar sync</td></tr>
-            <tr><td>Cloud integrations</td><td>Strava · TrainingPeaks · SelfLoops · Intervals.icu</td></tr>
+            <tr><td>Cloud integrations</td><td>Strava · Intervals.icu</td></tr>
             <tr><td>License</td><td>GPL-3.0</td></tr>
           </tbody>
         </table>
@@ -212,7 +211,7 @@
       <h2 class="section-title">Gallery</h2>
       <p class="section-subtitle">
         Screenshots of the application running on Windows, Linux &amp; macOS — showing the workout list,
-        active ERG session with live power graph, studio mode, workout editor, settings, and activity history.
+        active ERG session with live power graph, studio mode, workout editor, settings, and the Retro Race game.
         Click any image to enlarge.
       </p>
 
@@ -234,16 +233,16 @@
 
         <div class="gallery-item">
           <img src="assets/screenshots/screenshot_studio_mode.png"
-               alt="Studio mode — 6 riders training simultaneously"
+               alt="Studio mode — per-rider configuration"
                loading="lazy" />
-          <div class="gallery-caption">Studio mode — multiple riders</div>
+          <div class="gallery-caption">Studio mode — per-rider configuration</div>
         </div>
 
         <div class="gallery-item">
           <img src="assets/screenshots/screenshot_settings.png"
-               alt="Settings — BLE sensor pairing and user profile configuration"
+               alt="Preferences — account settings, profile, and integrations"
                loading="lazy" />
-          <div class="gallery-caption">Settings &amp; BLE sensor configuration</div>
+          <div class="gallery-caption">Preferences — profile &amp; integrations</div>
         </div>
 
         <div class="gallery-item">
@@ -254,10 +253,10 @@
         </div>
 
         <div class="gallery-item">
-          <img src="assets/screenshots/screenshot_activity_history.png"
-               alt="Intervals.icu integration — training calendar and activity sync"
+          <img src="assets/screenshots/screenshot_retro_race.png"
+               alt="Retro Race — pseudo-3D ghost race driven by your live power"
                loading="lazy" />
-          <div class="gallery-caption">Intervals.icu integration &amp; calendar</div>
+          <div class="gallery-caption">Retro Race — ghost-race game mode</div>
         </div>
 
       </div>
@@ -289,18 +288,15 @@
           <h3>Windows</h3>
           <p class="download-desc">Windows 10/11 — 64-bit (MSVC build)</p>
           <ul class="download-deps">
-            <li>Qt 6.x (win64_msvc2019_64)</li>
-            <li>QWT 6.3.0</li>
-            <li>SFML 2.6.1</li>
+            <li>Qt 6.7.3 (win64_msvc2019_64)</li>
+            <li>QWT 6.3.0 (from source)</li>
           </ul>
           <a id="win-download-btn" class="btn btn-primary btn-disabled" href="#" aria-disabled="true" title="Not yet available — coming soon">
             Download .zip
           </a>
           <details class="build-details">
             <summary>Build from source</summary>
-            <pre><code>qmake MaximumTrainer.pro `
-  "QWT_INSTALL=C:/qwt" `
-  "SFML_INSTALL=C:/sfml/SFML-2.6.1"
+            <pre><code>qmake MaximumTrainer.pro "QWT_INSTALL=C:/qwt"
 nmake</code></pre>
           </details>
         </div>
@@ -309,11 +305,10 @@ nmake</code></pre>
         <div class="download-card">
           <div class="download-icon">🐧</div>
           <h3>Linux</h3>
-          <p class="download-desc">Ubuntu 24.04+ / Debian-based distros</p>
+          <p class="download-desc">Ubuntu 22.04+ / Debian-based distros</p>
           <ul class="download-deps">
-            <li>Qt 6.x (from apt)</li>
+            <li>Qt 6.7.3 (qt6-*-dev)</li>
             <li>QWT 6.3.0 (from source)</li>
-            <li>libsfml-dev</li>
           </ul>
           <a id="linux-download-btn" class="btn btn-primary btn-disabled" href="#" aria-disabled="true" title="Not yet available — coming soon">
             Download .AppImage
@@ -322,9 +317,8 @@ nmake</code></pre>
             <summary>Build from source</summary>
             <pre><code>sudo apt-get install -y \
   qt6-base-dev qt6-webengine-dev \
-  qt6-connectivity-dev \
-  qt6-multimedia-dev \
-  libsfml-dev \
+  qt6-connectivity-dev qt6-multimedia-dev \
+  qt6-webchannel-dev qt6-positioning-dev \
   cmake build-essential
 
 qmake6 MaximumTrainer.pro QWT_INSTALL=/tmp/qwt6
@@ -336,20 +330,17 @@ make -j$(nproc)</code></pre>
         <div class="download-card">
           <div class="download-icon">🍎</div>
           <h3>macOS</h3>
-          <p class="download-desc">macOS 12+ (Apple Silicon &amp; Intel)</p>
+          <p class="download-desc">macOS 10.15 (Catalina) or later — Apple Silicon &amp; Intel</p>
           <ul class="download-deps">
             <li>Qt 6.7.3 (via Qt Installer)</li>
             <li>QWT 6.3.0 (from source)</li>
-            <li>SFML (brew install sfml)</li>
           </ul>
           <a id="mac-download-btn" class="btn btn-primary btn-disabled" href="#" aria-disabled="true" title="Not yet available — coming soon">
             Download .dmg
           </a>
           <details class="build-details">
             <summary>Build from source</summary>
-            <pre><code>brew install sfml
-qmake MaximumTrainer.pro \
-  "SFML_INSTALL=$(brew --prefix sfml)" \
+            <pre><code>qmake MaximumTrainer.pro \
   "QWT_INSTALL=/usr/local/qwt-6.3.0"
 make -j$(sysctl -n hw.logicalcpu)</code></pre>
           </details>
@@ -399,7 +390,7 @@ make -j$(sysctl -n hw.logicalcpu)</code></pre>
         </p>
         <p>
           The full license text is available in the
-          <a href="https://github.com/MaximumTrainer/MaximumTrainer_Redux/blob/main/LICENSE" target="_blank" rel="noopener">LICENSE</a>
+          <a href="https://github.com/MaximumTrainer/MaximumTrainer_Redux/blob/master/LICENSE" target="_blank" rel="noopener">LICENSE</a>
           file of the repository, and at
           <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">gnu.org/licenses/gpl-3.0</a>.
         </p>

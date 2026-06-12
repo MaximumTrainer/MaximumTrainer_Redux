@@ -134,6 +134,34 @@ verify step.
 
 ---
 
+## Documentation — keep it in sync (validate on EVERY PR)
+
+There are **three** user-facing docs that drift out of sync with the code if you
+let them. On any PR that changes a feature, the UI, a menu/label, a setting, a
+build step, or an integration, **re-validate all three against the actual code**
+(don't trust the existing prose — it has been wrong before):
+
+- **`README.md`** — project/infra: what it is, Download (releases), build-from-source,
+  testing. Keep it scoped to install/build/infra; link the User Guide for *how to use*
+  the app rather than duplicating how-to content here.
+- **`docs/index.html`** — the GitHub Pages **landing page** (features, gallery,
+  download cards, specs, license).
+- **`docs/user-guide.html`** — the GitHub Pages **User Guide** (the full how-to:
+  pairing, workouts, training, Studio, uploads, settings, shortcuts).
+
+Validation checklist:
+- Cross-check every UI claim (menu paths, tab/button labels, settings categories,
+  keyboard shortcuts) against the `.ui` files and slots — grep the source, don't guess.
+- Cross-check build commands against `.github/workflows/build-*.yml` (Qt version,
+  modules, QWT, qmake invocation). **No SFML/VLC** — media is QtMultimedia.
+- Don't reference removed features (PowerCurve, Course, SelfLoops/TrainingPeaks,
+  ANT+, the old web frontend) or unshipped/broken ones.
+- Screenshots live in `docs/assets/screenshots/`; regenerate with
+  `--screenshots /tmp/shots` (set `app_theme=1` in the QSettings conf for dark mode)
+  when the UI changes. The README/guide reference them via `docs/assets/...`.
+
+---
+
 ## Known dormant features (don't extend; slated for removal)
 
 Per `agents.md §7`:

@@ -178,7 +178,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ftb->insertTab(1, QIcon(":/image/icon/intervals"),   tr("Intervals.icu"));
     ftb->insertTab(2, QIcon(":/image/icon/calendar"),  tr("Plan"));
     ftb->insertTab(3, QIcon(":/image/icon/studio"), tr("Studio"));
-    ftb->insertTab(4, QIcon(":/image/icon/bluetooth"), tr("Sensors"));
+    ftb->insertTab(4, QIcon(":/image/icon/bluetooth"), tr("Devices"));
     ftb->insertTab(5, QIcon(":/image/icon/chart"), tr("History"));
 
     ftb->setTabEnabled(0, true);

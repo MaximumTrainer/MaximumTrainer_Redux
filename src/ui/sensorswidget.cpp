@@ -36,7 +36,7 @@ void SensorsWidget::buildUi()
     mainLayout->setContentsMargins(16, 16, 16, 16);
     mainLayout->setSpacing(12);
 
-    QLabel *title = new QLabel(tr("Bluetooth Sensors"), this);
+    QLabel *title = new QLabel(tr("Devices"), this);
     QFont titleFont = title->font();
     titleFont.setPointSizeF(titleFont.pointSizeF() + 3);
     titleFont.setBold(true);
