@@ -8,6 +8,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
+#include <QCryptographicHash>
 
 #include "account.h"
 #include "settings.h"
@@ -1260,19 +1261,24 @@ QList<Radio> Util::loadLocalRadioList() {
     if (path.isEmpty())
         return fallbackToDefaults();
 
-    // One-time refresh when the bundled default list changes: overwrite the
-    // user's radios.json with the new defaults (users re-add their custom
-    // stations).  Bump kRadioDefaultsVersion whenever default_radios.json
-    // gains/changes stations that existing installs should pick up.
-    constexpr int kRadioDefaultsVersion = 2;
+    // Whenever the bundled default list changes (any release that edits
+    // default_radios.json), the user's radios.json is REPLACED wholesale with
+    // the new defaults — nothing from the old file is kept; users re-add
+    // their custom stations.  Keyed on a content hash of the bundled JSON so
+    // no version constant has to be bumped by hand.
     {
-        QSettings settings;
-        const int seenVersion =
-            settings.value(QStringLiteral("radios/defaultsVersion"), 1).toInt();
-        if (seenVersion < kRadioDefaultsVersion) {
-            settings.setValue(QStringLiteral("radios/defaultsVersion"),
-                              kRadioDefaultsVersion);
-            return fallbackToDefaults();
+        QFile bundled(QStringLiteral(":/data/resources/data/default_radios.json"));
+        if (bundled.open(QIODevice::ReadOnly)) {
+            const QString bundledHash = QString::fromLatin1(
+                QCryptographicHash::hash(bundled.readAll(),
+                                         QCryptographicHash::Sha256).toHex());
+            QSettings settings;
+            const QString seenHash =
+                settings.value(QStringLiteral("radios/defaultsHash")).toString();
+            if (seenHash != bundledHash) {
+                settings.setValue(QStringLiteral("radios/defaultsHash"), bundledHash);
+                return fallbackToDefaults();
+            }
         }
     }
 
