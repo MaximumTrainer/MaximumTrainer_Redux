@@ -51,6 +51,11 @@ npx wrangler secret put INTERVALS_CLIENT_SECRET
 # paste the client_secret for intervals.icu OAuth client 259
 ```
 
+The `deploy-intervals-proxy.yml` workflow does this automatically from the
+`INTERVALS_OAUTH_CLIENT_SECRET` repository secret (and verifies the deployed
+URL actually proxies), so a `workflow_dispatch` run of that workflow is the
+easiest way to deploy correctly.
+
 > ⚠️ Verify what is actually deployed:
 > ```bash
 > curl -s -X POST https://<worker-url>/proxy/api/oauth/token \
