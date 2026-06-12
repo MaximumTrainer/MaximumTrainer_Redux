@@ -250,8 +250,16 @@ void RetroRaceController::tick()
     const double gain = qBound(1.0, 1.0 + (kmh - 20.0) * 0.055, 2.4);
     m_visualSpeed = m_playerV * gain;
     m_visualDist += m_visualSpeed * dt;
-    // Live cadence drives the legs; otherwise mirror the opponent's pace.
-    m_playerCadence = (m_liveCadenceRpm >= 0.0) ? m_liveCadenceRpm : m_oppCadence;
+    // Legs: live cadence when a sensor feeds it.  With live power but no
+    // cadence feed (yet), infer pedalling from power so the legs don't spin
+    // while the rider is stopped (0 W).  Only the pure demo — no hardware at
+    // all — mirrors the opponent's cadence.
+    if (m_liveCadenceRpm >= 0.0)
+        m_playerCadence = m_liveCadenceRpm;
+    else if (m_livePowerW >= 0.0)
+        m_playerCadence = (m_playerPowerW > 5.0) ? m_oppCadence : 0.0;
+    else
+        m_playerCadence = m_oppCadence;
     m_playerCrankRev += (m_playerCadence / 60.0) * dt;
 
     emit updated();
