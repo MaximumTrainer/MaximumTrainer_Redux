@@ -502,20 +502,20 @@ Item {
 
     // Finish line: a checkered band spanning the road with a "FINISH" banner.
     // Anchored in TIME, not world distance: it rides in from the horizon over
-    // the last 30 s at a fixed visual rate and lands exactly when the
-    // countdown hits zero, whatever the rider's pace. (A world anchor
-    // predicted from current speed pops in mid-road and then crawls when the
-    // workout ends on a slow cool-down.) finishSecs ticks once a second, so
-    // interpolate with animT between updates — frozen while paused.
+    // the last 15 s and lands ON THE RIDER'S WHEEL LINE exactly when the
+    // countdown hits zero, whatever the pace. (A world anchor predicted from
+    // current speed pops in mid-road and then crawls when the workout ends on
+    // a slow cool-down.) finishSecs ticks once a second, so interpolate with
+    // animT between updates — frozen while paused.
     property real finishSecsSmooth: -1
     property real finishSyncT: 0
     Connections {
         target: race
         function onFinishChanged() {
-            if (race.started && !race.finished && race.finishSecs >= 0 && race.finishSecs <= 30) {
+            if (race.started && !race.finished && race.finishSecs >= 0 && race.finishSecs <= 15) {
                 root.finishSecsSmooth = race.finishSecs
                 root.finishSyncT = root.animT
-            } else if (race.finishSecs < 0 || race.finishSecs > 31) {
+            } else if (race.finishSecs < 0 || race.finishSecs > 16) {
                 root.finishSecsSmooth = -1
             }
         }
@@ -524,7 +524,10 @@ Item {
         : Math.max(0, finishSecsSmooth - (race.running ? animT - finishSyncT : 0))
     Item {
         id: finishLine
-        readonly property real aheadZ: root.finishLeft < 0 ? -1 : root.finishLeft * 15.2
+        readonly property real riderP: (playerBike.y + playerBike.height - root.horizonY) / root.roadH
+        readonly property real riderZ: 38 / Math.max(0.2, riderP)
+        readonly property real aheadZ: root.finishLeft < 0 ? -1
+                                     : riderZ + (root.finishLeft / 15) * (470 - riderZ)
         readonly property real p:      Math.min(1.0, 38 / Math.max(6, aheadZ))
         readonly property real halfw:  root.maxHalfW * p
         readonly property real roadW:  2 * halfw
