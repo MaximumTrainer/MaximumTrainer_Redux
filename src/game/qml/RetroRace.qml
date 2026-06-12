@@ -33,6 +33,13 @@ Item {
         : Math.min(1.0, Math.abs(race.playerPowerW - race.targetPower) / Math.max(40, race.targetPower * 0.35))
     // Race position (1st / 2nd) from the gap sign — a racing-game staple.
     readonly property bool leading: race.gapMeters >= 0
+    // Drafting: tucked in the ghost's slipstream (0.5–8 m back) — pays a small
+    // score trickle, like the real-world free watts.
+    readonly property bool drafting: race.started && !race.finished
+        && race.gapMeters < -0.5 && race.gapMeters > -8
+    // Final sprint: the last 15 s before the finish line.
+    readonly property bool finalSprint: race.started && !race.finished
+        && race.finishSecs > 0 && race.finishSecs <= 15
 
     // In-zone hold streak: seconds spent continuously inside the target band —
     // rewards precise, sustained effort (the core gamified-training loop).
@@ -89,9 +96,13 @@ Item {
             }
             if (root.zoneHoldSec > root.bestStreakSec) root.bestStreakSec = root.zoneHoldSec
             // dt clamped so a pause/resume cannot pay out one giant tick.
-            if (root.lastScoreT >= 0 && race.started && !race.finished && race.running
-                && race.targetPower > 0 && root.effortState === 0)
-                root.score += Math.min(0.5, root.animT - root.lastScoreT) * 10 * root.zoneMult
+            var scoreDt = Math.min(0.5, root.animT - root.lastScoreT)
+            if (root.lastScoreT >= 0 && race.started && !race.finished && race.running) {
+                if (race.targetPower > 0 && root.effortState === 0)
+                    root.score += scoreDt * 10 * root.zoneMult
+                if (root.drafting)
+                    root.score += scoreDt * 2
+            }
             root.lastScoreT = root.animT
         }
         function onRaceStateChanged() {
@@ -103,6 +114,16 @@ Item {
         }
     }
     function fmtTime(s) { var m = Math.floor(s / 60); var ss = Math.floor(s % 60); return m + ":" + (ss < 10 ? "0" : "") + ss; }
+    // Golden hour: 0 for the first 60% of the workout, then ramps to 1 at the
+    // finish — the sky warms and the sun sinks, so a long ride visibly ends at
+    // sunset (a quiet "almost there" cue).
+    readonly property real dusk: Math.max(0, (race.workoutProgress - 0.6) / 0.4)
+    function mixCol(a, b, t) {
+        var c1 = Qt.color(a), c2 = Qt.color(b)
+        return Qt.rgba(c1.r + (c2.r - c1.r) * t, c1.g + (c2.g - c1.g) * t, c1.b + (c2.b - c1.b) * t, 1)
+    }
+    // Ghost names can be whole history filenames — keep HUD chips readable.
+    function shortName(n, max) { return n.length > max ? n.substring(0, max - 1) + "…" : n }
     // Deterministic pseudo-random in [0,1) from an index (stable per object).
     function rnd(n) { var x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); }
 
@@ -205,18 +226,21 @@ Item {
     Rectangle {
         anchors.fill: parent
         gradient: Gradient {
-            GradientStop { position: 0.0;  color: "#1f3566" }
-            GradientStop { position: 0.30; color: "#5f93cf" }
-            GradientStop { position: 0.62; color: "#a9d8ef" }
-            GradientStop { position: 1.0;  color: "#cdeaf6" }
+            GradientStop { position: 0.0;  color: root.mixCol("#1f3566", "#2a2150", root.dusk) }
+            GradientStop { position: 0.30; color: root.mixCol("#5f93cf", "#a6608c", root.dusk) }
+            GradientStop { position: 0.62; color: root.mixCol("#a9d8ef", "#ef9f66", root.dusk) }
+            GradientStop { position: 1.0;  color: root.mixCol("#cdeaf6", "#ffd9a0", root.dusk) }
         }
     }
-    // warm low sun with a soft halo and a top-lit → orange gradient
-    Rectangle { x: root.width*0.77 - 22; y: 38; width: 104; height: 104; radius: 52; color: "#ffd98a"; opacity: 0.30 }
-    Rectangle { x: root.width*0.77;      y: 56; width: 60;  height: 60;  radius: 30
+    // warm low sun with a soft halo; sinks toward the ridge line at golden
+    // hour (capped so it never disappears behind the mountain ranges)
+    readonly property real sunY: 56 + dusk * 38
+    Rectangle { x: root.width*0.77 - 22; y: root.sunY - 18; width: 104; height: 104; radius: 52
+                color: root.mixCol("#ffd98a", "#ff9e5e", root.dusk); opacity: 0.30 }
+    Rectangle { x: root.width*0.77;      y: root.sunY; width: 60;  height: 60;  radius: 30
         gradient: Gradient {
-            GradientStop { position: 0.0; color: "#fff1b4" }
-            GradientStop { position: 1.0; color: "#ffb259" }
+            GradientStop { position: 0.0; color: root.mixCol("#fff1b4", "#ffd27a", root.dusk) }
+            GradientStop { position: 1.0; color: root.mixCol("#ffb259", "#ff7a3c", root.dusk) }
         }
     }
 
@@ -610,12 +634,24 @@ Item {
         scale: hot ? 1.0 + 0.05 * Math.sin(root.animT * 8) : 1.0
         Text {
             id: gapTxt; anchors.centerIn: parent
-            text: (root.leading ? "▼ " : "▲ ") + race.oppName + " "
+            text: (root.leading ? "▼ " : "▲ ") + root.shortName(race.oppName, 16) + " "
                   + gapChip.absGap.toFixed(0) + " m " + (root.leading ? "behind" : "ahead")
                   + (root.gapTrend > 0.15 ? "  »" : root.gapTrend < -0.15 ? "  «" : "")
             color: gapChip.border.color
             font.family: "monospace"; font.pixelSize: 14; font.bold: true
         }
+    }
+    // Slipstream pill under the gap bubble while tucked behind the ghost.
+    Rectangle {
+        visible: root.drafting
+        z: 40
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: gapChip.y + gapChip.height + 6
+        width: draftTxt.implicitWidth + 20; height: 22; radius: 11
+        color: "#0e2733"; border.color: "#7fd0ff"; border.width: 1
+        opacity: 0.75 + 0.20 * Math.sin(root.animT * 5)
+        Text { id: draftTxt; anchors.centerIn: parent; text: "≋ DRAFTING +2/s"
+               color: "#7fd0ff"; font.family: "monospace"; font.pixelSize: 12; font.bold: true }
     }
     // Rear-view mirror — once you take the lead the ghost no longer renders on
     // the road ahead, so show it chasing you here instead; it grows in the
@@ -693,6 +729,37 @@ Item {
             gradient: Gradient {
                 GradientStop { position: 0.0; color: root.effortColor }
                 GradientStop { position: 1.0; color: "#00000000" } } }
+    }
+
+    // Final-sprint hype: a one-shot "FINAL SPRINT!" flash when the last 15 s
+    // begin, plus a pulsing gold edge glow for the whole window.
+    Item {
+        anchors.fill: parent; visible: root.finalSprint
+        opacity: 0.30 + 0.12 * Math.sin(root.animT * 6)
+        Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top } height: parent.height * 0.10
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#ffce3a" }
+                GradientStop { position: 1.0; color: "#00000000" } } }
+        Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: parent.height * 0.10
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#00000000" }
+                GradientStop { position: 1.0; color: "#ffce3a" } } }
+    }
+    property bool sprintFlashed: false
+    Text {
+        id: sprintText; anchors.centerIn: parent; anchors.verticalCenterOffset: -root.height * 0.07; z: 58
+        text: "FINAL SPRINT!"; color: "#ffce3a"; font.family: "monospace"
+        font.pixelSize: Math.round(root.height * 0.09); font.bold: true; opacity: 0
+        Connections { target: race
+            function onFinishChanged() {
+                if (root.finalSprint && !root.sprintFlashed) { root.sprintFlashed = true; sprintAnim.restart() }
+                else if (race.finishSecs > 16 || race.finishSecs < 0) root.sprintFlashed = false
+            }
+        }
+        SequentialAnimation { id: sprintAnim
+            NumberAnimation { target: sprintText; property: "opacity"; from: 1.0; to: 1.0; duration: 900 }
+            NumberAnimation { target: sprintText; property: "opacity"; to: 0.0; duration: 700 }
+        }
     }
 
     // "GO!" splash when the gun fires (race transitions to started).
@@ -891,7 +958,7 @@ Item {
 
     Text {
         anchors { bottom: parent.bottom; left: parent.left; leftMargin: 8; bottomMargin: 72 }
-        text: (race.oppIsBot ? "🤖 " : "👻 ") + race.oppName + "   ·   " + race.oppPowerW.toFixed(0) + " W"
+        text: (race.oppIsBot ? "🤖 " : "👻 ") + root.shortName(race.oppName, 34) + "   ·   " + race.oppPowerW.toFixed(0) + " W"
         color: "#e8e8e8"; font.family: "monospace"; font.pixelSize: 12
     }
     Text {
@@ -957,23 +1024,25 @@ Item {
                color: "white"; font.family: "monospace"; font.pixelSize: 16 }
     }
 
-    Repeater {   // confetti
+    Repeater {   // confetti — a reward, so it only rains when you actually won
         model: 28
         Rectangle {
-            visible: race.finished
+            readonly property bool celebrate: race.finished && race.gapMeters >= 0
+            visible: celebrate
             width: 8; height: 8
             color: ["#e23b3b", "#5dff5d", "#3aa0ff", "#ffe08a", "#ff6bd6"][index % 5]
             x: Math.random() * root.width; y: -20
-            NumberAnimation on y { running: race.finished; loops: Animation.Infinite
+            NumberAnimation on y { running: celebrate; loops: Animation.Infinite
                 from: -20; to: root.height + 20; duration: 1700 + (index % 7) * 280 }
-            NumberAnimation on rotation { running: race.finished; loops: Animation.Infinite
+            NumberAnimation on rotation { running: celebrate; loops: Animation.Infinite
                 from: 0; to: 360; duration: 700 + (index % 5) * 220 }
         }
     }
     Rectangle { anchors.fill: parent; color: "#000000"; opacity: 0.4; visible: race.finished }
     Column {
         anchors.centerIn: parent; spacing: 10; visible: race.finished
-        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "🏁  FINISH!"
+        Text { anchors.horizontalCenter: parent.horizontalCenter
+               text: race.gapMeters >= 0 ? "🏆  YOU WIN!" : "🏁  FINISH!"
                color: "#ffe08a"; font.family: "monospace"; font.pixelSize: 46; font.bold: true }
         Text { anchors.horizontalCenter: parent.horizontalCenter
                text: race.gapMeters >= 0 ? "You won by " + race.gapMeters.toFixed(0) + " m! 🎉"
@@ -981,7 +1050,7 @@ Item {
                color: race.gapMeters >= 0 ? "#5dff5d" : "#ff6b6b"
                font.family: "monospace"; font.pixelSize: 22; font.bold: true }
         Text { anchors.horizontalCenter: parent.horizontalCenter
-               text: (race.playerDistanceM / 1000).toFixed(2) + " km   ·   vs " + race.oppName
+               text: (race.playerDistanceM / 1000).toFixed(2) + " km   ·   vs " + root.shortName(race.oppName, 24)
                color: "#cde"; font.family: "monospace"; font.pixelSize: 14 }
         Text { anchors.horizontalCenter: parent.horizontalCenter
                text: "SCORE " + Math.floor(root.score)
