@@ -200,7 +200,9 @@ void TstIntervalsIcuDaoBearer::testGetAthleteSettingsBearer_url()
 
     const QString url = m_manager->lastRequest.url().toString();
     QVERIFY(url.contains(QStringLiteral("/athlete/") + ATHLETE_ID));
-    QVERIFY(url.endsWith(QStringLiteral("/settings")));
+    // Exact suffix: the former /settings endpoint never existed (404) —
+    // per-sport FTP/LTHR/zones live at /sport-settings.
+    QVERIFY(url.endsWith(QStringLiteral("/sport-settings")));
 }
 
 void TstIntervalsIcuDaoBearer::testGetAthleteBearer_currentUser_url()

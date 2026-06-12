@@ -16,7 +16,7 @@
 ///
 /// Endpoints used:
 ///   GET /api/v1/athlete/{id}          – basic profile (name, weight, FTP, LTHR)
-///   GET /api/v1/athlete/{id}/settings – detailed training zones
+///   GET /api/v1/athlete/{id}/sport-settings – per-sport FTP/LTHR + zones
 class IntervalsIcuDAO
 {
 public:

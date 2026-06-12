@@ -41,7 +41,8 @@ QNetworkReply* IntervalsIcuDAO::getAthlete(const QString &athleteId, const QStri
 
 
 // ───────────────────────────────────────────────────────────────────────────────
-// GET /api/v1/athlete/{id}/settings
+// GET /api/v1/athlete/{id}/sport-settings
+// (the former /settings endpoint does not exist — it always returned 404)
 QNetworkReply* IntervalsIcuDAO::getAthleteSettings(const QString &athleteId, const QString &apiKey)
 {
     QNetworkAccessManager *manager = qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
@@ -50,7 +51,7 @@ QNetworkReply* IntervalsIcuDAO::getAthleteSettings(const QString &athleteId, con
         return nullptr;
     }
 
-    const QString url = urlIntervalsIcuApi + athleteId + QStringLiteral("/settings");
+    const QString url = urlIntervalsIcuApi + athleteId + QStringLiteral("/sport-settings");
     QNetworkRequest request = buildRequest(url, apiKey);
 
     return manager->get(request);
@@ -111,6 +112,6 @@ QNetworkReply* IntervalsIcuDAO::getAthleteSettingsBearer(const QString &athleteI
         return nullptr;
     }
 
-    const QString url = urlIntervalsIcuApi + athleteId + QStringLiteral("/settings");
+    const QString url = urlIntervalsIcuApi + athleteId + QStringLiteral("/sport-settings");
     return manager->get(buildBearerRequest(url, bearerToken));
 }

@@ -123,9 +123,11 @@ public:
     /// Updates the global Account object with name, weight, FTP, and LTHR.
     static void parseJsonIntervalsIcuAthlete(const QString &data);
 
-    /// Intervals.icu — parse the GET /api/v1/athlete/{id}/settings response.
-    /// Updates the global Account object with hr_zones and power_zones lists.
-    static void parseJsonIntervalsIcuSettings(const QString &data);
+    /// Intervals.icu — parse the GET /api/v1/athlete/{id}/sport-settings
+    /// response (array of per-sport settings).  Applies the cycling entry's
+    /// FTP (indoor_ftp preferred), LTHR, and absolute zone bounds to the
+    /// global Account.  Returns true when an FTP or LTHR value was applied.
+    static bool parseJsonIntervalsIcuSettings(const QString &data);
 
     /// Intervals.icu OAuth2 — parse a token endpoint response and store the
     /// access_token, refresh_token, and athlete_id into the global Account.

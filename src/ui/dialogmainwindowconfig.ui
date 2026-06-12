@@ -627,6 +627,22 @@
             </property>
            </widget>
           </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QLabel" name="label_profileSyncSource">
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>FTP and LTHR synced from intervals.icu</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">color: #888; font-size: 11px; font-style: italic;</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>

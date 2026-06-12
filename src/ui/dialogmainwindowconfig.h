@@ -71,6 +71,8 @@ private slots:
 
 private:
     void initUI();
+    /// Show/refresh the "FTP and LTHR synced from intervals.icu" label.
+    void updateProfileSyncLabel();
     /// Build the logging settings page and add it to the stacked widget.
     QWidget *createLoggingPage();
     /// Populate the logging-settings page controls from the current Logger state.

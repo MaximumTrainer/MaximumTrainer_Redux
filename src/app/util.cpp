@@ -1097,50 +1097,86 @@ void Util::parseJsonIntervalsIcuAthlete(const QString &data)
 
 
 // ───────────────────────────────────────────────────────────────────────────────
-// Parse GET /api/v1/athlete/{id}/settings
-// Updates account->hr_zones and account->power_zones with the upper-bound of
-// each zone, extracted from the Intervals.icu settings JSON.
-void Util::parseJsonIntervalsIcuSettings(const QString &data)
+// Parse GET /api/v1/athlete/{id}/sport-settings — an ARRAY of per-sport
+// SportSettings objects ({types:["Ride",…], ftp, indoor_ftp, lthr,
+// power_zones (% of FTP), hr_zones (bpm), …}).
+//
+// Applies the cycling entry (types containing "Ride", falling back to
+// "VirtualRide", then the first entry) to the account: FTP (indoor_ftp
+// preferred — this is an indoor trainer), LTHR, and the absolute zone bounds.
+// Returns true when an FTP or LTHR value was applied, so the caller can
+// persist the profile and record the sync.
+bool Util::parseJsonIntervalsIcuSettings(const QString &data)
 {
     Account *account = qApp->property("Account").value<Account*>();
+    if (!account)
+        return false;
 
     QJsonDocument doc = QJsonDocument::fromJson(data.toUtf8());
-    if (doc.isNull() || !doc.isObject()) {
-        qWarning() << "parseJsonIntervalsIcuSettings: invalid JSON";
-        return;
+    if (doc.isNull() || !doc.isArray()) {
+        qWarning() << "parseJsonIntervalsIcuSettings: expected a JSON array of sport settings";
+        return false;
     }
 
-    QJsonObject obj = doc.object();
+    const QJsonArray sports = doc.array();
+    if (sports.isEmpty())
+        return false;
 
-    // HR zones — array of zone objects each containing a "max" bound.
-    const QJsonValue hrZonesVal = obj.value(QStringLiteral("hrZones"));
+    auto findByType = [&sports](const QString &type) -> QJsonObject {
+        for (const QJsonValue &sv : sports) {
+            const QJsonObject s = sv.toObject();
+            for (const QJsonValue &tv : s.value(QStringLiteral("types")).toArray())
+                if (tv.toString() == type)
+                    return s;
+        }
+        return QJsonObject();
+    };
+
+    QJsonObject ride = findByType(QStringLiteral("Ride"));
+    if (ride.isEmpty())
+        ride = findByType(QStringLiteral("VirtualRide"));
+    if (ride.isEmpty())
+        ride = sports.first().toObject();
+
+    bool applied = false;
+
+    const int outdoorFtp = ride.value(QStringLiteral("ftp")).toInt(0);
+    const int indoorFtp  = ride.value(QStringLiteral("indoor_ftp")).toInt(0);
+    const int ftp        = indoorFtp > 0 ? indoorFtp : outdoorFtp;
+    if (ftp > 0) {
+        account->FTP = ftp;
+        applied = true;
+    }
+
+    const int lthr = ride.value(QStringLiteral("lthr")).toInt(0);
+    if (lthr > 0) {
+        account->LTHR = lthr;
+        applied = true;
+    }
+
+    // hr_zones are absolute bpm upper bounds.
+    const QJsonValue hrZonesVal = ride.value(QStringLiteral("hr_zones"));
     if (hrZonesVal.isArray()) {
         QList<int> zones;
-        for (const QJsonValue &zv : hrZonesVal.toArray()) {
-            const QJsonObject z = zv.toObject();
-            const int upper = z.value(QStringLiteral("max")).toInt(
-                              z.value(QStringLiteral("to")).toInt(0));
-            if (upper > 0)
-                zones.append(upper);
-        }
+        for (const QJsonValue &zv : hrZonesVal.toArray())
+            if (zv.toInt(0) > 0)
+                zones.append(zv.toInt());
         if (!zones.isEmpty())
             account->hr_zones = zones;
     }
 
-    // Power zones — same structure.
-    const QJsonValue pwrZonesVal = obj.value(QStringLiteral("powerZones"));
-    if (pwrZonesVal.isArray()) {
+    // power_zones are PERCENT of FTP — convert to absolute watts.
+    const QJsonValue pwrZonesVal = ride.value(QStringLiteral("power_zones"));
+    if (pwrZonesVal.isArray() && ftp > 0) {
         QList<int> zones;
-        for (const QJsonValue &zv : pwrZonesVal.toArray()) {
-            const QJsonObject z = zv.toObject();
-            const int upper = z.value(QStringLiteral("max")).toInt(
-                              z.value(QStringLiteral("to")).toInt(0));
-            if (upper > 0)
-                zones.append(upper);
-        }
+        for (const QJsonValue &zv : pwrZonesVal.toArray())
+            if (zv.toInt(0) > 0)
+                zones.append(qRound(zv.toInt() * ftp / 100.0));
         if (!zones.isEmpty())
             account->power_zones = zones;
     }
+
+    return applied;
 }
 
 

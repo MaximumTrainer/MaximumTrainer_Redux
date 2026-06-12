@@ -1,6 +1,7 @@
 #include "dialoglogin.h"
 #include "ui_dialoglogin.h"
 
+#include <QDateTime>
 #include <QDebug>
 #include <QDesktopServices>
 #include <QMessageBox>
@@ -813,8 +814,19 @@ void DialogLogin::slotFinishedIntervalsIcuSettings()
 
     if (replyIntervalsIcuSettings->error() == QNetworkReply::NoError) {
         const QByteArray data = replyIntervalsIcuSettings->readAll();
-        Util::parseJsonIntervalsIcuSettings(QString::fromUtf8(data));
-        LOG_INFO("DialogLogin", QStringLiteral("Intervals.icu training zones retrieved successfully"));
+        if (Util::parseJsonIntervalsIcuSettings(QString::fromUtf8(data))) {
+            // FTP/LTHR pulled from the intervals.icu profile: persist them and
+            // record the sync so Preferences can show where the values came from.
+            account->saveProfileFields(account->FTP, account->LTHR, account->weight_kg);
+            QSettings().setValue(QStringLiteral("intervalsIcu/profileSyncedAt"),
+                                 QDateTime::currentDateTime().toString(Qt::ISODate));
+            LOG_INFO("DialogLogin",
+                     QStringLiteral("Profile synced from intervals.icu: FTP %1 W, LTHR %2 bpm")
+                         .arg(account->FTP).arg(account->LTHR));
+        } else {
+            LOG_WARN("DialogLogin",
+                     QStringLiteral("Intervals.icu sport settings carried no FTP/LTHR to apply"));
+        }
     } else {
         LOG_WARN("DialogLogin",
                  QStringLiteral("Intervals.icu settings fetch failed: ")

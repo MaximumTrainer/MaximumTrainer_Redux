@@ -322,13 +322,30 @@ void DialogMainWindowConfig::showEvent(QShowEvent *event) {
 
     QDialog::showEvent(event);
 
-    // The athlete profile can change outside this dialog — an FTP test writes a
-    // new FTP/LTHR straight into the account. Re-read those fields on every open
-    // so the spin boxes reflect the current values and OK does not clobber a
-    // freshly-tested result with the stale value loaded at construction time.
+    // The athlete profile can change outside this dialog — an FTP test or the
+    // intervals.icu login sync writes a new FTP/LTHR straight into the account.
+    // Re-read those fields on every open so the spin boxes reflect the current
+    // values and OK does not clobber a fresh result with the stale value loaded
+    // at construction time.
     ui->spinBox_ftp->setValue(account->FTP);
     ui->spinBox_lthr->setValue(account->LTHR);
     ui->doubleSpinBox_weight->setValue(account->weight_kg);
+    updateProfileSyncLabel();
+}
+
+///////////////////////////////////////////////////////////////////////
+/// Show where FTP/LTHR came from when the last intervals.icu login synced
+/// them (the stamp is cleared when the user edits the values manually).
+void DialogMainWindowConfig::updateProfileSyncLabel() {
+
+    const QString syncedAt =
+        QSettings().value(QStringLiteral("intervalsIcu/profileSyncedAt")).toString();
+    const QDateTime when = QDateTime::fromString(syncedAt, Qt::ISODate);
+    ui->label_profileSyncSource->setVisible(when.isValid());
+    if (when.isValid())
+        ui->label_profileSyncSource->setText(
+            tr("FTP and LTHR synced from intervals.icu on %1")
+                .arg(when.toString(QStringLiteral("yyyy-MM-dd hh:mm"))));
 }
 
 
@@ -367,6 +384,11 @@ void DialogMainWindowConfig::accept() {
     account->saveProfileFields(ui->spinBox_ftp->value(),
                                ui->spinBox_lthr->value(),
                                ui->doubleSpinBox_weight->value());
+    // Manually edited values no longer come from intervals.icu — drop the
+    // sync stamp so the Preferences label doesn't claim otherwise (the next
+    // login sync re-stamps it).
+    if (profileChangedNow)
+        QSettings().remove(QStringLiteral("intervalsIcu/profileSyncedAt"));
 
     // Persist the theme choice but apply it on next launch only. Live
     // re-styling via qApp->setStyleSheet() does not reliably repolish widgets
