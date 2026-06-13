@@ -155,17 +155,14 @@ jobs:
         # against libqwasm.a.
         version: '3.1.50'
 
-    # install-qt-action@v4 ships a newer aqtinstall, and Qt 6.7+ relocated the
-    # WebAssembly packages out of the 'desktop' target into a dedicated 'wasm'
-    # target (linux_x64/wasm/qt6_7_3/...), so target: 'wasm' is required — the
-    # old desktop path 404s on 6.7.3. --autodesktop (v4 default) pulls the
-    # matching host Qt automatically.
+    # install-qt-action@v4 ships a newer aqtinstall that can resolve the Qt
+    # 6.7.3 wasm packages (v3's pinned aqt 3.1.21 failed to fetch them).
     - name: Install Qt (Wasm singlethread)
       uses: jurplel/install-qt-action@v4
       with:
         version: '6.7.3'
         host: 'linux'
-        target: 'wasm'
+        target: 'desktop'
         arch: 'wasm_singlethread'
         modules: 'qtwebchannel'
         cache: true
