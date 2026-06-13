@@ -317,10 +317,8 @@ include(src/fitness/fitness.pri)
 include(src/ui/ui.pri)
 include(src/workout/workout.pri)
 
-# Retro ghost-race spike: desktop only for now (offline ride view).
-!contains(QMAKE_PLATFORM, wasm):!wasm_emscripten:!wasm_emscripten_singlethread {
-    include(src/game/game.pri)
-}
+# Retro ghost-race (QML/QQuickWidget) — built on every target, including WASM.
+include(src/game/game.pri)
 
 
 RESOURCES += MyResources.qrc \

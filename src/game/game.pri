@@ -1,4 +1,4 @@
-# Retro ghost-race spike (desktop only — see the guarded include in the .pro).
+# Retro ghost-race (QML/QQuickWidget) — built on every target, including WASM.
 QT += quick quickwidgets
 
 INCLUDEPATH += $$PWD

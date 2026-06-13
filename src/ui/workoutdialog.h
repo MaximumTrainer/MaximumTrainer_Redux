@@ -37,9 +37,7 @@ class DialogConfig;     // forward declaration
 class WebBrowserView;   // forward declaration (lazily created web video player)
 class QQuickWidget;
 class MetricStripModel;      // QML metric dashboard bridge
-#ifndef GC_WASM_BUILD
-class RetroRaceController;   // retro ghost-race view (desktop only)
-#endif
+class RetroRaceController;   // retro ghost-race view
 
 namespace Ui {
 class WorkoutDialog;
@@ -315,7 +313,6 @@ private:
     /// Guards the one-time background load of the web player done in showEvent().
     bool webPlayerLoaded = false;
 
-#ifndef GC_WASM_BUILD
     // Retro ghost-race view, the third content option (display_video == 2). Sits
     // in the same slot as the video player. Opponent is this workout's most
     // recent past ride, or a computer pacer when there is no history yet; the
@@ -327,7 +324,6 @@ private:
     void onToggleGameFullscreen();              // collapse/restore the data panes
     bool m_gameFullscreen = false;
     QList<int> m_savedSplitterSizes;
-#endif
 
     // QML metric dashboard: the metric band in solo mode (all platforms).
     QQuickWidget     *metricStripView  = nullptr;

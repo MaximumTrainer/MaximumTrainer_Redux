@@ -38,9 +38,7 @@
 #include <QQuickWidget>
 #include <QQmlContext>
 #include "metricstripmodel.h"
-#ifndef GC_WASM_BUILD
 #include "retroracecontroller.h"
-#endif
 #include "dialogcalibrate.h"
 #include "dialogcalibratepm.h"
 #include "dialogkeyboardshortcuts.h"
@@ -1255,12 +1253,10 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
         currentIntervalObj = workout.getInterval(currentInterval);
         timeInterval = currentIntervalObj.getDurationQTime();
 
-#ifndef GC_WASM_BUILD
         if (raceController) {
             raceController->markIntervalBoundary();   // road line
             raceController->setIntervalMessage(currentIntervalObj.getDisplayMessage());
         }
-#endif
     }
 
 
@@ -1580,9 +1576,7 @@ void WorkoutDialog::startWorkout() {
 
     timerCheckToActivateSound->start();
 
-#ifndef GC_WASM_BUILD
     if (raceController) raceController->beginRace();   // fire the race gun
-#endif
 }
 
 
@@ -1594,9 +1588,7 @@ void WorkoutDialog::workoutOver() {
     isWorkoutOver = true;
     stopErgSmoothing();
 
-#ifndef GC_WASM_BUILD
     if (raceController) raceController->finishRace();   // finish line + celebration
-#endif
 
     qDebug() << "STOPPING WORKOUT";
     if (account->enable_sound && account->sound_end_workout)
@@ -1766,11 +1758,9 @@ void WorkoutDialog::start_or_pause_workout() {
         if (webPlayer) webPlayer->pauseVideo();
     }
 
-#ifndef GC_WASM_BUILD
     // Keep the race in sync with workout pause/resume.
     if (raceController && isWorkoutStarted && !isWorkoutOver)
         raceController->setRacePaused(isWorkoutPaused);
-#endif
 }
 
 
@@ -1779,7 +1769,6 @@ void WorkoutDialog::start_or_pause_workout() {
 //--------------------------------------------------------------------------------------------------
 void WorkoutDialog::sendLastSecondData(int seconds) {
 
-#ifndef GC_WASM_BUILD
     if (raceController) {
         const double tot = Util::convertQTimeToSecD(workout.getDurationQTime());
         if (tot > 0) raceController->setWorkoutProgress(qBound(0.0, seconds / tot, 1.0));
@@ -1801,7 +1790,6 @@ void WorkoutDialog::sendLastSecondData(int seconds) {
         }
         raceController->setNextInterval(nextW, nextCad, secsToNext);
     }
-#endif
 
     if (account->enable_studio_mode) {
         for (int i=0; i<account->nb_user_studio; i++) {
@@ -1843,10 +1831,8 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
 
     if (metricStripModel && userID == 1)
         metricStripModel->setHr(value);
-#ifndef GC_WASM_BUILD
     if (raceController && userID == 1)
         raceController->setLiveHr(value);
-#endif
 
     // Track for sensor dropout detection
     if (!account->enable_studio_mode && isWorkoutStarted && !isWorkoutOver)
@@ -1898,11 +1884,9 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
 
     if (metricStripModel && userID == 1 && value >= 0 && value <= 250)
         metricStripModel->setCadence(value);
-#ifndef GC_WASM_BUILD
     // Animate the race player's legs at the rider's real cadence.
     if (raceController && userID == 1 && value >= 0 && value <= 250)
         raceController->setLiveCadenceRpm(value);
-#endif
 
     // invalid value, show "-" to the user
     if (value == -1 || value > 250) {
@@ -2136,11 +2120,9 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 
     if (metricStripModel && userID == 1 && value >= 0)
         metricStripModel->setPower(value);
-#ifndef GC_WASM_BUILD
     // Drive the player in the retro race with live (solo) power.
     if (raceController && userID == 1)
         raceController->setLivePowerWatts(value);
-#endif
 
     // Track for sensor dropout detection (non-studio, user 1 only)
     if (!account->enable_studio_mode && isWorkoutStarted && !isWorkoutOver)
@@ -2531,7 +2513,6 @@ void WorkoutDialog::targetPowerChanged_f(double percentageTarget, int range) {
 
     currentTargetPower = qRound(percentageTarget * account->FTP);
     currentTargetPowerRange =  range;
-#ifndef GC_WASM_BUILD
     // Keep the workout pacer on the current interval target (rest → soft-pedal
     // at ~45% FTP so it keeps rolling rather than stopping dead).
     if (raceController) {
@@ -2541,7 +2522,6 @@ void WorkoutDialog::targetPowerChanged_f(double percentageTarget, int range) {
         // Drive the game's power target indicator (same threshold as the alerts).
         raceController->setTargetPower(currentTargetPower, currentTargetPowerRange);
     }
-#endif
     ui->widget_time->setTargetPower(percentageTarget, range);
     ui->widget_topMenu->setTargetPower(percentageTarget, range);
     sendTargetsPower(percentageTarget, range);
@@ -2559,9 +2539,7 @@ void WorkoutDialog::targetCadenceChanged_f(int target, int range) {
     ui->widget_topMenu->setTargetCadence(target, range);
 
     sendTargetsCadence(target, range);
-#ifndef GC_WASM_BUILD
     if (raceController) raceController->setTargetCadence(target, range);
-#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2571,14 +2549,12 @@ void WorkoutDialog::targetHrChanged_f(double percentageTarget, int range) {
     ui->widget_topMenu->setTargetHeartRate(percentageTarget, range);
 
     sendTargetsHr(percentageTarget, range);
-#ifndef GC_WASM_BUILD
     // Convert the %LTHR target to bpm for the game's HR indicator.
     if (raceController) {
         const double bpm = (percentageTarget > 0 && account->LTHR > 0)
                          ? qRound(percentageTarget * account->LTHR) : -1.0;
         raceController->setTargetHr(bpm, range);
     }
-#endif
 }
 
 
@@ -2775,7 +2751,6 @@ void WorkoutDialog::setupMetricStrip() {
     ui->horizontalLayout->insertWidget(0, metricStripView, /*stretch*/ 1);
 }
 
-#ifndef GC_WASM_BUILD
 QQuickWidget *WorkoutDialog::ensureRaceView() {
     if (!raceController) {
         raceController = new RetroRaceController(this);
@@ -2875,7 +2850,6 @@ void WorkoutDialog::onToggleGameFullscreen() {
     if (raceController)
         raceController->setGameFullscreen(m_gameFullscreen);
 }
-#endif
 
 /// 0 = Standard video, 1 = Web Browser, 2 = Game (retro race).
 // The web player is already built and loaded in the background (see showEvent),
@@ -2887,9 +2861,6 @@ void WorkoutDialog::showVideoPlayer(int choice) {
     if (account->enable_studio_mode && choice == 2)
         choice = 0;
 
-#ifdef GC_WASM_BUILD
-    if (choice == 2) choice = 0;   // Game is desktop-only
-#else
     if (raceView) raceView->setVisible(false);
 
     /// Game (retro race) — occupies the video slot.
@@ -2900,7 +2871,6 @@ void WorkoutDialog::showVideoPlayer(int choice) {
         ensureRaceView()->setVisible(true);
         return;
     }
-#endif
 
     /// Standard
     if (choice == 0) {
@@ -3928,15 +3898,13 @@ void WorkoutDialog::initDataWorkout() {
     }
     else {
         arrDataWorkout[0] = new DataWorkout(this->workout, account->FTP, this);
-#ifndef GC_WASM_BUILD
-        // Forward whole-ride metrics to the race game (no-op until it exists).
+        // Forward whole-ride metrics to the race game.
         connect(arrDataWorkout[0], &DataWorkout::normalizedPowerChanged, this,
                 [this](double v) { if (raceController) raceController->setNp(v); });
         connect(arrDataWorkout[0], &DataWorkout::intensityFactorChanged, this,
                 [this](double v) { if (raceController) raceController->setIf(v); });
         connect(arrDataWorkout[0], &DataWorkout::tssChanged, this,
                 [this](double v) { if (raceController) raceController->setTss(v); });
-#endif
     }
 }
 
@@ -4199,7 +4167,6 @@ void WorkoutDialog::connectDataWorkout() {
     connect(arrDataWorkout[0], SIGNAL(avgPowerWorkoutChanged(double)), ui->wid_2_infoBoxPower, SLOT(avgWorkoutChanged(double)) );
 
     connect(arrDataWorkout[0], SIGNAL(normalizedPowerChanged(double)), ui->wid_5_infoWorkout, SLOT(NP_Changed(double)) );
-#ifndef GC_WASM_BUILD
     if (metricStripModel) {
         connect(arrDataWorkout[0], SIGNAL(normalizedPowerChanged(double)), metricStripModel, SLOT(NP_Changed(double)) );
         connect(arrDataWorkout[0], SIGNAL(intensityFactorChanged(double)), metricStripModel, SLOT(IF_Changed(double)) );
@@ -4207,7 +4174,6 @@ void WorkoutDialog::connectDataWorkout() {
         connect(arrDataWorkout[0], SIGNAL(caloriesWorkoutChanged(double)), metricStripModel, SLOT(calories_Changed(double)) );
         connect(arrDataWorkout[0], SIGNAL(totalDistanceChanged(double)),   metricStripModel, SLOT(distanceChanged(double)) );
     }
-#endif
     connect(arrDataWorkout[0], SIGNAL(intensityFactorChanged(double)), ui->wid_5_infoWorkout, SLOT(IF_Changed(double)) );
     connect(arrDataWorkout[0], SIGNAL(tssChanged(double)), ui->wid_5_infoWorkout, SLOT(TSS_Changed(double)) );
     connect(arrDataWorkout[0], SIGNAL(caloriesWorkoutChanged(double)), ui->wid_5_infoWorkout, SLOT(calories_Changed(double)) );
