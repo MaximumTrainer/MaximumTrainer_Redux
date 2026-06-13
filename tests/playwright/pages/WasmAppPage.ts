@@ -409,6 +409,21 @@ export class WasmAppPage {
   }
 
   /**
+   * Switch the running demo workout's content pane to the retro ghost-race
+   * (loads RetroRace.qml) via the `mt_showRace` C++ test hook.
+   *
+   * Requires `startDemoWorkout()` to have run first.
+   */
+  async showRace(): Promise<void> {
+    await this.page.waitForFunction(
+      () => typeof (window as any).mt_showRace === 'function',
+      null,
+      { timeout: 60_000 },
+    );
+    await this.page.evaluate(() => (window as any).mt_showRace());
+  }
+
+  /**
    * Screenshot the Qt rendering surface (`#qt-canvas`, which Qt fills with a
    * `<canvas>`). Returns the raw PNG bytes for pixel-level inspection — the Qt
    * surface is opaque to DOM locators, so pixels are the only render evidence.

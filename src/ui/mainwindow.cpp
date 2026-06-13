@@ -94,11 +94,25 @@ void mt_start_demo_workout_impl()
                               Qt::QueuedConnection);
 }
 
+// Switch the demo workout's content pane to the retro ghost-race (the "Game"
+// option). Exposed as window.mt_showRace() so Playwright can assert RetroRace.qml
+// actually composites in-browser (catches a missing QtQuick.Shapes module).
+EMSCRIPTEN_KEEPALIVE
+void mt_show_demo_race_impl()
+{
+    if (!g_mainWindow) return;
+    QMetaObject::invokeMethod(g_mainWindow.data(), "showDemoRaceView",
+                              Qt::QueuedConnection);
+}
+
 } // extern "C"
 
 EM_JS(void, js_exposeWasmDemoWorkout, (), {
     window.mt_startDemoWorkout = function() {
         Module._mt_start_demo_workout_impl();
+    };
+    window.mt_showRace = function() {
+        Module._mt_show_demo_race_impl();
     };
 });
 #endif // GC_WASM_BUILD
@@ -1919,6 +1933,14 @@ void MainWindow::launchDemoWorkout()
     m_ssWorkoutDlg->show();
     m_ssWorkoutDlg->raise();
     m_ssWorkoutDlg->activateWindow();
+    QCoreApplication::processEvents();
+}
+
+void MainWindow::showDemoRaceView()
+{
+    // Content option 2 = Game (retro ghost-race); loads RetroRace.qml.
+    if (m_ssWorkoutDlg)
+        m_ssWorkoutDlg->showVideoPlayer(2);
     QCoreApplication::processEvents();
 }
 
