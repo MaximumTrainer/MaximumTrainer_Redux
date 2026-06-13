@@ -154,7 +154,6 @@
           </property>
           <property name="font">
            <font>
-            <family>Lucida Grande</family>
             <pointsize>24</pointsize>
             <weight>50</weight>
             <bold>false</bold>

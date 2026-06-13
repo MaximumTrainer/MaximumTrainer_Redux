@@ -15,6 +15,18 @@ InfoWidget::~InfoWidget() {
 InfoWidget::InfoWidget(QWidget *parent) : QWidget(parent), ui(new Ui::InfoWidget) {
     ui->setupUi(this);
 
+    // Typography scale (font rules only — the target-state frame colours and
+    // the light/dark palette keep coming from the theme): hero live value,
+    // medium secondary stats, small muted captions.
+    setStyleSheet(QStringLiteral(R"(
+        QLabel#label_currentValue { font: 600 30pt 'Inter'; }
+        QLabel#label_targetValue, QLabel#label_range { font: 15pt 'Inter'; }
+        QLabel#label_avgInterval, QLabel#label_maxInterval,
+        QLabel#label_avgWorkout,  QLabel#label_maxWorkout { font: 600 13pt 'Inter'; }
+        QLabel#label_WorkoutTxt, QLabel#label_AvgIntervalTxt,
+        QLabel#label_AverageTxt, QLabel#label_MaximumTxt,
+        QLabel#label_trainerSpeedTxt { font: 600 8pt 'Inter'; color: #8d8d8d; }
+    )"));
 
     useMile = false;
 

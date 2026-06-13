@@ -263,7 +263,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>Lucida Grande</family>
                <pointsize>15</pointsize>
               </font>
              </property>
@@ -279,7 +278,6 @@ QLabel {
             <widget class="QLabel" name="label_avgWorkoutPower">
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>16</pointsize>
               </font>
              </property>
@@ -292,7 +290,6 @@ QLabel {
             <widget class="QLabel" name="label_maxWorkoutPower">
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>16</pointsize>
               </font>
              </property>
@@ -317,7 +314,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>16</pointsize>
               </font>
              </property>
@@ -364,7 +360,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>10</pointsize>
               </font>
              </property>
@@ -389,7 +384,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>10</pointsize>
               </font>
              </property>
@@ -414,7 +408,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>10</pointsize>
               </font>
              </property>
@@ -433,7 +426,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>10</pointsize>
               </font>
              </property>
@@ -452,7 +444,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>16</pointsize>
               </font>
              </property>
@@ -477,7 +468,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>15</pointsize>
               </font>
              </property>
@@ -527,7 +517,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>Lucida Grande</family>
                <pointsize>24</pointsize>
                <weight>50</weight>
                <bold>false</bold>
@@ -597,7 +586,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>10</pointsize>
               </font>
              </property>
@@ -622,7 +610,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>10</pointsize>
               </font>
              </property>
@@ -635,7 +622,6 @@ QLabel {
             <widget class="QLabel" name="label_maxWorkoutCadence">
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>16</pointsize>
               </font>
              </property>
@@ -660,7 +646,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>16</pointsize>
               </font>
              </property>
@@ -679,7 +664,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>16</pointsize>
               </font>
              </property>
@@ -726,7 +710,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>10</pointsize>
               </font>
              </property>
@@ -751,7 +734,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>10</pointsize>
               </font>
              </property>
@@ -782,7 +764,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>Lucida Grande</family>
                <pointsize>24</pointsize>
                <weight>50</weight>
                <bold>false</bold>
@@ -815,7 +796,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>Lucida Grande</family>
                <pointsize>15</pointsize>
               </font>
              </property>
@@ -828,7 +808,6 @@ QLabel {
             <widget class="QLabel" name="label_avgWorkoutCadence">
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>16</pointsize>
               </font>
              </property>
@@ -853,7 +832,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>15</pointsize>
               </font>
              </property>
@@ -980,7 +958,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>Lucida Grande</family>
                <pointsize>24</pointsize>
                <weight>50</weight>
                <bold>false</bold>
@@ -995,7 +972,6 @@ QLabel {
             <widget class="QLabel" name="label_avgWorkoutHr">
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>16</pointsize>
               </font>
              </property>
@@ -1020,7 +996,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>15</pointsize>
               </font>
              </property>
@@ -1051,7 +1026,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>Lucida Grande</family>
                <pointsize>15</pointsize>
               </font>
              </property>
@@ -1070,7 +1044,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>10</pointsize>
               </font>
              </property>
@@ -1095,7 +1068,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>10</pointsize>
               </font>
              </property>
@@ -1120,7 +1092,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>10</pointsize>
               </font>
              </property>
@@ -1139,7 +1110,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>10</pointsize>
               </font>
              </property>
@@ -1152,7 +1122,6 @@ QLabel {
             <widget class="QLabel" name="label_maxWorkoutHr">
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>16</pointsize>
               </font>
              </property>
@@ -1171,7 +1140,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>16</pointsize>
               </font>
              </property>
@@ -1196,7 +1164,6 @@ QLabel {
              </property>
              <property name="font">
               <font>
-               <family>MS Shell Dlg 2</family>
                <pointsize>16</pointsize>
               </font>
              </property>

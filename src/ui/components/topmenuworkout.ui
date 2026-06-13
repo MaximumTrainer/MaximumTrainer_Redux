@@ -63,11 +63,21 @@ QPushButton#pushButton_exit:hover {
 QPushButton#pushButton_start, QPushButton#pushButton_lap {
         background-color: #2d2d2d;
         border: 1px solid #5a5a5a;
-        border-radius: 4px;
-        padding: 3px 8px;
+        border-radius: 6px;
+        padding: 4px 14px;
         color: white;
+        font-weight: 600;
 }
-QPushButton#pushButton_start:hover, QPushButton#pushButton_lap:hover {
+/* Start is the primary action — give it the accent. */
+QPushButton#pushButton_start {
+        background-color: #2e5235;
+        border-color: #4f8f5e;
+}
+QPushButton#pushButton_start:hover {
+        background-color: #38663f;
+        border-color: #63a973;
+}
+QPushButton#pushButton_lap:hover {
         background-color: #3c3c3c;
         border-color: #6e6e6e;
 }
@@ -76,12 +86,10 @@ QPushButton#pushButton_start:pressed, QPushButton#pushButton_lap:pressed {
 }
 
 QGroupBox#groupBox_commandWorkout {
-     border: 2px solid gray;
-	 background-color: rgb(0, 0, 0);
-
-
+     border: 1px solid #4a4a4a;
+     border-radius: 6px;
+     background-color: rgb(0, 0, 0);
 margin-top:-6px;
-
 }
 QGroupBox::title {
     margin:0px;
@@ -100,12 +108,21 @@ QLabel {
 color:white;
 }
 
-/* COULEUR LABEL */
+/* Timer hierarchy: elapsed/remaining are the heroes, the title and clock
+   sit quietly beside them. */
 #label_timeElapsed, #label_remainingTime {
-	color: orange;
+	color: #ffa726;
+	font-weight: 600;
 }
 #label_intervalTime {
 	color: rgb(89, 171, 121);
+	font-weight: 600;
+}
+#label_nameWorkout {
+	font-weight: 600;
+}
+#label_currentTime, #label_dash1 {
+	color: #9a9a9a;
 }
 
 
@@ -237,7 +254,6 @@ border-radius: 1px;
        <widget class="QLabel" name="label_nameWorkout">
         <property name="font">
          <font>
-          <family>Lucida Grande</family>
           <pointsize>13</pointsize>
           <weight>50</weight>
           <bold>false</bold>
