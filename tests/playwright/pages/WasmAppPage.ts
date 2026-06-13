@@ -593,25 +593,36 @@ export class WasmAppPage {
       },
     );
 
-    // Mock the athlete profile and settings endpoints that DialogLogin calls
-    // after the token exchange to verify the login and populate the account.
-    // Without this, tests that don't call mockIntervalsIcuApi() (e.g. the BLE
-    // GATT test) will see 404 WARN messages in the log overlay.
-    // Use a regex to match ONLY /athlete/{id} and /athlete/{id}/settings —
+    // Mock the athlete profile and sport-settings endpoints that DialogLogin
+    // calls after the token exchange to verify the login and populate the
+    // account. Without this, tests that don't call mockIntervalsIcuApi()
+    // (e.g. the BLE GATT test) will see 404 WARN messages in the log overlay.
+    // Use a regex to match ONLY /athlete/{id} and /athlete/{id}/sport-settings —
     // NOT calendar/event sub-paths — to avoid intercepting functional test routes.
     await this.page.route(
-      /^https:\/\/(?:intervals\.icu\/api\/v1\/athlete\/[^/]+(?:\/settings)?|mt-intervals-proxy\.intervals-login\.workers\.dev\/proxy\/api\/v1\/athlete\/[^/]+(?:\/settings)?)(?:\?.*)?$/,
+      /^https:\/\/(?:intervals\.icu\/api\/v1\/athlete\/[^/]+(?:\/sport-settings)?|mt-intervals-proxy\.intervals-login\.workers\.dev\/proxy\/api\/v1\/athlete\/[^/]+(?:\/sport-settings)?)(?:\?.*)?$/,
       async (route) => {
         if (route.request().method() === 'OPTIONS') {
           await route.fulfill({ status: 204, headers: corsHeaders });
           return;
         }
-        const isSettings = route.request().url().includes('/settings');
+        const isSportSettings = route.request().url().includes('/sport-settings');
         await route.fulfill({
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          body: isSettings
-            ? JSON.stringify({})
+          body: isSportSettings
+            // Shape of GET /athlete/{id}/sport-settings: array of per-sport
+            // entries; power_zones are % of FTP, hr_zones absolute bpm.
+            ? JSON.stringify([
+                {
+                  types:       ['Ride', 'VirtualRide'],
+                  ftp:         250,
+                  indoor_ftp:  240,
+                  lthr:        160,
+                  power_zones: [55, 75, 90, 105, 120, 150],
+                  hr_zones:    [120, 140, 155, 165, 175, 190],
+                },
+              ])
             : JSON.stringify({
                 id:        WasmAppPage.FAKE_ATHLETE_ID,
                 firstname: 'Test',
