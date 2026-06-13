@@ -68,6 +68,11 @@ public slots:
 
     void startScreenshotMode(const QString &outputDir);
 
+    /// Launch the demo workout dialog (simulator-driven, non-modal) used by
+    /// screenshot mode and, on WASM, by the `window.mt_startDemoWorkout` test
+    /// hook to drive the app into the metric-dashboard view for render checks.
+    void launchDemoWorkout();
+
 #ifndef GC_WASM_BUILD
 private:
     /// Launch the workout dialog wired to multiple already-connected BLE hubs,

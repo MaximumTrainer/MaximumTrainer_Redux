@@ -382,6 +382,41 @@ export class WasmAppPage {
     await this.page.waitForTimeout(3_000);
   }
 
+  // ── Demo-workout / dashboard render helpers ───────────────────────────────
+
+  /**
+   * Wait until the `window.mt_startDemoWorkout` test hook is registered.
+   *
+   * The hook is exposed in the `MainWindow` constructor (WASM build only), so
+   * this resolves once login has reached the main window.
+   */
+  async waitForDemoWorkoutHook(timeoutMs = 120_000): Promise<void> {
+    await this.page.waitForFunction(
+      () => typeof (window as any).mt_startDemoWorkout === 'function',
+      null,
+      { timeout: timeoutMs },
+    );
+  }
+
+  /**
+   * Drive the app into the metric-dashboard view by launching the simulator-fed
+   * demo workout via the `mt_startDemoWorkout` C++ test hook.
+   *
+   * Requires `waitForDemoWorkoutHook()` to have resolved first.
+   */
+  async startDemoWorkout(): Promise<void> {
+    await this.page.evaluate(() => (window as any).mt_startDemoWorkout());
+  }
+
+  /**
+   * Screenshot the Qt rendering surface (`#qt-canvas`, which Qt fills with a
+   * `<canvas>`). Returns the raw PNG bytes for pixel-level inspection — the Qt
+   * surface is opaque to DOM locators, so pixels are the only render evidence.
+   */
+  async screenshotCanvas(): Promise<Buffer> {
+    return this.page.locator('#qt-canvas').screenshot();
+  }
+
   // ── BLE interaction helpers ───────────────────────────────────────────────
 
   /**

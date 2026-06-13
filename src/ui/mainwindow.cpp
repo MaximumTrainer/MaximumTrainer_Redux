@@ -70,6 +70,39 @@
 #include "sensorswidget.h"
 #include "studiowidget.h"
 
+#ifdef GC_WASM_BUILD
+#include <emscripten.h>
+#include <QPointer>
+
+static QPointer<MainWindow> g_mainWindow;
+
+extern "C" {
+
+// Drive the running WASM app into the metric-dashboard view by launching the
+// simulator-fed demo workout. Exposed to JS as window.mt_startDemoWorkout()
+// so the Playwright suite can assert the QML dashboard actually renders into
+// the Qt canvas in-browser.
+EMSCRIPTEN_KEEPALIVE
+void mt_start_demo_workout_impl()
+{
+    if (!g_mainWindow) return;
+    // No server session exists for a demo workout; force offline so the dialog
+    // never blocks on an online session check (mirrors screenshot mode).
+    if (auto *acct = qApp->property("Account").value<Account*>())
+        acct->isOffline = true;
+    QMetaObject::invokeMethod(g_mainWindow.data(), "launchDemoWorkout",
+                              Qt::QueuedConnection);
+}
+
+} // extern "C"
+
+EM_JS(void, js_exposeWasmDemoWorkout, (), {
+    window.mt_startDemoWorkout = function() {
+        Module._mt_start_demo_workout_impl();
+    };
+});
+#endif // GC_WASM_BUILD
+
 
 
 
@@ -344,6 +377,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     connect(ui->tab_workout1, &Main_WorkoutPage::addWorkoutToQueue,
             this, &MainWindow::addWorkoutToQueue);
+
+#ifdef GC_WASM_BUILD
+    // Expose the demo-workout test hook so Playwright can drive the app into
+    // the metric-dashboard view and verify QML rendering in the browser.
+    g_mainWindow = this;
+    js_exposeWasmDemoWorkout();
+#endif
 }
 
 
@@ -1855,6 +1895,33 @@ Workout MainWindow::makeDemoWorkout() const
                    tr("A structured threshold workout"), "Base", Workout::T_THRESHOLD);
 }
 
+void MainWindow::launchDemoWorkout()
+{
+    ftb->setCurrentIndex(0);
+    ui->tabWidget_workout->setCurrentIndex(0);
+
+    m_ssSimHub = new SimulatorHub(this);
+    m_ssSimHub->setUserID(1); // userID must be 1-based; default 0 causes arrUserStudioWidget[-1] OOB crash
+    m_ssWorkoutDlg = new WorkoutDialog(makeDemoWorkout(), lstRadio, vecUserStudio, this);
+
+    connect(m_ssSimHub, SIGNAL(signal_hr(int,int)),
+            m_ssWorkoutDlg, SLOT(HrDataReceived(int,int)));
+    connect(m_ssSimHub, SIGNAL(signal_cadence(int,int)),
+            m_ssWorkoutDlg, SLOT(CadenceDataReceived(int,int)));
+    connect(m_ssSimHub, SIGNAL(signal_speed(int,double)),
+            m_ssWorkoutDlg, SLOT(TrainerSpeedDataReceived(int,double)));
+    connect(m_ssSimHub, SIGNAL(signal_power(int,int)),
+            m_ssWorkoutDlg, SLOT(PowerDataReceived(int,int)));
+    connect(m_ssSimHub, SIGNAL(signal_oxygen(int,double,double)),
+            m_ssWorkoutDlg, SLOT(OxygenValueChanged(int,double,double)));
+
+    m_ssSimHub->start();
+    m_ssWorkoutDlg->show();
+    m_ssWorkoutDlg->raise();
+    m_ssWorkoutDlg->activateWindow();
+    QCoreApplication::processEvents();
+}
+
 void MainWindow::startScreenshotMode(const QString &outputDir)
 {
     qDebug() << "Screenshot mode: output dir =" << outputDir;
@@ -1947,32 +2014,9 @@ void MainWindow::screenshotNextStep()
         break;
 
     // ── Step 3: launch WorkoutDialog with SimulatorHub (non-modal) ───────
-    case 3: {
-        ftb->setCurrentIndex(0);
-        ui->tabWidget_workout->setCurrentIndex(0);
-
-        m_ssSimHub = new SimulatorHub(this);
-        m_ssSimHub->setUserID(1); // userID must be 1-based; default 0 causes arrUserStudioWidget[-1] OOB crash
-        m_ssWorkoutDlg = new WorkoutDialog(makeDemoWorkout(), lstRadio, vecUserStudio, this);
-
-        connect(m_ssSimHub, SIGNAL(signal_hr(int,int)),
-                m_ssWorkoutDlg, SLOT(HrDataReceived(int,int)));
-        connect(m_ssSimHub, SIGNAL(signal_cadence(int,int)),
-                m_ssWorkoutDlg, SLOT(CadenceDataReceived(int,int)));
-        connect(m_ssSimHub, SIGNAL(signal_speed(int,double)),
-                m_ssWorkoutDlg, SLOT(TrainerSpeedDataReceived(int,double)));
-        connect(m_ssSimHub, SIGNAL(signal_power(int,int)),
-                m_ssWorkoutDlg, SLOT(PowerDataReceived(int,int)));
-        connect(m_ssSimHub, SIGNAL(signal_oxygen(int,double,double)),
-                m_ssWorkoutDlg, SLOT(OxygenValueChanged(int,double,double)));
-
-        m_ssSimHub->start();
-        m_ssWorkoutDlg->show();
-        m_ssWorkoutDlg->raise();
-        m_ssWorkoutDlg->activateWindow();
-        QCoreApplication::processEvents();
+    case 3:
+        launchDemoWorkout();
         break;
-    }
 
     // ── Step 4: capture workout running ──────────────────────────────────
     case 4:
