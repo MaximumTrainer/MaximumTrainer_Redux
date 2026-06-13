@@ -36,7 +36,10 @@ test.describe('WASM metric dashboard renders in-browser', () => {
 
   test.beforeAll(async ({ browser }) => {
     test.setTimeout(420_000);
-    ctx = await browser.newContext();
+    // Taller-than-default viewport: the workout dialog opens at natural size
+    // (~900px), so the metric dashboard band at its bottom falls below the
+    // standard 720px viewport. A 1080px-tall canvas keeps the band in frame.
+    ctx = await browser.newContext({ viewport: { width: 1280, height: 1080 } });
     wasmApp = new WasmAppPage(await ctx.newPage());
 
     await wasmApp.stubBluetooth();
