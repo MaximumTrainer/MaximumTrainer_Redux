@@ -118,7 +118,9 @@ Rectangle {
         radius: 10
         color: "#262626"
         border.width: 1
-        border.color: target > 0 && !card.inZone ? "#7a4a25" : "#333333"
+        border.color: target <= 0 ? "#333333"
+                    : card.inZone ? "#3f6647" : "#7a4a25"
+        Behavior on border.color { ColorAnimation { duration: 300 } }
 
         // Accent edge
         Rectangle {
