@@ -286,6 +286,13 @@ void Account::loadDisplayPrefs() {
     display_power         = settings.value("display_power",         display_power).toInt();
     display_power_balance = settings.value("display_power_balance", display_power_balance).toInt();
     display_cadence       = settings.value("display_cadence",       display_cadence).toInt();
+
+    // The "Minimalist" display mode (value 0) was removed; migrate any saved
+    // Minimalist preference to Detailed (value 1). Idempotent: the editor only
+    // ever writes 1+ now, so 0 can only be a legacy value.
+    if (display_hr == 0)      display_hr = 1;
+    if (display_power == 0)   display_power = 1;
+    if (display_cadence == 0) display_cadence = 1;
     display_video         = settings.value("display_video",         display_video).toInt();
     averaging_power       = settings.value("averaging_power",       averaging_power).toInt();
     offset_power          = settings.value("offset_power",          offset_power).toInt();

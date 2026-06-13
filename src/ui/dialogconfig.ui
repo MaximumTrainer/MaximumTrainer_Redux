@@ -599,11 +599,6 @@ QLabel#label_imageCalories {
                   </property>
                   <item>
                    <property name="text">
-                    <string>Minimalist</string>
-                   </property>
-                  </item>
-                  <item>
-                   <property name="text">
                     <string>Detailed</string>
                    </property>
                   </item>
@@ -1069,11 +1064,6 @@ QLabel#label_imageCalories {
                </property>
                <item>
                 <property name="text">
-                 <string>Minimalist</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
                  <string>Detailed</string>
                 </property>
                </item>
@@ -1217,11 +1207,6 @@ QLabel#label_imageCalories {
                  <height>0</height>
                 </size>
                </property>
-               <item>
-                <property name="text">
-                 <string>Minimalist</string>
-                </property>
-               </item>
                <item>
                 <property name="text">
                  <string>Detailed</string>

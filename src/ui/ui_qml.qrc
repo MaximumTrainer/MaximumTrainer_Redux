@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/ui">
-        <file>qml/MetricDashboard.qml</file>
-    </qresource>
-</RCC>

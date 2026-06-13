@@ -37,7 +37,6 @@
 #include "webbrowserview.h"
 #include <QQuickWidget>
 #include <QQmlContext>
-#include "metricstripmodel.h"
 #include "retroracecontroller.h"
 #include "dialogcalibrate.h"
 #include "dialogcalibratepm.h"
@@ -520,7 +519,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
 
     // Initialise DataWorkout
-    setupMetricStrip();
     initDataWorkout();
     //createUserStudio Widget
     createUserStudioWidget();
@@ -542,19 +540,11 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
         ui->wid_5_infoWorkout->setDistanceInMile(true);
     }
 
-    //Minimalist
-    ui->wid_1_minimalistHr->setTypeWidget(MinimalistWidget::HEART_RATE);
-    ui->wid_2_minimalistPower->setTypeWidget(MinimalistWidget::POWER);
-    ui->wid_3_minimalistCadence->setTypeWidget(MinimalistWidget::CADENCE);
-
     //Set User Data in all widgets
     ui->widget_workoutPlot->setUserData(account->FTP, account->LTHR);
     ui->wid_1_workoutPlot_HeartrateZoom->setUserData(account->FTP, account->LTHR);
     ui->wid_2_workoutPlot_PowerZoom->setUserData(account->FTP, account->LTHR);
     ui->wid_3_workoutPlot_CadenceZoom->setUserData(account->FTP, account->LTHR);
-    ui->wid_1_minimalistHr->setUserData(account->FTP, account->LTHR);
-    ui->wid_2_minimalistPower->setUserData(account->FTP, account->LTHR);
-    ui->wid_3_minimalistCadence->setUserData(account->FTP, account->LTHR);
     ui->wid_1_infoBoxHr->setUserData(account->FTP, account->LTHR);
     ui->wid_2_infoBoxPower->setUserData(account->FTP, account->LTHR);
     ui->wid_3_infoBoxCadence->setUserData(account->FTP, account->LTHR);
@@ -931,14 +921,11 @@ void WorkoutDialog::initUI() {
         showTimerOnTop(true);
         ui->wid_1_infoBoxHr->setVisible(false);
         ui->wid_1_infoBoxHr->setVisible(false);
-        ui->wid_1_minimalistHr->setVisible(false);
         ui->wid_1_workoutPlot_HeartrateZoom->setVisible(false);
         ui->wid_2_balancePower->setVisible(false);
         ui->wid_2_infoBoxPower->setVisible(false);
-        ui->wid_2_minimalistPower->setVisible(false);
         ui->wid_2_workoutPlot_PowerZoom->setVisible(false);
         ui->wid_3_infoBoxCadence->setVisible(false);
-        ui->wid_3_minimalistCadence->setVisible(false);
         ui->wid_3_workoutPlot_CadenceZoom->setVisible(false);
         ui->wid_4_infoBoxSpeed->setVisible(false);
         ui->wid_5_infoWorkout->setVisible(false);
@@ -959,16 +946,13 @@ void WorkoutDialog::moveWidgetsPosition() {
     horizontalLayout->removeWidget(ui->widget_time);
     horizontalLayout->removeWidget(ui->wid_1_infoBoxHr);
     horizontalLayout->removeWidget(ui->wid_1_workoutPlot_HeartrateZoom);
-    horizontalLayout->removeWidget(ui->wid_1_minimalistHr);
 
     horizontalLayout->removeWidget(ui->wid_2_balancePower);
     horizontalLayout->removeWidget(ui->wid_2_infoBoxPower);
     horizontalLayout->removeWidget(ui->wid_2_workoutPlot_PowerZoom);
-    horizontalLayout->removeWidget(ui->wid_2_minimalistPower);
 
     horizontalLayout->removeWidget(ui->wid_3_infoBoxCadence);
     horizontalLayout->removeWidget(ui->wid_3_workoutPlot_CadenceZoom);
-    horizontalLayout->removeWidget(ui->wid_3_minimalistCadence);
 
     horizontalLayout->removeWidget(ui->wid_4_infoBoxSpeed);
     horizontalLayout->removeWidget(ui->wid_oxygen);
@@ -983,17 +967,14 @@ void WorkoutDialog::moveWidgetsPosition() {
         else if (account->tab_display[i] == account->getHrStr()) {
             horizontalLayout->addWidget(ui->wid_1_infoBoxHr);
             horizontalLayout->addWidget(ui->wid_1_workoutPlot_HeartrateZoom);
-            horizontalLayout->addWidget(ui->wid_1_minimalistHr);
         }
         else if (account->tab_display[i] == account->getPowerStr()) {
             horizontalLayout->addWidget(ui->wid_2_infoBoxPower);
             horizontalLayout->addWidget(ui->wid_2_workoutPlot_PowerZoom);
-            horizontalLayout->addWidget(ui->wid_2_minimalistPower);
         }
         else if (account->tab_display[i] == account->getCadenceStr()) {
             horizontalLayout->addWidget(ui->wid_3_infoBoxCadence);
             horizontalLayout->addWidget(ui->wid_3_workoutPlot_CadenceZoom);
-            horizontalLayout->addWidget(ui->wid_3_minimalistCadence);
         }
         else if (account->tab_display[i] == account->getPowerBalanceStr()) {
             horizontalLayout->addWidget(ui->wid_2_balancePower);
@@ -1709,8 +1690,6 @@ void WorkoutDialog::start_or_pause_workout() {
         ui->widget_topMenu->setButtonStartPaused(true);
         ui->widget_workoutPlot->removeMainMessage();
         isWorkoutStarted = true;
-        if (metricStripModel)
-            metricStripModel->resetStats();
         isWorkoutPaused = false;
         if (this->workout.getInterval(0).getDisplayMessage() != "")
             ui->widget_workoutPlot->setDisplayIntervalMessage(true, this->workout.getInterval(0).getDisplayMessage(), account->nb_sec_show_interval);
@@ -1820,7 +1799,6 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
     if (value == -1) {
         ui->wid_1_infoBoxHr->setValue(value);
         ui->wid_1_workoutPlot_HeartrateZoom->updateTextLabelValue(value);
-        ui->wid_1_minimalistHr->setValue(value);
         if (account->enable_studio_mode) {
             arrUserStudioWidget[userID-1]->setHrValue(value);
         }
@@ -1829,8 +1807,6 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
     if (value < 0)
         return;
 
-    if (metricStripModel && userID == 1)
-        metricStripModel->setHr(value);
     if (raceController && userID == 1)
         raceController->setLiveHr(value);
 
@@ -1871,7 +1847,6 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
     // Show data to the display
     ui->wid_1_infoBoxHr->setValue(value);
     ui->wid_1_workoutPlot_HeartrateZoom->updateTextLabelValue(value);
-    ui->wid_1_minimalistHr->setValue(value);
     if (account->enable_studio_mode) {
         arrUserStudioWidget[userID-1]->setHrValue(value);
     }
@@ -1882,8 +1857,6 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::CadenceDataReceived(int userID, int value) {
 
-    if (metricStripModel && userID == 1 && value >= 0 && value <= 250)
-        metricStripModel->setCadence(value);
     // Animate the race player's legs at the rider's real cadence.
     if (raceController && userID == 1 && value >= 0 && value <= 250)
         raceController->setLiveCadenceRpm(value);
@@ -1892,7 +1865,6 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
     if (value == -1 || value > 250) {
         ui->wid_3_infoBoxCadence->setValue(value);
         ui->wid_3_workoutPlot_CadenceZoom->updateTextLabelValue(value);
-        ui->wid_3_minimalistCadence->setValue(value);
         if (account->enable_studio_mode) {
             arrUserStudioWidget[userID-1]->setCadenceValue(value);
         }
@@ -1971,7 +1943,6 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
     // Show raw data to the display
     ui->wid_3_infoBoxCadence->setValue(value);
     ui->wid_3_workoutPlot_CadenceZoom->updateTextLabelValue(value);
-    ui->wid_3_minimalistCadence->setValue(value);
     // UserStudio
     if (account->enable_studio_mode) {
         arrUserStudioWidget[userID-1]->setCadenceValue(value);
@@ -2054,9 +2025,6 @@ void WorkoutDialog::VirtualSpeedDataReceived(int userID, double valueMS, double 
 /// value = KMH,
 void WorkoutDialog::speedDataChosen(int userID, double value) {
 
-    if (metricStripModel && userID == 1)
-        metricStripModel->setSpeed(value);
-
     double valueUnit;
     if (account->distance_in_km)
         valueUnit = value;
@@ -2105,7 +2073,6 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
     if (value == -1) {
         ui->wid_2_infoBoxPower->setValue(value);
         ui->wid_2_workoutPlot_PowerZoom->updateTextLabelValue(value);
-        ui->wid_2_minimalistPower->setValue(value);
         if (account->enable_studio_mode) {
             arrUserStudioWidget[userID-1]->setPowerValue(value);
         }
@@ -2118,8 +2085,6 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
     if (value < 0)
         return;
 
-    if (metricStripModel && userID == 1 && value >= 0)
-        metricStripModel->setPower(value);
     // Drive the player in the retro race with live (solo) power.
     if (raceController && userID == 1)
         raceController->setLivePowerWatts(value);
@@ -2267,7 +2232,6 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
     // Show raw data to the display
     ui->wid_2_infoBoxPower->setValue(rollingAverage);
     ui->wid_2_workoutPlot_PowerZoom->updateTextLabelValue(rollingAverage);
-    ui->wid_2_minimalistPower->setValue(rollingAverage);
     if (account->enable_studio_mode) {
         arrUserStudioWidget[userID-1]->setPowerValue(rollingAverage);
     }
@@ -2334,9 +2298,6 @@ void WorkoutDialog::sendTargetsPower(double percentageTarget, int range) {
     else {
         ui->wid_2_workoutPlot_PowerZoom->targetChanged(percentageTarget, range);
         ui->wid_2_infoBoxPower->targetChanged(percentageTarget, range);
-        ui->wid_2_minimalistPower->setTarget(percentageTarget, range);
-        if (metricStripModel)
-            metricStripModel->setTargetPower(qRound(percentageTarget * account->FTP), range);
     }
 }
 
@@ -2352,7 +2313,6 @@ void WorkoutDialog::sendTargetsCadence(int target, int range) {
     else {
         ui->wid_3_workoutPlot_CadenceZoom->targetChanged(target, range);
         ui->wid_3_infoBoxCadence->targetChanged(target, range);
-        ui->wid_3_minimalistCadence->setTarget(target, range);
     }
 }
 
@@ -2368,7 +2328,6 @@ void WorkoutDialog::sendTargetsHr(double percentageTarget, int range) {
     else {
         ui->wid_1_workoutPlot_HeartrateZoom->targetChanged(percentageTarget, range);
         ui->wid_1_infoBoxHr->targetChanged(percentageTarget, range);
-        ui->wid_1_minimalistHr->setTarget(percentageTarget, range);
     }
 }
 
@@ -2726,30 +2685,6 @@ WebBrowserView *WorkoutDialog::ensureWebPlayer() {
     return webPlayer;
 }
 
-// The QML dashboard is the metric band in solo mode (all platforms).  The
-// classic widgets remain compiled but hidden.
-void WorkoutDialog::setupMetricStrip() {
-    if (metricStripView || account->enable_studio_mode)
-        return;
-
-    metricStripModel = new MetricStripModel(this);
-    metricStripView  = new QQuickWidget(this);
-    metricStripView->setResizeMode(QQuickWidget::SizeRootObjectToView);
-    metricStripView->rootContext()->setContextProperty(QStringLiteral("metrics"), metricStripModel);
-    metricStripView->setSource(QUrl(QStringLiteral("qrc:/ui/qml/MetricDashboard.qml")));
-    metricStripView->setMinimumHeight(120);
-
-    // Hide every classic metric widget variant; keep the NP/IF/TSS panel.
-    const QList<QWidget*> classic = {
-        ui->wid_1_minimalistHr,      ui->wid_1_infoBoxHr,      ui->wid_1_workoutPlot_HeartrateZoom,
-        ui->wid_2_minimalistPower,   ui->wid_2_infoBoxPower,   ui->wid_2_workoutPlot_PowerZoom,
-        ui->wid_3_minimalistCadence, ui->wid_3_infoBoxCadence, ui->wid_3_workoutPlot_CadenceZoom,
-        ui->wid_4_infoBoxSpeed, ui->wid_5_infoWorkout };
-    for (QWidget *w : classic)
-        w->setVisible(false);
-
-    ui->horizontalLayout->insertWidget(0, metricStripView, /*stretch*/ 1);
-}
 
 QQuickWidget *WorkoutDialog::ensureRaceView() {
     if (!raceController) {
@@ -2888,108 +2823,66 @@ void WorkoutDialog::showVideoPlayer(int choice) {
 }
 
 
-///0 = Minimalist
 ///1 = Detailed
 ///2 = Graph
-///3 = Hide
+///3 = Graph & Detailed (power only)
 ////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::showHeartRateDisplayWidget(int display) {
-    if (metricStripView)   // the QML dashboard owns the metric band
-        return;
-
-
     if (account->show_hr_widget) {
-        if (display == 0) { /// Minimalist
-            ui->wid_1_minimalistHr->setVisible(true);
-            ui->wid_1_workoutPlot_HeartrateZoom->setVisible(false);
-            ui->wid_1_infoBoxHr->setVisible(false);
-        }
-        else if (display == 1) { /// Detailed
-            ui->wid_1_minimalistHr->setVisible(false);
+        if (display == 1) { /// Detailed
             ui->wid_1_workoutPlot_HeartrateZoom->setVisible(false);
             ui->wid_1_infoBoxHr->setVisible(true);
         }
         else if (display == 2) { /// Graph
-            ui->wid_1_minimalistHr->setVisible(false);
             ui->wid_1_workoutPlot_HeartrateZoom->setVisible(true);
             ui->wid_1_infoBoxHr->setVisible(false);
         }
     }
     else { /// Hide
-        ui->wid_1_minimalistHr->setVisible(false);
         ui->wid_1_workoutPlot_HeartrateZoom->setVisible(false);
         ui->wid_1_infoBoxHr->setVisible(false);
     }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::showPowerDisplayWidget(int display) {
-    if (metricStripView)   // the QML dashboard owns the metric band
-        return;
-
-
     if (account->show_power_widget) {
-        if (display == 0) { /// Minimalist
-            ui->wid_2_minimalistPower->setVisible(true);
-            ui->wid_2_workoutPlot_PowerZoom->setVisible(false);
-            ui->wid_2_infoBoxPower->setVisible(false);
-        }
-        else if (display == 1) { /// Detailed
-            ui->wid_2_minimalistPower->setVisible(false);
+        if (display == 1) { /// Detailed
             ui->wid_2_workoutPlot_PowerZoom->setVisible(false);
             ui->wid_2_infoBoxPower->setVisible(true);
         }
         else if (display == 2) { /// Graph
-            ui->wid_2_minimalistPower->setVisible(false);
             ui->wid_2_workoutPlot_PowerZoom->setVisible(true);
             ui->wid_2_infoBoxPower->setVisible(false);
         }
         else if (display == 3) { ///Graph and Detailed
-            ui->wid_2_minimalistPower->setVisible(false);
             ui->wid_2_workoutPlot_PowerZoom->setVisible(true);
             ui->wid_2_infoBoxPower->setVisible(true);
         }
     }
     else { /// Hide
-        ui->wid_2_minimalistPower->setVisible(false);
         ui->wid_2_workoutPlot_PowerZoom->setVisible(false);
         ui->wid_2_infoBoxPower->setVisible(false);
     }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::showCadenceDisplayWidget(int display) {
-    if (metricStripView)   // the QML dashboard owns the metric band
-        return;
-
-
     if (account->show_cadence_widget) {
-        if (display == 0) { /// Minimalist
-            ui->wid_3_minimalistCadence->setVisible(true);
-            ui->wid_3_workoutPlot_CadenceZoom->setVisible(false);
-            ui->wid_3_infoBoxCadence->setVisible(false);
-        }
-        else if (display == 1) { /// Detailed
-            ui->wid_3_minimalistCadence->setVisible(false);
+        if (display == 1) { /// Detailed
             ui->wid_3_workoutPlot_CadenceZoom->setVisible(false);
             ui->wid_3_infoBoxCadence->setVisible(true);
         }
         else if (display == 2) { /// Graph
-            ui->wid_3_minimalistCadence->setVisible(false);
             ui->wid_3_workoutPlot_CadenceZoom->setVisible(true);
             ui->wid_3_infoBoxCadence->setVisible(false);
         }
     }
     else { /// Hide
-        ui->wid_3_minimalistCadence->setVisible(false);
         ui->wid_3_workoutPlot_CadenceZoom->setVisible(false);
         ui->wid_3_infoBoxCadence->setVisible(false);
     }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::showSpeedDisplayWidget() {
-    if (metricStripView)   // the QML dashboard owns the metric band
-        return;
-
-
     if (account->show_speed_widget) {
         ui->wid_4_infoBoxSpeed->setVisible(true);
     }
@@ -3022,8 +2915,6 @@ void WorkoutDialog::showTrainerSpeed(bool show) {
 ////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::showCaloriesDisplayWidget() {
 
-    if (metricStripView)   // session card covers kcal
-        return;
     if (account->show_calories_widget) {
         ui->wid_5_infoWorkout->setVisible(true);
     }
@@ -3168,9 +3059,6 @@ void WorkoutDialog::setWidgetsStopped(bool b) {
         ui->wid_4_infoBoxSpeed->setStopped(b);
         ui->wid_5_infoWorkout->setStopped(b);
         ui->wid_2_balancePower->setStopped(b);
-        ui->wid_1_minimalistHr->setStopped(b);
-        ui->wid_2_minimalistPower->setStopped(b);
-        ui->wid_3_minimalistCadence->setStopped(b);
     }
 }
 
@@ -4167,13 +4055,6 @@ void WorkoutDialog::connectDataWorkout() {
     connect(arrDataWorkout[0], SIGNAL(avgPowerWorkoutChanged(double)), ui->wid_2_infoBoxPower, SLOT(avgWorkoutChanged(double)) );
 
     connect(arrDataWorkout[0], SIGNAL(normalizedPowerChanged(double)), ui->wid_5_infoWorkout, SLOT(NP_Changed(double)) );
-    if (metricStripModel) {
-        connect(arrDataWorkout[0], SIGNAL(normalizedPowerChanged(double)), metricStripModel, SLOT(NP_Changed(double)) );
-        connect(arrDataWorkout[0], SIGNAL(intensityFactorChanged(double)), metricStripModel, SLOT(IF_Changed(double)) );
-        connect(arrDataWorkout[0], SIGNAL(tssChanged(double)),             metricStripModel, SLOT(TSS_Changed(double)) );
-        connect(arrDataWorkout[0], SIGNAL(caloriesWorkoutChanged(double)), metricStripModel, SLOT(calories_Changed(double)) );
-        connect(arrDataWorkout[0], SIGNAL(totalDistanceChanged(double)),   metricStripModel, SLOT(distanceChanged(double)) );
-    }
     connect(arrDataWorkout[0], SIGNAL(intensityFactorChanged(double)), ui->wid_5_infoWorkout, SLOT(IF_Changed(double)) );
     connect(arrDataWorkout[0], SIGNAL(tssChanged(double)), ui->wid_5_infoWorkout, SLOT(TSS_Changed(double)) );
     connect(arrDataWorkout[0], SIGNAL(caloriesWorkoutChanged(double)), ui->wid_5_infoWorkout, SLOT(calories_Changed(double)) );

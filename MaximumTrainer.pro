@@ -321,5 +321,4 @@ include(src/workout/workout.pri)
 include(src/game/game.pri)
 
 
-RESOURCES += MyResources.qrc \
-             src/ui/ui_qml.qrc
+RESOURCES += MyResources.qrc

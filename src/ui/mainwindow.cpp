@@ -1944,6 +1944,7 @@ void MainWindow::showDemoRaceView()
     QCoreApplication::processEvents();
 }
 
+
 void MainWindow::startScreenshotMode(const QString &outputDir)
 {
     qDebug() << "Screenshot mode: output dir =" << outputDir;

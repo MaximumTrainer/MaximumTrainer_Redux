@@ -36,7 +36,6 @@
 class DialogConfig;     // forward declaration
 class WebBrowserView;   // forward declaration (lazily created web video player)
 class QQuickWidget;
-class MetricStripModel;      // QML metric dashboard bridge
 class RetroRaceController;   // retro ghost-race view
 
 namespace Ui {
@@ -324,11 +323,6 @@ private:
     void onToggleGameFullscreen();              // collapse/restore the data panes
     bool m_gameFullscreen = false;
     QList<int> m_savedSplitterSizes;
-
-    // QML metric dashboard: the metric band in solo mode (all platforms).
-    QQuickWidget     *metricStripView  = nullptr;
-    MetricStripModel *metricStripModel = nullptr;
-    void setupMetricStrip();
 
     DialogConfig *dconfig;
     QList<Radio> lstRadio;
