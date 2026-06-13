@@ -580,7 +580,26 @@ jobs:
         make -j$(nproc)
 
     - name: Run Intervals.icu integration tests
-      run: ./build/tests/intervals_icu_integration_tests -v2
+      run: |
+        # Live test against intervals.icu: retry transient network/API blips
+        # before failing the job. -o writes results to a file we echo into the
+        # log, so failures stay diagnosable even if stdout is buffered/lost.
+        attempts=3
+        for i in $(seq 1 $attempts); do
+          echo "::group::Intervals.icu integration tests (attempt $i/$attempts)"
+          code=0
+          ./build/tests/intervals_icu_integration_tests -v2 -o results.txt,txt || code=$?
+          if [ -f results.txt ]; then cat results.txt; fi
+          echo "::endgroup::"
+          if [ "$code" -eq 0 ]; then
+            echo "Passed on attempt $i."
+            exit 0
+          fi
+          echo "Attempt $i failed with exit code $code."
+          if [ "$i" -lt "$attempts" ]; then sleep $((i * 15)); fi
+        done
+        echo "::error::Intervals.icu integration tests failed after $attempts attempts (likely a transient intervals.icu/network issue if no assertion appears above)."
+        exit 1
 
   # ──────────────────────────────────────────────────────────────────────────
   # Online Mode Authentication Test – Linux
