@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/game">
         <file>qml/RetroRace.qml</file>
+        <file>qml/MetricDashboard.qml</file>
     </qresource>
 </RCC>

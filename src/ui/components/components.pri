@@ -31,6 +31,7 @@ SOURCES +=\
 
 
 HEADERS +=\
+    $$PWD/metricstripmodel.h \
     $$PWD/workoutcombobox.h \
     $$PWD/delegaterowhover.h \
     $$PWD/mytableview.h \

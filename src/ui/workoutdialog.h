@@ -38,6 +38,7 @@ class WebBrowserView;   // forward declaration (lazily created web video player)
 #ifndef GC_WASM_BUILD
 class QQuickWidget;          // retro ghost-race view (desktop only)
 class RetroRaceController;
+class MetricStripModel;      // QML metric dashboard bridge
 #endif
 
 namespace Ui {
@@ -326,6 +327,12 @@ private:
     void onToggleGameFullscreen();              // collapse/restore the data panes
     bool m_gameFullscreen = false;
     QList<int> m_savedSplitterSizes;
+
+    // QML metric dashboard: the desktop metric band (solo mode).  WASM keeps
+    // the classic widgets — Qt Quick is unavailable there (see game.pri).
+    QQuickWidget     *metricStripView  = nullptr;
+    MetricStripModel *metricStripModel = nullptr;
+    void setupMetricStrip();
 #endif
 
     DialogConfig *dconfig;

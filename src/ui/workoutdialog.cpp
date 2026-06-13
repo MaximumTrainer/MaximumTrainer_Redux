@@ -39,6 +39,7 @@
 #include <QQuickWidget>
 #include <QQmlContext>
 #include "retroracecontroller.h"
+#include "metricstripmodel.h"
 #endif
 #include "dialogcalibrate.h"
 #include "dialogcalibratepm.h"
@@ -521,6 +522,9 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
 
     // Initialise DataWorkout
+#ifndef GC_WASM_BUILD
+    setupMetricStrip();
+#endif
     initDataWorkout();
     //createUserStudio Widget
     createUserStudioWidget();
@@ -1715,6 +1719,10 @@ void WorkoutDialog::start_or_pause_workout() {
         ui->widget_topMenu->setButtonStartPaused(true);
         ui->widget_workoutPlot->removeMainMessage();
         isWorkoutStarted = true;
+#ifndef GC_WASM_BUILD
+        if (metricStripModel)
+            metricStripModel->resetStats();
+#endif
         isWorkoutPaused = false;
         if (this->workout.getInterval(0).getDisplayMessage() != "")
             ui->widget_workoutPlot->setDisplayIntervalMessage(true, this->workout.getInterval(0).getDisplayMessage(), account->nb_sec_show_interval);
@@ -1838,6 +1846,8 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
         return;
 
 #ifndef GC_WASM_BUILD
+    if (metricStripModel && userID == 1)
+        metricStripModel->setHr(value);
     if (raceController && userID == 1)
         raceController->setLiveHr(value);
 #endif
@@ -1891,6 +1901,8 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
 void WorkoutDialog::CadenceDataReceived(int userID, int value) {
 
 #ifndef GC_WASM_BUILD
+    if (metricStripModel && userID == 1 && value >= 0 && value <= 250)
+        metricStripModel->setCadence(value);
     // Animate the race player's legs at the rider's real cadence.
     if (raceController && userID == 1 && value >= 0 && value <= 250)
         raceController->setLiveCadenceRpm(value);
@@ -2002,7 +2014,6 @@ void WorkoutDialog::TrainerSpeedDataReceived(int userID, double value) {
     if (value < 0)
         return;
 
-
     // Mark pairing as done
     if (!account->enable_studio_mode && !speedPairingDone) {
         speedPairingDone = true;
@@ -2063,6 +2074,10 @@ void WorkoutDialog::VirtualSpeedDataReceived(int userID, double valueMS, double 
 /// value = KMH,
 void WorkoutDialog::speedDataChosen(int userID, double value) {
 
+#ifndef GC_WASM_BUILD
+    if (metricStripModel && userID == 1)
+        metricStripModel->setSpeed(value);
+#endif
 
     double valueUnit;
     if (account->distance_in_km)
@@ -2129,6 +2144,8 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
     // Drive the player in the retro race with live (solo) power.
     if (raceController && userID == 1)
         raceController->setLivePowerWatts(value);
+    if (metricStripModel && userID == 1 && value >= 0)
+        metricStripModel->setPower(value);
 #endif
 
     // Track for sensor dropout detection (non-studio, user 1 only)
@@ -2342,6 +2359,10 @@ void WorkoutDialog::sendTargetsPower(double percentageTarget, int range) {
         ui->wid_2_workoutPlot_PowerZoom->targetChanged(percentageTarget, range);
         ui->wid_2_infoBoxPower->targetChanged(percentageTarget, range);
         ui->wid_2_minimalistPower->setTarget(percentageTarget, range);
+#ifndef GC_WASM_BUILD
+        if (metricStripModel)
+            metricStripModel->setTargetPower(qRound(percentageTarget * account->FTP), range);
+#endif
     }
 }
 
@@ -2738,6 +2759,32 @@ WebBrowserView *WorkoutDialog::ensureWebPlayer() {
 }
 
 #ifndef GC_WASM_BUILD
+// The QML dashboard is the metric band on desktop (solo mode).  The classic
+// widgets remain compiled for the WASM build, where Qt Quick is unavailable
+// (see game.pri); on desktop they stay hidden.
+void WorkoutDialog::setupMetricStrip() {
+    if (metricStripView || account->enable_studio_mode)
+        return;
+
+    metricStripModel = new MetricStripModel(this);
+    metricStripView  = new QQuickWidget(this);
+    metricStripView->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    metricStripView->rootContext()->setContextProperty(QStringLiteral("metrics"), metricStripModel);
+    metricStripView->setSource(QUrl(QStringLiteral("qrc:/game/qml/MetricDashboard.qml")));
+    metricStripView->setMinimumHeight(120);
+
+    // Hide every classic metric widget variant; keep the NP/IF/TSS panel.
+    const QList<QWidget*> classic = {
+        ui->wid_1_minimalistHr,      ui->wid_1_infoBoxHr,      ui->wid_1_workoutPlot_HeartrateZoom,
+        ui->wid_2_minimalistPower,   ui->wid_2_infoBoxPower,   ui->wid_2_workoutPlot_PowerZoom,
+        ui->wid_3_minimalistCadence, ui->wid_3_infoBoxCadence, ui->wid_3_workoutPlot_CadenceZoom,
+        ui->wid_4_infoBoxSpeed, ui->wid_5_infoWorkout };
+    for (QWidget *w : classic)
+        w->setVisible(false);
+
+    ui->horizontalLayout->insertWidget(0, metricStripView, /*stretch*/ 1);
+}
+
 QQuickWidget *WorkoutDialog::ensureRaceView() {
     if (!raceController) {
         raceController = new RetroRaceController(this);
@@ -2886,6 +2933,11 @@ void WorkoutDialog::showVideoPlayer(int choice) {
 ///3 = Hide
 ////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::showHeartRateDisplayWidget(int display) {
+#ifndef GC_WASM_BUILD
+    if (metricStripView)   // the QML dashboard owns the desktop metric band
+        return;
+#endif
+
 
     if (account->show_hr_widget) {
         if (display == 0) { /// Minimalist
@@ -2912,6 +2964,11 @@ void WorkoutDialog::showHeartRateDisplayWidget(int display) {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::showPowerDisplayWidget(int display) {
+#ifndef GC_WASM_BUILD
+    if (metricStripView)   // the QML dashboard owns the desktop metric band
+        return;
+#endif
+
 
     if (account->show_power_widget) {
         if (display == 0) { /// Minimalist
@@ -2943,6 +3000,11 @@ void WorkoutDialog::showPowerDisplayWidget(int display) {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::showCadenceDisplayWidget(int display) {
+#ifndef GC_WASM_BUILD
+    if (metricStripView)   // the QML dashboard owns the desktop metric band
+        return;
+#endif
+
 
     if (account->show_cadence_widget) {
         if (display == 0) { /// Minimalist
@@ -2969,6 +3031,11 @@ void WorkoutDialog::showCadenceDisplayWidget(int display) {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::showSpeedDisplayWidget() {
+#ifndef GC_WASM_BUILD
+    if (metricStripView)   // the QML dashboard owns the desktop metric band
+        return;
+#endif
+
 
     if (account->show_speed_widget) {
         ui->wid_4_infoBoxSpeed->setVisible(true);
@@ -3002,6 +3069,10 @@ void WorkoutDialog::showTrainerSpeed(bool show) {
 ////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::showCaloriesDisplayWidget() {
 
+#ifndef GC_WASM_BUILD
+    if (metricStripView)   // session card covers kcal on desktop
+        return;
+#endif
     if (account->show_calories_widget) {
         ui->wid_5_infoWorkout->setVisible(true);
     }
@@ -4147,6 +4218,15 @@ void WorkoutDialog::connectDataWorkout() {
     connect(arrDataWorkout[0], SIGNAL(avgPowerWorkoutChanged(double)), ui->wid_2_infoBoxPower, SLOT(avgWorkoutChanged(double)) );
 
     connect(arrDataWorkout[0], SIGNAL(normalizedPowerChanged(double)), ui->wid_5_infoWorkout, SLOT(NP_Changed(double)) );
+#ifndef GC_WASM_BUILD
+    if (metricStripModel) {
+        connect(arrDataWorkout[0], SIGNAL(normalizedPowerChanged(double)), metricStripModel, SLOT(NP_Changed(double)) );
+        connect(arrDataWorkout[0], SIGNAL(intensityFactorChanged(double)), metricStripModel, SLOT(IF_Changed(double)) );
+        connect(arrDataWorkout[0], SIGNAL(tssChanged(double)),             metricStripModel, SLOT(TSS_Changed(double)) );
+        connect(arrDataWorkout[0], SIGNAL(caloriesWorkoutChanged(double)), metricStripModel, SLOT(calories_Changed(double)) );
+        connect(arrDataWorkout[0], SIGNAL(totalDistanceChanged(double)),   metricStripModel, SLOT(distanceChanged(double)) );
+    }
+#endif
     connect(arrDataWorkout[0], SIGNAL(intensityFactorChanged(double)), ui->wid_5_infoWorkout, SLOT(IF_Changed(double)) );
     connect(arrDataWorkout[0], SIGNAL(tssChanged(double)), ui->wid_5_infoWorkout, SLOT(TSS_Changed(double)) );
     connect(arrDataWorkout[0], SIGNAL(caloriesWorkoutChanged(double)), ui->wid_5_infoWorkout, SLOT(calories_Changed(double)) );
