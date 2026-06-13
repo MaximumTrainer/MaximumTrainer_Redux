@@ -55,28 +55,31 @@ Note: the AppImage/release build only bundles the `xcb` platform plugin (no
 
 ---
 
-## Git / PR workflow (IMPORTANT — fork-based)
+## Git / PR workflow (IMPORTANT — direct upstream access)
 
-This repo has **two remotes**:
-- `origin` → `MaximumTrainer/MaximumTrainer_Redux` (upstream; **no push access**)
-- `fork`   → `maximus321/MaximumTrainer_Redux` (push here)
+`maximus321` now has **write access to upstream**, so we branch and PR directly
+on the main repo. **Do not use the fork** — fork PRs don't receive CI secrets
+(`INTERVALS_ICU_*`, Strava), so the live integration tests would `QSKIP` instead
+of actually running.
+
+- `origin` → `MaximumTrainer/MaximumTrainer_Redux` (upstream; **push here**)
+- `fork`   → `maximus321/MaximumTrainer_Redux` (legacy; **don't use for now**)
 
 **Standard flow for any change:**
 ```bash
 git checkout master && git fetch origin master:master   # sync upstream
 git checkout -b my-feature-branch
 # ... work, commit ...
-git push -u fork my-feature-branch
+git push -u origin my-feature-branch          # build.yml runs on push (with secrets)
 gh pr create --repo MaximumTrainer/MaximumTrainer_Redux \
-  --base master --head maximus321:my-feature-branch --title "..." --body-file /tmp/body.md
+  --base master --head my-feature-branch --title "..." --body-file /tmp/body.md
 ```
 
+- Pushing to an upstream branch triggers the full cross-platform `build.yml`
+  immediately (`on: push: branches: ["**"]`); superseded runs auto-cancel.
+- **Prune merged branches** off the shared repo: `git push origin --delete <branch>`.
+
 **Gotchas learned the hard way:**
-- **The fork's `master` drifts.** A `github-actions[bot]` workflow runs on the
-  fork and periodically commits stale "deploy Wasm artifacts for vX.Y.Z" commits
-  straight to `fork/master`. Before syncing, expect to discard these (force-push
-  upstream's master over them: `git push fork master:master --force-with-lease=...`).
-  Consider disabling `build.yml`/`release.yml`/`pages.yml` on the fork to stop it.
 - **`gh pr edit` / `gh pr create` may print a GraphQL error** about "Projects
   (classic) deprecation" and silently fail the edit. Workaround: use the REST
   API — `gh api -X PATCH repos/OWNER/REPO/pulls/N --input payload.json` (build

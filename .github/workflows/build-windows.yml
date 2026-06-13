@@ -587,8 +587,25 @@ jobs:
       shell: powershell
 
     - name: Run Intervals.icu integration tests
-      run: .\build\tests\intervals_icu_integration_tests.exe -v2
       shell: powershell
+      run: |
+        # Live test against intervals.icu: retry transient network/API blips
+        # before failing the job. QtTest's stdout is swallowed on the Windows
+        # runner, so -o writes results to a file we echo into the log — failures
+        # stay diagnosable instead of surfacing as a bare "exit code 1".
+        $attempts = 3
+        for ($i = 1; $i -le $attempts; $i++) {
+          Write-Host "::group::Intervals.icu integration tests (attempt $i/$attempts)"
+          & .\build\tests\intervals_icu_integration_tests.exe -v2 -o "results.txt,txt"
+          $code = $LASTEXITCODE
+          if (Test-Path results.txt) { Get-Content results.txt }
+          Write-Host "::endgroup::"
+          if ($code -eq 0) { Write-Host "Passed on attempt $i."; exit 0 }
+          Write-Host "Attempt $i failed with exit code $code."
+          if ($i -lt $attempts) { Start-Sleep -Seconds ($i * 15) }
+        }
+        Write-Host "::error::Intervals.icu integration tests failed after $attempts attempts (likely a transient intervals.icu/network issue if no assertion appears above)."
+        exit 1
 
   # ──────────────────────────────────────────────────────────────────────────
   # Online Mode Authentication Test – Windows
