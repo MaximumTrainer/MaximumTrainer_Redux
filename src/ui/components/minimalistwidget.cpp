@@ -17,6 +17,9 @@ MinimalistWidget::MinimalistWidget(QWidget *parent) : QWidget(parent), ui(new Ui
 {
     ui->setupUi(this);
 
+    // Hero value, consistent with the InfoWidget type scale.
+    setStyleSheet(QStringLiteral("QLabel#label_value { font: 600 24pt 'Inter'; }"));
+
     target = -1;
     setStopped(true);
 
@@ -78,9 +81,13 @@ void MinimalistWidget::setTarget(double percentageTarget, int range) {
 
 
 
+    // Out-of-zone groove ends use a dark neutral (the shared Util::DONE light
+    // colour glares on the dark workout background); the groove and the
+    // current-value handle get a rounded, slimmer profile.
+    const QString grooveEnds = QStringLiteral("#3a3a3a");
     ui->horizontalSlider->setStyleSheet("QSlider::groove:horizontal { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
                                         ///  0 to zMin
-                                        "stop:0.0 " + Util::getColor(Util::DONE).name() + ", stop:"+ QString::number(zMin_01 - 0.01) + " " +  Util::getColor(Util::DONE).name() +
+                                        "stop:0.0 " + grooveEnds + ", stop:"+ QString::number(zMin_01 - 0.01) + " " +  grooveEnds +
                                         /// zoneBeforeTarget
                                         ", stop:" + QString::number(zMin_01) + " " +  colorSquare.name() + ", stop:" + QString::number(zTarget_01 - 0.01) + " " + colorSquare.name() +
                                         /// Target line
@@ -88,7 +95,10 @@ void MinimalistWidget::setTarget(double percentageTarget, int range) {
                                         /// zoneAfterTarget
                                         ", stop:" + QString::number(zTarget_01 + 0.01) + " " +  colorSquare.name() + ", stop:" + QString::number(zMax_01) + " " + colorSquare.name() +
                                         /// zMax to 1.0
-                                        ", stop:" + QString::number(zMax_01 + 0.01) + " " + Util::getColor(Util::DONE).name() + ", stop:1.0 " +   Util::getColor(Util::DONE).name()  + "); }");
+                                        ", stop:" + QString::number(zMax_01 + 0.01) + " " + grooveEnds + ", stop:1.0 " + grooveEnds + ");"
+                                        " height: 10px; border-radius: 5px; border: 1px solid #2c2c2c; }"
+                                        " QSlider::handle:horizontal { background: #ffd54f; width: 6px;"
+                                        " border-radius: 3px; margin: -3px 0; }");
 
 }
 
