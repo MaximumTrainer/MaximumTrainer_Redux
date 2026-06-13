@@ -4,6 +4,10 @@ on:
   push:
     branches: ["**"]
     tags-ignore: ["**"]  # tag pushes are handled by release.yml, not build.yml
+    # docs/** is the GitHub Pages site, deployed by pages.yml. Skipping it here
+    # mainly stops the publish job's own "deploy Wasm artifacts" commit from
+    # triggering another full build (and minting another release) every time.
+    paths-ignore: ['docs/**']
   # Build every PR targeting master so cross-platform breakage (Windows/macOS/
   # WASM) is caught before merge — including PRs from forks, whose branches do
   # not trigger the push event on this repo. compute_version is master-only and
@@ -14,10 +18,13 @@ on:
 # Auto-cancel superseded runs: a new push to the same branch/PR cancels the
 # older in-flight run, so rapid iteration only pays for the latest commit's
 # full cross-platform matrix (Linux/Windows/macOS/WASM) instead of all of them.
-# head_ref (PR source branch) collapses the push + pull_request events for fork
-# PRs into one lane; master is never cancelled so every release build completes.
+# ref_name (not ref) so the push event ("my-branch") and the pull_request
+# event (head_ref "my-branch") land in the SAME group — an upstream branch
+# with an open PR previously ran the whole pipeline twice per push because
+# "refs/heads/my-branch" != "my-branch". Master is never cancelled so every
+# release build completes.
 concurrency:
-  group: build-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  group: build-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
@@ -267,7 +274,6 @@ jobs:
   test_playwright:
     needs: [build_wasm]
     runs-on: ubuntu-latest
-    continue-on-error: true
     permissions:
       contents: read
     env:
@@ -443,6 +449,13 @@ jobs:
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git add docs/app/
         git diff --cached --quiet || git commit -m "chore: deploy Wasm build artifacts for ${{ needs.compute_version.outputs.new_tag }}"
+        # master moves while this run is in flight (any merge during the ~40 min
+        # pipeline); a plain push then fails non-fast-forward. Rebase and retry.
+        for attempt in 1 2 3; do
+          git push origin HEAD:refs/heads/master && exit 0
+          echo "Push rejected (attempt $attempt) — rebasing onto current master"
+          git pull --rebase origin master
+        done
         git push origin HEAD:refs/heads/master
 
     - name: Create GitHub Release
