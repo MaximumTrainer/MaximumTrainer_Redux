@@ -7,6 +7,15 @@ infosWorkout::infosWorkout(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    // Same typography scale as InfoWidget: values readable at a glance,
+    // captions small and muted.
+    setStyleSheet(QStringLiteral(R"(
+        QLabel#label_np, QLabel#label_if, QLabel#label_tss,
+        QLabel#label_kcal, QLabel#label_distance { font: 600 13pt 'Inter'; }
+        QLabel#label_4, QLabel#label_44, QLabel#label_2,
+        QLabel#label_distanceText { font: 600 8pt 'Inter'; color: #8d8d8d; }
+    )"));
+
     inMile = false; //km by default
     isStopped = true;
 

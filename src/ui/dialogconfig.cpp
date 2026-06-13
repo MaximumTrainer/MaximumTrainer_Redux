@@ -483,9 +483,11 @@ void DialogConfig::initUi() {
 
 
     /// Display
-    ui->comboBox_displayHR->setCurrentIndex(account->display_hr);
-    ui->comboBox_displayPower->setCurrentIndex(account->display_power);
-    ui->comboBox_displayCadence->setCurrentIndex(account->display_cadence);
+    // Display value 1=Detailed, 2=Graph, 3=Graph&Detailed (Minimalist/0 removed),
+    // so the combo index is value-1.
+    ui->comboBox_displayHR->setCurrentIndex(account->display_hr - 1);
+    ui->comboBox_displayPower->setCurrentIndex(account->display_power - 1);
+    ui->comboBox_displayCadence->setCurrentIndex(account->display_cadence - 1);
     ui->comboBox_displayPowerBalance->setCurrentIndex(account->display_power_balance);
     ui->comboBox_powerAverage->setCurrentIndex(account->averaging_power);
     ui->spinBox_offsetPower->setValue(account->offset_power);
@@ -630,7 +632,7 @@ void DialogConfig::on_checkBox_enableHR_clicked(bool checked) {
     ui->comboBox_displayHR->setEnabled(checked);
 
     if (checked) {
-        parentDialog->showHeartRateDisplayWidget(ui->comboBox_displayHR->currentIndex());
+        parentDialog->showHeartRateDisplayWidget(ui->comboBox_displayHR->currentIndex() + 1);
     }
     else {
         parentDialog->showHeartRateDisplayWidget(-1);
@@ -641,7 +643,7 @@ void DialogConfig::on_checkBox_enableHR_clicked(bool checked) {
 void DialogConfig::on_comboBox_displayHR_currentIndexChanged(int index) {
 
     if (ui->checkBox_enableHR->isChecked())
-        parentDialog->showHeartRateDisplayWidget(index);
+        parentDialog->showHeartRateDisplayWidget(index + 1);
 }
 //----------------
 void DialogConfig::on_comboBox_virtualSpeed_currentIndexChanged(int index)
@@ -681,7 +683,7 @@ void DialogConfig::on_checkBox_enablePower_clicked(bool checked) {
     ui->comboBox_powerAverage->setEnabled(checked);
 
     if (checked) {
-        parentDialog->showPowerDisplayWidget(ui->comboBox_displayPower->currentIndex());
+        parentDialog->showPowerDisplayWidget(ui->comboBox_displayPower->currentIndex() + 1);
     }
     else {
         parentDialog->showPowerDisplayWidget(-1);
@@ -692,7 +694,7 @@ void DialogConfig::on_checkBox_enablePower_clicked(bool checked) {
 void DialogConfig::on_comboBox_displayPower_currentIndexChanged(int index) {
 
     if (ui->checkBox_enablePower->isChecked())
-        parentDialog->showPowerDisplayWidget(index);
+        parentDialog->showPowerDisplayWidget(index + 1);
 }
 
 //------------------------------------------------------------------------------------
@@ -722,7 +724,7 @@ void DialogConfig::on_checkBox_enableCadence_clicked(bool checked) {
     ui->comboBox_displayCadence->setEnabled(checked);
 
     if (checked) {
-        parentDialog->showCadenceDisplayWidget(ui->comboBox_displayCadence->currentIndex());
+        parentDialog->showCadenceDisplayWidget(ui->comboBox_displayCadence->currentIndex() + 1);
     }
     else {
         parentDialog->showCadenceDisplayWidget(-1);
@@ -732,7 +734,7 @@ void DialogConfig::on_checkBox_enableCadence_clicked(bool checked) {
 void DialogConfig::on_comboBox_displayCadence_currentIndexChanged(int index) {
 
     if (ui->checkBox_enableCadence->isChecked())
-        parentDialog->showCadenceDisplayWidget(index);
+        parentDialog->showCadenceDisplayWidget(index + 1);
 }
 
 //------------------------------------------------------------------------------------
@@ -882,9 +884,9 @@ void DialogConfig::saveSettings() {
 
 
     /// Display widgets
-    account->display_hr = ui->comboBox_displayHR->currentIndex();
-    account->display_power = ui->comboBox_displayPower->currentIndex();
-    account->display_cadence = ui->comboBox_displayCadence->currentIndex();
+    account->display_hr = ui->comboBox_displayHR->currentIndex() + 1;
+    account->display_power = ui->comboBox_displayPower->currentIndex() + 1;
+    account->display_cadence = ui->comboBox_displayCadence->currentIndex() + 1;
     account->display_power_balance = ui->comboBox_displayPowerBalance->currentIndex();
     account->averaging_power = ui->comboBox_powerAverage->currentIndex();
     account->offset_power = ui->spinBox_offsetPower->value();
@@ -1110,6 +1112,7 @@ void DialogConfig::buildIntervalSummaryGroup()
     // bottom (appending would place it after the spacer, pushing it down).
     ui->verticalLayout_2->insertWidget(ui->verticalLayout_2->count() - 1, grpSummary);
 }
+
 
 void DialogConfig::initIntervalSummary()
 {

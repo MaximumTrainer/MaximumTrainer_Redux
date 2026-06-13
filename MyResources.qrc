@@ -133,6 +133,11 @@
     <qresource prefix="/data">
         <file>resources/data/default_radios.json</file>
     </qresource>
+    <qresource prefix="/fonts">
+        <file>resources/fonts/Inter-Regular.ttf</file>
+        <file>resources/fonts/Inter-SemiBold.ttf</file>
+        <file>resources/fonts/Inter-Bold.ttf</file>
+    </qresource>
     <qresource prefix="/included_workout/rachel">
         <file>resources/included_workout/Rachel/Intervals-01.workout</file>
         <file>resources/included_workout/Rachel/Intervals-02.workout</file>

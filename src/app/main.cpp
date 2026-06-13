@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QTimer>
+#include <QFontDatabase>
 #ifdef Q_OS_WIN
 #include <QOperatingSystemVersion>
 #endif
@@ -98,6 +99,22 @@ int main(int argc, char *argv[]) {
     QApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
 
     QApplication app(argc, argv);
+
+    // Bundled UI font: one family with a deliberate weight scale on every
+    // platform, instead of whatever each OS defaults to. Inter (SIL OFL,
+    // resources/fonts/INTER-LICENSE.txt) — chosen for its legible numerals
+    // on the live workout displays.
+    for (const char *fontFile : { ":/fonts/resources/fonts/Inter-Regular.ttf",
+                                  ":/fonts/resources/fonts/Inter-SemiBold.ttf",
+                                  ":/fonts/resources/fonts/Inter-Bold.ttf" }) {
+        if (QFontDatabase::addApplicationFont(QLatin1String(fontFile)) == -1)
+            qWarning() << "Could not load bundled font" << fontFile;
+    }
+    {
+        QFont uiFont(QStringLiteral("Inter"));
+        uiFont.setPointSize(10);
+        app.setFont(uiFont);
+    }
 
     // Do NOT auto-quit when the last window closes. On Qt6, QtWebEngine spins up
     // transient helper windows (e.g. when the embedded web video player is

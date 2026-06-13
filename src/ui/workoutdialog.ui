@@ -355,28 +355,6 @@ QwtScaleWidget {
            </widget>
           </item>
           <item>
-           <widget class="MinimalistWidget" name="wid_1_minimalistHr" native="true">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>150</width>
-              <height>150</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>300</width>
-              <height>600</height>
-             </size>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="InfoWidget" name="wid_2_infoBoxPower" native="true">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -432,28 +410,6 @@ QwtScaleWidget {
             </property>
             <property name="autoReplot" stdset="0">
              <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="MinimalistWidget" name="wid_2_minimalistPower" native="true">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>150</width>
-              <height>150</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>300</width>
-              <height>600</height>
-             </size>
             </property>
            </widget>
           </item>
@@ -533,28 +489,6 @@ QwtScaleWidget {
             <property name="maximumSize">
              <size>
               <width>165</width>
-              <height>600</height>
-             </size>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="MinimalistWidget" name="wid_3_minimalistCadence" native="true">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>150</width>
-              <height>150</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>300</width>
               <height>600</height>
              </size>
             </property>
@@ -665,12 +599,6 @@ QwtScaleWidget {
    <class>BalanceWidget</class>
    <extends>QWidget</extends>
    <header>balancewidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>MinimalistWidget</class>
-   <extends>QWidget</extends>
-   <header>minimalistwidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

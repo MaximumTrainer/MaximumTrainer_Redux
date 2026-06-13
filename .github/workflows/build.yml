@@ -273,6 +273,12 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   test_playwright:
     needs: [build_wasm]
+    # build_wasm runs via `if: always()` because its dependency compute_version
+    # is skipped on non-master branches; that skipped state otherwise propagates
+    # through the implicit success() check and skips this job even when build_wasm
+    # succeeded. `!cancelled()` runs the suite regardless of the wasm build's
+    # outcome (the download step below falls back to the committed binary).
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -312,7 +318,7 @@ jobs:
 
     - name: Install Playwright and browsers
       run: |
-        npm install --no-save @playwright/test
+        npm install --no-save @playwright/test pngjs
         npx playwright install chromium --with-deps
 
     - name: Start local HTTP server
