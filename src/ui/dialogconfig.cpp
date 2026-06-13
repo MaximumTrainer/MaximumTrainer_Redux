@@ -486,13 +486,10 @@ void DialogConfig::initUi() {
     ui->comboBox_displayHR->setCurrentIndex(account->display_hr);
     ui->comboBox_displayPower->setCurrentIndex(account->display_power);
     ui->comboBox_displayCadence->setCurrentIndex(account->display_cadence);
-#ifndef GC_WASM_BUILD
-    // Desktop renders the QML metric dashboard — the classic per-metric
-    // display modes only exist on WASM (no Qt Quick there).
+    // The QML metric dashboard replaced the classic per-metric display modes.
     ui->comboBox_displayHR->setVisible(false);
     ui->comboBox_displayPower->setVisible(false);
     ui->comboBox_displayCadence->setVisible(false);
-#endif
     ui->comboBox_displayPowerBalance->setCurrentIndex(account->display_power_balance);
     ui->comboBox_powerAverage->setCurrentIndex(account->averaging_power);
     ui->spinBox_offsetPower->setValue(account->offset_power);

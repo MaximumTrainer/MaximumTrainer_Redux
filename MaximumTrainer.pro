@@ -98,6 +98,10 @@ qtHaveModule(bluetooth):        QT += bluetooth
 qtHaveModule(webenginewidgets): QT += webenginewidgets
 qtHaveModule(webenginecore):    QT += webenginecore
 
+# QML metric dashboard (WorkoutDialog) — required on every platform, including
+# the WASM target (qtdeclarative ships in the Qt-for-WebAssembly base package).
+QT += quick quickwidgets
+
 # QtMultimedia provides the native video + radio-stream player (QMediaPlayer /
 # QVideoWidget / QAudioOutput). Guarded so the WASM target (no multimedia) and
 # any Qt without the module are unaffected. The GC_HAVE_QTMULTIMEDIA define is
@@ -313,11 +317,11 @@ include(src/fitness/fitness.pri)
 include(src/ui/ui.pri)
 include(src/workout/workout.pri)
 
-# Retro ghost-race spike: Qt Quick based, desktop only (no Quick on the WASM
-# singlethread target; the feature is an offline ride view anyway).
+# Retro ghost-race spike: desktop only for now (offline ride view).
 !contains(QMAKE_PLATFORM, wasm):!wasm_emscripten:!wasm_emscripten_singlethread {
     include(src/game/game.pri)
 }
 
 
-RESOURCES += MyResources.qrc
+RESOURCES += MyResources.qrc \
+             src/ui/ui_qml.qrc
