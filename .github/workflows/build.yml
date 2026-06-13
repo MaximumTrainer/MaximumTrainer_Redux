@@ -149,16 +149,18 @@ jobs:
     - name: Set up Emscripten
       uses: mymindstorm/setup-emsdk@v14
       with:
-        # Qt 6.6.3 was built with Emscripten 3.1.37. The emval ABI changed at
-        # 3.1.44 (_emval_new etc. moved from compiled WASM to JS-only), which
-        # breaks linking against Qt 6.6.3's libqwasm.a. Use 3.1.43 — the last
-        # version with the original emval WASM ABI. 3.1.37 was removed from GCS.
-        version: '3.1.43'
+        # Each Qt-for-WebAssembly release is ABI-locked to the Emscripten
+        # version it was built against. Qt 6.7.3's prebuilt wasm libs are built
+        # with Emscripten 3.1.50 — using any other version breaks linking
+        # against libqwasm.a.
+        version: '3.1.50'
 
+    # install-qt-action@v4 ships a newer aqtinstall that can resolve the Qt
+    # 6.7.3 wasm packages (v3's pinned aqt 3.1.21 failed to fetch them).
     - name: Install Qt (Wasm singlethread)
-      uses: jurplel/install-qt-action@v3
+      uses: jurplel/install-qt-action@v4
       with:
-        version: '6.6.3'
+        version: '6.7.3'
         host: 'linux'
         target: 'desktop'
         arch: 'wasm_singlethread'
@@ -167,9 +169,9 @@ jobs:
         cache-key-prefix: qt-wasm
 
     - name: Install Qt (linux host tools)
-      uses: jurplel/install-qt-action@v3
+      uses: jurplel/install-qt-action@v4
       with:
-        version: '6.6.3'
+        version: '6.7.3'
         host: 'linux'
         target: 'desktop'
         arch: 'gcc_64'
@@ -182,7 +184,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/qwt-wasm
-        key: qwt-6.3.0-qt-6.6.3-wasm-em3.1.43
+        key: qwt-6.3.0-qt-6.7.3-wasm-em3.1.50
 
     - name: Build QWT (Wasm)
       if: steps.qwt-wasm-cache.outputs.cache-hit != 'true'
