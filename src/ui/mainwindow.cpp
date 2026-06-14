@@ -1351,6 +1351,8 @@ void MainWindow::executeWorkout(Workout workout) {
             connect(simHub, SIGNAL(signal_cadence(int,int)),          w, SLOT(CadenceDataReceived(int,int)));
             connect(simHub, SIGNAL(signal_speed(int,double)),         w, SLOT(TrainerSpeedDataReceived(int,double)));
             connect(simHub, SIGNAL(signal_power(int,int)),            w, SLOT(PowerDataReceived(int,int)));
+            connect(simHub, SIGNAL(signal_balance(int,int)),          w, SLOT(PowerBalanceDataReceived(int,int)));
+            connect(simHub, SIGNAL(signal_pedal(int,double,double,double,double,double)), w, SLOT(pedalMetricReceived(int,double,double,double,double,double)));
             connect(simHub, SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
 
             connect(w, SIGNAL(setLoad(int,double)),  simHub, SLOT(setLoad(int,double)));
@@ -1502,6 +1504,8 @@ void MainWindow::executeWorkout(Workout workout) {
     connect(btleHub, SIGNAL(signal_cadence(int,int)),          w, SLOT(CadenceDataReceived(int,int)));
     connect(btleHub, SIGNAL(signal_speed(int,double)),         w, SLOT(TrainerSpeedDataReceived(int,double)));
     connect(btleHub, SIGNAL(signal_power(int,int)),            w, SLOT(PowerDataReceived(int,int)));
+    connect(btleHub, SIGNAL(signal_balance(int,int)),          w, SLOT(PowerBalanceDataReceived(int,int)));
+    connect(btleHub, SIGNAL(signal_pedal(int,double,double,double,double,double)), w, SLOT(pedalMetricReceived(int,double,double,double,double,double)));
     connect(btleHub, SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
     connect(btleHub, &BtleHub::signal_battery, w, &WorkoutDialog::batteryStatusReceived);
 
@@ -1605,6 +1609,8 @@ void MainWindow::wireHubsToDialog(WorkoutDialog *w,
         if (powerHub == hub) return;          // already wired from this device
         powerHub = hub;
         connect(hub, SIGNAL(signal_power(int,int)), w, SLOT(PowerDataReceived(int,int)));
+        connect(hub, SIGNAL(signal_balance(int,int)), w, SLOT(PowerBalanceDataReceived(int,int)));
+        connect(hub, SIGNAL(signal_pedal(int,double,double,double,double,double)), w, SLOT(pedalMetricReceived(int,double,double,double,double,double)));
     };
     auto wireCadence = [&](BtleHub *hub) {
         if (cadenceHub == hub) return;
@@ -1928,6 +1934,10 @@ void MainWindow::launchDemoWorkout()
             m_ssWorkoutDlg, SLOT(TrainerSpeedDataReceived(int,double)));
     connect(m_ssSimHub, SIGNAL(signal_power(int,int)),
             m_ssWorkoutDlg, SLOT(PowerDataReceived(int,int)));
+    connect(m_ssSimHub, SIGNAL(signal_balance(int,int)),
+            m_ssWorkoutDlg, SLOT(PowerBalanceDataReceived(int,int)));
+    connect(m_ssSimHub, SIGNAL(signal_pedal(int,double,double,double,double,double)),
+            m_ssWorkoutDlg, SLOT(pedalMetricReceived(int,double,double,double,double,double)));
     connect(m_ssSimHub, SIGNAL(signal_oxygen(int,double,double)),
             m_ssWorkoutDlg, SLOT(OxygenValueChanged(int,double,double)));
 
@@ -2029,12 +2039,13 @@ void MainWindow::sensorCheckNextStep()
         grab(QStringLiteral("oxygen"));
         m_scReport << QStringLiteral("OXYGEN   : injected 62%/12.5  -> sensor_oxygen.png");
         break;
-    case 5:   // L/R balance + pedal metrics (KNOWN unwired from any sensor)
+    case 5:   // L/R balance + pedal metrics (now decoded + wired)
         m_ssWorkoutDlg->PowerBalanceDataReceived(1, 53);
         m_ssWorkoutDlg->pedalMetricReceived(1, 95.0, 92.0, 0.62, 0.55, 0.58);
         grab(QStringLiteral("balance_pedal"));
-        m_scReport << QStringLiteral("BALANCE  : called slots directly (no decoder/hub signal feeds these "
-                                     "in the real app) -> sensor_balance_pedal.png");
+        m_scReport << QStringLiteral("BALANCE  : Right 53%% + torque/smoothness -> sensor_balance_pedal.png "
+                                     "(balance now decoded from CPM 0x2A63 + wired; pedal metrics driven "
+                                     "by the simulator, real-sensor decode pending CP Vector 0x2A64)");
         break;
     case 6:   // ERG / trainer-control output captured since start
         grab(QStringLiteral("erg"));
@@ -2280,6 +2291,8 @@ void MainWindow::screenshotNextStep()
             connect(simHub, SIGNAL(signal_cadence(int,int)), m_ssWorkoutDlg, SLOT(CadenceDataReceived(int,int)));
             connect(simHub, SIGNAL(signal_speed(int,double)),m_ssWorkoutDlg, SLOT(TrainerSpeedDataReceived(int,double)));
             connect(simHub, SIGNAL(signal_power(int,int)),   m_ssWorkoutDlg, SLOT(PowerDataReceived(int,int)));
+            connect(simHub, SIGNAL(signal_balance(int,int)), m_ssWorkoutDlg, SLOT(PowerBalanceDataReceived(int,int)));
+            connect(simHub, SIGNAL(signal_pedal(int,double,double,double,double,double)), m_ssWorkoutDlg, SLOT(pedalMetricReceived(int,double,double,double,double,double)));
             simHub->start();
             m_ssStudioHubs.append(simHub);
         }

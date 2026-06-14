@@ -41,6 +41,9 @@ signals:
     void signal_cadence(int userID, int cadence);
     void signal_speed(int userID, double speed);   // km/h
     void signal_power(int userID, int power);      // watts
+    void signal_balance(int userID, int rightPedalPercentage); // L/R pedal balance, right pedal %
+    void signal_pedal(int userID, double leftTorqueEff, double rightTorqueEff,
+                      double leftPedalSmooth, double rightPedalSmooth, double combinedPedalSmooth);
     void signal_oxygen(int userID, double smo2Percent, double thbGdL);
 
 public slots:
@@ -62,6 +65,11 @@ private:
     double m_power   = 200.0;
     double m_smo2    =  65.0;   // SmO2 % – typical mid-exercise value
     double m_thb     =  13.0;   // tHb g/dL – typical value
+    double m_balance =  48.0;   // right pedal % (left slightly stronger, typical)
+    double m_torqueEffL = 82.0; // torque effectiveness % (left)
+    double m_torqueEffR = 79.0; // torque effectiveness % (right)
+    double m_smoothL    = 24.0; // pedal smoothness % (left)
+    double m_smoothR    = 23.0; // pedal smoothness % (right)
 
     // Drift direction per channel (+1 / -1)
     int m_hrDir      = 1;
@@ -70,6 +78,11 @@ private:
     int m_powerDir   = 1;
     int m_smo2Dir    = 1;
     int m_thbDir     = 1;
+    int m_balanceDir = 1;
+    int m_torqueEffLDir = 1;
+    int m_torqueEffRDir = 1;
+    int m_smoothLDir    = 1;
+    int m_smoothRDir    = 1;
 
     int m_userID     = 1;    ///< userID used in all emitted signals (1-based; matches WorkoutDialog's 1-based arrays)
 };

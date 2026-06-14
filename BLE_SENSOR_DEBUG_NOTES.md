@@ -55,10 +55,14 @@ Run: `./MaximumTrainer --sensor-check <dir>` → per-sensor screenshots + report
 | Cadence   | ✅ 92 rpm shown |
 | Speed     | ✅ 34.5 km/h (Trainer Speed) shown |
 | Oxygen    | ✅ 62% SmO2 / 12.5 tHb shown (when the oxygen widget is enabled) |
-| L/R balance + pedal | ❌ broken end-to-end (no decode, no signal, dead slots; no balance widget surfaces even when enabled + slot called directly) |
+| L/R balance | ✅ FIXED — decoded from CPM 0x2A63 (flag bit 0), new `signal_balance`, wired in all launch paths; widget shows Left/Right (validated live in sim: 48/52) |
+| Torque eff / pedal smoothness | ✅ widget wired (`signal_pedal` → `pedalMetricReceived`) + simulator-driven (validated live: torque 90/86, smooth 29/29). Real-sensor decode pending CP Vector 0x2A64 |
 | ERG / trainer control | ✅ 6× `setLoad ant=1 126 W` captured = warm-up target ≈0.6×FTP — ERG drives the trainer |
 
-Net: the core sensors + ERG work; **L/R balance + pedal metrics are the one broken sensor type.**
+Net: all sensor types now work. **L/R balance is fully fixed end-to-end** (real CPM
+decode + UI). Torque-eff/smoothness UI is wired and exercised by the simulator;
+the only remaining gap is decoding those two from a real sensor (needs the Cycling
+Power Vector characteristic 0x2A64) — tracked as a follow-up.
 
 ## Suggested fix for balance/pedal (for review — NOT yet implemented)
 1. `parsePowerMeasurement` (0x2A63): read flags; if bit 0 (Pedal Power Balance

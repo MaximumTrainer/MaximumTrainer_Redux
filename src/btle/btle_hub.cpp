@@ -692,15 +692,29 @@ void BtleHub::parseCscMeasurement(const QByteArray &data)
 // Cycling Power Measurement (0x2A63)
 // Bytes 0-1: flags (16-bit)
 // Bytes 2-3: Instantaneous Power (int16, watts)
+// Byte 4   : Pedal Power Balance (uint8, 1/2 %) — present when flag bit 0 is set
 void BtleHub::parsePowerMeasurement(const QByteArray &data)
 {
     if (data.size() < 4)
         return;
 
+    quint16 flags = static_cast<quint8>(data[0])
+                  | (static_cast<quint8>(data[1]) << 8);
+
     qint16 power = static_cast<qint16>(
         static_cast<quint8>(data[2]) | (static_cast<quint8>(data[3]) << 8));
 
     emit signal_power(m_userID, static_cast<int>(power));
+
+    // Flag bit 0: Pedal Power Balance present. Value is uint8 at byte 4 with
+    // 1/2 % resolution. Bit 1 is the reference (1 = Left); meters that set it
+    // report the left contribution, so the right pedal share is 100 - value.
+    // We treat the unknown-reference case as left too (the common convention).
+    if ((flags & 0x0001) && data.size() >= 5) {
+        int leftPercentage  = qRound(static_cast<quint8>(data[4]) * 0.5);
+        int rightPercentage = 100 - leftPercentage;
+        emit signal_balance(m_userID, rightPercentage);
+    }
 }
 
 // FTMS Indoor Bike Data (0x2AD2)
