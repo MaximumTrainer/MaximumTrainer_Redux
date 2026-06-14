@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QTimer>
+#include <functional>
 #include <QFontDatabase>
 #ifdef Q_OS_WIN
 #include <QOperatingSystemVersion>
@@ -345,12 +346,24 @@ int main(int argc, char *argv[]) {
     // bypassed in screenshot mode). Heap-allocated so it outlives this scope;
     // the app quits explicitly from MainWindow::closeEvent (we disabled
     // quitOnLastWindowClosed above).
-    auto launchMainWindow = [&]() -> MainWindow * {
+    // Mutually-recursive: launching the main window wires Log Out back to
+    // showLogin(), and a successful login launches the main window. Declared as
+    // std::function so each can call the other (both live for the whole run).
+    std::function<MainWindow *()> launchMainWindow;
+    std::function<void()> showLogin;
+
+    launchMainWindow = [&]() -> MainWindow * {
         // Re-apply theme based on user preference now that the Account is loaded.
         if (auto *account = qApp->property("Account").value<Account*>())
             AppTheme::apply(qApp, static_cast<AppTheme::Mode>(account->app_theme));
 
         auto *mainWin = new MainWindow();
+        // Log Out tears this window down and returns to the login screen
+        // in-process (no app relaunch).
+        QObject::connect(mainWin, &MainWindow::logoutRequested, mainWin, [&showLogin, mainWin]() {
+            mainWin->deleteLater();
+            showLogin();
+        });
 #ifndef Q_OS_WASM
         splash.setProgress(100);
         splash.finish(mainWin);
@@ -433,31 +446,34 @@ int main(int argc, char *argv[]) {
     // clicks "Sign in with Intervals.icu". Running on the main app.exec() loop
     // (as the WASM path always has) removes that nested loop and the hazard.
     // MainWindow is created only once the user has successfully logged in.
-    auto *loginDlg = new DialogLogin(nullptr);
-    QObject::connect(loginDlg, &QDialog::accepted, loginDlg, [loginDlg, launchMainWindow]() {
-        // getGotUpdate(): the dialog redirected the user to a new-version
-        // download and rejected itself, so accepted() never fires in that case.
-        launchMainWindow();
-        loginDlg->deleteLater();
-    });
-    QObject::connect(loginDlg, &QDialog::rejected, loginDlg, [loginDlg]() {
-        // Login refused, or redirected to a version download (getGotUpdate()).
-        loginDlg->deleteLater();
-        qApp->quit();
-    });
-    loginDlg->show();
-    // The login dialog is the first window the user sees; some Linux window
-    // managers stack a freshly-shown, terminal-launched window behind others.
-    // Force it to the front and focused, re-issuing once the event loop has
-    // processed the map (raise()/activateWindow() right after show() can be a
-    // no-op before the window is mapped). Clear any stale minimized state too.
-    loginDlg->setWindowState((loginDlg->windowState() & ~Qt::WindowMinimized) | Qt::WindowActive);
-    loginDlg->raise();
-    loginDlg->activateWindow();
-    QTimer::singleShot(0, loginDlg, [loginDlg]() {
+    showLogin = [&]() {
+        auto *loginDlg = new DialogLogin(nullptr);
+        QObject::connect(loginDlg, &QDialog::accepted, loginDlg, [&launchMainWindow, loginDlg]() {
+            // getGotUpdate(): the dialog redirected the user to a new-version
+            // download and rejected itself, so accepted() never fires in that case.
+            launchMainWindow();
+            loginDlg->deleteLater();
+        });
+        QObject::connect(loginDlg, &QDialog::rejected, loginDlg, [loginDlg]() {
+            // Login refused, or redirected to a version download (getGotUpdate()).
+            loginDlg->deleteLater();
+            qApp->quit();
+        });
+        loginDlg->show();
+        // The login dialog is the first window the user sees; some Linux window
+        // managers stack a freshly-shown, terminal-launched window behind others.
+        // Force it to the front and focused, re-issuing once the event loop has
+        // processed the map (raise()/activateWindow() right after show() can be a
+        // no-op before the window is mapped). Clear any stale minimized state too.
+        loginDlg->setWindowState((loginDlg->windowState() & ~Qt::WindowMinimized) | Qt::WindowActive);
         loginDlg->raise();
         loginDlg->activateWindow();
-    });
+        QTimer::singleShot(0, loginDlg, [loginDlg]() {
+            loginDlg->raise();
+            loginDlg->activateWindow();
+        });
+    };
+    showLogin();
 
     return app.exec();
 }
