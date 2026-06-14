@@ -22,8 +22,9 @@ jobs:
       - name: Deploy worker
         id: deploy
         working-directory: workers/strava-token-proxy
-        # --config pinned: wrangler v4 can otherwise resolve the repo-root
-        # wrangler.jsonc (the docs static site) and deploy THAT over the worker.
+        # --config pinned defensively: the repo-root wrangler config that
+        # wrangler v4 could otherwise resolve and deploy over this worker was
+        # removed to stop the clobber (#279/#284). Pin kept as belt-and-braces.
         run: |
           DEPLOY_OUTPUT=$(npx wrangler deploy --config wrangler.toml 2>&1)
           echo "$DEPLOY_OUTPUT"
