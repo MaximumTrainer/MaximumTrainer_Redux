@@ -779,6 +779,21 @@ void BtleHub::parseFtmsIndoorBikeData(const QByteArray &data)
         qint16 power = static_cast<qint16>(readU16());
         emit signal_power(m_userID, static_cast<int>(power));
     }
+
+    // Bit 7: Average Power present
+    if (flags & 0x0080) offset += 2;
+
+    // Bit 8: Expended Energy present (Total uint16 + PerHour uint16 + PerMinute uint8)
+    if (flags & 0x0100) offset += 5;
+
+    // Bit 9: Heart Rate present (uint8 bpm). Trainers that bridge an ANT+/BLE HR
+    // strap fold the reading in here rather than exposing a separate 0x180D
+    // service, so this is the only place we'd ever see it for those devices.
+    if (flags & 0x0200) {
+        if (offset < data.size())
+            emit signal_hr(m_userID, static_cast<quint8>(data[offset]));
+        offset += 1;
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

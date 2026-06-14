@@ -91,6 +91,10 @@ private slots:
     // ── FTMS multi-field layout (field skipping) ─────────────────────────────
     void testFtms_allOptionalFieldsBeforePowerSkipped();
     void testFtms_negativeInstantPower();
+    void testFtms_heartRate();
+    void testFtms_heartRateAfterEnergy();
+    void testFtms_heartRateAfterAvgPower();
+    void testFtms_heartRateFlagButTruncated_ignored();
 
     // ── SimulatorHub no-op slot verification ─────────────────────────────────
     void testSimulator_noOpSetLoad();
@@ -778,6 +782,89 @@ void TstBtleHub::testFtms_negativeInstantPower()
 
     QCOMPARE(spy.count(), 1);
     QCOMPARE(spy.at(0).at(1).toInt(), -10);
+}
+
+/**
+ * A trainer that bridges an HR strap folds the bpm into the FTMS Indoor Bike
+ * Data stream (bit 9) instead of exposing a separate 0x180D service. Verify the
+ * HR field is decoded and re-emitted on signal_hr alongside the bike metrics.
+ */
+void TstBtleHub::testFtms_heartRate()
+{
+    QSignalSpy spyPwr(hub, &BtleHub::signal_power);
+    QSignalSpy spyHr(hub,  &BtleHub::signal_hr);
+
+    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA,
+        BtlePacketBuilder::ftmsIndoorBikeData(32.4, 88.0, 195,
+            /*includeSpeed=*/true, /*includeCadence=*/true, /*includePower=*/true,
+            /*heartRateBpm=*/152));
+
+    QCOMPARE(spyPwr.count(), 1);
+    QCOMPARE(spyPwr.at(0).at(1).toInt(), 195);
+    QCOMPARE(spyHr.count(), 1);
+    QCOMPARE(spyHr.at(0).at(1).toInt(), 152);
+}
+
+/**
+ * The Expended Energy field (bit 8, 5 bytes) precedes Heart Rate (bit 9). Verify
+ * the parser skips it correctly so the HR byte is read at the right offset.
+ */
+void TstBtleHub::testFtms_heartRateAfterEnergy()
+{
+    QSignalSpy spyHr(hub, &BtleHub::signal_hr);
+
+    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA,
+        BtlePacketBuilder::ftmsIndoorBikeData(0.0, 0.0, 0,
+            /*includeSpeed=*/false, /*includeCadence=*/false, /*includePower=*/false,
+            /*heartRateBpm=*/171, /*includeEnergy=*/true));
+
+    QCOMPARE(spyHr.count(), 1);
+    QCOMPARE(spyHr.at(0).at(1).toInt(), 171);
+}
+
+/**
+ * Average Power (bit 7, 2 bytes) sits between Instantaneous Power and the energy/
+ * HR fields. Verify the parser skips it so the HR byte lands at the right offset.
+ * Built raw because the convenience builder doesn't expose an average-power field.
+ */
+void TstBtleHub::testFtms_heartRateAfterAvgPower()
+{
+    QSignalSpy spyPwr(hub, &BtleHub::signal_power);
+    QSignalSpy spyHr(hub,  &BtleHub::signal_hr);
+
+    // bits: 0 speed-absent, 2 cadence-absent, 6 instant-power-absent,
+    //       7 avg-power present, 9 HR present  → 0x0001|0x0004|0x0040|0x0080|0x0200
+    QByteArray pkt;
+    quint16 flags = 0x02C5;
+    pkt.append(char( flags       & 0xFF));
+    pkt.append(char((flags >> 8) & 0xFF));
+    pkt.append(char(0x00)); pkt.append(char(0x00)); // average power = 0 W
+    pkt.append(char(168));                          // heart rate = 168 bpm
+
+    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA, pkt);
+
+    QCOMPARE(spyPwr.count(), 0); // instantaneous power absent → no power signal
+    QCOMPARE(spyHr.count(), 1);
+    QCOMPARE(spyHr.at(0).at(1).toInt(), 168);
+}
+
+/**
+ * HR flag set but the bpm byte is missing (truncated packet). The parser must not
+ * read past the buffer or emit a bogus reading.
+ */
+void TstBtleHub::testFtms_heartRateFlagButTruncated_ignored()
+{
+    QSignalSpy spyHr(hub, &BtleHub::signal_hr);
+
+    // Everything before HR absent, HR flagged present, but no HR byte appended.
+    QByteArray pkt;
+    quint16 flags = 0x0001 | 0x0004 | 0x0040 | 0x0200;
+    pkt.append(char( flags       & 0xFF));
+    pkt.append(char((flags >> 8) & 0xFF));
+
+    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA, pkt);
+
+    QCOMPARE(spyHr.count(), 0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
