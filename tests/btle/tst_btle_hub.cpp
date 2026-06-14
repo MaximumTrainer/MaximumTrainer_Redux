@@ -96,6 +96,7 @@ private slots:
     void testFtms_heartRateAfterAvgPower();
     void testFtms_heartRateFlagButTruncated_ignored();
     void testFtms_trainerProvidesHrSignal_firesOnce();
+    void testHrService_firesTrainerProvidesHr();
     void testFtms_noHr_noTrainerProvidesHrSignal();
 
     // ── SimulatorHub no-op slot verification ─────────────────────────────────
@@ -888,6 +889,21 @@ void TstBtleHub::testFtms_trainerProvidesHrSignal_firesOnce()
         BtlePacketBuilder::ftmsIndoorBikeData(30.0, 85.0, 180,
             true, true, true, /*heartRateBpm=*/142));
     QCOMPARE(spy.count(), 1);
+}
+
+/**
+ * HR reaching us via a bridged 0x180D Heart Rate service (not the FTMS field)
+ * must also flag the capability — the JetBlack Victory delivers HR this way.
+ */
+void TstBtleHub::testHrService_firesTrainerProvidesHr()
+{
+    QSignalSpy spy(hub, &BtleHub::signal_trainerProvidesHr);
+
+    hub->simulateNotification(0x2A37, BtlePacketBuilder::heartRate(138));
+    QCOMPARE(spy.count(), 1);
+
+    hub->simulateNotification(0x2A37, BtlePacketBuilder::heartRate(141));
+    QCOMPARE(spy.count(), 1); // latched: once per connection
 }
 
 /** No HR field in the FTMS stream → the capability signal never fires. */
