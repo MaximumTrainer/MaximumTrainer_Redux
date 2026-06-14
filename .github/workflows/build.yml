@@ -8,23 +8,23 @@ on:
     # mainly stops the publish job's own "deploy Wasm artifacts" commit from
     # triggering another full build (and minting another release) every time.
     paths-ignore: ['docs/**']
-  # Build every PR targeting master so cross-platform breakage (Windows/macOS/
-  # WASM) is caught before merge — including PRs from forks, whose branches do
-  # not trigger the push event on this repo. compute_version is master-only and
-  # skipped here; the build jobs run regardless via `needs + if: always()`.
+  # Build PRs targeting master so cross-platform breakage is caught before merge.
+  # Same-repo branches already build via the push event above, so the build jobs
+  # below run on pull_request ONLY for FORK PRs (whose branches don't push to
+  # this repo) — see the per-job `if`. compute_version is master-only and skipped
+  # here.
   pull_request:
     branches: [master]
 
-# Auto-cancel superseded runs: a new push to the same branch/PR cancels the
-# older in-flight run, so rapid iteration only pays for the latest commit's
-# full cross-platform matrix (Linux/Windows/macOS/WASM) instead of all of them.
-# ref_name (not ref) so the push event ("my-branch") and the pull_request
-# event (head_ref "my-branch") land in the SAME group — an upstream branch
-# with an open PR previously ran the whole pipeline twice per push because
-# "refs/heads/my-branch" != "my-branch". Master is never cancelled so every
-# release build completes.
+# Auto-cancel superseded runs within an event+branch: a new push cancels the
+# older in-flight push run, so rapid iteration only pays for the latest commit.
+# The event name is part of the group so the push and pull_request runs do NOT
+# cancel each other — an upstream branch with an open PR fires both, and they
+# must coexist (the same-repo pull_request run no-ops via the per-job `if`, so
+# there's no wasted compute and no cancelled run left showing red on the PR).
+# Master is never cancelled so every release build completes.
 concurrency:
-  group: build-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: build-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
@@ -93,7 +93,9 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   build_linux:
     needs: [compute_version]
-    if: always()
+    # Run on push, or on pull_request only for fork PRs (same-repo PRs already
+    # built via push). always() keeps it running when compute_version is skipped.
+    if: ${{ always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository) }}
     uses: ./.github/workflows/build-linux.yml
     with:
       tag_name: ${{ needs.compute_version.outputs.new_tag }}
@@ -106,7 +108,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   build_windows:
     needs: [compute_version]
-    if: always()
+    if: ${{ always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository) }}
     uses: ./.github/workflows/build-windows.yml
     with:
       tag_name: ${{ needs.compute_version.outputs.new_tag }}
@@ -119,7 +121,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   build_mac:
     needs: [compute_version]
-    if: always()
+    if: ${{ always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository) }}
     uses: ./.github/workflows/build-mac.yml
     with:
       tag_name: ${{ needs.compute_version.outputs.new_tag }}
@@ -134,7 +136,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   build_wasm:
     needs: [compute_version]
-    if: always()
+    if: ${{ always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository) }}
     runs-on: ubuntu-22.04
     continue-on-error: true
     permissions:
@@ -278,7 +280,9 @@ jobs:
     # through the implicit success() check and skips this job even when build_wasm
     # succeeded. `!cancelled()` runs the suite regardless of the wasm build's
     # outcome (the download step below falls back to the committed binary).
-    if: ${{ !cancelled() }}
+    # As with the build jobs, run on push or fork PRs only (same-repo PRs build
+    # via push) so a same-repo PR doesn't double-run / leave a cancelled job red.
+    if: ${{ !cancelled() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
