@@ -69,6 +69,9 @@ void BtleScannerDialog::init()
             this, &BtleScannerDialog::stopScan);
     connect(ui->pushButton_connect, &QPushButton::clicked,
             this, &BtleScannerDialog::onConnectClicked);
+    // Double-clicking a device connects to it, like double-clicking a file.
+    connect(ui->tableView_devices, &QAbstractItemView::doubleClicked,
+            this, &BtleScannerDialog::onConnectClicked);
     connect(ui->tableView_devices->selectionModel(),
             &QItemSelectionModel::selectionChanged,
             this, &BtleScannerDialog::onSelectionChanged);
