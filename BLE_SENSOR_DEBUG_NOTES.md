@@ -20,7 +20,22 @@ Trainer control (outbound): WorkoutDialog emits `setLoad(antId,watts)` /
 `enableTrainerControl()` sets it to 1; if never called, ERG silently does nothing.
 ERG smoothing ramps via `setLoad` (see startErgSmoothing/ergSmoothStep).
 
-## FINDINGS / suspected gaps to verify
+## CONFIRMED FINDINGS (code audit)
+- 🔴 **L/R power balance + pedal metrics are non-functional end-to-end.**
+  - `parsePowerMeasurement` (0x2A63, btle_hub.cpp:695) reads ONLY the power
+    bytes and ignores the flags — including Pedal Power Balance (flag bit 0).
+  - No `signal_balance`/`signal_pedal` exists on the hub; nothing carries it.
+  - `PowerBalanceDataReceived` / `pedalMetricReceived` have ZERO connections —
+    dead slots. So `wid_2_balancePower` + pedal torque/smoothness never update.
+  - This is a real bug and a sensor type Maxime explicitly wants tested.
+- 🟢 **ERG / trainer control is wired**: `enableTrainerControl()` is called in
+  all three workout-launch paths (mainwindow.cpp 1360/1515/1627), so
+  `trainerControlUserId` = 1 and `sendLoads()` emits `setLoad`. The original
+  "stuck at −1" bug is fixed — the harness should regression-guard it.
+- 🟢 HR / power / cadence / speed / oxygen each have a decoder + hub signal +
+  WorkoutDialog slot + widget (to be empirically confirmed by the harness).
+
+## (original) suspected gaps to verify
 1. **L/R power balance + pedal metrics appear UNWIRED.** `BtleHub` exposes no
    balance/pedal signal, and nothing in `mainwindow.cpp` connects
    `PowerBalanceDataReceived` / `pedalMetricReceived`. So `wid_2_balancePower`
