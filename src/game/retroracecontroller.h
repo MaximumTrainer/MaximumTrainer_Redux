@@ -84,6 +84,12 @@ class RetroRaceController : public QObject
     Q_PROPERTY(double  routeLengthM    READ routeLengthM    NOTIFY opponentChanged)
     Q_PROPERTY(bool    oppChosen       READ oppChosen       NOTIFY opponentChanged)
     Q_PROPERTY(bool    hasLastRide     READ hasLastRide     NOTIFY opponentChanged)
+    // ERG team-race state (only meaningful when the workout is in ERG mode and
+    // the opponent is the cooperative pace partner — see setErgMode()).
+    Q_PROPERTY(bool    ergMode         READ ergMode         NOTIFY ergModeChanged)
+    Q_PROPERTY(bool    drafting        READ drafting        NOTIFY updated)  // you're in the partner's slipstream
+    Q_PROPERTY(double  draftFactor     READ draftFactor     NOTIFY updated)  // 0..1 slipstream strength
+    Q_PROPERTY(bool    partnerEasing   READ partnerEasing   NOTIFY updated)  // partner soft-pedalling to wait for you
 
 public:
     explicit RetroRaceController(QObject *parent = nullptr);
@@ -170,6 +176,10 @@ public:
     double  routeLengthM() const    { return m_opponent ? m_opponent->totalDistanceM() : 0.0; }
     bool    oppChosen() const       { return m_oppChosen; }
     bool    hasLastRide() const     { return m_hasLastRide; }
+    bool    ergMode() const         { return m_ergMode; }
+    bool    drafting() const        { return m_drafting; }
+    double  draftFactor() const     { return m_draftFactor; }
+    bool    partnerEasing() const   { return m_partnerEasing; }
 
 public slots:
     void start();          // arm: riders idle at the start line, legs free-spin
@@ -182,6 +192,11 @@ public slots:
     void setLivePowerWatts(double watts) { m_livePowerW = watts; }
     /// Feed live trainer cadence (rpm) for the leg animation. Negative → ignore.
     void setLiveCadenceRpm(double rpm) { m_liveCadenceRpm = rpm; }
+    /// Tell the race whether the workout is in ERG mode. In ERG the rider's power
+    /// is pinned to target so a head-to-head can't be won by effort; instead the
+    /// pace partner becomes a cooperative team-mate — drafting lets you catch back
+    /// when behind, and the partner is leashed so it never drops you (see tick()).
+    void setErgMode(bool erg) { if (m_ergMode != erg) { m_ergMode = erg; emit ergModeChanged(); } }
     /// Feed live heart rate (bpm) for the HUD.
     void setLiveHr(double bpm) { m_playerHr = bpm; emit updated(); }
     /// Push the current workout targets (value ± range; <=0 = no target).
@@ -225,6 +240,7 @@ signals:
     void nextChanged();
     void finishChanged();
     void metricsChanged();
+    void ergModeChanged();
 
 private:
     void tick();
@@ -236,6 +252,12 @@ private:
     bool    m_oppIsBot     = false;
     bool    m_oppChosen    = false;
     bool    m_hasLastRide  = false;
+
+    // ERG team-race state (see setErgMode() / tick()).
+    bool    m_ergMode       = false;
+    bool    m_drafting      = false;
+    double  m_draftFactor   = 0.0;   // 0..1 slipstream strength this frame
+    bool    m_partnerEasing = false; // partner soft-pedalling to stay catchable
 
     QTimer        m_timer;
     QElapsedTimer m_clock;

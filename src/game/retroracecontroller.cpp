@@ -2,6 +2,15 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QtGlobal>
+
+namespace {
+// ERG team-race tuning. In ERG the rider can't out-power the target, so catching
+// back relies on drafting; the partner is leashed so it never drops you.
+constexpr double kDraftRangeM     = 12.0;  // slipstream reaches this far back
+constexpr double kDraftMaxCdaCut  = 0.35;  // up to 35% less drag right on the wheel
+constexpr double kPartnerLeashM   = 15.0;  // partner never pulls more than this ahead
+}
 
 RetroRaceController::RetroRaceController(QObject *parent)
     : QObject(parent)
@@ -66,7 +75,7 @@ void RetroRaceController::useComputerPacer(double watts)
 void RetroRaceController::useWorkoutPacer()
 {
     m_oppIsBot = true;
-    m_oppName  = QStringLiteral("Workout Pacer");
+    m_oppName  = QStringLiteral("Pace Partner");
     auto src   = std::make_unique<LivePowerSource>(150.0);
     m_pacerLive = src.get();
     m_opponent  = std::move(src);
@@ -241,8 +250,38 @@ void RetroRaceController::tick()
     m_playerPowerW = (m_livePowerW >= 0.0)
                    ? m_livePowerW
                    : m_oppPowerW * m_playerForm;
-    m_playerV     = CyclingPhysics::stepSpeed(m_playerV, m_playerPowerW, m_weightKg, m_cda, dt);
+
+    // ERG drafting: in ERG you can't out-power the target, so the only honest way
+    // to claw back a gap is the partner's slipstream — when you're behind, lower
+    // drag means the SAME watts carry you faster until you're back on the wheel.
+    double playerCda = m_cda;
+    m_drafting    = false;
+    m_draftFactor = 0.0;
+    if (m_ergMode) {
+        const double behindM = m_oppDistM - m_playerDistM;   // >0 = player behind
+        if (behindM > 0.0) {
+            m_draftFactor = qBound(0.0, (kDraftRangeM - behindM) / kDraftRangeM, 1.0);
+            playerCda     = m_cda * (1.0 - kDraftMaxCdaCut * m_draftFactor);
+            m_drafting    = m_draftFactor > 0.05;
+        }
+    }
+    m_playerV     = CyclingPhysics::stepSpeed(m_playerV, m_playerPowerW, m_weightKg, playerCda, dt);
     m_playerDistM += m_playerV * dt;
+
+    // Partner leash: a cooperative pace partner never drops you. If it would pull
+    // more than kPartnerLeashM ahead it soft-pedals (eases) so you can always get
+    // back into draft range. Only the bot partner waits — a recorded ghost (your
+    // past self) stays honest and never holds back.
+    m_partnerEasing = false;
+    if (m_ergMode && m_oppIsBot) {
+        const double leadM = m_oppDistM - m_playerDistM;
+        if (leadM > kPartnerLeashM) {
+            m_oppDistM      = m_playerDistM + kPartnerLeashM;
+            m_oppV          = qMin(m_oppV, m_playerV);   // stop pulling away
+            m_oppPowerW    *= 0.7;                        // shown as easing on the HUD
+            m_partnerEasing = true;
+        }
+    }
 
     // Scenery scroll is amplified with speed for a stronger sense of speed:
     // ~1× at/under 20 km/h, ramping to ~2.4× at high speed.

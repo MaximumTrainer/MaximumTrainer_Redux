@@ -33,6 +33,9 @@ Item {
         : Math.min(1.0, Math.abs(race.playerPowerW - race.targetPower) / Math.max(40, race.targetPower * 0.35))
     // Race position (1st / 2nd) from the gap sign — a racing-game staple.
     readonly property bool leading: race.gapMeters >= 0
+    // ERG cooperative race: the pace partner is a team-mate (draft + leash), not a
+    // rival — so the finish is framed as teamwork, not win/lose.
+    readonly property bool teamMode: race.ergMode && race.oppIsBot
     // Final sprint: the last 15 s before the finish line.
     readonly property bool finalSprint: race.started && !race.finished
         && race.finishSecs > 0 && race.finishSecs <= 15
@@ -805,6 +808,21 @@ Item {
             color: "white"; font.family: "monospace"; font.pixelSize: 13; font.bold: true }
     }
 
+    // ERG team pill (below the effort-zone pill): the cooperative-race cue —
+    // drafting in the partner's slipstream, or the partner easing to wait for you.
+    Rectangle {
+        visible: race.started && !race.finished && race.ergMode
+                 && (race.drafting || race.partnerEasing)
+        anchors { left: parent.left; leftMargin: 12; top: parent.top; topMargin: 110 }
+        width: teamTxt.implicitWidth + 22; height: 26; radius: 13
+        color: race.partnerEasing ? "#9e6b1f" : "#1f8f3f"
+        border.color: "#ffe24a"; border.width: race.drafting && race.draftFactor > 0.6 ? 2 : 1
+        Text { id: teamTxt; anchors.centerIn: parent
+            text: race.partnerEasing ? "🤝 PARTNER WAITING — bridge up!"
+                : "🤝 ON THE WHEEL — drafting »"
+            color: "white"; font.family: "monospace"; font.pixelSize: 13; font.bold: true }
+    }
+
     // ---------------------------------------------------------------- HUD
     Rectangle { anchors { top: parent.top; left: parent.left; right: parent.right }
         height: 72; color: "#000000"; opacity: 0.45 }
@@ -958,7 +976,8 @@ Item {
         BigButton { title: "🏁  Race your last performance"
             subtitle: race.hasLastRide ? "your most recent ride of this workout" : "no previous ride for this workout yet"
             active: race.hasLastRide; onPicked: race.chooseGhost() }
-        BigButton { title: "🤖  Race the Pacer"; subtitle: "holds the workout's target watts"
+        BigButton { title: race.ergMode ? "🤝  Ride with your Pace Partner" : "🤖  Race the Pacer"
+            subtitle: race.ergMode ? "team up — draft to hold the wheel" : "holds the workout's target watts"
             onPicked: race.choosePacer() }
     }
     Column {   // step 2: ready
@@ -973,7 +992,8 @@ Item {
     Repeater {   // confetti — a reward, so it only rains when you actually won
         model: 28
         Rectangle {
-            readonly property bool celebrate: race.finished && race.gapMeters >= 0
+            // Finishing with your partner is a win too — celebrate the team finish.
+            readonly property bool celebrate: race.finished && (race.gapMeters >= 0 || root.teamMode)
             visible: celebrate
             width: 8; height: 8
             color: ["#e23b3b", "#5dff5d", "#3aa0ff", "#ffe08a", "#ff6bd6"][index % 5]
@@ -988,12 +1008,14 @@ Item {
     Column {
         anchors.centerIn: parent; spacing: 10; visible: race.finished
         Text { anchors.horizontalCenter: parent.horizontalCenter
-               text: race.gapMeters >= 0 ? "🏆  YOU WIN!" : "🏁  FINISH!"
+               text: root.teamMode ? "🤝  GREAT TEAMWORK!"
+                                   : (race.gapMeters >= 0 ? "🏆  YOU WIN!" : "🏁  FINISH!")
                color: "#ffe08a"; font.family: "monospace"; font.pixelSize: 46; font.bold: true }
         Text { anchors.horizontalCenter: parent.horizontalCenter
-               text: race.gapMeters >= 0 ? "You won by " + race.gapMeters.toFixed(0) + " m! 🎉"
-                                         : "Beaten by " + (-race.gapMeters).toFixed(0) + " m"
-               color: race.gapMeters >= 0 ? "#5dff5d" : "#ff6b6b"
+               text: root.teamMode ? "You rode the whole workout with your partner 🎉"
+                   : (race.gapMeters >= 0 ? "You won by " + race.gapMeters.toFixed(0) + " m! 🎉"
+                                          : "Beaten by " + (-race.gapMeters).toFixed(0) + " m")
+               color: (root.teamMode || race.gapMeters >= 0) ? "#5dff5d" : "#ff6b6b"
                font.family: "monospace"; font.pixelSize: 22; font.bold: true }
         Text { anchors.horizontalCenter: parent.horizontalCenter
                text: (race.displayDistanceM / 1000).toFixed(2) + " km   ·   vs " + root.shortName(race.oppName, 24)
