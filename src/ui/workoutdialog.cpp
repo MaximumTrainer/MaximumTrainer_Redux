@@ -649,11 +649,14 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
             workout.getWorkoutNameEnum() == Workout::CP5min_TEST || workout.getWorkoutNameEnum() == Workout::CP20min_TEST ||
             workout.getWorkoutNameEnum() == Workout::MAP_TEST ) {
         isTestWorkout = true;
-        ui->widget_topMenu->setButtonLapVisible(false);
     }
     else {
         isTestWorkout = false;
     }
+
+    // The lap / "Interval" button only makes sense in free ride (manual laps);
+    // structured workouts and tests advance intervals automatically, so hide it.
+    ui->widget_topMenu->setButtonLapVisible(workout.getWorkoutNameEnum() == Workout::OPEN_RIDE);
 
 
     initUI();
@@ -2791,9 +2794,11 @@ void WorkoutDialog::onToggleGameFullscreen() {
 // so switching only toggles which player is shown.
 void WorkoutDialog::showVideoPlayer(int choice) {
 
-    // The game is a single-rider ghost race — it has no defined "player" in the
-    // multi-rider studio mode, so it is unavailable there: fall back to video.
-    if (account->enable_studio_mode && choice == 2)
+    // The game (retro race) is unavailable in multi-rider studio mode (no single
+    // "player") and in free ride (no targets/finish — it doesn't make sense yet):
+    // fall back to video in both cases.
+    if ((account->enable_studio_mode
+         || workout.getWorkoutNameEnum() == Workout::OPEN_RIDE) && choice == 2)
         choice = 0;
 
     if (raceView) raceView->setVisible(false);
@@ -3191,7 +3196,14 @@ void WorkoutDialog::showEvent(QShowEvent *event) {
     // fully mapped first.
     if (!webPlayerLoaded) {
         webPlayerLoaded = true;
-        QTimer::singleShot(0, this, [this]() { ensureWebPlayer()->loadHomePageIfNeeded(); });
+        QTimer::singleShot(0, this, [this]() {
+            ensureWebPlayer()->loadHomePageIfNeeded();
+            // Re-assert the selected content view now that the dialog is mapped.
+            // The native QVideoWidget (Standard video) does not paint when first
+            // shown pre-map during init, leaving a black pane until the dropdown
+            // is toggled; re-applying here fixes the first-load black screen.
+            showVideoPlayer(account->display_video);
+        });
     }
 }
 
@@ -4059,6 +4071,11 @@ void WorkoutDialog::connectDataWorkout() {
     connect(arrDataWorkout[0], SIGNAL(tssChanged(double)), ui->wid_5_infoWorkout, SLOT(TSS_Changed(double)) );
     connect(arrDataWorkout[0], SIGNAL(caloriesWorkoutChanged(double)), ui->wid_5_infoWorkout, SLOT(calories_Changed(double)) );
     connect(arrDataWorkout[0], SIGNAL(totalDistanceChanged(double)), ui->wid_5_infoWorkout, SLOT(distanceChanged(double)) );
+    // Mirror the workout's real ride distance into the race HUD so the game's
+    // DIST readout matches the session widget (the race keeps its own internal
+    // power-model distance only for the player-vs-opponent gap).
+    connect(arrDataWorkout[0], &DataWorkout::totalDistanceChanged, this,
+            [this](double meters) { if (raceController) raceController->setDisplayDistanceM(meters); });
     //    }
 
 
