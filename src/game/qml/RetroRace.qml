@@ -566,6 +566,35 @@ Item {
                    font.family: "monospace"; font.bold: true; font.pixelSize: Math.max(7, 17*finishLine.p) } }
     }
 
+    // Slipstream: wind streaks fanning down past the player while you're in the
+    // partner's draft — so the draft reads on the bike itself, no need to watch
+    // the top-left pill. Intensity tracks the draft strength; drawn under the
+    // riders so the bikes stay crisp on top.
+    Item {
+        id: slipstream
+        anchors.fill: parent
+        visible: race.started && !race.finished && race.drafting
+        opacity: Math.min(1.0, race.draftFactor * 1.2)
+        z: 5
+        Repeater {
+            model: 14
+            Rectangle {
+                readonly property int  side: index % 2 === 0 ? -1 : 1
+                readonly property int  seed: Math.floor(index / 2)            // 0..6
+                readonly property real spread: 0.13 + 0.075 * (seed % 3)      // how far it fans out
+                // 0 at the vanishing point → 1 at the player; scrolls with animT,
+                // staggered per streak so they rush down continuously.
+                readonly property real p: ((root.animT * 0.9 + seed * 0.17) % 1)
+                width: 2 + 3 * p; radius: width / 2
+                height: 12 + 30 * p
+                color: "#eaf6ff"
+                opacity: 0.5 * p                                              // brighten as it nears you
+                x: root.width / 2 + side * (root.width * spread) * p - width / 2
+                y: root.horizonY + p * (playerBike.y - root.horizonY)
+            }
+        }
+    }
+
     // ---------------------------------------------------------------- riders
     // Opponent: recedes UP the road (perspective) while ahead of you, so it
     // visibly pulls away toward the vanishing point — and grows back toward you
@@ -578,16 +607,25 @@ Item {
         // ~20 m reads as "just ahead / drawing level".
         readonly property real f: 20 / (20 + Math.max(0, ahead))
         readonly property real oz: (1.0 / Math.max(0.05, f)) * 30 + race.visualDist
-        visible: race.started && !race.finished && ahead > 0.5 && ahead < 400
+        // Overtake lane: dead-centre (directly ahead) while you're behind or level,
+        // so drafting reads as sitting right on the partner's wheel. Only drifts a
+        // little to the right during the actual pass (ahead<0), leading into the
+        // mirror. Capped small so it never leaves the tarmac.
+        readonly property real lane: root.width * 0.10 * Math.max(0, Math.min(1, -ahead / 2))
+        // On-road until you're 2 m past; the mirror takes over beyond that (no
+        // overlap → never drawn twice).
+        visible: race.started && !race.finished && ahead > -2 && ahead < 400
         // Shrinks from the player's size when adjacent down to a speck far up the road.
         s: 0.45 + 1.70 * f
         body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.85   // cyan so it stands out on grey + the dash
         phase: race.oppCrankRev
         lean: root.curveAt(oz) * 13
-        armUp: root.animT < root.oppCelebrateUntil ? 1 : 0   // brief flex after passing you
-        // Centred on the road (you see its back, directly ahead); rides from the
-        // player's level when adjacent (f→1) up to the vanishing point (f→0).
-        x: root.width / 2 - width / 2
+        // Brief flex after passing you — a competitive taunt, so suppressed for the
+        // cooperative pace partner (team mode); kept for the "race your last ride" ghost.
+        armUp: (!root.teamMode && root.animT < root.oppCelebrateUntil) ? 1 : 0
+        // Rides from the player's level when adjacent (f→1) up to the vanishing
+        // point (f→0), drifting to the right lane as the gap closes (see lane).
+        x: root.width / 2 - width / 2 + lane
         y: root.horizonY + (playerBike.y - root.horizonY) * f - height * f
     }
     // Player: fixed near the bottom centre, large.
@@ -636,7 +674,9 @@ Item {
         id: mirror
         readonly property real behindM: race.gapMeters
         readonly property real f: 30 / (30 + Math.max(0, behindM))   // 1 close .. →0 far
-        visible: race.started && !race.finished && behindM > 0.5
+        // Takes over exactly where the on-road sprite stops (2 m past) — no gap,
+        // no overlap, so the partner is never drawn twice.
+        visible: race.started && !race.finished && behindM > 2
         z: 40   // above the effort glow, like the HUD
         width: 148; height: 88
         // Ride just off the player's right shoulder, like a bar-end mirror —
@@ -669,7 +709,7 @@ Item {
                 s: 0.30 + 0.78 * mirror.f
                 body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.95
                 phase: race.oppCrankRev
-                armUp: root.ghostMood === 1 ? 1 : 0
+                armUp: (!root.teamMode && root.ghostMood === 1) ? 1 : 0
                 // weaves side to side hunting for a way past
                 x: glass.width/2 - width/2
                    + (root.ghostMood === 2 ? Math.sin(root.animT*5.5) * glass.width * 0.07 : 0)
