@@ -2483,6 +2483,8 @@ void WorkoutDialog::targetPowerChanged_f(double percentageTarget, int range) {
                                             : qRound(0.45 * account->FTP));
         // Drive the game's power target indicator (same threshold as the alerts).
         raceController->setTargetPower(currentTargetPower, currentTargetPowerRange);
+        // Keep the team-race (draft/leash) in step with the current ERG/slope mode.
+        raceController->setErgMode(!isUsingSlopeMode && account->control_trainer_resistance);
     }
     ui->widget_time->setTargetPower(percentageTarget, range);
     ui->widget_topMenu->setTargetPower(percentageTarget, range);
@@ -2695,6 +2697,9 @@ QQuickWidget *WorkoutDialog::ensureRaceView() {
         raceController->setRiderParams(account->bike_weight_kg + account->weight_kg,
                                        account->userCda);
         raceController->setLiveMode(true);
+        // In ERG the partner is a cooperative team-mate (draft + leash); in slope/
+        // free-ride it stays a straight effort-vs-effort race.
+        raceController->setErgMode(!isUsingSlopeMode && account->control_trainer_resistance);
         raceController->setWorkoutName(workout.getName());   // enables the chooser
         raceController->setWorkoutProfile(buildWorkoutProfile());  // "what's next" strip
         raceController->setIntervalMessage(currentIntervalObj.getDisplayMessage());
