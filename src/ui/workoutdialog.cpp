@@ -1752,17 +1752,13 @@ void WorkoutDialog::start_or_pause_workout() {
 void WorkoutDialog::sendLastSecondData(int seconds) {
 
     if (raceController) {
-        // Free ride is open-ended (its placeholder interval is a 5 s default),
-        // so it has no progress or finish line — never feed those in OPEN_RIDE,
-        // otherwise the finish line rides in over the first few seconds.
-        const bool openRide = workout.getWorkoutNameEnum() == Workout::OPEN_RIDE;
         const double tot = Util::convertQTimeToSecD(workout.getDurationQTime());
-        if (tot > 0 && !openRide) raceController->setWorkoutProgress(qBound(0.0, seconds / tot, 1.0));
+        if (tot > 0) raceController->setWorkoutProgress(qBound(0.0, seconds / tot, 1.0));
         raceController->setWorkoutElapsedSec(seconds);
         // timeInterval / the timers are decremented just AFTER this call, so the
         // values here read 1 s high vs the on-screen graph & timer widgets —
         // subtract 1 so the game's interval/finish countdowns stay in sync.
-        if (tot > 0 && !openRide) raceController->setFinishIn(qMax(0.0, tot - seconds - 1.0));
+        if (tot > 0) raceController->setFinishIn(qMax(0.0, tot - seconds - 1.0));
 
         // Preview the upcoming interval's target on the road ahead.
         const double secsToNext = qMax(0.0, Util::convertQTimeToSecD(timeInterval) - 1.0);
