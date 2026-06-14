@@ -89,6 +89,7 @@ void StudioWidget::buildUi()
     m_riderCountLabel = new QLabel(tr("Number of riders:"), this);
     topRow->addWidget(m_riderCountLabel);
     m_riderCountCombo = new QComboBox(this);
+    m_riderCountCombo->setMinimumWidth(70);
     for (int i = 1; i <= kMaxRiders; ++i)
         m_riderCountCombo->addItem(QString::number(i), i);
     connect(m_riderCountCombo, qOverload<int>(&QComboBox::currentIndexChanged),
@@ -170,10 +171,13 @@ QGroupBox *StudioWidget::buildRiderCard(int riderIndex)
     card.ftpSpin = new QSpinBox(box);
     card.ftpSpin->setRange(0, 600);
     card.ftpSpin->setSuffix(tr(" W"));
+    // Native Windows spin buttons crowd a short value/suffix; reserve room.
+    card.ftpSpin->setMinimumWidth(80);
     idRow->addWidget(card.ftpSpin);
     idRow->addWidget(new QLabel(tr("LTHR"), box));
     card.lthrSpin = new QSpinBox(box);
     card.lthrSpin->setRange(0, 230);
+    card.lthrSpin->setMinimumWidth(80);
     idRow->addWidget(card.lthrSpin);
     cardLayout->addLayout(idRow);
 
@@ -230,6 +234,7 @@ QGroupBox *StudioWidget::buildRiderCard(int riderIndex)
     card.ergRampSpin = new QSpinBox(box);
     card.ergRampSpin->setRange(0, 30);
     card.ergRampSpin->setSuffix(tr(" s"));
+    card.ergRampSpin->setMinimumWidth(80);
     ergRow->addWidget(card.ergRampSpin);
     cardLayout->addLayout(ergRow);
 

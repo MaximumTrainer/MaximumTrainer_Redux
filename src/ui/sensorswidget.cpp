@@ -122,6 +122,8 @@ void SensorsWidget::buildUi()
     m_ergRampSpin = new QSpinBox(trainerGroup);
     m_ergRampSpin->setRange(0, 30);
     m_ergRampSpin->setSuffix(tr(" s"));
+    // Native Windows spin buttons crowd a short value/suffix; reserve room.
+    m_ergRampSpin->setMinimumWidth(80);
     m_ergRampSpin->setToolTip(tr("Seconds to linearly ramp ERG resistance between intervals.\n"
                                  "Set to 0 to disable smoothing (instant resistance changes)."));
     connect(m_ergRampSpin, qOverload<int>(&QSpinBox::valueChanged),
@@ -155,6 +157,7 @@ void SensorsWidget::buildUi()
     m_dropoutTimeoutSpin = new QSpinBox(dropoutGroup);
     m_dropoutTimeoutSpin->setRange(2, 30);
     m_dropoutTimeoutSpin->setSuffix(tr(" s"));
+    m_dropoutTimeoutSpin->setMinimumWidth(80);
     connect(m_dropoutTimeoutSpin, qOverload<int>(&QSpinBox::valueChanged),
             this, &SensorsWidget::onSensorDropoutChanged);
     dropoutRow->addWidget(m_dropoutTimeoutSpin);
@@ -180,6 +183,7 @@ void SensorsWidget::buildUi()
     m_batteryThresholdSpin = new QSpinBox(batteryGroup);
     m_batteryThresholdSpin->setRange(5, 50);
     m_batteryThresholdSpin->setSuffix(tr(" %"));
+    m_batteryThresholdSpin->setMinimumWidth(80);
     connect(m_batteryThresholdSpin, qOverload<int>(&QSpinBox::valueChanged),
             this, &SensorsWidget::onBatteryThresholdChanged);
     batteryRow->addWidget(m_batteryThresholdSpin);

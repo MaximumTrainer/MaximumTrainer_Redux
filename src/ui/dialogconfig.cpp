@@ -1106,6 +1106,8 @@ void DialogConfig::buildIntervalSummaryGroup()
     spinIntervalSummaryDuration = new QSpinBox(grpSummary);
     spinIntervalSummaryDuration->setRange(2, 15);
     spinIntervalSummaryDuration->setValue(5);
+    // Native Windows spin buttons crowd a short value; reserve room.
+    spinIntervalSummaryDuration->setMinimumWidth(80);
     durRow->addWidget(spinIntervalSummaryDuration);
     durRow->addStretch();
     grpSummaryLayout->addLayout(durRow);
