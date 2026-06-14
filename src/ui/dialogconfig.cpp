@@ -492,9 +492,12 @@ void DialogConfig::initUi() {
     ui->comboBox_powerAverage->setCurrentIndex(account->averaging_power);
     ui->spinBox_offsetPower->setValue(account->offset_power);
 
-    // The Game (index 2) is single-rider and unavailable in multi-rider studio
-    // mode — drop it from the selector there so it can't be picked.
-    if (account->enable_studio_mode && ui->comboBox_displayVideo->count() > 2)
+    // The Game (index 2) is single-rider (no use in multi-rider studio) and
+    // makes no sense in free ride (no targets/finish) — drop it from the
+    // selector in both cases so it can't be picked.
+    const bool freeRide = parentDialog
+            && parentDialog->workout.getWorkoutNameEnum() == Workout::OPEN_RIDE;
+    if ((account->enable_studio_mode || freeRide) && ui->comboBox_displayVideo->count() > 2)
         ui->comboBox_displayVideo->removeItem(2);
     ui->comboBox_displayVideo->setCurrentIndex(
         qMin(account->display_video, ui->comboBox_displayVideo->count() - 1));

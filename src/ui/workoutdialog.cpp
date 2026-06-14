@@ -2798,9 +2798,11 @@ void WorkoutDialog::onToggleGameFullscreen() {
 // so switching only toggles which player is shown.
 void WorkoutDialog::showVideoPlayer(int choice) {
 
-    // The game is a single-rider ghost race — it has no defined "player" in the
-    // multi-rider studio mode, so it is unavailable there: fall back to video.
-    if (account->enable_studio_mode && choice == 2)
+    // The game (retro race) is unavailable in multi-rider studio mode (no single
+    // "player") and in free ride (no targets/finish — it doesn't make sense yet):
+    // fall back to video in both cases.
+    if ((account->enable_studio_mode
+         || workout.getWorkoutNameEnum() == Workout::OPEN_RIDE) && choice == 2)
         choice = 0;
 
     if (raceView) raceView->setVisible(false);
