@@ -29,6 +29,10 @@ class RetroRaceController : public QObject
     Q_OBJECT
     Q_PROPERTY(double  elapsedSec      READ elapsedSec      NOTIFY updated)
     Q_PROPERTY(double  playerDistanceM READ playerDistanceM NOTIFY updated)
+    // The distance shown to the rider — fed from the workout's real ride distance
+    // so the race HUD matches the session widget. Falls back to the internal
+    // power-model distance (used for the opponent gap) until the workout feeds one.
+    Q_PROPERTY(double  displayDistanceM READ displayDistanceM NOTIFY updated)
     Q_PROPERTY(double  oppDistanceM    READ oppDistanceM    NOTIFY updated)
     Q_PROPERTY(double  gapMeters       READ gapMeters       NOTIFY updated)
     Q_PROPERTY(double  playerSpeedKmh  READ playerSpeedKmh  NOTIFY updated)
@@ -117,6 +121,10 @@ public:
 
     double  elapsedSec() const      { return m_elapsedSec; }
     double  playerDistanceM() const { return m_playerDistM; }
+    double  displayDistanceM() const { return m_displayDistM >= 0.0 ? m_displayDistM : m_playerDistM; }
+    /// Feed the workout's real ride distance (metres) so the HUD matches the
+    /// session widget. The internal power-model distance still drives the gap.
+    void    setDisplayDistanceM(double m) { m_displayDistM = m; }
     double  oppDistanceM() const    { return m_oppDistM; }
     double  gapMeters() const       { return m_playerDistM - m_oppDistM; }
     double  playerSpeedKmh() const  { return m_playerV * 3.6; }
@@ -245,6 +253,7 @@ private:
     double m_playerV     = 0.0;   // m/s
     double m_oppV        = 0.0;   // m/s
     double m_playerDistM = 0.0;
+    double m_displayDistM = -1.0;   // <0 = not fed yet; falls back to m_playerDistM
     double m_oppDistM    = 0.0;
     double m_playerPowerW = 0.0;
     double m_oppPowerW    = 0.0;

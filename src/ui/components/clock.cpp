@@ -1,5 +1,6 @@
 #include "clock.h"
 #include "myconstants.h"
+#include "cyclingphysics.h"   // shared power→speed model (also used by the retro race)
 
 #include <QDebug>
 
@@ -178,23 +179,11 @@ void Clock::timerSpeedTimeout() {
 
             //            qDebug() << "Calculating speed for user:" << i;
 
-            double powerRequiredRolling = calculateProlling(i);
-            double powerRequiredWind = calculatePwind(i);
-            double powerRequiredGravity = calculatePgravity(i);
-
-            // Net power available to accelerate relates to speed by
-            // P_net = m·v·(dv/dt), so dv/dt = P_net / (m·v) — NOT P_net / m
-            // (which omits the ·v and makes acceleration independent of speed).
-            // Floor v in the denominator to avoid a div-by-zero / runaway push
-            // from a standstill.
-            double speedForAccel = currentSpeedMS[i] < 0.5 ? 0.5 : currentSpeedMS[i];
-            double netPowerW = currentPowerWatts[i]
-                             - (powerRequiredRolling + powerRequiredWind + powerRequiredGravity);
-            double accelerationMs = netPowerW / (weightKG[i] * speedForAccel);
-            accelerationMs = accelerationMs * fractionSecond;
-            currentSpeedMS[i] = currentSpeedMS[i] + accelerationMs;
-            if (currentSpeedMS[i] < 0)
-                currentSpeedMS[i] = 0;
+            // Flat-road power→speed via the shared CyclingPhysics model (the same
+            // one the retro race integrates), so virtual speed and the race agree.
+            // Uses rider+bike mass (weightKG) and the rider's CdA.
+            currentSpeedMS[i] = CyclingPhysics::stepSpeed(
+                currentSpeedMS[i], currentPowerWatts[i], weightKG[i], cda[i], fractionSecond);
 
 
             //        qDebug() << "fractionSecond:" << fractionSecond << "diffTime" << diffTime;
@@ -224,43 +213,4 @@ void Clock::timerSpeedTimeout() {
 
 
 
-
-//P = Crr x N x v,
-//------------------------------------------------------------------------------
-//user ID is 0 to 39
-double Clock::calculateProlling(int pos) {
-
-    if (currentSpeedMS[pos] <= 0)
-        return 0;
-
-
-    return (0.005 * 9.8067 * weightKG[pos] * currentSpeedMS[pos]);
-
-    // insignifiant under 1 m/s, still calculate so user get to 0 eventually if stop pedalling
-    //    if (currentSpeedMS < 1)
-    //        return powerRequiredRolling + 1;
-
-}
-
-
-//P = 0.5 x ρ x v3 x Cd x A,
-//------------------------------------------------------------------------------
-double Clock::calculatePwind(int pos) {
-
-    // insignifiant under 1 m/s
-    if (currentSpeedMS[pos] < 1)
-        return 0;
-
-    return (0.5 * 1.275 * (currentSpeedMS[pos] * currentSpeedMS[pos] * currentSpeedMS[pos]) * cda[pos]);
-}
-
-//https://strava.zendesk.com/entries/20959332-Power-Calculations
-//P = m x g x sin(arctan(grade)) x v
-//------------------------------------------------------------------------------
-double Clock::calculatePgravity(int pos) {
-
-    // 0 for now, will adjust with slope later
-    Q_UNUSED(pos);
-    return 0;
-}
 

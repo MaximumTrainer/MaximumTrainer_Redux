@@ -564,30 +564,28 @@ Item {
     }
 
     // ---------------------------------------------------------------- riders
-    // Opponent: shown up the road only while ahead of you (you are behind).
+    // Opponent: recedes UP the road (perspective) while ahead of you, so it
+    // visibly pulls away toward the vanishing point — and grows back toward you
+    // as the gap closes, until it draws level and you pass it (then it moves to
+    // the rear-view mirror). The gap is also shown on the HUD bubble.
     BackBike {
         id: oppBike
         readonly property real ahead: -race.gapMeters
-        readonly property real f: 55 / (55 + Math.max(0, ahead))     // 1 near .. ->0 far
-        // Keep the ghost riding right beside you (near the player's level and
-        // size) across the whole racing range — the gap is conveyed by the HUD.
-        readonly property real op: 0.60 + 0.16 * f                   // 0.60 .. 0.76 (always close)
-        readonly property real oz: (1.0 / Math.max(0.03, op)) * 38 + race.visualDist
-        visible: race.started && !race.finished && ahead > 0.5 && ahead < 250
-        s: Math.min(2.15, 1.45 + 0.7 * f)                            // near the player's size
+        // Perspective fraction: ~1 when right in front of you, →0 far up the road.
+        // ~20 m reads as "just ahead / drawing level".
+        readonly property real f: 20 / (20 + Math.max(0, ahead))
+        readonly property real oz: (1.0 / Math.max(0.05, f)) * 30 + race.visualDist
+        visible: race.started && !race.finished && ahead > 0.5 && ahead < 400
+        // Shrinks from the player's size when adjacent down to a speck far up the road.
+        s: 0.45 + 1.70 * f
         body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.85   // cyan so it stands out on grey + the dash
         phase: race.oppCrankRev
         lean: root.curveAt(oz) * 13
         armUp: root.animT < root.oppCelebrateUntil ? 1 : 0   // brief flex after passing you
-        // Sit in the LEFT lane (offset grows as it nears) so you pull up
-        // alongside it rather than staring at its back wheel. Converges toward
-        // the centre/vanishing point when it is far up the road.
-        // Sit just to the LEFT of the player, almost touching — offset by the
-        // riders' own pixel widths (NOT maxHalfW, which scales with the window
-        // and otherwise flings the ghost far away on a wide screen). The player
-        // is centred at width/2 with half-width ≈ 62 px (s = 2.15).
-        x: root.width / 2 - width - 64
-        y: root.horizonY + root.roadH * (0.60 + 0.16 * f) - height
+        // Centred on the road (you see its back, directly ahead); rides from the
+        // player's level when adjacent (f→1) up to the vanishing point (f→0).
+        x: root.width / 2 - width / 2
+        y: root.horizonY + (playerBike.y - root.horizonY) * f - height * f
     }
     // Player: fixed near the bottom centre, large.
     BackBike {
@@ -608,9 +606,9 @@ Item {
         id: gapChip
         readonly property real absGap: Math.abs(race.gapMeters)
         readonly property bool hot: !root.leading && absGap < 15
-        // A 1-2 m lead is noise, not news — drop the "behind" bubble until the
-        // ghost actually loses contact (it still shows in the mirror).
-        visible: race.started && !race.finished && (!root.leading || absGap >= 3)
+        // A sub-2 m gap is noise, not news — only show the bubble (ahead OR
+        // behind) once there's a real gap.
+        visible: race.started && !race.finished && absGap >= 2
         z: 40
         anchors.horizontalCenter: parent.horizontalCenter
         y: playerBike.y - height - 12
@@ -779,7 +777,7 @@ Item {
         Connections { target: race
             function onUpdated() {
                 if (!race.started || race.finished) return
-                var km = Math.floor(race.playerDistanceM / 1000)
+                var km = Math.floor(race.displayDistanceM / 1000)
                 if (km > root.lastKm) { root.lastKm = km; root.score += 100; kmText.text = km + " KM  +100"; kmAnim.restart() }
             }
         }
@@ -822,7 +820,7 @@ Item {
             Text { text: value; color: vcolor; font.family: "monospace"; font.pixelSize: 18; font.bold: true }
         }
         Stat { label: "TIME";  value: root.fmtTime(race.workoutElapsedSec) }
-        Stat { label: "DIST";  value: (race.playerDistanceM / 1000).toFixed(2) + " km" }
+        Stat { label: "DIST";  value: (race.displayDistanceM / 1000).toFixed(2) + " km" }
         Stat { label: "SPEED"; value: race.playerSpeedKmh.toFixed(1) + " km/h" }
         Stat { label: "SCORE"; value: Math.floor(root.score).toString(); vcolor: "#ffe24a" }
     }
@@ -998,7 +996,7 @@ Item {
                color: race.gapMeters >= 0 ? "#5dff5d" : "#ff6b6b"
                font.family: "monospace"; font.pixelSize: 22; font.bold: true }
         Text { anchors.horizontalCenter: parent.horizontalCenter
-               text: (race.playerDistanceM / 1000).toFixed(2) + " km   ·   vs " + root.shortName(race.oppName, 24)
+               text: (race.displayDistanceM / 1000).toFixed(2) + " km   ·   vs " + root.shortName(race.oppName, 24)
                color: "#cde"; font.family: "monospace"; font.pixelSize: 14 }
         Text { anchors.horizontalCenter: parent.horizontalCenter
                text: "SCORE " + Math.floor(root.score)

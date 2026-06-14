@@ -50,9 +50,6 @@ private slots:
 
 
 private :
-    double calculateProlling(int userID);
-    double calculatePwind(int userID);
-    double calculatePgravity(int userID);
 
 private :
 
