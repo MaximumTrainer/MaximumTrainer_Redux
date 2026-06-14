@@ -453,6 +453,25 @@ void Account::saveIntervalsIcuCredentials() {
     CredentialStore::store("intervals_icu", "refresh_token", intervals_icu_refresh_token);
 }
 
+void Account::logout()
+{
+    // OAuth tokens (encrypted store).
+    CredentialStore::remove("intervals_icu", "access_token");
+    CredentialStore::remove("intervals_icu", "refresh_token");
+    intervals_icu_access_token.clear();
+    intervals_icu_refresh_token.clear();
+
+    // Manual API key + athlete id (the athlete id is what auto-logs the app in).
+    intervals_icu_api_key.clear();
+    intervals_icu_athlete_id.clear();
+
+    QSettings settings;
+    settings.beginGroup("account");
+    settings.remove("intervals_icu_api_key");
+    settings.remove("intervals_icu_athlete_id");
+    settings.endGroup();
+}
+
 void Account::saveStravaCredentials()
 {
     CredentialStore::store("strava", "access_token",  strava_access_token);

@@ -1144,6 +1144,13 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 
     qDebug () << "closeEvent Done mainWindow";
 
+    // On logout, hand back to the login screen in-process rather than quitting;
+    // main.cpp tears this window down and re-shows the login dialog.
+    if (m_loggingOut) {
+        emit logoutRequested();
+        return;
+    }
+
     // quitOnLastWindowClosed is disabled (see main.cpp), so quit explicitly
     // once the main window has finished closing.
     qApp->quit();
@@ -1153,6 +1160,24 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 /////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::on_actionExit_triggered()
 {
+    this->close();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+void MainWindow::on_actionLogout_triggered()
+{
+    if (QMessageBox::question(
+            this, tr("Log Out"),
+            tr("Log out of Intervals.icu and return to the login screen?"))
+        != QMessageBox::Yes)
+        return;
+
+    if (account)
+        account->logout();
+
+    // close() runs the normal save path; closeEvent then re-shows the login
+    // screen in-process (instead of quitting) because we're logging out.
+    m_loggingOut = true;
     this->close();
 }
 

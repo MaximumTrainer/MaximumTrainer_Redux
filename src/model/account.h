@@ -23,6 +23,10 @@ public:
     /// restart and offline use. Edited from the Preferences dialog.
     void saveProfileFields(int ftp, int lthr, double weightKg);
     void saveIntervalsIcuCredentials();
+    /// Sign out: clear the Intervals.icu identity (OAuth tokens, manual API key
+    /// and athlete id) from memory, the encrypted credential store and QSettings.
+    /// The next launch shows the login screen again.
+    void logout();
     void saveSensorDropoutSettings();
     void saveBatteryWarningThreshold();
     void saveIntervalSummarySettings();

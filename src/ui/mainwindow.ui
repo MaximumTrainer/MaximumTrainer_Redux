@@ -373,6 +373,7 @@
      <string>MaximumTrainer</string>
     </property>
     <addaction name="actionPreferences"/>
+    <addaction name="actionLogout"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
@@ -413,6 +414,11 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+,</string>
+   </property>
+  </action>
+  <action name="actionLogout">
+   <property name="text">
+    <string>Log Out</string>
    </property>
   </action>
   <action name="actionAbout_MT">

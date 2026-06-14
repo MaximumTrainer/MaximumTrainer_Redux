@@ -60,6 +60,9 @@ public:
 signals :
     void isExpanded(bool isExpanded);
     void ftpAndTabProfileChanged();
+    /// Emitted from closeEvent when the user chose Log Out, so the app can
+    /// return to the login screen in-process instead of quitting.
+    void logoutRequested();
 
 
 public slots:
@@ -156,6 +159,7 @@ private slots:
 
     void on_actionOpen_Ride_triggered();
     void on_actionExit_triggered();
+    void on_actionLogout_triggered();
 
 
     void on_actionSingle_Workout_triggered();
@@ -224,6 +228,7 @@ private:
     Settings *settings;
     Account *account;
     FancyTabBar *ftb;
+    bool m_loggingOut = false;   // set by Log Out so closeEvent re-shows login
 
     int currentIndexLeftMenu;
     bool isInsideWorkout;
