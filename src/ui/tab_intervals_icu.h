@@ -82,9 +82,10 @@ private:
     QNetworkReply *m_downloadReply  = nullptr;
     QString        m_pendingWorkoutName; ///< name captured at download start
 
-    // Parallel list of workout IDs for each table row (empty string = no
-    // downloadable workout for that event)
-    QList<QString> m_rowWorkoutIds;
+    // Parallel list of event IDs for each table row (empty string = the event
+    // is not a downloadable workout). Loadable rows store the event id used by
+    // the /events/{id}/download.zwo endpoint.
+    QList<QString> m_rowEventIds;
 
     // Batch sync state
     QNetworkReply *m_syncCalendarReply  = nullptr;

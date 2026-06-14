@@ -123,8 +123,8 @@ TabIntervalsIcu::TabIntervalsIcu(QWidget *parent)
                 const int row =
                     ui->tableWidget_calendar->currentRow();
                 const bool hasWorkout =
-                    row >= 0 && row < m_rowWorkoutIds.size() &&
-                    !m_rowWorkoutIds[row].isEmpty();
+                    row >= 0 && row < m_rowEventIds.size() &&
+                    !m_rowEventIds[row].isEmpty();
                 ui->pushButton_loadWorkout->setEnabled(hasWorkout);
             });
 }
@@ -156,7 +156,7 @@ void TabIntervalsIcu::refreshCredentials()
         // Clear any stale calendar data so the old content isn't visible
         // with credentials that may no longer be valid.
         ui->tableWidget_calendar->setRowCount(0);
-        m_rowWorkoutIds.clear();
+        m_rowEventIds.clear();
         ui->pushButton_loadWorkout->setEnabled(false);
 
         // Also abort any in-flight requests
@@ -281,7 +281,7 @@ void TabIntervalsIcu::onPrevWeekClicked()
     m_weekStart = m_weekStart.addDays(-7);
     updateWeekLabel();
     ui->tableWidget_calendar->setRowCount(0);
-    m_rowWorkoutIds.clear();
+    m_rowEventIds.clear();
     ui->pushButton_loadWorkout->setEnabled(false);
 }
 
@@ -291,7 +291,7 @@ void TabIntervalsIcu::onNextWeekClicked()
     m_weekStart = m_weekStart.addDays(7);
     updateWeekLabel();
     ui->tableWidget_calendar->setRowCount(0);
-    m_rowWorkoutIds.clear();
+    m_rowEventIds.clear();
     ui->pushButton_loadWorkout->setEnabled(false);
 }
 
@@ -299,11 +299,11 @@ void TabIntervalsIcu::onNextWeekClicked()
 void TabIntervalsIcu::onLoadWorkoutClicked()
 {
     const int row = ui->tableWidget_calendar->currentRow();
-    if (row < 0 || row >= m_rowWorkoutIds.size())
+    if (row < 0 || row >= m_rowEventIds.size())
         return;
 
-    const QString workoutId = m_rowWorkoutIds[row];
-    if (workoutId.isEmpty())
+    const QString eventId = m_rowEventIds[row];
+    if (eventId.isEmpty())
         return;
 
     if (m_downloadReply) {
@@ -326,7 +326,7 @@ void TabIntervalsIcu::onLoadWorkoutClicked()
     // Disable selection while download is in progress
     ui->tableWidget_calendar->setSelectionMode(QAbstractItemView::NoSelection);
 
-    m_downloadReply = m_service->downloadWorkoutZwo(workoutId);
+    m_downloadReply = m_service->downloadEventZwo(eventId);
     connect(m_downloadReply, &QNetworkReply::finished,
             this, &TabIntervalsIcu::onWorkoutDownloadFinished);
 }
@@ -439,7 +439,7 @@ void TabIntervalsIcu::populateTable(
     const QList<IntervalsIcuService::CalendarEvent> &events)
 {
     ui->tableWidget_calendar->setRowCount(0);
-    m_rowWorkoutIds.clear();
+    m_rowEventIds.clear();
     ui->pushButton_loadWorkout->setEnabled(false);
 
     for (const IntervalsIcuService::CalendarEvent &ev : events) {
@@ -465,7 +465,7 @@ void TabIntervalsIcu::populateTable(
         ui->tableWidget_calendar->setItem(
             row, 3, new QTableWidgetItem(durStr));
 
-        m_rowWorkoutIds.append(ev.workout_id);
+        m_rowEventIds.append(ev.isDownloadableWorkout() ? ev.id : QString());
     }
 }
 
@@ -556,7 +556,7 @@ void TabIntervalsIcu::onSyncCalendarFetched()
         IntervalsIcuService::parseEvents(data);
 
     for (const IntervalsIcuService::CalendarEvent &ev : allEvents) {
-        if (!ev.workout_id.isEmpty())
+        if (ev.isDownloadableWorkout())
             m_syncQueue.append(ev);
     }
 
@@ -587,9 +587,9 @@ void TabIntervalsIcu::downloadNextSyncWorkout()
     const IntervalsIcuService::CalendarEvent ev = m_syncQueue.takeFirst();
     m_pendingSyncWorkoutName = ev.name.trimmed();
     if (m_pendingSyncWorkoutName.isEmpty())
-        m_pendingSyncWorkoutName = ev.workout_id;
+        m_pendingSyncWorkoutName = ev.id;
 
-    m_syncDownloadReply = m_service->downloadWorkoutZwo(ev.workout_id);
+    m_syncDownloadReply = m_service->downloadEventZwo(ev.id);
     connect(m_syncDownloadReply, &QNetworkReply::finished,
             this, &TabIntervalsIcu::onSyncWorkoutDownloaded);
 }
