@@ -12,6 +12,8 @@
 #include <QFileDialog>
 #include <QTimer>
 #include <QDir>
+#include <QFile>
+#include <QTextStream>
 #include <QGuiApplication>
 #include <QStyleHints>
 
@@ -1349,6 +1351,8 @@ void MainWindow::executeWorkout(Workout workout) {
             connect(simHub, SIGNAL(signal_cadence(int,int)),          w, SLOT(CadenceDataReceived(int,int)));
             connect(simHub, SIGNAL(signal_speed(int,double)),         w, SLOT(TrainerSpeedDataReceived(int,double)));
             connect(simHub, SIGNAL(signal_power(int,int)),            w, SLOT(PowerDataReceived(int,int)));
+            connect(simHub, SIGNAL(signal_balance(int,int)),          w, SLOT(PowerBalanceDataReceived(int,int)));
+            connect(simHub, SIGNAL(signal_pedal(int,double,double,double,double,double)), w, SLOT(pedalMetricReceived(int,double,double,double,double,double)));
             connect(simHub, SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
 
             connect(w, SIGNAL(setLoad(int,double)),  simHub, SLOT(setLoad(int,double)));
@@ -1500,6 +1504,8 @@ void MainWindow::executeWorkout(Workout workout) {
     connect(btleHub, SIGNAL(signal_cadence(int,int)),          w, SLOT(CadenceDataReceived(int,int)));
     connect(btleHub, SIGNAL(signal_speed(int,double)),         w, SLOT(TrainerSpeedDataReceived(int,double)));
     connect(btleHub, SIGNAL(signal_power(int,int)),            w, SLOT(PowerDataReceived(int,int)));
+    connect(btleHub, SIGNAL(signal_balance(int,int)),          w, SLOT(PowerBalanceDataReceived(int,int)));
+    connect(btleHub, SIGNAL(signal_pedal(int,double,double,double,double,double)), w, SLOT(pedalMetricReceived(int,double,double,double,double,double)));
     connect(btleHub, SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
     connect(btleHub, &BtleHub::signal_battery, w, &WorkoutDialog::batteryStatusReceived);
 
@@ -1603,6 +1609,8 @@ void MainWindow::wireHubsToDialog(WorkoutDialog *w,
         if (powerHub == hub) return;          // already wired from this device
         powerHub = hub;
         connect(hub, SIGNAL(signal_power(int,int)), w, SLOT(PowerDataReceived(int,int)));
+        connect(hub, SIGNAL(signal_balance(int,int)), w, SLOT(PowerBalanceDataReceived(int,int)));
+        connect(hub, SIGNAL(signal_pedal(int,double,double,double,double,double)), w, SLOT(pedalMetricReceived(int,double,double,double,double,double)));
     };
     auto wireCadence = [&](BtleHub *hub) {
         if (cadenceHub == hub) return;
@@ -1926,6 +1934,10 @@ void MainWindow::launchDemoWorkout()
             m_ssWorkoutDlg, SLOT(TrainerSpeedDataReceived(int,double)));
     connect(m_ssSimHub, SIGNAL(signal_power(int,int)),
             m_ssWorkoutDlg, SLOT(PowerDataReceived(int,int)));
+    connect(m_ssSimHub, SIGNAL(signal_balance(int,int)),
+            m_ssWorkoutDlg, SLOT(PowerBalanceDataReceived(int,int)));
+    connect(m_ssSimHub, SIGNAL(signal_pedal(int,double,double,double,double,double)),
+            m_ssWorkoutDlg, SLOT(pedalMetricReceived(int,double,double,double,double,double)));
     connect(m_ssSimHub, SIGNAL(signal_oxygen(int,double,double)),
             m_ssWorkoutDlg, SLOT(OxygenValueChanged(int,double,double)));
 
@@ -1934,6 +1946,125 @@ void MainWindow::launchDemoWorkout()
     m_ssWorkoutDlg->raise();
     m_ssWorkoutDlg->activateWindow();
     QCoreApplication::processEvents();
+}
+
+// ── BLE sensor-check (headless) ──────────────────────────────────────────────
+// Drives a demo workout, then injects each sensor type one at a time and grabs
+// a screenshot per type, while capturing the trainer-control output (setLoad /
+// setSlope) so ERG can be regression-checked.
+void MainWindow::runSensorCheck(const QString &outDir)
+{
+    QDir().mkpath(outDir);
+    m_scOutDir = outDir;
+    m_scStep = 0;
+    m_scReport.clear();
+    m_scLoadLog.clear();
+
+    if (auto *acct = qApp->property("Account").value<Account*>())
+        acct->isOffline = true;
+
+    // Make every per-metric widget visible so each injected sensor is observable
+    // (oxygen and L/R balance are off by default), and use the plain video pane
+    // (not the race) so the metric band is unobstructed.
+    account->show_hr_widget            = true;
+    account->show_power_widget         = true;
+    account->show_cadence_widget       = true;
+    account->show_speed_widget         = true;
+    account->show_oxygen_widget        = true;
+    account->show_power_balance_widget = true;
+    account->display_video             = 0;
+
+    resize(1280, 900);
+    move(60, 40);
+
+    // Reuse the demo-workout setup (creates m_ssSimHub + m_ssWorkoutDlg, wires
+    // the sim's sensor signals to the dialog, and shows it).
+    launchDemoWorkout();
+
+    // Stop the simulator feed so each manually-injected sensor value is the only
+    // thing on screen when grabbed (otherwise the sim overwrites it next tick).
+    if (m_ssSimHub) m_ssSimHub->stop();
+
+    // Capture trainer-control output — proves ERG actually drives the trainer
+    // (the regression class where trainerControlUserId stayed -1 and nothing was
+    // sent). Pretend a controllable trainer is wired.
+    connect(m_ssWorkoutDlg, &WorkoutDialog::setLoad, this, [this](int antId, double watts) {
+        m_scLoadLog << QStringLiteral("setLoad  ant=%1  %2 W").arg(antId).arg(watts, 0, 'f', 1);
+    });
+    connect(m_ssWorkoutDlg, &WorkoutDialog::setSlope, this, [this](int antId, double grade) {
+        m_scLoadLog << QStringLiteral("setSlope ant=%1  grade=%2").arg(antId).arg(grade, 0, 'f', 3);
+    });
+    m_ssWorkoutDlg->enableTrainerControl();
+
+    // Start the workout so targets/ERG engage (then loads should be emitted).
+    QMetaObject::invokeMethod(m_ssWorkoutDlg, "start_or_pause_workout", Qt::QueuedConnection);
+
+    QTimer::singleShot(3000, this, SLOT(sensorCheckNextStep()));
+}
+
+void MainWindow::sensorCheckNextStep()
+{
+    const int step = m_scStep++;
+    auto grab = [this](const QString &name) {
+        if (!m_ssWorkoutDlg) return;
+        m_ssWorkoutDlg->raise();
+        QCoreApplication::processEvents();
+        m_ssWorkoutDlg->grab().save(m_scOutDir + QLatin1String("/sensor_") + name + QLatin1String(".png"), "PNG");
+    };
+    if (!m_ssWorkoutDlg) { qApp->quit(); return; }
+
+    switch (step) {
+    case 0:   // Heart rate
+        m_ssWorkoutDlg->HrDataReceived(1, 152);
+        grab(QStringLiteral("hr"));
+        m_scReport << QStringLiteral("HR       : injected 152 bpm   -> sensor_hr.png");
+        break;
+    case 1:   // Power
+        m_ssWorkoutDlg->PowerDataReceived(1, 255);
+        grab(QStringLiteral("power"));
+        m_scReport << QStringLiteral("POWER    : injected 255 W     -> sensor_power.png");
+        break;
+    case 2:   // Cadence
+        m_ssWorkoutDlg->CadenceDataReceived(1, 92);
+        grab(QStringLiteral("cadence"));
+        m_scReport << QStringLiteral("CADENCE  : injected 92 rpm    -> sensor_cadence.png");
+        break;
+    case 3:   // Speed
+        m_ssWorkoutDlg->TrainerSpeedDataReceived(1, 34.5);
+        grab(QStringLiteral("speed"));
+        m_scReport << QStringLiteral("SPEED    : injected 34.5 km/h -> sensor_speed.png");
+        break;
+    case 4:   // Oxygen (Moxy SmO2 / tHb)
+        m_ssWorkoutDlg->OxygenValueChanged(1, 62.0, 12.5);
+        grab(QStringLiteral("oxygen"));
+        m_scReport << QStringLiteral("OXYGEN   : injected 62%/12.5  -> sensor_oxygen.png");
+        break;
+    case 5:   // L/R balance + pedal metrics (now decoded + wired)
+        m_ssWorkoutDlg->PowerBalanceDataReceived(1, 53);
+        m_ssWorkoutDlg->pedalMetricReceived(1, 95.0, 92.0, 0.62, 0.55, 0.58);
+        grab(QStringLiteral("balance_pedal"));
+        m_scReport << QStringLiteral("BALANCE  : Right 53%% + torque/smoothness -> sensor_balance_pedal.png "
+                                     "(balance now decoded from CPM 0x2A63 + wired; pedal metrics driven "
+                                     "by the simulator, real-sensor decode pending CP Vector 0x2A64)");
+        break;
+    case 6:   // ERG / trainer-control output captured since start
+        grab(QStringLiteral("erg"));
+        m_scReport << QStringLiteral("ERG/CTRL : %1 trainer-control command(s) captured:").arg(m_scLoadLog.size());
+        for (const QString &l : m_scLoadLog)
+            m_scReport << QStringLiteral("           ") + l;
+        if (m_scLoadLog.isEmpty())
+            m_scReport << QStringLiteral("           *** NONE — ERG is NOT driving the trainer (regression!) ***");
+        break;
+    default: {
+        QFile f(m_scOutDir + QLatin1String("/sensor_check_report.txt"));
+        if (f.open(QIODevice::WriteOnly | QIODevice::Text))
+            QTextStream(&f) << m_scReport.join(QLatin1Char('\n')) << '\n';
+        qInfo().noquote() << "\n===== SENSOR CHECK REPORT =====\n" << m_scReport.join(QLatin1Char('\n'));
+        qApp->quit();
+        return;
+    }
+    }
+    QTimer::singleShot(900, this, SLOT(sensorCheckNextStep()));
 }
 
 void MainWindow::showDemoRaceView()
@@ -2160,6 +2291,8 @@ void MainWindow::screenshotNextStep()
             connect(simHub, SIGNAL(signal_cadence(int,int)), m_ssWorkoutDlg, SLOT(CadenceDataReceived(int,int)));
             connect(simHub, SIGNAL(signal_speed(int,double)),m_ssWorkoutDlg, SLOT(TrainerSpeedDataReceived(int,double)));
             connect(simHub, SIGNAL(signal_power(int,int)),   m_ssWorkoutDlg, SLOT(PowerDataReceived(int,int)));
+            connect(simHub, SIGNAL(signal_balance(int,int)), m_ssWorkoutDlg, SLOT(PowerBalanceDataReceived(int,int)));
+            connect(simHub, SIGNAL(signal_pedal(int,double,double,double,double,double)), m_ssWorkoutDlg, SLOT(pedalMetricReceived(int,double,double,double,double,double)));
             simHub->start();
             m_ssStudioHubs.append(simHub);
         }

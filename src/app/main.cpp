@@ -376,6 +376,20 @@ int main(int argc, char *argv[]) {
     splash.setStatusMessage(QObject::tr("Applying theme…"));
     splash.setProgress(55);
 
+    // --sensor-check [dir]: bypass login, run the headless BLE sensor-validation
+    // pass (inject each sensor type → screenshot + capture trainer-control), quit.
+    if (cliArgs.contains(QLatin1String("--sensor-check"), Qt::CaseInsensitive)) {
+        splash.hide();
+        MainWindow *w = launchMainWindow();
+        QString outDir = QCoreApplication::applicationDirPath() + QLatin1String("/sensor-check");
+        const int idx = cliArgs.indexOf(QLatin1String("--sensor-check"));
+        if (idx >= 0 && idx + 1 < cliArgs.size() && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-')))
+            outDir = cliArgs.at(idx + 1);
+        QMetaObject::invokeMethod(w, "runSensorCheck", Qt::QueuedConnection,
+                                  Q_ARG(QString, outDir));
+        return app.exec();
+    }
+
     if (screenshotMode) {
         // Bypass login entirely and capture UI screenshots, then quit.
         splash.hide();

@@ -57,6 +57,12 @@ signals:
     void signal_cadence(int userID, int cadence);
     void signal_speed(int userID, double speed);       // km/h
     void signal_power(int userID, int power);          // watts
+    void signal_balance(int userID, int rightPedalPercentage); // L/R pedal balance, right pedal %
+    // Torque effectiveness / pedal smoothness. Decoding these from a real sensor
+    // needs the Cycling Power Vector characteristic (0x2A64) — not yet parsed, so
+    // BtleHub does not emit this today; the simulator does, to exercise the UI.
+    void signal_pedal(int userID, double leftTorqueEff, double rightTorqueEff,
+                      double leftPedalSmooth, double rightPedalSmooth, double combinedPedalSmooth);
     void signal_oxygen(int userID, double smo2Percent, double thbGdL);
     /// Emitted when the connected device's Battery Service reports a level.
     /// \param sensorType  Human-readable sensor name ("Heart Rate", "Power", …)
