@@ -45,6 +45,34 @@ ERG smoothing ramps via `setLoad` (see startErgSmoothing/ergSmoothStep).
    the right watts in ERG mode (i.e. `trainerControlUserId` got set). This is
    the regression class that motivated this task.
 
+## RESULTS (--sensor-check, headless, all widgets enabled)
+Run: `./MaximumTrainer --sensor-check <dir>` → per-sensor screenshots + report.
+
+| Sensor | Result |
+|---|---|
+| HR        | ✅ 152 bpm shown (top bar + HR widget) |
+| Power     | ✅ 255 W shown |
+| Cadence   | ✅ 92 rpm shown |
+| Speed     | ✅ 34.5 km/h (Trainer Speed) shown |
+| Oxygen    | ✅ 62% SmO2 / 12.5 tHb shown (when the oxygen widget is enabled) |
+| L/R balance + pedal | ❌ broken end-to-end (no decode, no signal, dead slots; no balance widget surfaces even when enabled + slot called directly) |
+| ERG / trainer control | ✅ 6× `setLoad ant=1 126 W` captured = warm-up target ≈0.6×FTP — ERG drives the trainer |
+
+Net: the core sensors + ERG work; **L/R balance + pedal metrics are the one broken sensor type.**
+
+## Suggested fix for balance/pedal (for review — NOT yet implemented)
+1. `parsePowerMeasurement` (0x2A63): read flags; if bit 0 (Pedal Power Balance
+   Present), parse the balance byte (uint8, 0.5%, reference = left). Optionally
+   parse torque-effectiveness / pedal-smoothness optional fields.
+2. Add `signal_balance(uid,int rightPct)` (and a pedal-metrics signal) to BtleHub
+   and emit from the decoder.
+3. Connect them to `PowerBalanceDataReceived` / `pedalMetricReceived` in the
+   workout-launch paths (mainwindow.cpp), like the other sensor signals.
+4. Ensure `wid_2_balancePower` is actually placed in the metric band (it isn't
+   surfaced today even with `show_power_balance_widget` = true — likely needs to
+   be in `account->tab_display` / moveWidgetsPosition).
+This touches the decoder + hub + wiring + UI layout, so it's left for review.
+
 ## Harness plan
 Add a headless validation pass (mirrors `--screenshots`): drive a demo workout
 with a controllable `SimulatorHub`, in ERG, then per sensor type inject a known

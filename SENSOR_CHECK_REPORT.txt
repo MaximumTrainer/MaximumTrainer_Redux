@@ -1,0 +1,13 @@
+HR       : injected 152 bpm   -> sensor_hr.png
+POWER    : injected 255 W     -> sensor_power.png
+CADENCE  : injected 92 rpm    -> sensor_cadence.png
+SPEED    : injected 34.5 km/h -> sensor_speed.png
+OXYGEN   : injected 62%/12.5  -> sensor_oxygen.png
+BALANCE  : called slots directly (no decoder/hub signal feeds these in the real app) -> sensor_balance_pedal.png
+ERG/CTRL : 6 trainer-control command(s) captured:
+           setLoad  ant=1  126.0 W
+           setLoad  ant=1  126.0 W
+           setLoad  ant=1  126.0 W
+           setLoad  ant=1  126.0 W
+           setLoad  ant=1  126.0 W
+           setLoad  ant=1  126.0 W

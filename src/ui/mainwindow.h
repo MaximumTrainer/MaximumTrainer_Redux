@@ -68,6 +68,13 @@ public slots:
 
     void startScreenshotMode(const QString &outputDir);
 
+    /// Headless BLE-sensor validation: drives a demo workout and injects each
+    /// sensor type one at a time (HR/power/cadence/speed/oxygen/balance/pedal),
+    /// grabbing a screenshot per type, and captures the trainer-control output
+    /// (setLoad/setSlope) to prove ERG actually drives the trainer. Writes a
+    /// report then quits. Entry: --sensor-check [dir].
+    void runSensorCheck(const QString &outDir);
+
     /// Launch the demo workout dialog (simulator-driven, non-modal) used by
     /// screenshot mode and, on WASM, by the `window.mt_startDemoWorkout` test
     /// hook to drive the app into the metric-dashboard view for render checks.
@@ -173,6 +180,9 @@ private slots:
     // Screenshot mode — captures a sequence of PNG files then quits the app.
     void screenshotNextStep();
 
+    // BLE sensor-check mode — one async step per sensor type (see runSensorCheck).
+    void sensorCheckNextStep();
+
     void slotSystemThemeChanged();
 
 private:
@@ -225,6 +235,12 @@ private:
 
     QString        m_ssOutputDir;
     int            m_ssStep       = 0;
+
+    // BLE sensor-check mode state
+    QString        m_scOutDir;
+    int            m_scStep    = 0;
+    QStringList    m_scReport;     // human-readable per-sensor results
+    QStringList    m_scLoadLog;    // captured setLoad/setSlope (trainer control)
     WorkoutDialog *m_ssWorkoutDlg = nullptr;
     SimulatorHub  *m_ssSimHub     = nullptr;
     QList<SimulatorHub*> m_ssStudioHubs;   // per-rider sim hubs for the studio-workout shot
