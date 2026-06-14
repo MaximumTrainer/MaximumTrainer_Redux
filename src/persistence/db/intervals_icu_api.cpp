@@ -135,6 +135,25 @@ QNetworkReply* IntervalsIcuApi::downloadWorkoutZwo(const QString &athleteId,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GET /api/v1/athlete/{id}/events/{eventId}/download.zwo
+QNetworkReply* IntervalsIcuApi::downloadEventZwo(const QString &athleteId,
+                                                     const QString &eventId,
+                                                     const QString &apiKey)
+{
+    QNetworkAccessManager *manager =
+        qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
+    if (!manager) {
+        LOG_WARN("IntervalsIcuApi", QStringLiteral("downloadEventZwo: NetworkManagerWS not available"));
+        return nullptr;
+    }
+
+    const QString url = QLatin1String(BASE_URL) + QStringLiteral("/athlete/") + athleteId
+                        + QStringLiteral("/events/") + eventId
+                        + QStringLiteral("/download.zwo");
+    return manager->get(buildRequest(url, apiKey));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/v1/athlete/{id}/workouts/{workoutId}.mrc
 QNetworkReply* IntervalsIcuApi::downloadWorkoutMrc(const QString &athleteId,
                                                        const QString &workoutId,

@@ -36,8 +36,17 @@ public:
         QDate   date;
         QString type;
         int     duration_sec;   ///< moving_time in seconds (0 if unavailable)
-        QString workout_id;     ///< workout id for .zwo download ("" if none)
+        QString category;       ///< event category, e.g. "WORKOUT"
         QString description;
+
+        /// True when the event is a structured/planned workout that can be
+        /// downloaded as a .zwo file via its event id. Workouts authored
+        /// directly on the calendar carry no separate workout_id — the steps
+        /// live in the event itself — so downloadability is keyed on category.
+        bool isDownloadableWorkout() const
+        {
+            return category == QLatin1String("WORKOUT");
+        }
     };
 
     explicit IntervalsIcuService(QObject *parent = nullptr);
@@ -59,8 +68,9 @@ public:
     /// GET /api/v1/athlete/{id}/events  — calendar events in [oldest, newest].
     QNetworkReply *fetchCalendar(const QDate &oldest, const QDate &newest);
 
-    /// GET /api/v1/athlete/{id}/workouts/{workoutId}.zwo
-    QNetworkReply *downloadWorkoutZwo(const QString &workoutId);
+    /// GET /api/v1/athlete/{id}/events/{eventId}/download.zwo
+    /// Downloads a planned calendar event's structured workout as a .zwo file.
+    QNetworkReply *downloadEventZwo(const QString &eventId);
 
     /// POST /api/v1/athlete/0/activities — upload a FIT/TCX file.
     /// @param filePath  Absolute path to the activity file (.fit or .tcx).

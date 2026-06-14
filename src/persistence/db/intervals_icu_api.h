@@ -57,6 +57,14 @@ public:
                                              const QString &workoutId,
                                              const QString &apiKey);
 
+    /// Download a planned calendar event's structured workout as a ZWO file.
+    /// Calendar-authored workouts have no library workout_id — the steps live
+    /// in the event itself — so the download is keyed on the event id.
+    /// GET /athlete/{id}/events/{eventId}/download.zwo
+    static QNetworkReply* downloadEventZwo(const QString &athleteId,
+                                           const QString &eventId,
+                                           const QString &apiKey);
+
     /// Create a workout in the athlete's library.
     /// POST /athlete/{id}/workouts
     /// @param json  UTF-8 encoded JSON object describing the new workout.

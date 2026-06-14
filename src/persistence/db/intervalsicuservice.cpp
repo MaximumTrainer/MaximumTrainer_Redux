@@ -89,16 +89,16 @@ QNetworkReply *IntervalsIcuService::fetchCalendar(const QDate &oldest,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-QNetworkReply *IntervalsIcuService::downloadWorkoutZwo(const QString &workoutId)
+QNetworkReply *IntervalsIcuService::downloadEventZwo(const QString &eventId)
 {
     const QString path =
-        QString("/athlete/%1/workouts/%2.zwo")
-            .arg(m_athleteId, workoutId);
+        QString("/athlete/%1/events/%2/download.zwo")
+            .arg(m_athleteId, eventId);
 
     auto *mgr = qApp->property("NetworkManagerWS")
                     .value<QNetworkAccessManager *>();
     if (!mgr) {
-        LOG_WARN("IntervalsIcuService", QStringLiteral("downloadWorkoutZwo: NetworkManagerWS not available"));
+        LOG_WARN("IntervalsIcuService", QStringLiteral("downloadEventZwo: NetworkManagerWS not available"));
         return nullptr;
     }
     return mgr->get(buildRequest(path));
@@ -192,9 +192,10 @@ IntervalsIcuService::parseEvents(const QByteArray &data)
         ev.duration_sec = obj["moving_time"].toInt(0);
         ev.description = obj["description"].toString();
 
-        // workout_id may be absent (free event, not a structured workout)
-        if (obj.contains("workout_id") && !obj["workout_id"].isNull())
-            ev.workout_id = QString::number(obj["workout_id"].toVariant().toLongLong());
+        // category distinguishes structured workouts ("WORKOUT") from notes,
+        // races and other calendar entries. Workouts are downloadable via the
+        // event id regardless of whether a library workout_id is linked.
+        ev.category    = obj["category"].toString();
 
         // start_date_local is ISO 8601 "YYYY-MM-DDThh:mm:ss"
         const QString dateStr =

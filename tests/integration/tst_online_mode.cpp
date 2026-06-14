@@ -1116,10 +1116,15 @@ void TstOnlineMode::testCalendarPlan()
     const QString eventName = QString("MaximumTrainer CI Plan [%1]").arg(timestamp);
     const QDate   tomorrow  = QDate::currentDate().addDays(1);
 
+    // The 'description' of a WORKOUT event is intervals.icu's native workout
+    // text format. Providing structured steps here makes the event downloadable
+    // as a .zwo via /events/{id}/download.zwo — the exact path the app uses when
+    // a user loads a workout planned directly on the calendar (no workout_id).
     const QJsonObject eventJson {
         { "category",         "WORKOUT"                    },
         { "type",             "Ride"                       },
         { "name",             eventName                    },
+        { "description",      "- 10m 60%\n- 5m 75%"        },
         { "start_date_local", QDateTime(tomorrow, QTime(0, 0)).toString(Qt::ISODate) }
     };
     const QByteArray eventBody = QJsonDocument(eventJson).toJson(QJsonDocument::Compact);
@@ -1168,19 +1173,47 @@ void TstOnlineMode::testCalendarPlan()
     const QJsonDocument listDoc = QJsonDocument::fromJson(listBody);
     QVERIFY2(listDoc.isArray(), "getEvents response is not a JSON array");
 
-    bool found = false;
+    QJsonObject foundEvent;
     for (const QJsonValue &v : listDoc.array()) {
         if (v.toObject().value("id").toVariant().toString() == m_createdEventId) {
-            found = true;
+            foundEvent = v.toObject();
             break;
         }
     }
 
-    QVERIFY2(found,
+    QVERIFY2(!foundEvent.isEmpty(),
              qPrintable(QString("Created event id %1 ('%2') not found in calendar for %3")
                         .arg(m_createdEventId, eventName, tomorrow.toString())));
 
     qDebug().noquote() << "[testCalendarPlan] Event" << m_createdEventId
                        << "confirmed in calendar for" << tomorrow.toString();
+
+    // The event is a structured workout (category WORKOUT) and carries no
+    // separate workout_id — this is the exact shape that previously left the
+    // "Load Selected Workout" button disabled (issue #288). The app keys
+    // downloadability on category, so verify that holds for a real event.
+    QCOMPARE(foundEvent.value("category").toString(), QStringLiteral("WORKOUT"));
+
+    // ── Download the planned workout via the event endpoint ──────────────────
+    QNetworkReply *zwoReply = IntervalsIcuApi::downloadEventZwo(
+        m_athleteId, m_createdEventId, m_apiKey);
+    QVERIFY2(zwoReply, "downloadEventZwo returned null reply");
+    waitForReply(zwoReply, 30'000);
+
+    const int zwoStatus = zwoReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const QByteArray zwoBody = zwoReply->readAll();
+    zwoReply->deleteLater();
+
+    qDebug().noquote() << "[testCalendarPlan] downloadEventZwo HTTP" << zwoStatus
+                       << "bytes" << zwoBody.size();
+    QVERIFY2(zwoStatus == 200,
+             qPrintable(QString("Expected event download HTTP 200, got %1: %2")
+                        .arg(zwoStatus).arg(QString(zwoBody.left(300)))));
+    QVERIFY2(zwoBody.contains("<workout_file"),
+             qPrintable(QString("Event download did not return a ZWO file: %1")
+                        .arg(QString(zwoBody.left(300)))));
+
+    qDebug().noquote() << "[testCalendarPlan] Planned workout downloaded as ZWO ("
+                       << zwoBody.size() << "bytes)";
 }
 QTEST_MAIN(TstOnlineMode)

@@ -122,6 +122,7 @@ private slots:
     void testConvertWorkoutToZwo_authHeader();
     void testDownloadZwo_authHeader();
     void testDownloadMrc_authHeader();
+    void testDownloadEvent_authHeader();
 
     // ── Accept header ───────────────────────────────────────────────────────
     void testGetAthlete_acceptHeader();
@@ -134,6 +135,7 @@ private slots:
     void testConvertWorkoutToZwo_url();
     void testDownloadZwo_url();
     void testDownloadMrc_url();
+    void testDownloadEvent_url();
 
     // ── getEvents query parameters ──────────────────────────────────────────
     void testGetEvents_queryParams();
@@ -147,6 +149,7 @@ private:
     static constexpr const char ATHLETE_ID[] = "i12345";
     static constexpr const char API_KEY[]    = "testApiKey";
     static constexpr const char WORKOUT_ID[] = "w99";
+    static constexpr const char EVENT_ID[]   = "55512345";
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -245,6 +248,18 @@ void TstIntervalsIcuService::testDownloadMrc_authHeader()
 {
     QNetworkReply *reply = IntervalsIcuApi::downloadWorkoutMrc(
         ATHLETE_ID, WORKOUT_ID, API_KEY);
+    QVERIFY(reply != nullptr);
+    QCOMPARE(m_manager->callCount, 1);
+    reply->deleteLater();
+
+    const QByteArray header = m_manager->lastRequest.rawHeader("Authorization");
+    QCOMPARE(header, expectedBasicHeader(API_KEY));
+}
+
+void TstIntervalsIcuService::testDownloadEvent_authHeader()
+{
+    QNetworkReply *reply = IntervalsIcuApi::downloadEventZwo(
+        ATHLETE_ID, EVENT_ID, API_KEY);
     QVERIFY(reply != nullptr);
     QCOMPARE(m_manager->callCount, 1);
     reply->deleteLater();
@@ -357,6 +372,22 @@ void TstIntervalsIcuService::testDownloadMrc_url()
 
     const QString url = m_manager->lastRequest.url().toString();
     QVERIFY(url.contains(QStringLiteral("/workouts/") + WORKOUT_ID + QStringLiteral(".mrc")));
+}
+
+void TstIntervalsIcuService::testDownloadEvent_url()
+{
+    QNetworkReply *reply = IntervalsIcuApi::downloadEventZwo(
+        ATHLETE_ID, EVENT_ID, API_KEY);
+    QVERIFY(reply != nullptr);
+    QCOMPARE(m_manager->callCount, 1);
+    reply->deleteLater();
+
+    const QString url = m_manager->lastRequest.url().toString();
+    QVERIFY(url.contains(QStringLiteral("/athlete/") + ATHLETE_ID
+                         + QStringLiteral("/events/") + EVENT_ID
+                         + QStringLiteral("/download.zwo")));
+    // A calendar event download must NOT hit the library /workouts/ endpoint.
+    QVERIFY(!url.contains(QStringLiteral("/workouts/")));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
