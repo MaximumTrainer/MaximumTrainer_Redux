@@ -98,7 +98,8 @@ private:
     /// \a allHubs for cleanup. Shared by the solo and Studio launch paths.
     void wireHubsToDialog(WorkoutDialog *w,
                           const QMap<BtleSensorRole, BtleHub*> &hubsByRole,
-                          QSet<BtleHub*> &allHubs);
+                          QSet<BtleHub*> &allHubs,
+                          int riderIndex = 0);
 
     /// Launch a Studio-mode workout with each rider's already-connected hubs
     /// (tagged via BtleHub::setUserID). Pairs are (riderIndex, role→hub map).

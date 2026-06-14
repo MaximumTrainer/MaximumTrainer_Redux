@@ -273,6 +273,7 @@ void BtleHub::onControllerDisconnected()
 {
     LOG_INFO("BtleHub", QStringLiteral("Device disconnected"));
     m_cscStopTimer->stop();
+    m_hrSeen = false;
     emit deviceDisconnected();
 
     if (m_reconnectAttempts < MAX_RECONNECT_ATTEMPTS)
@@ -592,6 +593,14 @@ void BtleHub::parseHrMeasurement(const QByteArray &data)
     }
 
     emit signal_hr(m_userID, hr);
+
+    // A trainer that bridges an HR strap exposes it as a 0x180D service on the
+    // trainer connection, so the first reading here flags the capability for the
+    // "provided by trainer" UI (the trainer hub is the only listener).
+    if (!m_hrSeen) {
+        m_hrSeen = true;
+        emit signal_trainerProvidesHr(m_userID);
+    }
 }
 
 // CSC Measurement (0x2A5B) – speed/cadence computation

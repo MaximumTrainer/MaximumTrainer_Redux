@@ -61,6 +61,13 @@ public:
     /// connection, so the Power and Cadence/Speed slots are covered by it.
     static bool roleCoveredByTrainer(BtleSensorRole role);
 
+    /// Whether the saved trainer was last seen bridging heart rate over FTMS.
+    /// Unlike power/cadence (always carried by FTMS), HR is only present when the
+    /// trainer bridges a strap, so this is learned at runtime and persisted.
+    /// (See \a riderIndex on loadAll().)
+    static bool trainerProvidesHr(int riderIndex = 0);
+    static void setTrainerProvidesHr(bool provides, int riderIndex = 0);
+
 private:
     static constexpr const char *kGroup = "btleSensors";
 

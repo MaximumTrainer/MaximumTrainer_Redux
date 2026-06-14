@@ -23,6 +23,25 @@ bool BtleSensorStore::roleCoveredByTrainer(BtleSensorRole role)
     return role == BtleSensorRole::Power || role == BtleSensorRole::CadenceSpeed;
 }
 
+static constexpr const char *kTrainerProvidesHrKey = "trainerProvidesHr";
+
+bool BtleSensorStore::trainerProvidesHr(int riderIndex)
+{
+    QSettings settings;
+    settings.beginGroup(groupForRider(riderIndex));
+    const bool provides = settings.value(QLatin1String(kTrainerProvidesHrKey), false).toBool();
+    settings.endGroup();
+    return provides;
+}
+
+void BtleSensorStore::setTrainerProvidesHr(bool provides, int riderIndex)
+{
+    QSettings settings;
+    settings.beginGroup(groupForRider(riderIndex));
+    settings.setValue(QLatin1String(kTrainerProvidesHrKey), provides);
+    settings.endGroup();
+}
+
 QString BtleSensorStore::roleKey(BtleSensorRole role)
 {
     switch (role) {

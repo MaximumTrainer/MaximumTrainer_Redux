@@ -91,6 +91,7 @@ private slots:
     // ── FTMS multi-field layout (field skipping) ─────────────────────────────
     void testFtms_allOptionalFieldsBeforePowerSkipped();
     void testFtms_negativeInstantPower();
+    void testHrService_firesTrainerProvidesHr();
 
     // ── SimulatorHub no-op slot verification ─────────────────────────────────
     void testSimulator_noOpSetLoad();
@@ -778,6 +779,23 @@ void TstBtleHub::testFtms_negativeInstantPower()
 
     QCOMPARE(spy.count(), 1);
     QCOMPARE(spy.at(0).at(1).toInt(), -10);
+}
+
+/**
+ * The trainer bridges its HR strap over a standard 0x180D Heart Rate service
+ * (the JetBlack Victory does this). The first such reading latches
+ * signal_trainerProvidesHr — once per connection — so the UI can mark the Heart
+ * Rate slot "provided by trainer".
+ */
+void TstBtleHub::testHrService_firesTrainerProvidesHr()
+{
+    QSignalSpy spy(hub, &BtleHub::signal_trainerProvidesHr);
+
+    hub->simulateNotification(0x2A37, BtlePacketBuilder::heartRate(138));
+    QCOMPARE(spy.count(), 1);
+
+    hub->simulateNotification(0x2A37, BtlePacketBuilder::heartRate(141));
+    QCOMPARE(spy.count(), 1); // latched: once per connection
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
