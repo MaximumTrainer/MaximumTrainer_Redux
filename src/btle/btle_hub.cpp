@@ -273,6 +273,7 @@ void BtleHub::onControllerDisconnected()
 {
     LOG_INFO("BtleHub", QStringLiteral("Device disconnected"));
     m_cscStopTimer->stop();
+    m_ftmsHrSeen = false;
     emit deviceDisconnected();
 
     if (m_reconnectAttempts < MAX_RECONNECT_ATTEMPTS)
@@ -790,8 +791,13 @@ void BtleHub::parseFtmsIndoorBikeData(const QByteArray &data)
     // strap fold the reading in here rather than exposing a separate 0x180D
     // service, so this is the only place we'd ever see it for those devices.
     if (flags & 0x0200) {
-        if (offset < data.size())
+        if (offset < data.size()) {
             emit signal_hr(m_userID, static_cast<quint8>(data[offset]));
+            if (!m_ftmsHrSeen) {
+                m_ftmsHrSeen = true;
+                emit signal_trainerProvidesHr(m_userID);
+            }
+        }
         offset += 1;
     }
 }

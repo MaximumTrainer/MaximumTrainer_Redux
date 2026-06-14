@@ -95,6 +95,8 @@ private slots:
     void testFtms_heartRateAfterEnergy();
     void testFtms_heartRateAfterAvgPower();
     void testFtms_heartRateFlagButTruncated_ignored();
+    void testFtms_trainerProvidesHrSignal_firesOnce();
+    void testFtms_noHr_noTrainerProvidesHrSignal();
 
     // ── SimulatorHub no-op slot verification ─────────────────────────────────
     void testSimulator_noOpSetLoad();
@@ -865,6 +867,38 @@ void TstBtleHub::testFtms_heartRateFlagButTruncated_ignored()
     hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA, pkt);
 
     QCOMPARE(spyHr.count(), 0);
+}
+
+/**
+ * When the trainer bridges HR over FTMS, signal_trainerProvidesHr fires once per
+ * connection (latched) so the UI can mark the HR slot "provided by trainer"
+ * without re-firing on every packet.
+ */
+void TstBtleHub::testFtms_trainerProvidesHrSignal_firesOnce()
+{
+    QSignalSpy spy(hub, &BtleHub::signal_trainerProvidesHr);
+
+    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA,
+        BtlePacketBuilder::ftmsIndoorBikeData(30.0, 85.0, 180,
+            true, true, true, /*heartRateBpm=*/140));
+    QCOMPARE(spy.count(), 1);
+
+    // A second HR-bearing packet must not re-emit.
+    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA,
+        BtlePacketBuilder::ftmsIndoorBikeData(30.0, 85.0, 180,
+            true, true, true, /*heartRateBpm=*/142));
+    QCOMPARE(spy.count(), 1);
+}
+
+/** No HR field in the FTMS stream → the capability signal never fires. */
+void TstBtleHub::testFtms_noHr_noTrainerProvidesHrSignal()
+{
+    QSignalSpy spy(hub, &BtleHub::signal_trainerProvidesHr);
+
+    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA,
+        BtlePacketBuilder::ftmsIndoorBikeData(30.0, 85.0, 180));
+
+    QCOMPARE(spy.count(), 0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

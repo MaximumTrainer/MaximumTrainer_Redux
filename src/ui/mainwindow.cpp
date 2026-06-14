@@ -1613,7 +1613,8 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
 // Called once for solo and once per rider in Studio mode.
 void MainWindow::wireHubsToDialog(WorkoutDialog *w,
                                   const QMap<BtleSensorRole, BtleHub*> &hubsByRole,
-                                  QSet<BtleHub*> &allHubs)
+                                  QSet<BtleHub*> &allHubs,
+                                  int riderIndex)
 {
     QSet<BtleHub*> uniqueHubs;
     for (BtleHub *hub : hubsByRole)
@@ -1629,6 +1630,13 @@ void MainWindow::wireHubsToDialog(WorkoutDialog *w,
     BtleHub *powerHub   = nullptr;
     BtleHub *cadenceHub = nullptr;
     BtleHub *speedHub   = nullptr;
+    BtleHub *hrHub      = nullptr;
+
+    auto wireHr = [&](BtleHub *hub) {
+        if (hrHub == hub) return;
+        hrHub = hub;
+        connect(hub, SIGNAL(signal_hr(int,int)), w, SLOT(HrDataReceived(int,int)));
+    };
 
     auto wirePower = [&](BtleHub *hub) {
         if (powerHub == hub) return;          // already wired from this device
@@ -1655,6 +1663,10 @@ void MainWindow::wireHubsToDialog(WorkoutDialog *w,
         wirePower(hub);
         wireCadence(hub);
         wireSpeed(hub);
+        // Remember when this trainer bridges an HR strap so the sensors page can
+        // mark the Heart Rate slot "provided by trainer" next time it opens.
+        connect(hub, &BtleHub::signal_trainerProvidesHr, this,
+                [riderIndex]() { BtleSensorStore::setTrainerProvidesHr(true, riderIndex); });
         connect(w, SIGNAL(setLoad(int,double)),  hub, SLOT(setLoad(int,double)));
         connect(w, SIGNAL(setSlope(int,double)), hub, SLOT(setSlope(int,double)));
         w->enableTrainerControl();
@@ -1666,9 +1678,12 @@ void MainWindow::wireHubsToDialog(WorkoutDialog *w,
         wireCadence(hub);
         wireSpeed(hub);
     }
+    // A dedicated HR strap is more reliable than a trainer-bridged reading, so it
+    // takes precedence; otherwise fall back to HR the trainer carries over FTMS.
     if (hubsByRole.contains(BtleSensorRole::HeartRate))
-        connect(hubsByRole.value(BtleSensorRole::HeartRate),
-                SIGNAL(signal_hr(int,int)), w, SLOT(HrDataReceived(int,int)));
+        wireHr(hubsByRole.value(BtleSensorRole::HeartRate));
+    else if (hubsByRole.contains(BtleSensorRole::Trainer))
+        wireHr(hubsByRole.value(BtleSensorRole::Trainer));
     if (hubsByRole.contains(BtleSensorRole::Oxygen))
         connect(hubsByRole.value(BtleSensorRole::Oxygen),
                 SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
@@ -1687,7 +1702,7 @@ void MainWindow::startWorkoutWithStudioHubs(const Workout &workout,
 
     QSet<BtleHub*> allHubs;
     for (const QPair<int, QMap<BtleSensorRole, BtleHub*>> &rider : riderHubs)
-        wireHubsToDialog(w, rider.second, allHubs);
+        wireHubsToDialog(w, rider.second, allHubs, rider.first);
 
     connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
     connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));

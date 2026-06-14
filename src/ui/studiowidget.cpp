@@ -325,8 +325,16 @@ void StudioWidget::refreshSensorSlot(int riderIndex, int slotIdx)
     // A paired FTMS trainer covers this rider's Power and Cadence/Speed slots
     // (one connection carries all three), so disable scanning them and show why.
     const bool trainerPaired = saved.value(BtleSensorRole::Trainer, BtleSavedSensor{}).isValid();
-    if (BtleSensorStore::roleCoveredByTrainer(slot.role) && trainerPaired) {
-        slot.scanButton->setEnabled(false);
+    const bool trainerCoversRole = BtleSensorStore::roleCoveredByTrainer(slot.role);
+    // HR is only trainer-covered when this rider's trainer was seen bridging a
+    // strap and no dedicated strap is saved (a saved strap takes precedence).
+    const bool trainerCoversHr = slot.role == BtleSensorRole::HeartRate
+                                 && !s.isValid()
+                                 && BtleSensorStore::trainerProvidesHr(riderIndex);
+    if (trainerPaired && (trainerCoversRole || trainerCoversHr)) {
+        // Power/Cadence are always carried by FTMS — disable scanning. HR can stop
+        // (strap removed from the trainer), so leave its slot scannable.
+        slot.scanButton->setEnabled(trainerCoversHr);
         slot.clearButton->setEnabled(s.isValid());
         slot.deviceLabel->setText(s.isValid()
                                   ? tr("%1 (provided by trainer)").arg(s.name)

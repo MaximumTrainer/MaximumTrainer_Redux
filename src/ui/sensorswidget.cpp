@@ -291,8 +291,17 @@ void SensorsWidget::refreshRow(int rowIndex)
     // show why. A previously-saved device stays clearable so it can be removed.
     // (BtleSensorStore is desktop-only; the WASM build never reaches here.)
 #ifndef GC_WASM_BUILD
-    if (BtleSensorStore::roleCoveredByTrainer(slot.role) && trainerPaired()) {
-        slot.scanButton->setEnabled(false);
+    const bool trainerCoversRole = BtleSensorStore::roleCoveredByTrainer(slot.role);
+    // HR is only trainer-covered when the trainer was seen bridging a strap and
+    // no dedicated strap is saved (a saved strap takes precedence over it).
+    const bool trainerCoversHr   = slot.role == BtleSensorRole::HeartRate
+                                   && !slot.current.isValid()
+                                   && BtleSensorStore::trainerProvidesHr();
+    if (trainerPaired() && (trainerCoversRole || trainerCoversHr)) {
+        // Power/Cadence are always carried by FTMS, so their dedicated slots are
+        // redundant — disable scanning. HR can stop (strap removed from the
+        // trainer), so leave its slot scannable and just annotate it.
+        slot.scanButton->setEnabled(trainerCoversHr);
         slot.clearButton->setEnabled(slot.current.isValid());
         slot.deviceLabel->setText(slot.current.isValid()
                                   ? tr("%1 (provided by trainer)").arg(slot.current.name)

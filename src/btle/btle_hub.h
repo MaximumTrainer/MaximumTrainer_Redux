@@ -69,6 +69,11 @@ signals:
     /// \param percentage  Battery level 0–100 (%)
     void signal_battery(QString sensorType, int percentage);
 
+    /// Emitted once per connection, the first time the trainer's FTMS Indoor Bike
+    /// Data carries a Heart Rate field (i.e. it bridges an HR strap). Lets the UI
+    /// mark the Heart Rate slot "provided by trainer".
+    void signal_trainerProvidesHr(int userID);
+
     // ----------- Connection status signals ---------------------------------
     void deviceConnected();
     void deviceDisconnected();
@@ -181,6 +186,10 @@ private:
     quint16 m_lastCrankRevolutions  = 0;
     quint16 m_lastCrankEventTime    = 0;
     bool    m_firstCscMeasurement   = true;
+
+    // Latched once an FTMS bike-data packet has included a Heart Rate field, so
+    // signal_trainerProvidesHr fires only once per connection.
+    bool    m_ftmsHrSeen            = false;
 };
 
 #endif // BTLE_HUB_H
