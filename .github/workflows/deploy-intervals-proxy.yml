@@ -6,6 +6,9 @@ on:
     paths:
       - 'workers/intervals-cors-proxy/**'
   workflow_dispatch:
+  # Callable by proxy-healthcheck.yml to auto-redeploy if the proxy is ever
+  # found clobbered (secrets: inherit passes the caller's Cloudflare secrets).
+  workflow_call:
 
 jobs:
   deploy:

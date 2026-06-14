@@ -1,0 +1,43 @@
+name: Intervals proxy health check
+
+# Self-healing guard against the proxy clobber that broke Intervals.icu login
+# (#279/#284): if the Cloudflare worker at the proxy URL is ever overwritten by
+# a static-site deploy, a bogus token request returns an empty 404 / HTML
+# instead of a JSON error forwarded from intervals.icu. When that happens this
+# re-runs the deploy workflow to restore the real worker (and its client_secret).
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # every 30 min (tune as needed)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Probe proxy
+    runs-on: ubuntu-latest
+    outputs:
+      healthy: ${{ steps.probe.outputs.healthy }}
+    steps:
+      - id: probe
+        run: |
+          URL="https://mt-intervals-proxy.intervals-login.workers.dev"
+          # A healthy proxy forwards to intervals.icu → JSON error body.
+          # A clobbered worker (static site) → empty 404 or HTML.
+          BODY=$(curl -s --compressed -m 25 -X POST "$URL/proxy/api/oauth/token" \
+            -H 'X-MT-Client: desktop' \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            -d 'grant_type=authorization_code&client_id=259&code=healthcheck&redirect_uri=http://localhost:1/')
+          echo "Response: $BODY"
+          case "$BODY" in
+            \{*) echo "healthy=true"  >> "$GITHUB_OUTPUT"; echo "Proxy healthy — forwarding to intervals.icu" ;;
+            *)   echo "healthy=false" >> "$GITHUB_OUTPUT"; echo "Proxy DOWN/clobbered — will redeploy" ;;
+          esac
+
+  heal:
+    name: Redeploy proxy (clobbered)
+    needs: check
+    if: needs.check.outputs.healthy == 'false'
+    uses: ./.github/workflows/deploy-intervals-proxy.yml
+    secrets: inherit
