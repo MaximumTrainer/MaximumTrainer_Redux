@@ -159,17 +159,13 @@ inline QByteArray ftmsIndoorBikeData(double speedKmh,
                                      qint16 powerW,
                                      bool includeSpeed   = true,
                                      bool includeCadence = true,
-                                     bool includePower   = true,
-                                     int  heartRateBpm   = -1,    // >= 0: include HR (bit 9)
-                                     bool includeEnergy  = false) // include energy (bit 8)
+                                     bool includePower   = true)
 {
     // Build flags: each "NOT present" bit is set when the field is absent.
     quint16 flags = 0;
-    if (!includeSpeed)     flags |= 0x0001; // bit 0: "More Data" / speed absent
-    if (!includeCadence)   flags |= 0x0004; // bit 2: cadence absent
-    if (!includePower)     flags |= 0x0040; // bit 6: power absent
-    if (includeEnergy)     flags |= 0x0100; // bit 8: expended energy present
-    if (heartRateBpm >= 0) flags |= 0x0200; // bit 9: heart rate present
+    if (!includeSpeed)   flags |= 0x0001; // bit 0: "More Data" / speed absent
+    if (!includeCadence) flags |= 0x0004; // bit 2: cadence absent
+    if (!includePower)   flags |= 0x0040; // bit 6: power absent
 
     QByteArray pkt;
     pkt.append(static_cast<char>( flags        & 0xFF));
@@ -188,13 +184,6 @@ inline QByteArray ftmsIndoorBikeData(double speedKmh,
     if (includePower) {
         pkt.append(static_cast<char>( powerW        & 0xFF));
         pkt.append(static_cast<char>((powerW >>  8) & 0xFF));
-    }
-    if (includeEnergy) {
-        // Total Energy (uint16) + Energy/Hour (uint16) + Energy/Minute (uint8)
-        for (int i = 0; i < 5; ++i) pkt.append(static_cast<char>(0));
-    }
-    if (heartRateBpm >= 0) {
-        pkt.append(static_cast<char>(heartRateBpm & 0xFF));
     }
     return pkt;
 }

@@ -91,13 +91,7 @@ private slots:
     // ── FTMS multi-field layout (field skipping) ─────────────────────────────
     void testFtms_allOptionalFieldsBeforePowerSkipped();
     void testFtms_negativeInstantPower();
-    void testFtms_heartRate();
-    void testFtms_heartRateAfterEnergy();
-    void testFtms_heartRateAfterAvgPower();
-    void testFtms_heartRateFlagButTruncated_ignored();
-    void testFtms_trainerProvidesHrSignal_firesOnce();
     void testHrService_firesTrainerProvidesHr();
-    void testFtms_noHr_noTrainerProvidesHrSignal();
 
     // ── SimulatorHub no-op slot verification ─────────────────────────────────
     void testSimulator_noOpSetLoad();
@@ -788,112 +782,10 @@ void TstBtleHub::testFtms_negativeInstantPower()
 }
 
 /**
- * A trainer that bridges an HR strap folds the bpm into the FTMS Indoor Bike
- * Data stream (bit 9) instead of exposing a separate 0x180D service. Verify the
- * HR field is decoded and re-emitted on signal_hr alongside the bike metrics.
- */
-void TstBtleHub::testFtms_heartRate()
-{
-    QSignalSpy spyPwr(hub, &BtleHub::signal_power);
-    QSignalSpy spyHr(hub,  &BtleHub::signal_hr);
-
-    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA,
-        BtlePacketBuilder::ftmsIndoorBikeData(32.4, 88.0, 195,
-            /*includeSpeed=*/true, /*includeCadence=*/true, /*includePower=*/true,
-            /*heartRateBpm=*/152));
-
-    QCOMPARE(spyPwr.count(), 1);
-    QCOMPARE(spyPwr.at(0).at(1).toInt(), 195);
-    QCOMPARE(spyHr.count(), 1);
-    QCOMPARE(spyHr.at(0).at(1).toInt(), 152);
-}
-
-/**
- * The Expended Energy field (bit 8, 5 bytes) precedes Heart Rate (bit 9). Verify
- * the parser skips it correctly so the HR byte is read at the right offset.
- */
-void TstBtleHub::testFtms_heartRateAfterEnergy()
-{
-    QSignalSpy spyHr(hub, &BtleHub::signal_hr);
-
-    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA,
-        BtlePacketBuilder::ftmsIndoorBikeData(0.0, 0.0, 0,
-            /*includeSpeed=*/false, /*includeCadence=*/false, /*includePower=*/false,
-            /*heartRateBpm=*/171, /*includeEnergy=*/true));
-
-    QCOMPARE(spyHr.count(), 1);
-    QCOMPARE(spyHr.at(0).at(1).toInt(), 171);
-}
-
-/**
- * Average Power (bit 7, 2 bytes) sits between Instantaneous Power and the energy/
- * HR fields. Verify the parser skips it so the HR byte lands at the right offset.
- * Built raw because the convenience builder doesn't expose an average-power field.
- */
-void TstBtleHub::testFtms_heartRateAfterAvgPower()
-{
-    QSignalSpy spyPwr(hub, &BtleHub::signal_power);
-    QSignalSpy spyHr(hub,  &BtleHub::signal_hr);
-
-    // bits: 0 speed-absent, 2 cadence-absent, 6 instant-power-absent,
-    //       7 avg-power present, 9 HR present  → 0x0001|0x0004|0x0040|0x0080|0x0200
-    QByteArray pkt;
-    quint16 flags = 0x02C5;
-    pkt.append(char( flags       & 0xFF));
-    pkt.append(char((flags >> 8) & 0xFF));
-    pkt.append(char(0x00)); pkt.append(char(0x00)); // average power = 0 W
-    pkt.append(char(168));                          // heart rate = 168 bpm
-
-    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA, pkt);
-
-    QCOMPARE(spyPwr.count(), 0); // instantaneous power absent → no power signal
-    QCOMPARE(spyHr.count(), 1);
-    QCOMPARE(spyHr.at(0).at(1).toInt(), 168);
-}
-
-/**
- * HR flag set but the bpm byte is missing (truncated packet). The parser must not
- * read past the buffer or emit a bogus reading.
- */
-void TstBtleHub::testFtms_heartRateFlagButTruncated_ignored()
-{
-    QSignalSpy spyHr(hub, &BtleHub::signal_hr);
-
-    // Everything before HR absent, HR flagged present, but no HR byte appended.
-    QByteArray pkt;
-    quint16 flags = 0x0001 | 0x0004 | 0x0040 | 0x0200;
-    pkt.append(char( flags       & 0xFF));
-    pkt.append(char((flags >> 8) & 0xFF));
-
-    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA, pkt);
-
-    QCOMPARE(spyHr.count(), 0);
-}
-
-/**
- * When the trainer bridges HR over FTMS, signal_trainerProvidesHr fires once per
- * connection (latched) so the UI can mark the HR slot "provided by trainer"
- * without re-firing on every packet.
- */
-void TstBtleHub::testFtms_trainerProvidesHrSignal_firesOnce()
-{
-    QSignalSpy spy(hub, &BtleHub::signal_trainerProvidesHr);
-
-    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA,
-        BtlePacketBuilder::ftmsIndoorBikeData(30.0, 85.0, 180,
-            true, true, true, /*heartRateBpm=*/140));
-    QCOMPARE(spy.count(), 1);
-
-    // A second HR-bearing packet must not re-emit.
-    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA,
-        BtlePacketBuilder::ftmsIndoorBikeData(30.0, 85.0, 180,
-            true, true, true, /*heartRateBpm=*/142));
-    QCOMPARE(spy.count(), 1);
-}
-
-/**
- * HR reaching us via a bridged 0x180D Heart Rate service (not the FTMS field)
- * must also flag the capability — the JetBlack Victory delivers HR this way.
+ * The trainer bridges its HR strap over a standard 0x180D Heart Rate service
+ * (the JetBlack Victory does this). The first such reading latches
+ * signal_trainerProvidesHr — once per connection — so the UI can mark the Heart
+ * Rate slot "provided by trainer".
  */
 void TstBtleHub::testHrService_firesTrainerProvidesHr()
 {
@@ -904,17 +796,6 @@ void TstBtleHub::testHrService_firesTrainerProvidesHr()
 
     hub->simulateNotification(0x2A37, BtlePacketBuilder::heartRate(141));
     QCOMPARE(spy.count(), 1); // latched: once per connection
-}
-
-/** No HR field in the FTMS stream → the capability signal never fires. */
-void TstBtleHub::testFtms_noHr_noTrainerProvidesHrSignal()
-{
-    QSignalSpy spy(hub, &BtleHub::signal_trainerProvidesHr);
-
-    hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA,
-        BtlePacketBuilder::ftmsIndoorBikeData(30.0, 85.0, 180));
-
-    QCOMPARE(spy.count(), 0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

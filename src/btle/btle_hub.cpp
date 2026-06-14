@@ -594,8 +594,9 @@ void BtleHub::parseHrMeasurement(const QByteArray &data)
 
     emit signal_hr(m_userID, hr);
 
-    // HR can reach us via a bridged 0x180D service on the trainer connection (not
-    // just the FTMS bike-data field), so flag the capability here too.
+    // A trainer that bridges an HR strap exposes it as a 0x180D service on the
+    // trainer connection, so the first reading here flags the capability for the
+    // "provided by trainer" UI (the trainer hub is the only listener).
     if (!m_hrSeen) {
         m_hrSeen = true;
         emit signal_trainerProvidesHr(m_userID);
@@ -786,26 +787,6 @@ void BtleHub::parseFtmsIndoorBikeData(const QByteArray &data)
     if (!(flags & 0x0040)) {
         qint16 power = static_cast<qint16>(readU16());
         emit signal_power(m_userID, static_cast<int>(power));
-    }
-
-    // Bit 7: Average Power present
-    if (flags & 0x0080) offset += 2;
-
-    // Bit 8: Expended Energy present (Total uint16 + PerHour uint16 + PerMinute uint8)
-    if (flags & 0x0100) offset += 5;
-
-    // Bit 9: Heart Rate present (uint8 bpm). Trainers that bridge an ANT+/BLE HR
-    // strap fold the reading in here rather than exposing a separate 0x180D
-    // service, so this is the only place we'd ever see it for those devices.
-    if (flags & 0x0200) {
-        if (offset < data.size()) {
-            emit signal_hr(m_userID, static_cast<quint8>(data[offset]));
-            if (!m_hrSeen) {
-                m_hrSeen = true;
-                emit signal_trainerProvidesHr(m_userID);
-            }
-        }
-        offset += 1;
     }
 }
 
