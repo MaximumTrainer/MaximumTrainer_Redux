@@ -64,12 +64,12 @@ void TrainerGearTest::onGearTick()
 
     int gear;
     QString label;
-    if      (t < 25) { gear = 5;  label = QStringLiteral("WARMUP — get on & pedal steady (easy)"); }
-    else if (t < 37) { gear = 3;  label = QStringLiteral("EASY  (gear 3)  → should feel light"); }
-    else if (t < 49) { gear = 13; label = QStringLiteral("HARD  (gear 13) → should feel heavy"); }
-    else if (t < 61) { gear = 3;  label = QStringLiteral("EASY  (gear 3)  → light again"); }
-    else if (t < 73) { gear = 13; label = QStringLiteral("HARD  (gear 13) → heavy again"); }
-    else if (t < 85) { gear = 8;  label = QStringLiteral("MID   (gear 8)"); }
+    if      (t < 25) { gear = 8;  label = QStringLiteral("WARMUP — get on & pedal steady (easy)"); }
+    else if (t < 37) { gear = 5;  label = QStringLiteral("EASY  (gear 5/24)  → should feel light"); }
+    else if (t < 49) { gear = 20; label = QStringLiteral("HARD  (gear 20/24) → should feel heavy"); }
+    else if (t < 61) { gear = 5;  label = QStringLiteral("EASY  (gear 5/24)  → light again"); }
+    else if (t < 73) { gear = 20; label = QStringLiteral("HARD  (gear 20/24) → heavy again"); }
+    else if (t < 85) { gear = 12; label = QStringLiteral("MID   (gear 12/24)"); }
     else {
         line(QStringLiteral("  releasing resistance — done"));
         if (m_hub) m_hub->setLoad(1, 0);

@@ -16,7 +16,7 @@
  */
 namespace VirtualGear {
 
-constexpr int    Count        = 15;     // number of virtual gears
+constexpr int    Count        = 24;     // virtual gears (matches Zwift)
 constexpr double RefCadence   = 85.0;   // cadence at which the base watts apply
 constexpr double EasiestCoeff = 0.5;    // gear 1 multiplier
 constexpr double HardestCoeff = 2.0;    // gear Count multiplier
