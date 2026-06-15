@@ -1543,6 +1543,7 @@ void WorkoutDialog::moveToNextInterval() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::startWorkout() {
 
+    m_virtualGear = (VirtualGear::Count + 1) / 2;   // every workout starts mid-gear
 
     emit startClock();
 
@@ -1575,6 +1576,11 @@ void WorkoutDialog::workoutOver() {
 
     isWorkoutOver = true;
     stopErgSmoothing();
+
+    // Release virtual-shifting resistance so the trainer doesn't hold a load
+    // after the workout ends (it would otherwise persist until disconnect).
+    if (virtualShiftingActive())
+        emit setLoad(trainerControlUserId, 0);
 
     if (raceController) raceController->finishRace();   // finish line + celebration
 
@@ -1794,7 +1800,7 @@ void WorkoutDialog::sendLastSecondData(int seconds) {
 
     // Re-send the gear's load each second so faster/slower pedaling changes
     // resistance like a real gear (only while we'd otherwise be at resistance 0).
-    if (isUsingSlopeMode && virtualShiftingActive())
+    if (isUsingSlopeMode && !isWorkoutOver && virtualShiftingActive())
         sendGearLoad();
 }
 
@@ -2379,13 +2385,19 @@ int WorkoutDialog::gearTargetWatts(int gear, double cadence) const {
 }
 
 void WorkoutDialog::sendGearLoad() {
-    if (!virtualShiftingActive())
+    if (!virtualShiftingActive() || isWorkoutOver)
+        return;
+    // Never fight an active ERG power target — gears only drive the trainer when
+    // we'd otherwise send resistance 0 (slope / test / free ride / rest).
+    if (!isUsingSlopeMode && currentTargetPower > 0)
         return;
     const double cad = averageCadence1sec.isEmpty() ? -1.0 : averageCadence1sec.at(0);
     emit setLoad(trainerControlUserId, gearTargetWatts(m_virtualGear, cad));
 }
 
 void WorkoutDialog::shiftGear(int delta) {
+    if (isWorkoutOver)
+        return;
     const int g = qBound(1, m_virtualGear + delta, kVirtualGearCount);
     if (g == m_virtualGear)
         return;
