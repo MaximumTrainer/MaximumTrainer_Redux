@@ -2387,7 +2387,9 @@ void WorkoutDialog::enableTrainerControl() {
 // here regardless of the ERG ("control trainer resistance") checkbox: with ERG
 // off the rider controls resistance *through* the gears.
 bool WorkoutDialog::virtualShiftingActive() const {
-    return trainerControlUserId != -1 && account && !account->enable_studio_mode;
+    return trainerControlUserId != -1 && account
+        && account->virtual_shifting          // opt-in; off => real gears / free ride
+        && !account->enable_studio_mode;
 }
 
 // ERG only owns an interval when the checkbox is on AND there's a positive power
