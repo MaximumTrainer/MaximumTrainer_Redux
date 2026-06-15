@@ -233,6 +233,24 @@ int main(int argc, char *argv[]) {
         return app.exec();
     }
 
+    // --zwift-control [nameFilter]: Phase 2. Connects to the trainer, runs the
+    // RideOn handshake, then sends a scripted sequence of 0x04 control commands
+    // (ERG + SIM/gear). THIS CHANGES TRAINER RESISTANCE; ends by releasing it.
+    if (cliArgs.contains(QLatin1String("--zwift-control"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--zwift-control"));
+        QString nameFilter = QStringLiteral("Victory");
+        if (idx >= 0 && idx + 1 < cliArgs.size()
+            && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-')))
+            nameFilter = cliArgs.at(idx + 1);
+
+        auto *probe = new ZwiftProbe(&app);
+        QObject::connect(probe, &ZwiftProbe::finished, &app, &QCoreApplication::quit);
+        probe->start(nameFilter, /*scanSeconds=*/8, /*listenSeconds=*/50,
+                     /*controlTest=*/true);
+        return app.exec();
+    }
+
     // --retrorace [file.fit] [--shot out.png]: standalone spike of the retro
     // ghost-race view. Skips login/MainWindow entirely. With --shot it grabs one
     // frame to a PNG and quits (headless validation); otherwise it stays open.

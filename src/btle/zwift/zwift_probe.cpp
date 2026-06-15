@@ -19,6 +19,13 @@ QBluetoothUuid zwiftControlPointUuid()
     return QBluetoothUuid(QString::fromLatin1(ZwiftProtocol::Uuid::ControlPoint));
 }
 
+// JetBlack's diagnostic log characteristic — streams ASCII text (incl. the
+// "ResCtrl: Resistance control timer …" lines that reveal resistance changes).
+QBluetoothUuid jetBlackDebugLogUuid()
+{
+    return QBluetoothUuid(QStringLiteral("c4632b08-003f-4cec-8994-e489b04d857f"));
+}
+
 // Console logging — write straight to stdout so output survives the app's
 // installed Qt message handler (which filters qInfo unless --debug).
 void line(const QString &s)
@@ -31,12 +38,16 @@ void line(const QString &s)
 
 ZwiftProbe::ZwiftProbe(QObject *parent) : QObject(parent) {}
 
-void ZwiftProbe::start(const QString &nameFilter, int scanSeconds, int listenSeconds)
+void ZwiftProbe::start(const QString &nameFilter, int scanSeconds,
+                       int listenSeconds, bool controlTest)
 {
     m_nameFilter    = nameFilter.trimmed();
     m_listenSeconds = listenSeconds;
+    m_controlTest   = controlTest;
 
-    line(QStringLiteral("── Zwift probe (read-only) ──────────────────────────"));
+    line(controlTest
+             ? QStringLiteral("── Zwift CONTROL TEST (writes change resistance!) ───")
+             : QStringLiteral("── Zwift probe (read-only) ──────────────────────────"));
     line(QStringLiteral("  name filter : %1")
              .arg(m_nameFilter.isEmpty() ? QStringLiteral("(auto)") : m_nameFilter));
     line(QStringLiteral("  scan        : %1 s   listen/device : %2 s")
@@ -215,7 +226,11 @@ void ZwiftProbe::subscribeAndProbe(QLowEnergyService *service)
             [this](const QLowEnergyCharacteristic &c, const QByteArray &value) {
                 const QString hex = QString::fromLatin1(value.toHex());
                 ZwiftProtocol::RidingData rd;
-                if (ZwiftProtocol::decodeRidingData(value, rd)) {
+                if (c.uuid() == jetBlackDebugLogUuid()) {
+                    // ASCII diagnostic log — show the text (ResCtrl lines etc.).
+                    line(QStringLiteral("    ◀ dbg  %1")
+                             .arg(QString::fromLatin1(value).trimmed()));
+                } else if (ZwiftProtocol::decodeRidingData(value, rd)) {
                     line(QStringLiteral("    ◀ %1  RIDING pwr=%2 cad=%3 spd=%4 hr=%5")
                              .arg(c.uuid().toString(QUuid::WithoutBraces))
                              .arg(rd.power).arg(rd.cadence).arg(rd.speedX100).arg(rd.hr));
@@ -248,7 +263,77 @@ void ZwiftProbe::subscribeAndProbe(QLowEnergyService *service)
                                   : QLowEnergyService::WriteWithResponse;
             service->writeCharacteristic(cp, ZwiftProtocol::rideOnHandshake(), mode);
             line(QStringLiteral("    ▶ wrote RideOn handshake to control point"));
+
+            if (m_controlTest && !m_controlStarted)
+                beginControlScript(service);
         }
+    }
+}
+
+// Phase 2: after the handshake, send a scripted sequence of 0x04 control
+// commands and watch the trainer react (ResCtrl debug log + FTMS data). Steps
+// are spaced so each reaction is visible; the final step releases resistance.
+void ZwiftProbe::beginControlScript(QLowEnergyService *zwiftService)
+{
+    using namespace ZwiftProtocol;
+    m_controlStarted = true;
+    m_ctrlService    = zwiftService;
+    m_ctrlIndex      = 0;
+
+    auto erg = [](quint32 watts) {
+        HubCommand c; c.powerTargetW = watts; return encodeControlCommand(c);
+    };
+    auto simGear = [](qint32 inclineX100, int gear) {
+        HubCommand c;
+        c.sim.inclineX100          = inclineX100;
+        c.physical.gearRatioX10000 = ZwiftGears::ratioX10000ForGear(gear);
+        c.physical.riderWeightX100 = 7500;   // 75.0 kg
+        c.physical.bikeWeightX100  = 800;    //  8.0 kg
+        return encodeControlCommand(c);
+    };
+
+    m_ctrlSteps = {
+        { QStringLiteral("ERG 100 W"),                 erg(100) },
+        { QStringLiteral("ERG 250 W"),                 erg(250) },
+        { QStringLiteral("ERG 150 W"),                 erg(150) },
+        { QStringLiteral("SIM +6% gear 12 (mid)"),    simGear(600, 12) },
+        { QStringLiteral("SIM +6% gear 2 (low/easy)"),simGear(600, 2)  },
+        { QStringLiteral("SIM +6% gear 22 (high)"),   simGear(600, 22) },
+        { QStringLiteral("RESET — ERG 0 W (release)"), erg(0)  },
+    };
+
+    line(QString());
+    line(QStringLiteral("  ▶▶ control script: %1 steps — watch the dbg ResCtrl lines")
+             .arg(m_ctrlSteps.size()));
+
+    if (!m_ctrlTimer) {
+        m_ctrlTimer = new QTimer(this);
+        connect(m_ctrlTimer, &QTimer::timeout, this, &ZwiftProbe::onControlStep);
+    }
+    onControlStep();                 // first step immediately
+    m_ctrlTimer->start(4500);        // then one every 4.5 s
+}
+
+void ZwiftProbe::onControlStep()
+{
+    if (!m_ctrlService || m_ctrlIndex >= m_ctrlSteps.size()) {
+        if (m_ctrlTimer) m_ctrlTimer->stop();
+        line(QStringLiteral("  ▶▶ control script complete (resistance released)"));
+        finishCurrentDevice();
+        return;
+    }
+
+    const auto &step = m_ctrlSteps.at(m_ctrlIndex++);
+    const QLowEnergyCharacteristic cp =
+        m_ctrlService->characteristic(zwiftControlPointUuid());
+    if (cp.isValid()) {
+        const auto mode = (cp.properties() & QLowEnergyCharacteristic::WriteNoResponse)
+                              ? QLowEnergyService::WriteWithoutResponse
+                              : QLowEnergyService::WriteWithResponse;
+        m_ctrlService->writeCharacteristic(cp, step.second, mode);
+        line(QStringLiteral("  ▶ step %1/%2: %3   (%4)")
+                 .arg(m_ctrlIndex).arg(m_ctrlSteps.size())
+                 .arg(step.first, QString::fromLatin1(step.second.toHex())));
     }
 }
 

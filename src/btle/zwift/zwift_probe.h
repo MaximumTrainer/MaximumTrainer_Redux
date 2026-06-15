@@ -7,8 +7,10 @@
 #include <QBluetoothUuid>
 #include <QLowEnergyController>
 #include <QLowEnergyService>
+#include <QLowEnergyCharacteristic>
 #include <QQueue>
 #include <QTimer>
+#include <QVector>
 
 /*
  * Phase 1 read-only BLE exploration harness for the Zwift virtual-shifting work
@@ -36,8 +38,11 @@ public:
 
     // nameFilter: case-insensitive substring; empty => auto (Zwift service or a
     // name hinting at a trainer/Click). listenSeconds: per-device capture window.
+    // controlTest: Phase 2 — after the handshake, drive a scripted sequence of
+    // 0x04 control commands and observe the trainer react (changes resistance).
     void start(const QString &nameFilter = QString(),
-               int scanSeconds = 8, int listenSeconds = 15);
+               int scanSeconds = 8, int listenSeconds = 15,
+               bool controlTest = false);
 
 signals:
     void finished();
@@ -45,11 +50,13 @@ signals:
 private slots:
     void onDeviceDiscovered(const QBluetoothDeviceInfo &info);
     void onScanFinished();
+    void onControlStep();
 
 private:
     void connectNextCandidate();
     void dumpService(QLowEnergyService *service);
     void subscribeAndProbe(QLowEnergyService *service);
+    void beginControlScript(QLowEnergyService *zwiftService);
     void finishCurrentDevice();
     void teardownController();
 
@@ -70,6 +77,14 @@ private:
     bool                            m_scanHandled = false;
     int                             m_suppressedCount = 0;
     int                             m_retriesLeft = 0;
+
+    // Phase 2 control script (resistance-changing writes).
+    bool                            m_controlTest = false;
+    bool                            m_controlStarted = false;
+    QLowEnergyService              *m_ctrlService = nullptr;
+    QVector<QPair<QString, QByteArray>> m_ctrlSteps;
+    int                             m_ctrlIndex = 0;
+    QTimer                         *m_ctrlTimer = nullptr;
 };
 
 #endif // ZWIFT_PROBE_H

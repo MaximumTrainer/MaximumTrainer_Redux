@@ -2,8 +2,10 @@
 
 **Branch:** `zwift-virtual-shifting` (local only — do **not** push until the
 distribution/patent question below is resolved).
-**Status:** Phases 0 & 1 done (codec + probe, validated on real hardware).
-Next: Phase 2 (control-point writes — first time we change resistance).
+**Status:** Phases 0, 1, 2a done — codec, probe, and **trainer control all
+validated on real hardware** (Victory ACKs our ERG commands). Next: Phase 2b
+(in-app ZwiftTrainerController + keyboard shifting = the #293 fix), plus an
+in-saddle pedaling test to confirm gear feel.
 **Origin:** issue [#293](https://github.com/MaximumTrainer/MaximumTrainer_Redux/issues/293)
 — JetBlack Victory + Zwift Cog: trainer "resistance was 0" during an FTP/MAP
 test interval and the rider could not pedal.
@@ -105,15 +107,25 @@ qdomyos-zwift (GPLv3), SHIFTR.
     `c4632b08` logs ASCII incl. `ResCtrl: Resistance control timer …` and the
     `ANT HR` bridge (the #292 HR path).
   - Zwift Click was not present/paired this session → defer to Phase 3.
-- [ ] **Phase 2 — Trainer control path (device).** `ZwiftTrainerController`
-  sibling to `setLoad`/`setSlope`; `setVirtualGear(riderId, gearIndex)` →
-  encode 0x04 with gear ratio + sim params + rider/bike weight → write control
-  point. Drive with keyboard / on-screen ▲▼ first (no Click dependency). Wire
-  into workout SIM mode.
-  - NOTE: the app is **BLE-only** — ANT+ was removed in #240. The existing
-    `setLoad(int antID, …)` / `setSlope(int antID, …)` params are named `antID`
-    purely as legacy leftover; the value is really the BLE trainer/rider id
-    (`trainerControlUserId` / `getFecID()`). New API uses `riderId`, not `antID`.
+- [x] **Phase 2a — Control path validated on hardware (harness).** DONE.
+  `--zwift-control [name]` runs a scripted 0x04 sequence after the handshake.
+  Live on the Victory: **trainer ACKs our commands** — its ResCtrl debug log
+  printed `Target power set to: 250W` / `150W` / `0W` for our ERG writes, and
+  resistance ticks reacted. RESET (ERG 0 W) releases cleanly. ERG control over
+  the Zwift trainer protocol is proven. (Encoders: ERG `0418fa01`=250W; SIM+gear
+  e.g. `04220310b0092a0a10c5a50120a00628cc3a`.)
+  - SIM/gear writes are accepted but, with **no one pedaling**, gear effect on
+    felt resistance can't be seen (speed≈0 → low SIM resistance — the #293
+    effect itself). Needs an **in-saddle pedaling test** to confirm gears change
+    feel. ← do with Maxime on the bike.
+- [ ] **Phase 2b — In-app integration (no device dep for the code).**
+  `ZwiftTrainerController` sibling to `setLoad`/`setSlope`;
+  `setVirtualGear(riderId, gearIndex)` + keyboard / on-screen ▲▼. Detect the
+  Zwift `fc82` service on connect and prefer it for single-cog trainers; wire
+  into workout SIM mode; this is the actual #293 fix.
+  - NOTE: app is **BLE-only** (ANT+ removed #240). Existing `setLoad(int antID,…)`
+    param is legacy-named; value is really the trainer/rider id
+    (`trainerControlUserId`/`getFecID()`). New API uses `riderId`, not `antID`.
 - [ ] **Phase 3 — Zwift Click input (device).** Decode Click button frames →
   call the same shift function. Pure add-on.
   - **Phase 1 recon (Click v2, fw 1.2.0, CC:0A:DF:72:3D:4C) DONE:** advertises
