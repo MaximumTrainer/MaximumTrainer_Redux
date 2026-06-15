@@ -214,7 +214,8 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     // .ui stylesheet doesn't reach these dynamically-created widgets).
     m_gearWidget->setStyleSheet(QStringLiteral("color: white;"));
     m_gearWidget->setVisible(false);
-    // Insert just after the timers so it sits in the middle of the bar.
+    // Centre of the bar: just after the timers/targets frame (renders cleanly
+    // there; the far-right radio area clips it).
     const int timerIdx = ui->horizontalLayout->indexOf(ui->frame_timer);
     if (timerIdx >= 0)
         ui->horizontalLayout->insertWidget(timerIdx + 1, m_gearWidget);

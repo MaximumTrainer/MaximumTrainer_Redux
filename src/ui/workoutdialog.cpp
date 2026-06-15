@@ -486,7 +486,10 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     flags = flags | Qt::WindowTitleHint | Qt::WindowCloseButtonHint | Qt::WindowMinimizeButtonHint;
 #endif
     this->setWindowFlags(flags);
-    installEventFilter(this); //For Hotkeys
+    // App-level filter so workout hotkeys (start/pause, gear ▲▼, lap, …) work
+    // regardless of which child widget holds focus — otherwise the arrow keys
+    // get eaten by button focus-navigation instead of reaching us.
+    qApp->installEventFilter(this);
     loadInterface();
 
 
@@ -3255,14 +3258,6 @@ void WorkoutDialog::keyPressEvent(QKeyEvent *event)
     case Qt::Key_Minus:
         adjustWorkoutDifficulty(currentWorkoutDifficultyPercentage - 5);
         return;
-    case Qt::Key_Up:        // virtual shift up (harder gear)
-        if (virtualShiftingActive())
-            shiftGear(+1);
-        return;
-    case Qt::Key_Down:      // virtual shift down (easier gear)
-        if (virtualShiftingActive())
-            shiftGear(-1);
-        return;
     case Qt::Key_L:
         if (!event->isAutoRepeat())
             lapButtonPressed();
@@ -4199,7 +4194,10 @@ bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
 
     //    qDebug() << "EventFilter " << watched << "Event:" << event;
 
-    if(event->type() == QEvent::KeyPress) {
+    // Only act while this workout window is the active one (an app-level filter
+    // otherwise sees every key for every window). isActiveWindow() stays true
+    // even when a child button holds focus, but goes false for modal dialogs.
+    if(event->type() == QEvent::KeyPress && isActiveWindow()) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
         if(keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return ) {
             qDebug() << "ENTER PRESSED- STOP/START WORKOUT!" << watched;
@@ -4207,11 +4205,15 @@ bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
             return true; // mark the event as handled
         }
         else if (keyEvent->key() == Qt::Key_Up) {
-            emit increaseDifficulty();
+            // Virtual shifting takes the arrows when enabled; otherwise they keep
+            // their legacy role of nudging workout difficulty.
+            if (virtualShiftingActive()) shiftGear(+1);
+            else emit increaseDifficulty();
             return true;
         }
         else if (keyEvent->key() == Qt::Key_Down) {
-            emit decreaseDifficulty();
+            if (virtualShiftingActive()) shiftGear(-1);
+            else emit decreaseDifficulty();
             return true;
         }
         else if (keyEvent->key() == Qt::Key_Backspace) {
