@@ -29,7 +29,6 @@ signals:
 
 private:
     void onGearTick();
-    int  gearWatts(int gear, double cadence) const;
 
     QBluetoothDeviceDiscoveryAgent *m_agent = nullptr;
     BtleHub *m_hub      = nullptr;

@@ -201,6 +201,24 @@ void BtleHub::setSlope(int antID, double grade)
     sendFtmsCommand(cmd);
 }
 
+void BtleHub::setResistanceLevel(int antID, int levelTenths)
+{
+    if (m_filterControlByUserID && antID != m_userID)
+        return;
+
+    if (!m_ftmsService)
+        return;
+
+    // FTMS: Set Target Resistance Level (opcode 0x04), value = int16 in 0.1 units
+    // (same representation as the Supported Resistance Level Range, 0x2AD6).
+    qint16 lvl = static_cast<qint16>(qBound(-32768, levelTenths, 32767));
+    QByteArray cmd(3, '\0');
+    cmd[0] = 0x04;                          // Set Target Resistance Level opcode
+    cmd[1] = static_cast<char>(lvl & 0xFF);
+    cmd[2] = static_cast<char>((lvl >> 8) & 0xFF);
+    sendFtmsCommand(cmd);
+}
+
 // One control-point op in flight at a time: real trainers reject overlapping
 // writes with ATT error 0x80, and every op completes only when its response
 // indication ([0x80, opcode, result]) arrives.  Commands issued while waiting

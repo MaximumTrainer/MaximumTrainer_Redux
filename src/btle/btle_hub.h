@@ -86,6 +86,11 @@ public slots:
     // be wired up identically from WorkoutDialog signals.
     void setLoad(int antID, double watts);
     void setSlope(int antID, double grade);
+    // FTMS Set Target Resistance Level (opcode 0x04). levelTenths is the raw
+    // resistance level in 0.1 units (the 2AD6 "Supported Resistance Level Range"
+    // representation). Unlike ERG, this sets a fixed brake — resistance changes
+    // instantly and power follows effort, so virtual gears feel like real gears.
+    void setResistanceLevel(int antID, int levelTenths);
     void stopDecodingMsg();
 
     // Test hook: inject raw BLE notification bytes as if received from hardware.

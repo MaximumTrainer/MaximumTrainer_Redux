@@ -44,6 +44,23 @@ inline int targetWatts(int gear, double cadence, double ftp)
     return qBound(20, int(qRound(watts)), int(qRound(1.6 * effFtp)));
 }
 
+// ── Resistance-level shifting (FTMS 0x04) ────────────────────────────────────
+// The authentic, Zwift-like feel: each gear is a fixed brake resistance that
+// changes instantly (no ERG convergence) and lets power follow effort. The
+// value is in the trainer's 0.1-unit resistance representation (2AD6 range).
+// Mapped linearly across a usable middle band of a 0..100 range so the extremes
+// aren't unrideable; clamped to the trainer's actual [min,max].
+constexpr int EasiestResistance = 15;   // gear 1   (1.5)
+constexpr int HardestResistance = 85;   // gear Count (8.5)
+
+inline int resistanceLevel(int gear, int minLevel = 0, int maxLevel = 100)
+{
+    const int g = qBound(1, gear, Count);
+    const double t = (g - 1) / double(Count - 1);
+    const int raw = int(qRound(EasiestResistance + t * (HardestResistance - EasiestResistance)));
+    return qBound(minLevel, raw, maxLevel);
+}
+
 } // namespace VirtualGear
 
 #endif // VIRTUAL_GEAR_H

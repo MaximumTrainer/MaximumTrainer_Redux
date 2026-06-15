@@ -57,13 +57,6 @@ void TrainerGearTest::start(const QString &nameFilter, int scanSeconds)
     m_agent->start(QBluetoothDeviceDiscoveryAgent::LowEnergyMethod);
 }
 
-// Cadence-aware gear → watts via the shared model (same feel as the in-app
-// feature). FTP unknown in this standalone test → a sensible default is used.
-int TrainerGearTest::gearWatts(int gear, double cadence) const
-{
-    return VirtualGear::targetWatts(gear, cadence, /*ftp=*/220.0);
-}
-
 void TrainerGearTest::onGearTick()
 {
     ++m_elapsed;
@@ -85,11 +78,14 @@ void TrainerGearTest::onGearTick()
         return;
     }
 
+    // Resistance-level mode (FTMS 0x04): instant, real-gear feel. Sent only on
+    // change — a fixed brake doesn't need re-sending every second like ERG did.
     if (gear != m_lastGear) {
         m_lastGear = gear;
-        line(QStringLiteral("  ▶ %1   (cad=%2, target=%3W)")
-                 .arg(label).arg(int(m_cadence)).arg(gearWatts(gear, m_cadence)));
+        const int level = VirtualGear::resistanceLevel(gear);
+        line(QStringLiteral("  ▶ %1   (resistance level %2 = %3)")
+                 .arg(label).arg(level).arg(level / 10.0, 0, 'f', 1));
+        if (m_hub)
+            m_hub->setResistanceLevel(1, level);
     }
-    if (m_hub)
-        m_hub->setLoad(1, gearWatts(gear, m_cadence));
 }

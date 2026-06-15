@@ -46,6 +46,7 @@ private slots:
     void testGearWatts_cadenceFallbackAndClamp();
     void testGearWatts_ftpScaling();
     void testGearWatts_gearClamped();
+    void testResistanceLevel_monotonicEndpointsClamp();
 };
 
 void TstZwiftProtocol::testEncode_gearRatioOnly()
@@ -195,6 +196,22 @@ void TstZwiftProtocol::testGearWatts_gearClamped()
              VirtualGear::targetWatts(1,   85, 250));
     QCOMPARE(VirtualGear::targetWatts(999, 85, 250),
              VirtualGear::targetWatts(VirtualGear::Count, 85, 250));
+}
+
+void TstZwiftProtocol::testResistanceLevel_monotonicEndpointsClamp()
+{
+    // Endpoints map to the configured easiest/hardest levels.
+    QCOMPARE(VirtualGear::resistanceLevel(1), VirtualGear::EasiestResistance);
+    QCOMPARE(VirtualGear::resistanceLevel(VirtualGear::Count), VirtualGear::HardestResistance);
+    // Strictly increasing across gears.
+    for (int g = 2; g <= VirtualGear::Count; ++g)
+        QVERIFY(VirtualGear::resistanceLevel(g) > VirtualGear::resistanceLevel(g - 1));
+    // Clamped to the trainer's advertised [min,max].
+    QCOMPARE(VirtualGear::resistanceLevel(VirtualGear::Count, 0, 50), 50);
+    QCOMPARE(VirtualGear::resistanceLevel(1, 20, 100), 20);
+    // Out-of-range gears clamp to the ends.
+    QCOMPARE(VirtualGear::resistanceLevel(0),   VirtualGear::resistanceLevel(1));
+    QCOMPARE(VirtualGear::resistanceLevel(999), VirtualGear::resistanceLevel(VirtualGear::Count));
 }
 
 QTEST_MAIN(TstZwiftProtocol)
