@@ -251,6 +251,22 @@ int main(int argc, char *argv[]) {
         return app.exec();
     }
 
+    // --zwift-erghold [nameFilter]: decisive test of whether ERG actuates
+    // resistance while pedaling. Holds 100/160/230/120 W, then releases.
+    if (cliArgs.contains(QLatin1String("--zwift-erghold"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--zwift-erghold"));
+        QString nameFilter = QStringLiteral("Victory");
+        if (idx >= 0 && idx + 1 < cliArgs.size()
+            && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-')))
+            nameFilter = cliArgs.at(idx + 1);
+        auto *probe = new ZwiftProbe(&app);
+        QObject::connect(probe, &ZwiftProbe::finished, &app, &QCoreApplication::quit);
+        probe->start(nameFilter, /*scanSeconds=*/8, /*listenSeconds=*/110,
+                     ZwiftProbe::Script::ErgHold);
+        return app.exec();
+    }
+
     // --zwift-gearsweep [nameFilter]: Phase 2 gear validation. Holds a grade and
     // auto-steps the virtual gear up/down every few seconds so a rider can FEEL
     // each gear without touching any input. CHANGES RESISTANCE; releases at end.

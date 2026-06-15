@@ -40,7 +40,7 @@ public:
     //   ErgDemo   — ERG power steps (proves control; no pedaling needed).
     //   GearSweep — hold a grade, auto-step the virtual gear up/down so a rider
     //               can FEEL each gear without touching any input.
-    enum class Script { None, ErgDemo, GearSweep };
+    enum class Script { None, ErgDemo, GearSweep, ErgHold };
 
     // nameFilter: case-insensitive substring; empty => auto (Zwift service or a
     // name hinting at a trainer/Click). listenSeconds: per-device capture window.

@@ -328,6 +328,20 @@ void ZwiftProbe::beginControlScript(QLowEnergyService *zwiftService)
             { QStringLiteral("Gear 11 @ +5% → grade sanity: HARDER"),  simGear(500, 11) },
             { QStringLiteral("RESET — release resistance"),            erg(0)           },
         };
+    } else if (m_script == Script::ErgHold) {
+        // Decisive test: does ERG actuate resistance while pedaling? Hold each
+        // target long enough for the loop to settle; the rider's power should
+        // track the target at whatever cadence they pedal. The warmup itself
+        // holds 100 W, so a working ERG shows up immediately.
+        m_ctrlIntervalMs = 15000;
+        m_ctrlPrerollMs  = 30000;
+        m_ctrlSteps = {
+            { QStringLiteral("CONNECTED — get on & pedal; holding ERG 100W (30s warmup)"), erg(100) },
+            { QStringLiteral("ERG 160W → your power should rise to ~160"), erg(160) },
+            { QStringLiteral("ERG 230W → your power should rise to ~230"), erg(230) },
+            { QStringLiteral("ERG 120W → your power should drop to ~120"), erg(120) },
+            { QStringLiteral("RESET — ERG 0 W (release)"),                 erg(0)   },
+        };
     } else { // Script::ErgDemo
         m_ctrlIntervalMs = 4500;
         m_ctrlSteps = {
