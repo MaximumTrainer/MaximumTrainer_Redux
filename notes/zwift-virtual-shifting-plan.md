@@ -114,10 +114,15 @@ qdomyos-zwift (GPLv3), SHIFTR.
   resistance ticks reacted. RESET (ERG 0 W) releases cleanly. ERG control over
   the Zwift trainer protocol is proven. (Encoders: ERG `0418fa01`=250W; SIM+gear
   e.g. `04220310b0092a0a10c5a50120a00628cc3a`.)
-  - SIM/gear writes are accepted but, with **no one pedaling**, gear effect on
-    felt resistance can't be seen (speed≈0 → low SIM resistance — the #293
-    effect itself). Needs an **in-saddle pedaling test** to confirm gears change
-    feel. ← do with Maxime on the bike.
+  - **In-saddle pedaling test #1 (felt nothing, ~22 W flat across all gears).**
+    Firmware log (`RfCommsZcs`) proved it RECEIVED our exact gear ratios
+    (0.817 / 2.118 / 5.49) + masses — encoding perfect — but resistance never
+    changed. ROOT CAUSE: we sent **CWa=0 and Crr=0**. Virtual shifting's feel is
+    aero drag (CWa) on the gear-driven virtual speed; with CWa=Crr=0 and grade
+    not biting, the gear scales nothing. FIX: send Zwift's fixed
+    **CWa=0.51 (5100), Crr=0.004 (400)** (now `ZwiftSim::` constants) in every
+    SimulationParam. Gear-sweep grades flattened to 0% so aero isolates gear
+    feel. ← retest in saddle.
 - [ ] **Phase 2b — In-app integration (no device dep for the code).**
   `ZwiftTrainerController` sibling to `setLoad`/`setSlope`;
   `setVirtualGear(riderId, gearIndex)` + keyboard / on-screen ▲▼. Detect the

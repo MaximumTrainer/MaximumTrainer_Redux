@@ -92,6 +92,16 @@ bool decodeRidingData(const QByteArray &frame, RidingData &out);
 // Zwift exposes ~24 virtual gears spanning ratios ~0.75 → 5.49 (Zwift Insider).
 // Exact per-gear ratios are a product choice; default is a geometric spread so
 // each shift is a constant percentage step. Confirm/retune against the device.
+// Fixed environment coefficients Zwift sends in every SimulationParam. Without
+// these, virtual shifting produces no resistance on flat ground: the gear ratio
+// drives virtual speed, and the *feel* comes from aero drag (CWa) acting on that
+// speed. Confirmed on a JetBlack Victory — sending these is what makes gears
+// bite. (See notes/zwift-virtual-shifting-plan.md.)
+namespace ZwiftSim {
+constexpr quint32 CWaX10000  = 5100;   // CW·a·10000  → 0.51
+constexpr quint32 CrrX100000 = 400;    // Crr·100000  → 0.004
+} // namespace ZwiftSim
+
 namespace ZwiftGears {
 constexpr int    Count    = 24;
 constexpr double MinRatio = 0.75;

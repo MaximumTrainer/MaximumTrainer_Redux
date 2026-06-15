@@ -147,7 +147,7 @@ void ZwiftProbe::connectNextCandidate()
 
     m_current          = m_candidates.dequeue();
     m_zwiftServiceSeen = false;
-    m_retriesLeft      = 3;   // weak links (distant trainer) drop mid-discovery
+    m_retriesLeft      = 5;   // weak links (distant trainer) fail/drop transiently
     line(QString());
     line(QStringLiteral("== Connecting to %1 [%2] ==")
              .arg(m_current.name(), m_current.address().toString()));
@@ -158,26 +158,16 @@ void ZwiftProbe::connectNextCandidate()
         m_controller->discoverServices();
     });
     connect(m_controller, &QLowEnergyController::disconnected, this, [this]() {
-        // A weak link can drop before per-service detail discovery completes,
-        // so we never see the Zwift service. Retry the same device a few times.
-        if (!m_zwiftServiceSeen && m_retriesLeft > 0 && m_controller) {
-            --m_retriesLeft;
-            if (m_listenTimer) m_listenTimer->stop();
-            qDeleteAll(m_services);
-            m_services.clear();
-            line(QStringLiteral("  link dropped before discovery — retrying (%1 left)")
-                     .arg(m_retriesLeft));
-            m_controller->connectToDevice();
-            return;
-        }
+        if (!m_zwiftServiceSeen) { retryOrAdvance(QStringLiteral("link dropped")); return; }
         line(QStringLiteral("  disconnected"));
     });
     connect(m_controller,
             static_cast<void (QLowEnergyController::*)(QLowEnergyController::Error)>(
                 &QLowEnergyController::errorOccurred),
             this, [this](QLowEnergyController::Error) {
-                line(QStringLiteral("  [controller error] %1").arg(m_controller->errorString()));
-                finishCurrentDevice();
+                const QString es = m_controller ? m_controller->errorString()
+                                                : QStringLiteral("error");
+                retryOrAdvance(QStringLiteral("connect error: %1").arg(es));
             });
     connect(m_controller, &QLowEnergyController::discoveryFinished, this, [this]() {
         const auto uuids = m_controller->services();
@@ -199,6 +189,32 @@ void ZwiftProbe::connectNextCandidate()
     });
 
     m_controller->connectToDevice();
+}
+
+// A weak/transient BLE failure (connect "Unknown Error" or a mid-discovery
+// drop) before we see the Zwift service: wait a moment for the stack to settle,
+// then reconnect the same device. Bounded by m_retriesLeft. The success path
+// (m_zwiftServiceSeen) owns its own teardown, so do nothing there.
+void ZwiftProbe::retryOrAdvance(const QString &reason)
+{
+    if (m_zwiftServiceSeen || m_reconnectPending)
+        return;
+    if (m_retriesLeft <= 0 || !m_controller) {
+        line(QStringLiteral("  %1 — giving up on this device").arg(reason));
+        finishCurrentDevice();
+        return;
+    }
+    --m_retriesLeft;
+    m_reconnectPending = true;
+    if (m_listenTimer) m_listenTimer->stop();
+    qDeleteAll(m_services);
+    m_services.clear();
+    line(QStringLiteral("  %1 — retrying in 1.5 s (%2 left)").arg(reason).arg(m_retriesLeft));
+    QTimer::singleShot(1500, this, [this]() {
+        m_reconnectPending = false;
+        if (m_controller && !m_zwiftServiceSeen)
+            m_controller->connectToDevice();
+    });
 }
 
 void ZwiftProbe::dumpService(QLowEnergyService *service)
@@ -285,7 +301,10 @@ void ZwiftProbe::beginControlScript(QLowEnergyService *zwiftService)
     };
     auto simGear = [](qint32 inclineX100, int gear) {
         HubCommand c;
+        c.sim.windX100             = 0;
         c.sim.inclineX100          = inclineX100;
+        c.sim.cwaX10000            = ZwiftSim::CWaX10000;   // 0.51 — required for gears to bite
+        c.sim.crrX100000           = ZwiftSim::CrrX100000;  // 0.004
         c.physical.gearRatioX10000 = ZwiftGears::ratioX10000ForGear(gear);
         c.physical.riderWeightX100 = 7500;   // 75.0 kg
         c.physical.bikeWeightX100  = 800;    //  8.0 kg
@@ -294,17 +313,20 @@ void ZwiftProbe::beginControlScript(QLowEnergyService *zwiftService)
 
     if (m_script == Script::GearSweep) {
         // Rider pedals steadily; we step the gear so they FEEL each change with
-        // no input. Hold +3% so SIM resistance is non-trivial at speed.
+        // no input. Hold +3% so SIM resistance is non-trivial at speed. The
+        // baseline holds for a warmup so the rider can mount + start pedaling
+        // (and the connection settles) before gears begin changing.
         m_ctrlIntervalMs = 8000;   // hold each long enough to feel
+        m_ctrlPrerollMs  = 30000;  // warmup after baseline
         m_ctrlSteps = {
-            { QStringLiteral("PEDAL STEADY ~80rpm. Gear 12/24 @ +3% (baseline)"), simGear(300, 12) },
-            { QStringLiteral("Gear 1/24  → should feel EASIEST"), simGear(300, 1)  },
-            { QStringLiteral("Gear 24/24 → should feel HARDEST"), simGear(300, 24) },
-            { QStringLiteral("Gear 1/24  → EASIEST again"),       simGear(300, 1)  },
-            { QStringLiteral("Gear 24/24 → HARDEST again"),       simGear(300, 24) },
-            { QStringLiteral("Gear 12 @ 0% → sanity: flat/easy"),simGear(0,   12) },
-            { QStringLiteral("Gear 12 @ +6% → sanity: HARDER"),  simGear(600, 12) },
-            { QStringLiteral("RESET — release resistance"),       erg(0)           },
+            { QStringLiteral("CONNECTED — get on & pedal steady ~80rpm (30s warmup)"), simGear(0, 8) },
+            { QStringLiteral("Gear 2/24  @ 0% → should feel EASIEST"), simGear(0, 2)  },
+            { QStringLiteral("Gear 22/24 @ 0% → should feel HARDEST"), simGear(0, 22) },
+            { QStringLiteral("Gear 2/24  @ 0% → EASIEST again"),       simGear(0, 2)  },
+            { QStringLiteral("Gear 22/24 @ 0% → HARDEST again"),       simGear(0, 22) },
+            { QStringLiteral("Gear 11 @ 0%  → mid gear (flat)"),       simGear(0,   11) },
+            { QStringLiteral("Gear 11 @ +5% → grade sanity: HARDER"),  simGear(500, 11) },
+            { QStringLiteral("RESET — release resistance"),            erg(0)           },
         };
     } else { // Script::ErgDemo
         m_ctrlIntervalMs = 4500;
@@ -320,15 +342,18 @@ void ZwiftProbe::beginControlScript(QLowEnergyService *zwiftService)
     }
 
     line(QString());
-    line(QStringLiteral("  ▶▶ control script: %1 steps, %2 s each — watch the dbg ResCtrl lines")
-             .arg(m_ctrlSteps.size()).arg(m_ctrlIntervalMs / 1000));
+    line(QStringLiteral("  ▶▶ control script: %1 steps, %2 s each%3 — watch the dbg ResCtrl lines")
+             .arg(m_ctrlSteps.size()).arg(m_ctrlIntervalMs / 1000)
+             .arg(m_ctrlPrerollMs > 0
+                      ? QStringLiteral(" (after a %1s warmup)").arg(m_ctrlPrerollMs / 1000)
+                      : QString()));
 
     if (!m_ctrlTimer) {
         m_ctrlTimer = new QTimer(this);
+        m_ctrlTimer->setSingleShot(true);   // each step chains the next explicitly
         connect(m_ctrlTimer, &QTimer::timeout, this, &ZwiftProbe::onControlStep);
     }
-    onControlStep();                       // first step immediately
-    m_ctrlTimer->start(m_ctrlIntervalMs);  // then one per interval
+    onControlStep();   // sends baseline now, schedules the rest
 }
 
 void ZwiftProbe::onControlStep()
@@ -340,6 +365,7 @@ void ZwiftProbe::onControlStep()
         return;
     }
 
+    const int sent = m_ctrlIndex;
     const auto &step = m_ctrlSteps.at(m_ctrlIndex++);
     const QLowEnergyCharacteristic cp =
         m_ctrlService->characteristic(zwiftControlPointUuid());
@@ -352,6 +378,13 @@ void ZwiftProbe::onControlStep()
                  .arg(m_ctrlIndex).arg(m_ctrlSteps.size())
                  .arg(step.first, QString::fromLatin1(step.second.toHex())));
     }
+
+    // Chain the next step: the baseline (step 0) holds for the warmup, the rest
+    // for the normal interval.
+    const int delay = (sent == 0 && m_ctrlPrerollMs > 0) ? m_ctrlPrerollMs
+                                                         : m_ctrlIntervalMs;
+    if (m_ctrlTimer)
+        m_ctrlTimer->start(delay);
 }
 
 void ZwiftProbe::finishCurrentDevice()

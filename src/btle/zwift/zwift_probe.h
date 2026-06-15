@@ -58,6 +58,7 @@ private slots:
 
 private:
     void connectNextCandidate();
+    void retryOrAdvance(const QString &reason);
     void dumpService(QLowEnergyService *service);
     void subscribeAndProbe(QLowEnergyService *service);
     void beginControlScript(QLowEnergyService *zwiftService);
@@ -81,6 +82,7 @@ private:
     bool                            m_scanHandled = false;
     int                             m_suppressedCount = 0;
     int                             m_retriesLeft = 0;
+    bool                            m_reconnectPending = false;
 
     // Phase 2 control script (resistance-changing writes).
     Script                          m_script = Script::None;
@@ -89,6 +91,7 @@ private:
     QVector<QPair<QString, QByteArray>> m_ctrlSteps;
     int                             m_ctrlIndex = 0;
     int                             m_ctrlIntervalMs = 4500;
+    int                             m_ctrlPrerollMs = 0;   // extra hold after the baseline step
     QTimer                         *m_ctrlTimer = nullptr;
 };
 
