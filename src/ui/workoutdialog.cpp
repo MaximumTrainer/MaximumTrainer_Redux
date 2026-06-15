@@ -2391,8 +2391,15 @@ void WorkoutDialog::sendGearLoad() {
     // we'd otherwise send resistance 0 (slope / test / free ride / rest).
     if (!isUsingSlopeMode && currentTargetPower > 0)
         return;
-    const double cad = averageCadence1sec.isEmpty() ? -1.0 : averageCadence1sec.at(0);
-    emit setLoad(trainerControlUserId, gearTargetWatts(m_virtualGear, cad));
+
+    if (m_trainerSupportsResistanceLevel) {
+        // Instant, real-gear feel: a fixed brake the rider's power works against.
+        emit setResistance(trainerControlUserId, VirtualGear::resistanceLevel(m_virtualGear));
+    } else {
+        // Fallback for trainers without 0x04: cadence-aware ERG.
+        const double cad = averageCadence1sec.isEmpty() ? -1.0 : averageCadence1sec.at(0);
+        emit setLoad(trainerControlUserId, gearTargetWatts(m_virtualGear, cad));
+    }
 }
 
 void WorkoutDialog::shiftGear(int delta) {
@@ -2402,10 +2409,7 @@ void WorkoutDialog::shiftGear(int delta) {
     if (g == m_virtualGear)
         return;
     m_virtualGear = g;
-    const double cad = averageCadence1sec.isEmpty() ? -1.0 : averageCadence1sec.at(0);
-    setWindowTitle(QStringLiteral("Gear %1/%2  →  %3 W")
-                       .arg(m_virtualGear).arg(kVirtualGearCount)
-                       .arg(gearTargetWatts(m_virtualGear, cad)));
+    setWindowTitle(QStringLiteral("Gear %1/%2").arg(m_virtualGear).arg(kVirtualGearCount));
     sendGearLoad();
 }
 

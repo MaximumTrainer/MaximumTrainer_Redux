@@ -35,6 +35,7 @@ static const QBluetoothUuid CyclingPowerMeasurement (QBluetoothUuid::CyclingPowe
 #endif
 static const QBluetoothUuid FtmsIndoorBikeData      (quint16(0x2AD2));
 static const QBluetoothUuid FtmsControlPoint        (quint16(0x2AD9));
+static const QBluetoothUuid FtmsFeature             (quint16(0x2ACC));
 static const QBluetoothUuid BatteryLevel            (quint16(0x2A19));
 // Moxy Muscle Oxygen Monitor (proprietary UUIDs - not in BT SIG enum)
 static const QBluetoothUuid MoxyService             (quint16(0xAAB0));
@@ -272,6 +273,7 @@ void BtleHub::simulateNotification(quint16 characteristicUuid, const QByteArray 
     case BTLE_UUID_CSC_MEASUREMENT:   parseCscMeasurement(data);     break;
     case BTLE_UUID_POWER_MEASUREMENT: parsePowerMeasurement(data);   break;
     case BTLE_UUID_FTMS_BIKE_DATA:    parseFtmsIndoorBikeData(data); break;
+    case BTLE_UUID_FTMS_FEATURE:      parseFtmsFeature(data);        break;
     case BTLE_UUID_MOXY_MEASUREMENT:  parseMoxyMeasurement(data);    break;
     case BTLE_UUID_BATTERY_LEVEL:     parseBatteryLevel(data);       break;
     default: break;
@@ -335,8 +337,13 @@ void BtleHub::onServiceDiscovered(const QBluetoothUuid &serviceUuid)
     }
     else if (serviceUuid == BtleUuid::FitnessMachine) {
         m_ftmsService = m_controller->createServiceObject(serviceUuid, this);
-        if (m_ftmsService)
+        if (m_ftmsService) {
+            // Handle the one-shot read of the Fitness Machine Feature (0x2ACC)
+            // so we learn whether Set Target Resistance Level (0x04) is supported.
+            connect(m_ftmsService, &QLowEnergyService::characteristicRead,
+                    this, &BtleHub::onCharacteristicChanged);
             setupService(m_ftmsService);
+        }
     }
     else if (serviceUuid == BtleUuid::MoxyService) {
         m_moxyService = m_controller->createServiceObject(serviceUuid, this);
@@ -507,6 +514,25 @@ void BtleHub::handleFtmsControlPointResponse(const QByteArray &value)
     }
 }
 
+void BtleHub::parseFtmsFeature(const QByteArray &value)
+{
+    // 0x2ACC: [Fitness Machine Features (uint32 LE)][Target Setting Features (uint32 LE)]
+    if (value.size() < 8)
+        return;
+    const quint32 targetFeatures =
+          static_cast<quint32>(quint8(value[4]))
+        | (static_cast<quint32>(quint8(value[5])) << 8)
+        | (static_cast<quint32>(quint8(value[6])) << 16)
+        | (static_cast<quint32>(quint8(value[7])) << 24);
+    // Bit 2 = Resistance Target Setting Supported (i.e. Set Target Resistance
+    // Level, opcode 0x04 — the channel that gives instant, gear-like feel).
+    m_resistanceLevelSupported = (targetFeatures & (1u << 2)) != 0;
+    LOG_INFO("BtleHub", QStringLiteral("FTMS resistance-level (0x04) control %1")
+                            .arg(m_resistanceLevelSupported ? QStringLiteral("supported")
+                                                            : QStringLiteral("not supported")));
+    emit signal_resistanceLevelSupported(m_resistanceLevelSupported);
+}
+
 void BtleHub::onServiceStateChanged(QLowEnergyService::ServiceState state)
 {
     QLowEnergyService *service = qobject_cast<QLowEnergyService*>(sender());
@@ -542,6 +568,11 @@ void BtleHub::onServiceStateChanged(QLowEnergyService::ServiceState state)
         // point, which left ERG mode stuck at the trainer's default load.
         enableIndication(service,
             service->characteristic(BtleUuid::FtmsControlPoint));
+        // One-shot read of the feature char to learn if Set Target Resistance
+        // Level (0x04) is supported (drives virtual-shifting mode selection).
+        QLowEnergyCharacteristic feat = service->characteristic(BtleUuid::FtmsFeature);
+        if (feat.isValid())
+            service->readCharacteristic(feat);
     }
     else if (service == m_moxyService) {
         enableNotification(service,
@@ -577,6 +608,8 @@ void BtleHub::onCharacteristicChanged(const QLowEnergyCharacteristic &characteri
         parseFtmsIndoorBikeData(value);
     else if (uuid == BtleUuid::FtmsControlPoint)
         handleFtmsControlPointResponse(value);
+    else if (uuid == BtleUuid::FtmsFeature)
+        parseFtmsFeature(value);
     else if (uuid == BtleUuid::MoxyMeasurement)
         parseMoxyMeasurement(value);
     else if (uuid == BtleUuid::BatteryLevel)

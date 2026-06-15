@@ -111,6 +111,8 @@ signals:
     // Commands to FE-C
     void setLoad(int antID, double load);
     void setSlope(int antID, double slope);
+    // Virtual-shifting resistance level (FTMS 0x04, 0.1 units) — instant gear feel.
+    void setResistance(int antID, int levelTenths);
 
     void increaseDifficulty();
     void decreaseDifficulty();
@@ -153,6 +155,11 @@ signals:
 public slots:
     // control list master of QThreads hub
     void addToControlList(int antID, int fromHubNumber);
+
+    /// Whether the connected trainer supports FTMS Set Target Resistance Level
+    /// (0x04). When true, virtual shifting uses resistance level (instant, gear-
+    /// like); otherwise it falls back to cadence-aware ERG.
+    void setResistanceLevelSupported(bool supported) { m_trainerSupportsResistanceLevel = supported; }
 
     ///Connected to Clock
     void update1sec(double totalTimeElapsed_sec);
@@ -305,7 +312,8 @@ private:
     // virtual gear that drives the trainer via the (working) FTMS ERG path,
     // cadence-aware so it feels like a gear rather than a flat ERG clamp.
     static constexpr int kVirtualGearCount = VirtualGear::Count;
-    int  m_virtualGear = (VirtualGear::Count + 1) / 2;   // start mid-gear (8)
+    int  m_virtualGear = (VirtualGear::Count + 1) / 2;   // start mid-gear
+    bool m_trainerSupportsResistanceLevel = false;       // FTMS 0x04 available?
     bool virtualShiftingActive() const;           // trainer connected + enabled
     int  gearTargetWatts(int gear, double cadence) const;
     void sendGearLoad();                          // emit setLoad for current gear

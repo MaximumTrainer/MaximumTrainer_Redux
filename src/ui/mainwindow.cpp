@@ -1540,7 +1540,14 @@ void MainWindow::executeWorkout(Workout workout) {
 
     connect(w, SIGNAL(setLoad(int,double)),  btleHub, SLOT(setLoad(int,double)));
     connect(w, SIGNAL(setSlope(int,double)), btleHub, SLOT(setSlope(int,double)));
+    connect(w, SIGNAL(setResistance(int,int)), btleHub, SLOT(setResistanceLevel(int,int)));
     connect(w, SIGNAL(stopDecodingMsgHub()), btleHub, SLOT(stopDecodingMsg()));
+    // Virtual shifting prefers FTMS resistance level (0x04) for an instant,
+    // gear-like feel; tell the dialog whether this trainer supports it (the
+    // feature read may already have completed, so seed it now and also listen).
+    connect(btleHub, &BtleHub::signal_resistanceLevelSupported,
+            w, &WorkoutDialog::setResistanceLevelSupported);
+    w->setResistanceLevelSupported(btleHub->resistanceLevelSupported());
     // Harmless when the device is not a trainer: BtleHub::setLoad() no-ops
     // without an FTMS service.
     w->enableTrainerControl();
@@ -1669,6 +1676,10 @@ void MainWindow::wireHubsToDialog(WorkoutDialog *w,
                 [riderIndex]() { BtleSensorStore::setTrainerProvidesHr(true, riderIndex); });
         connect(w, SIGNAL(setLoad(int,double)),  hub, SLOT(setLoad(int,double)));
         connect(w, SIGNAL(setSlope(int,double)), hub, SLOT(setSlope(int,double)));
+        connect(w, SIGNAL(setResistance(int,int)), hub, SLOT(setResistanceLevel(int,int)));
+        connect(hub, &BtleHub::signal_resistanceLevelSupported,
+                w, &WorkoutDialog::setResistanceLevelSupported);
+        w->setResistanceLevelSupported(hub->resistanceLevelSupported());
         w->enableTrainerControl();
     }
     if (hubsByRole.contains(BtleSensorRole::Power))

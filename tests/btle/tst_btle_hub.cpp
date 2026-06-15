@@ -68,6 +68,8 @@ private slots:
     void testFtms_allThree();
     void testFtms_zeroValues();
     void testFtms_tooShort_ignored();
+    void testFtmsFeature_resistanceSupported();
+    void testFtmsFeature_resistanceNotSupported();
 
     // ── Brand-specific trainer simulations ───────────────────────────────────
     void testEliteTrainer_singlePacket();
@@ -435,6 +437,28 @@ void TstBtleHub::testFtms_tooShort_ignored()
     QSignalSpy spySpd(hub, &BtleHub::signal_speed);
     hub->simulateNotification(BTLE_UUID_FTMS_BIKE_DATA, QByteArray(1, '\x00'));
     QCOMPARE(spySpd.count(), 0);
+}
+
+void TstBtleHub::testFtmsFeature_resistanceSupported()
+{
+    // 0x2ACC = [Machine Features (4)][Target Setting Features (4)], LE. This is
+    // the JetBlack Victory's real value; Target Setting Features = 0x0000E00C,
+    // bit2 (Resistance Target Setting) set ⇒ supported = true.
+    QSignalSpy spy(hub, &BtleHub::signal_resistanceLevelSupported);
+    hub->simulateNotification(BTLE_UUID_FTMS_FEATURE, QByteArray::fromHex("874400000ce00000"));
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(spy.at(0).at(0).toBool(), true);
+    QVERIFY(hub->resistanceLevelSupported());
+}
+
+void TstBtleHub::testFtmsFeature_resistanceNotSupported()
+{
+    // Target Setting Features = 0x00000008 (bit3 Power only, bit2 clear).
+    QSignalSpy spy(hub, &BtleHub::signal_resistanceLevelSupported);
+    hub->simulateNotification(BTLE_UUID_FTMS_FEATURE, QByteArray::fromHex("0000000008000000"));
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(spy.at(0).at(0).toBool(), false);
+    QVERIFY(!hub->resistanceLevelSupported());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
