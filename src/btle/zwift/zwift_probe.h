@@ -36,13 +36,17 @@ class ZwiftProbe : public QObject
 public:
     explicit ZwiftProbe(QObject *parent = nullptr);
 
+    // Optional scripted write sequence run after the handshake (Phase 2).
+    //   ErgDemo   — ERG power steps (proves control; no pedaling needed).
+    //   GearSweep — hold a grade, auto-step the virtual gear up/down so a rider
+    //               can FEEL each gear without touching any input.
+    enum class Script { None, ErgDemo, GearSweep };
+
     // nameFilter: case-insensitive substring; empty => auto (Zwift service or a
     // name hinting at a trainer/Click). listenSeconds: per-device capture window.
-    // controlTest: Phase 2 — after the handshake, drive a scripted sequence of
-    // 0x04 control commands and observe the trainer react (changes resistance).
     void start(const QString &nameFilter = QString(),
                int scanSeconds = 8, int listenSeconds = 15,
-               bool controlTest = false);
+               Script script = Script::None);
 
 signals:
     void finished();
@@ -79,11 +83,12 @@ private:
     int                             m_retriesLeft = 0;
 
     // Phase 2 control script (resistance-changing writes).
-    bool                            m_controlTest = false;
+    Script                          m_script = Script::None;
     bool                            m_controlStarted = false;
     QLowEnergyService              *m_ctrlService = nullptr;
     QVector<QPair<QString, QByteArray>> m_ctrlSteps;
     int                             m_ctrlIndex = 0;
+    int                             m_ctrlIntervalMs = 4500;
     QTimer                         *m_ctrlTimer = nullptr;
 };
 

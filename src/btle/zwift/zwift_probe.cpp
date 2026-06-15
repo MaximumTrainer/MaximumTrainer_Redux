@@ -39,13 +39,13 @@ void line(const QString &s)
 ZwiftProbe::ZwiftProbe(QObject *parent) : QObject(parent) {}
 
 void ZwiftProbe::start(const QString &nameFilter, int scanSeconds,
-                       int listenSeconds, bool controlTest)
+                       int listenSeconds, Script script)
 {
     m_nameFilter    = nameFilter.trimmed();
     m_listenSeconds = listenSeconds;
-    m_controlTest   = controlTest;
+    m_script        = script;
 
-    line(controlTest
+    line(script != Script::None
              ? QStringLiteral("── Zwift CONTROL TEST (writes change resistance!) ───")
              : QStringLiteral("── Zwift probe (read-only) ──────────────────────────"));
     line(QStringLiteral("  name filter : %1")
@@ -264,7 +264,7 @@ void ZwiftProbe::subscribeAndProbe(QLowEnergyService *service)
             service->writeCharacteristic(cp, ZwiftProtocol::rideOnHandshake(), mode);
             line(QStringLiteral("    ▶ wrote RideOn handshake to control point"));
 
-            if (m_controlTest && !m_controlStarted)
+            if (m_script != Script::None && !m_controlStarted)
                 beginControlScript(service);
         }
     }
@@ -292,26 +292,43 @@ void ZwiftProbe::beginControlScript(QLowEnergyService *zwiftService)
         return encodeControlCommand(c);
     };
 
-    m_ctrlSteps = {
-        { QStringLiteral("ERG 100 W"),                 erg(100) },
-        { QStringLiteral("ERG 250 W"),                 erg(250) },
-        { QStringLiteral("ERG 150 W"),                 erg(150) },
-        { QStringLiteral("SIM +6% gear 12 (mid)"),    simGear(600, 12) },
-        { QStringLiteral("SIM +6% gear 2 (low/easy)"),simGear(600, 2)  },
-        { QStringLiteral("SIM +6% gear 22 (high)"),   simGear(600, 22) },
-        { QStringLiteral("RESET — ERG 0 W (release)"), erg(0)  },
-    };
+    if (m_script == Script::GearSweep) {
+        // Rider pedals steadily; we step the gear so they FEEL each change with
+        // no input. Hold +3% so SIM resistance is non-trivial at speed.
+        m_ctrlIntervalMs = 8000;   // hold each long enough to feel
+        m_ctrlSteps = {
+            { QStringLiteral("PEDAL STEADY ~80rpm. Gear 12/24 @ +3% (baseline)"), simGear(300, 12) },
+            { QStringLiteral("Gear 1/24  → should feel EASIEST"), simGear(300, 1)  },
+            { QStringLiteral("Gear 24/24 → should feel HARDEST"), simGear(300, 24) },
+            { QStringLiteral("Gear 1/24  → EASIEST again"),       simGear(300, 1)  },
+            { QStringLiteral("Gear 24/24 → HARDEST again"),       simGear(300, 24) },
+            { QStringLiteral("Gear 12 @ 0% → sanity: flat/easy"),simGear(0,   12) },
+            { QStringLiteral("Gear 12 @ +6% → sanity: HARDER"),  simGear(600, 12) },
+            { QStringLiteral("RESET — release resistance"),       erg(0)           },
+        };
+    } else { // Script::ErgDemo
+        m_ctrlIntervalMs = 4500;
+        m_ctrlSteps = {
+            { QStringLiteral("ERG 100 W"),                 erg(100) },
+            { QStringLiteral("ERG 250 W"),                 erg(250) },
+            { QStringLiteral("ERG 150 W"),                 erg(150) },
+            { QStringLiteral("SIM +6% gear 12 (mid)"),    simGear(600, 12) },
+            { QStringLiteral("SIM +6% gear 2 (low/easy)"),simGear(600, 2)  },
+            { QStringLiteral("SIM +6% gear 22 (high)"),   simGear(600, 22) },
+            { QStringLiteral("RESET — ERG 0 W (release)"), erg(0)  },
+        };
+    }
 
     line(QString());
-    line(QStringLiteral("  ▶▶ control script: %1 steps — watch the dbg ResCtrl lines")
-             .arg(m_ctrlSteps.size()));
+    line(QStringLiteral("  ▶▶ control script: %1 steps, %2 s each — watch the dbg ResCtrl lines")
+             .arg(m_ctrlSteps.size()).arg(m_ctrlIntervalMs / 1000));
 
     if (!m_ctrlTimer) {
         m_ctrlTimer = new QTimer(this);
         connect(m_ctrlTimer, &QTimer::timeout, this, &ZwiftProbe::onControlStep);
     }
-    onControlStep();                 // first step immediately
-    m_ctrlTimer->start(4500);        // then one every 4.5 s
+    onControlStep();                       // first step immediately
+    m_ctrlTimer->start(m_ctrlIntervalMs);  // then one per interval
 }
 
 void ZwiftProbe::onControlStep()

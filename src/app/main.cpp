@@ -247,7 +247,25 @@ int main(int argc, char *argv[]) {
         auto *probe = new ZwiftProbe(&app);
         QObject::connect(probe, &ZwiftProbe::finished, &app, &QCoreApplication::quit);
         probe->start(nameFilter, /*scanSeconds=*/8, /*listenSeconds=*/50,
-                     /*controlTest=*/true);
+                     ZwiftProbe::Script::ErgDemo);
+        return app.exec();
+    }
+
+    // --zwift-gearsweep [nameFilter]: Phase 2 gear validation. Holds a grade and
+    // auto-steps the virtual gear up/down every few seconds so a rider can FEEL
+    // each gear without touching any input. CHANGES RESISTANCE; releases at end.
+    if (cliArgs.contains(QLatin1String("--zwift-gearsweep"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--zwift-gearsweep"));
+        QString nameFilter = QStringLiteral("Victory");
+        if (idx >= 0 && idx + 1 < cliArgs.size()
+            && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-')))
+            nameFilter = cliArgs.at(idx + 1);
+
+        auto *probe = new ZwiftProbe(&app);
+        QObject::connect(probe, &ZwiftProbe::finished, &app, &QCoreApplication::quit);
+        probe->start(nameFilter, /*scanSeconds=*/8, /*listenSeconds=*/95,
+                     ZwiftProbe::Script::GearSweep);
         return app.exec();
     }
 
