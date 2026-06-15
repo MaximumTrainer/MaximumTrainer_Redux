@@ -1,4 +1,4 @@
-INCLUDEPATH += $$PWD
+INCLUDEPATH += $$PWD $$PWD/zwift
 
 # On Wasm use the WebBluetooth bridge; on all other platforms use native Qt BLE
 contains(QMAKE_PLATFORM, wasm) {
@@ -30,6 +30,10 @@ contains(QMAKE_PLATFORM, wasm) {
         $$PWD/sensor_connect_dialog.h \
         $$PWD/btle_uuids.h \
         $$PWD/simulator_hub.h
+
+    # Read-only Zwift exploration harness (Phase 1) needs native QtBluetooth.
+    SOURCES += $$PWD/zwift/zwift_probe.cpp
+    HEADERS += $$PWD/zwift/zwift_probe.h
 }
 
 # Zwift virtual-shifting protocol codec — pure bytes, platform-independent.

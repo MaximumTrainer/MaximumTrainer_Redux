@@ -26,6 +26,9 @@
 #include <QPainter>
 #include <QImage>
 #include "retroracecontroller.h"
+#ifndef Q_OS_WASM
+#include "zwift_probe.h"
+#endif
 #endif
 
 
@@ -213,6 +216,23 @@ int main(int argc, char *argv[]) {
                              || cliArgs.contains(QLatin1String("/screenshots"),  Qt::CaseInsensitive);
 
 #ifndef Q_OS_WASM
+    // --zwift-probe [nameFilter]: headless, read-only BLE exploration of the
+    // Zwift trainer/Click protocol (issue #293, Phase 1). Dumps GATT + frames,
+    // writes only the RideOn handshake (never a control command), then quits.
+    if (cliArgs.contains(QLatin1String("--zwift-probe"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--zwift-probe"));
+        QString nameFilter;
+        if (idx >= 0 && idx + 1 < cliArgs.size()
+            && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-')))
+            nameFilter = cliArgs.at(idx + 1);
+
+        auto *probe = new ZwiftProbe(&app);
+        QObject::connect(probe, &ZwiftProbe::finished, &app, &QCoreApplication::quit);
+        probe->start(nameFilter);
+        return app.exec();
+    }
+
     // --retrorace [file.fit] [--shot out.png]: standalone spike of the retro
     // ghost-race view. Skips login/MainWindow entirely. With --shot it grabs one
     // frame to a PNG and quits (headless validation); otherwise it stays open.

@@ -2,7 +2,8 @@
 
 **Branch:** `zwift-virtual-shifting` (local only — do **not** push until the
 distribution/patent question below is resolved).
-**Status:** Phase 0 in progress.
+**Status:** Phases 0 & 1 done (codec + probe, validated on real hardware).
+Next: Phase 2 (control-point writes — first time we change resistance).
 **Origin:** issue [#293](https://github.com/MaximumTrainer/MaximumTrainer_Redux/issues/293)
 — JetBlack Victory + Zwift Cog: trainer "resistance was 0" during an FTP/MAP
 test interval and the rider could not pedal.
@@ -39,10 +40,13 @@ Virtual shifting on the Victory does **NOT** run over FTMS. It uses Zwift's own
 **proprietary trainer protocol**, and the gear→resistance math lives in the
 **trainer firmware** — we send a gear ratio, the trainer computes resistance.
 
-- **Zwift trainer service:** `00000001-19ca-4651-86e5-fa29dcdd09d1`
-  - Notifications (riding data): `00000002-19ca-4651-86e5-fa29dcdd09d1`
-  - Control point (commands):    `00000003-19ca-4651-86e5-fa29dcdd09d1`
-  - Response/indicate (assumed): `00000004-19ca-4651-86e5-fa29dcdd09d1`
+- **Zwift trainer service:** advertised as **`0000fc82-0000-1000-8000-00805f9b34fb`**
+  (16-bit Zwift UUID 0xFC82 — *confirmed via Phase 1 probe on the JetBlack
+  Victory fw 4.29*; the earlier `00000001-19ca-…` guess was WRONG). The three
+  characteristics inside it do use the 19ca base:
+  - Notifications (riding data): `00000002-19ca-4651-86e5-fa29dcdd09d1` [Ntf]
+  - Control point (commands):    `00000003-19ca-4651-86e5-fa29dcdd09d1` [Wr|WrNR]
+  - Response/indicate:           `00000004-19ca-4651-86e5-fa29dcdd09d1` [Rd|Ind]
 - **Framing:** `[command_code][protobuf_data]`
 - **Incoming 0x03 — HubRidingData:** f1 Power, f2 Cadence, f3 SpeedX100,
   f4 HR, f5/f6 unknown (all uint32 varints).
@@ -86,11 +90,21 @@ qdomyos-zwift (GPLv3), SHIFTR.
   protocol constants + protobuf codec for HubCommand (0x04) and HubRidingData
   (0x03), the gear table, handshake constant. Unit-tested against byte fixtures.
   ← *current*
-- [ ] **Phase 1 — Read-only probe harness (device).** CLI flag (extend the
-  `--sensor-check` pattern) that connects to the Victory + Click, dumps
-  services/characteristics, runs the RideOn handshake, logs raw + decoded
-  frames. Confirms layout, handshake trailing bytes, encryption assumption,
-  Click button format. Read-only = safe.
+- [x] **Phase 1 — Read-only probe harness (device).** DONE. `--zwift-probe
+  [nameFilter]` (`src/btle/zwift/zwift_probe.*`). Run against the live Victory
+  (name "Victory MaJet", C4:67:D8:7A:AC:35, JetBlack fw 4.29):
+  `./build/release/MaximumTrainer --zwift-probe Victory` (offscreen ok).
+  **Confirmed on hardware:**
+  - Zwift service lives under **`0000fc82`** (not `00000001-19ca-…`); chars
+    `00000002/3/4-19ca-…` exactly as documented.
+  - Handshake: write `"RideOn"` to `…03` → trainer echoes `"RideOn"`
+    (`526964654f6e`) on `…04`. **No trailing bytes, NOT encrypted.**
+  - `…02` streams `0x03`-framed HubRidingData; the Phase 0 decoder parses it
+    cleanly (idle → all-zero fields; needs a pedaling test for non-zero).
+  - FTMS (`1826`/`2ad2`) streams in parallel; JetBlack debug char
+    `c4632b08` logs ASCII incl. `ResCtrl: Resistance control timer …` and the
+    `ANT HR` bridge (the #292 HR path).
+  - Zwift Click was not present/paired this session → defer to Phase 3.
 - [ ] **Phase 2 — Trainer control path (device).** `ZwiftTrainerController`
   sibling to `setLoad`/`setSlope`; `setVirtualGear(riderId, gearIndex)` →
   encode 0x04 with gear ratio + sim params + rider/bike weight → write control
@@ -110,6 +124,12 @@ qdomyos-zwift (GPLv3), SHIFTR.
 ## Resume checklist
 
 1. `git checkout zwift-virtual-shifting`
-2. Phase 0 code lives in `src/btle/zwift/`; tests in `tests/zwift/`.
-3. Build the unit tests: `cd tests/zwift && qmake6 zwift_tests.pro && make && ./zwift_tests -v2`
-4. Next up = Phase 1 probe harness against real hardware.
+2. Code: codec `src/btle/zwift/zwift_protocol.*`, probe `…/zwift_probe.*`; unit
+   tests `tests/zwift/`.
+3. Unit tests: `cd tests/zwift && qmake6 zwift_tests.pro && make && ./zwift_tests -v2`
+4. Probe a live trainer: `qmake6 MaximumTrainer.pro QWT_INSTALL=/tmp/qwt6 && make -j$(nproc)`
+   then `LD_LIBRARY_PATH=/tmp/qwt6/lib QT_QPA_PLATFORM=offscreen ./build/release/MaximumTrainer --zwift-probe Victory`
+5. **Next = Phase 2:** send a 0x04 HubCommand with a gear ratio to control point
+   `…03` and watch resistance change (the `c4632b08` ResCtrl debug log + a
+   pedaling test confirm it). First writes that actually change the trainer —
+   gate behind an explicit flag, start from a known gear, test incrementally.

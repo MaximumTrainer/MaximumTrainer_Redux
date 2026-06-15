@@ -21,9 +21,12 @@
  */
 namespace ZwiftProtocol {
 
-// 128-bit UUIDs (full strings; the 32-bit prefix is the only part that varies).
+// UUIDs. The container service is advertised as the 16-bit Zwift UUID 0xFC82
+// (confirmed on a JetBlack Victory fw 4.29 via the Phase 1 probe); the three
+// characteristics use the 19ca-… base documented by Makinolo. Earlier drafts
+// wrongly assumed the service itself was 00000001-19ca-…; it is not.
 namespace Uuid {
-inline constexpr char Service[]      = "00000001-19ca-4651-86e5-fa29dcdd09d1";
+inline constexpr char Service[]      = "0000fc82-0000-1000-8000-00805f9b34fb";
 inline constexpr char Measurement[]  = "00000002-19ca-4651-86e5-fa29dcdd09d1"; // notify
 inline constexpr char ControlPoint[] = "00000003-19ca-4651-86e5-fa29dcdd09d1"; // write
 inline constexpr char Response[]     = "00000004-19ca-4651-86e5-fa29dcdd09d1"; // indicate
