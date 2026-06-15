@@ -10,6 +10,7 @@
 #include <QtTest/QtTest>
 
 #include "zwift_protocol.h"
+#include "virtual_gear.h"
 
 using namespace ZwiftProtocol;
 
@@ -38,6 +39,13 @@ private slots:
 
     // ── misc ─────────────────────────────────────────────────────────────────
     void testHandshakePrefix();
+
+    // ── virtual gear model (#293) ────────────────────────────────────────────
+    void testGearWatts_monotonicInGear();
+    void testGearWatts_risesWithCadence();
+    void testGearWatts_cadenceFallbackAndClamp();
+    void testGearWatts_ftpScaling();
+    void testGearWatts_gearClamped();
 };
 
 void TstZwiftProtocol::testEncode_gearRatioOnly()
@@ -141,6 +149,52 @@ void TstZwiftProtocol::testGears_clamped()
 void TstZwiftProtocol::testHandshakePrefix()
 {
     QVERIFY(rideOnHandshake().startsWith(QByteArrayLiteral("RideOn")));
+}
+
+void TstZwiftProtocol::testGearWatts_monotonicInGear()
+{
+    // Harder gear ⇒ strictly more watts at a fixed cadence/FTP.
+    for (int g = 2; g <= VirtualGear::Count; ++g)
+        QVERIFY(VirtualGear::targetWatts(g, 85, 250)
+                > VirtualGear::targetWatts(g - 1, 85, 250));
+}
+
+void TstZwiftProtocol::testGearWatts_risesWithCadence()
+{
+    // Same gear, faster pedaling ⇒ more watts (the "feels like a gear" property).
+    QVERIFY(VirtualGear::targetWatts(8, 100, 250)
+            > VirtualGear::targetWatts(8, 70, 250));
+}
+
+void TstZwiftProtocol::testGearWatts_cadenceFallbackAndClamp()
+{
+    // cadence<=0 falls back to the reference cadence (== explicit RefCadence).
+    QCOMPARE(VirtualGear::targetWatts(8, 0,   250),
+             VirtualGear::targetWatts(8, VirtualGear::RefCadence, 250));
+    QCOMPARE(VirtualGear::targetWatts(8, -1,  250),
+             VirtualGear::targetWatts(8, VirtualGear::RefCadence, 250));
+    // Cadence is clamped to [40,120], so extremes saturate rather than explode.
+    QCOMPARE(VirtualGear::targetWatts(8, 200, 250),
+             VirtualGear::targetWatts(8, 120, 250));
+    QCOMPARE(VirtualGear::targetWatts(8, 10,  250),
+             VirtualGear::targetWatts(8, 40,  250));
+}
+
+void TstZwiftProtocol::testGearWatts_ftpScaling()
+{
+    // Higher FTP ⇒ higher targets; ftp<=0 uses the default.
+    QVERIFY(VirtualGear::targetWatts(10, 85, 300)
+            > VirtualGear::targetWatts(10, 85, 150));
+    QCOMPARE(VirtualGear::targetWatts(10, 85, 0),
+             VirtualGear::targetWatts(10, 85, VirtualGear::DefaultFtp));
+}
+
+void TstZwiftProtocol::testGearWatts_gearClamped()
+{
+    QCOMPARE(VirtualGear::targetWatts(0,   85, 250),
+             VirtualGear::targetWatts(1,   85, 250));
+    QCOMPARE(VirtualGear::targetWatts(999, 85, 250),
+             VirtualGear::targetWatts(VirtualGear::Count, 85, 250));
 }
 
 QTEST_MAIN(TstZwiftProtocol)

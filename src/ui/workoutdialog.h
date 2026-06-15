@@ -4,6 +4,8 @@
 #include <QDialog>
 #include <QTime>
 #include <QTimer>
+
+#include "virtual_gear.h"
 #include <QHash>
 #include <QKeyEvent>
 #include <QNetworkReply>
@@ -302,8 +304,8 @@ private:
     // otherwise send resistance 0 and the rider spins out. Up/Down shift a
     // virtual gear that drives the trainer via the (working) FTMS ERG path,
     // cadence-aware so it feels like a gear rather than a flat ERG clamp.
-    static constexpr int kVirtualGearCount = 15;
-    int  m_virtualGear = 8;                       // 1..kVirtualGearCount
+    static constexpr int kVirtualGearCount = VirtualGear::Count;
+    int  m_virtualGear = (VirtualGear::Count + 1) / 2;   // start mid-gear (8)
     bool virtualShiftingActive() const;           // trainer connected + enabled
     int  gearTargetWatts(int gear, double cadence) const;
     void sendGearLoad();                          // emit setLoad for current gear

@@ -1,7 +1,7 @@
 #include "trainer_gear_test.h"
 #include "btle_hub.h"
+#include "virtual_gear.h"
 
-#include <QtMath>
 #include <cstdio>
 
 namespace {
@@ -57,17 +57,11 @@ void TrainerGearTest::start(const QString &nameFilter, int scanSeconds)
     m_agent->start(QBluetoothDeviceDiscoveryAgent::LowEnergyMethod);
 }
 
-// Cadence-aware gear → watts (mirrors WorkoutDialog::gearTargetWatts so the feel
-// matches the in-app feature). Fixed FTP-agnostic base for a standalone test.
+// Cadence-aware gear → watts via the shared model (same feel as the in-app
+// feature). FTP unknown in this standalone test → a sensible default is used.
 int TrainerGearTest::gearWatts(int gear, double cadence) const
 {
-    const int N = 15;
-    const int g = qBound(1, gear, N);
-    const double coeff = 0.5 + (g - 1) / double(N - 1) * 1.5;   // 0.5 → 2.0
-    double cad = (cadence > 0) ? cadence : 85.0;
-    cad = qBound(40.0, cad, 120.0);
-    const double cadFactor = (cad / 85.0) * (cad / 85.0);
-    return qBound(20, int(qRound(110.0 * coeff * cadFactor)), 450);
+    return VirtualGear::targetWatts(gear, cadence, /*ftp=*/220.0);
 }
 
 void TrainerGearTest::onGearTick()

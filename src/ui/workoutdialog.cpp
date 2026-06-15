@@ -1,4 +1,5 @@
 #include "workoutdialog.h"
+#include "virtual_gear.h"
 #include "ui_workoutdialog.h"
 
 #ifdef Q_OS_WIN32
@@ -2373,17 +2374,8 @@ bool WorkoutDialog::virtualShiftingActive() const {
 }
 
 int WorkoutDialog::gearTargetWatts(int gear, double cadence) const {
-    const int g = qBound(1, gear, kVirtualGearCount);
-    // Per-gear resistance coefficient, easy (0.5) → hard (2.0).
-    const double coeff = 0.5 + (g - 1) / double(kVirtualGearCount - 1) * 1.5;
-    // Cadence factor (aero-like): faster pedaling demands more watts, like a
-    // real gear — distinguishes this from a flat ERG clamp.
-    double cad = (cadence > 0) ? cadence : 85.0;
-    cad = qBound(40.0, cad, 120.0);
-    const double cadFactor = (cad / 85.0) * (cad / 85.0);
-    const double ftp = (account && account->FTP > 0) ? account->FTP : 200.0;
-    const double watts = 0.48 * ftp * coeff * cadFactor;   // mid gear @85rpm ≈ 0.6×FTP
-    return qBound(20, int(qRound(watts)), int(qRound(1.6 * ftp)));
+    return VirtualGear::targetWatts(gear, cadence,
+                                    (account && account->FTP > 0) ? account->FTP : 0.0);
 }
 
 void WorkoutDialog::sendGearLoad() {
