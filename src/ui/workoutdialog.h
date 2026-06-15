@@ -60,7 +60,7 @@ public:
     /// the FE-C id came from the removed maximumtrainer.com sensor list,
     /// which left trainerControlUserId at -1 and silently disabled trainer control
     /// for every BLE workout.  Solo hubs ignore the id (1 = solo rider).
-    void enableTrainerControl() { trainerControlUserId = 1; }
+    void enableTrainerControl();   // sets the solo id and reveals the gear indicator
 
     void showVideoPlayer(int choice);
 
@@ -314,10 +314,13 @@ private:
     static constexpr int kVirtualGearCount = VirtualGear::Count;
     int  m_virtualGear = (VirtualGear::Count + 1) / 2;   // start mid-gear
     bool m_trainerSupportsResistanceLevel = false;       // FTMS 0x04 available?
-    bool virtualShiftingActive() const;           // trainer connected + enabled
+    bool virtualShiftingActive() const;           // a trainer is under our control
+    bool ergOwnsThisInterval() const;             // ERG enabled + active power target
+    bool gearsDriveNow() const;                   // gears are the active resistance source
     int  gearTargetWatts(int gear, double cadence) const;
     void sendGearLoad();                          // emit setLoad for current gear
     void shiftGear(int delta);                    // +1 up / -1 down, re-sends
+    void updateGearIndicator();                   // refresh the top-bar gear UI
 
 
     //Internet radio player

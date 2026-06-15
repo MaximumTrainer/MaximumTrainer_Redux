@@ -495,6 +495,9 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     connect(ui->widget_topMenu, SIGNAL(exit()), this, SLOT(closeWindow()));
     connect(ui->widget_topMenu, SIGNAL(startOrPause()), this, SLOT(start_or_pause_workout()));
     connect(ui->widget_topMenu, SIGNAL(lap()), this, SLOT(lapButtonPressed()) );
+    // On-screen virtual-shift arrows mirror the Up/Down keys.
+    connect(ui->widget_topMenu, &TopMenuWorkout::gearUp,   this, [this]{ shiftGear(+1); });
+    connect(ui->widget_topMenu, &TopMenuWorkout::gearDown, this, [this]{ shiftGear(-1); });
     connect(this, SIGNAL(insideConfig(bool)), ui->widget_topMenu, SLOT(changeConfigIcon(bool)));
 
     // Make the splitter gutters easy to grab — the 1px default was nearly
@@ -1544,6 +1547,7 @@ void WorkoutDialog::moveToNextInterval() {
 void WorkoutDialog::startWorkout() {
 
     m_virtualGear = (VirtualGear::Count + 1) / 2;   // every workout starts mid-gear
+    updateGearIndicator();
 
     emit startClock();
 
@@ -1799,8 +1803,9 @@ void WorkoutDialog::sendLastSecondData(int seconds) {
     }
 
     // Re-send the gear's load each second so faster/slower pedaling changes
-    // resistance like a real gear (only while we'd otherwise be at resistance 0).
-    if (isUsingSlopeMode && !isWorkoutOver && virtualShiftingActive())
+    // resistance like a real gear (ERG-fallback trainers); harmless dedup for
+    // resistance-level trainers.
+    if (gearsDriveNow())
         sendGearLoad();
 }
 
@@ -2373,10 +2378,29 @@ void WorkoutDialog::sendSlopes(double slope) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Virtual shifting (#293) — drive a single-cog trainer's resistance from a
 // rider-controlled gear instead of sending slope 0 (which spins out).
+void WorkoutDialog::enableTrainerControl() {
+    trainerControlUserId = 1;       // solo rider; hubs ignore the id
+    updateGearIndicator();          // a trainer is now wired → reveal the gear UI
+}
+
+// A trainer is under our control (solo, non-studio). Virtual shifting is offered
+// here regardless of the ERG ("control trainer resistance") checkbox: with ERG
+// off the rider controls resistance *through* the gears.
 bool WorkoutDialog::virtualShiftingActive() const {
-    return trainerControlUserId != -1
-        && account && account->control_trainer_resistance
-        && !account->enable_studio_mode;
+    return trainerControlUserId != -1 && account && !account->enable_studio_mode;
+}
+
+// ERG only owns an interval when the checkbox is on AND there's a positive power
+// target (a structured power interval). Then gears are inactive ("ERG").
+bool WorkoutDialog::ergOwnsThisInterval() const {
+    return account && account->control_trainer_resistance
+        && !isUsingSlopeMode && currentTargetPower > 0;
+}
+
+// Gears are the active resistance source whenever a trainer is controllable, the
+// workout isn't over, and ERG isn't currently owning the interval.
+bool WorkoutDialog::gearsDriveNow() const {
+    return virtualShiftingActive() && !isWorkoutOver && !ergOwnsThisInterval();
 }
 
 int WorkoutDialog::gearTargetWatts(int gear, double cadence) const {
@@ -2385,11 +2409,7 @@ int WorkoutDialog::gearTargetWatts(int gear, double cadence) const {
 }
 
 void WorkoutDialog::sendGearLoad() {
-    if (!virtualShiftingActive() || isWorkoutOver)
-        return;
-    // Never fight an active ERG power target — gears only drive the trainer when
-    // we'd otherwise send resistance 0 (slope / test / free ride / rest).
-    if (!isUsingSlopeMode && currentTargetPower > 0)
+    if (!gearsDriveNow())
         return;
 
     if (m_trainerSupportsResistanceLevel) {
@@ -2409,8 +2429,18 @@ void WorkoutDialog::shiftGear(int delta) {
     if (g == m_virtualGear)
         return;
     m_virtualGear = g;
-    setWindowTitle(QStringLiteral("Gear %1/%2").arg(m_virtualGear).arg(kVirtualGearCount));
     sendGearLoad();
+    updateGearIndicator();
+}
+
+// Refresh the top-bar gear indicator: visible whenever a trainer is controllable
+// (hidden in studio or with no trainer). During an ERG-owned interval it shows
+// dimmed with "ERG"; otherwise the gear is active and shiftable.
+void WorkoutDialog::updateGearIndicator() {
+    const bool show = virtualShiftingActive();
+    ui->widget_topMenu->setGearVisible(show);
+    if (show)
+        ui->widget_topMenu->updateGear(m_virtualGear, kVirtualGearCount, ergOwnsThisInterval());
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2552,6 +2582,9 @@ void WorkoutDialog::targetPowerChanged_f(double percentageTarget, int range) {
     ui->widget_time->setTargetPower(percentageTarget, range);
     ui->widget_topMenu->setTargetPower(percentageTarget, range);
     sendTargetsPower(percentageTarget, range);
+
+    // Reflect the new interval in the gear indicator (active vs dimmed "ERG").
+    updateGearIndicator();
 }
 
 

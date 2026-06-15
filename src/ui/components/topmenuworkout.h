@@ -3,6 +3,8 @@
 
 #include <QWidget>
 #include <QPushButton>
+#include <QLabel>
+#include <QToolButton>
 
 #include "calibration_types.h"
 
@@ -49,6 +51,12 @@ public:
     void setTargetCadence(int cadence, int range);
     void setTargetHeartRate(double percentageLTHR, int range);
 
+    // Virtual-shifting gear indicator (#293): ▼ gear N/24 ▲ in the middle of the
+    // top bar. Shown while shifting is available; during ERG intervals it shows
+    // dimmed with "ERG" and inactive arrows.
+    void setGearVisible(bool visible);
+    void updateGear(int gear, int count, bool ergMode);
+
 
 
 
@@ -68,6 +76,10 @@ signals :
     void prevRadio();
     void playPauseRadio();
     void nextRadio();
+
+    // Virtual-shifting: emitted when the on-screen ▲/▼ gear arrows are clicked.
+    void gearUp();
+    void gearDown();
 
 
 
@@ -115,6 +127,12 @@ private :
 
 private:
     Ui::TopMenuWorkout *ui;
+
+    // Virtual-shifting gear indicator widgets (built in the constructor).
+    QWidget     *m_gearWidget = nullptr;
+    QToolButton *m_gearDownBtn = nullptr;
+    QToolButton *m_gearUpBtn   = nullptr;
+    QLabel      *m_gearLabel   = nullptr;
 
     bool hasTargetPower;
     bool hasTargetCad;

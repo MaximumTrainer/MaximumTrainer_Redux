@@ -8,6 +8,7 @@
 #include <QKeyEvent>
 #include <QPainter>
 #include <QStyle>
+#include <QHBoxLayout>
 #include "util.h"
 
 namespace {
@@ -180,6 +181,66 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     connect (timeUpdateTime, SIGNAL(timeout()), this, SLOT(setCurrentTime()) );
     setCurrentTime();
 
+    // ── Virtual-shifting gear indicator (centre of the top bar, #293) ─────────
+    m_gearWidget = new QWidget(this);
+    auto *gearLayout = new QHBoxLayout(m_gearWidget);
+    gearLayout->setContentsMargins(0, 0, 0, 0);
+    gearLayout->setSpacing(4);
+
+    m_gearDownBtn = new QToolButton(m_gearWidget);
+    m_gearDownBtn->setText(QStringLiteral("▼"));
+    m_gearDownBtn->setAutoRaise(true);
+    m_gearDownBtn->setToolTip(tr("Easier gear (Down arrow)"));
+
+    m_gearLabel = new QLabel(QStringLiteral("⚙ –"), m_gearWidget);
+    m_gearLabel->setAlignment(Qt::AlignCenter);
+    m_gearLabel->setMinimumWidth(72);
+    m_gearLabel->setToolTip(tr("Virtual gear"));
+
+    m_gearUpBtn = new QToolButton(m_gearWidget);
+    m_gearUpBtn->setText(QStringLiteral("▲"));
+    m_gearUpBtn->setAutoRaise(true);
+    m_gearUpBtn->setToolTip(tr("Harder gear (Up arrow)"));
+
+    gearLayout->addWidget(m_gearDownBtn);
+    gearLayout->addWidget(m_gearLabel);
+    gearLayout->addWidget(m_gearUpBtn);
+
+    connect(m_gearDownBtn, &QToolButton::clicked, this, &TopMenuWorkout::gearDown);
+    connect(m_gearUpBtn,   &QToolButton::clicked, this, &TopMenuWorkout::gearUp);
+
+    m_gearWidget->setMinimumWidth(118);   // don't let the bar squeeze it to nothing
+    // The top bar is a fixed dark strip with white text; match it (the scoped
+    // .ui stylesheet doesn't reach these dynamically-created widgets).
+    m_gearWidget->setStyleSheet(QStringLiteral("color: white;"));
+    m_gearWidget->setVisible(false);
+    // Insert just after the timers so it sits in the middle of the bar.
+    const int timerIdx = ui->horizontalLayout->indexOf(ui->frame_timer);
+    if (timerIdx >= 0)
+        ui->horizontalLayout->insertWidget(timerIdx + 1, m_gearWidget);
+    else
+        ui->horizontalLayout->addWidget(m_gearWidget);
+}
+
+void TopMenuWorkout::setGearVisible(bool visible)
+{
+    if (m_gearWidget)
+        m_gearWidget->setVisible(visible);
+}
+
+void TopMenuWorkout::updateGear(int gear, int count, bool ergMode)
+{
+    if (!m_gearLabel)
+        return;
+    if (ergMode) {
+        m_gearLabel->setText(QStringLiteral("⚙ %1/%2  ERG").arg(gear).arg(count));
+        m_gearLabel->setStyleSheet(QStringLiteral("color: gray;"));   // dimmed in ERG
+    } else {
+        m_gearLabel->setText(QStringLiteral("⚙ %1/%2").arg(gear).arg(count));
+        m_gearLabel->setStyleSheet(QString());
+    }
+    if (m_gearDownBtn) m_gearDownBtn->setEnabled(!ergMode);
+    if (m_gearUpBtn)   m_gearUpBtn->setEnabled(!ergMode);
 }
 
 

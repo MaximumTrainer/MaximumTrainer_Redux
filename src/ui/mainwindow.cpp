@@ -1993,6 +1993,7 @@ void MainWindow::launchDemoWorkout()
             m_ssWorkoutDlg, SLOT(OxygenValueChanged(int,double,double)));
 
     m_ssSimHub->start();
+    m_ssWorkoutDlg->enableTrainerControl();   // demo represents a trainer workout (shows the gear UI)
     m_ssWorkoutDlg->show();
     m_ssWorkoutDlg->raise();
     m_ssWorkoutDlg->activateWindow();
