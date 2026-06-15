@@ -32,5 +32,9 @@ contains(QMAKE_PLATFORM, wasm) {
         $$PWD/simulator_hub.h
 }
 
+# Zwift virtual-shifting protocol codec — pure bytes, platform-independent.
+SOURCES += $$PWD/zwift/zwift_protocol.cpp
+HEADERS += $$PWD/zwift/zwift_protocol.h
+
 FORMS += \
     $$PWD/btle_scanner_dialog.ui
