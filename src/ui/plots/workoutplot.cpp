@@ -4,9 +4,10 @@
 #include "qwt_text.h"
 #include <QLabel>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QSplitter>
 #include <QTimer>
-#include <QSpinBox>
+#include <QToolButton>
 #include <QKeyEvent>
 
 #include "qwt_date_scale_draw.h"
@@ -267,25 +268,14 @@ void WorkoutPlot::updateAxisHelper() {
 bool WorkoutPlot::eventFilter(QObject *watched, QEvent *event) {
 
 
-    QSpinBox *ptrSpinBox = qobject_cast<QSpinBox*>(watched);
-
-    if (ptrSpinBox != NULL) {
+    if (watched == widgetDifficulty || watched == labelDifficulty
+            || watched == btnDecreaseDifficulty || watched == btnIncreaseDifficulty) {
         if (event->type() == QEvent::HoverEnter || event->type() == QEvent::Enter) {
             d_picker->setEnabled(false);
         }
         else if (event->type() == QEvent::HoverLeave ||  event->type() == QEvent::Leave) {
             d_picker->setEnabled(true);
         }
-        // Enter pressed on spinbox trigger a click on the graph, get this event and stop propagation
-        else if (event->type() == QEvent::KeyPress) {
-            QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-            if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
-                //check if enter is pressed
-                qDebug() << "ENTER PRESSED!" << event;
-                return true;
-            }
-        }
-
     }
     return false;
 }
@@ -335,25 +325,52 @@ void WorkoutPlot::init(bool firstInit) {
 
 
 
-        spinBoxDifficulty = new QSpinBox(this);
-        spinBoxDifficulty->setButtonSymbols(QAbstractSpinBox::PlusMinus);
-        spinBoxDifficulty->setMinimum(-100);
-        spinBoxDifficulty->setMaximum(100);
-        spinBoxDifficulty->setSuffix("%"); //±%
-        spinBoxDifficulty->setFixedHeight(40);
-        spinBoxDifficulty->setFixedWidth(100);
-        spinBoxDifficulty->setValue(0);
-        spinBoxDifficulty->setStyleSheet("background-color : rgb(35,35,35); color : white;");
-        //        spinBoxDifficulty->setKeyboardTracking(false);
-        spinBoxDifficulty->setCursor(Qt::ArrowCursor);
-        connect(spinBoxDifficulty, SIGNAL(valueChanged(int)), this, SIGNAL(workoutDifficultyChanged(int)));
+        // Difficulty nudge: explicit -/+ buttons around a read-only label. A
+        // QSpinBox here rendered its native +/- buttons wrong under the app-wide
+        // stylesheet on Windows (the up-button collapsed onto the line edit, so
+        // "+" showed a text cursor and did nothing — #302). The value is not
+        // directly editable; it is only changed via the buttons / arrow keys.
+        difficultyPercent = 0;
 
+        btnDecreaseDifficulty = new QToolButton(this);
+        btnDecreaseDifficulty->setText(QStringLiteral("−"));
+        btnDecreaseDifficulty->setCursor(Qt::PointingHandCursor);
+        btnDecreaseDifficulty->setFocusPolicy(Qt::NoFocus);
+        btnDecreaseDifficulty->setAutoRepeat(true);
+        btnDecreaseDifficulty->setFixedSize(40, 40);
 
-//Display is not good on Windows 10, keep native one..
-//        spinBoxDifficulty->setStyleSheet("QSpinBox::up-button { width: 40px; }"
-//                                         "QSpinBox::down-button { width: 40px; }");
+        btnIncreaseDifficulty = new QToolButton(this);
+        btnIncreaseDifficulty->setText(QStringLiteral("+"));
+        btnIncreaseDifficulty->setCursor(Qt::PointingHandCursor);
+        btnIncreaseDifficulty->setFocusPolicy(Qt::NoFocus);
+        btnIncreaseDifficulty->setAutoRepeat(true);
+        btnIncreaseDifficulty->setFixedSize(40, 40);
 
+        labelDifficulty = new QLabel(QStringLiteral("0%"), this);
+        labelDifficulty->setAlignment(Qt::AlignCenter);
+        labelDifficulty->setMinimumWidth(56);
 
+        widgetDifficulty = new QWidget(this);
+        widgetDifficulty->setObjectName(QStringLiteral("widgetDifficulty"));
+        widgetDifficulty->setFixedHeight(40);
+        widgetDifficulty->setCursor(Qt::ArrowCursor);
+        widgetDifficulty->setStyleSheet(
+            "QWidget#widgetDifficulty { background-color: rgb(35,35,35); border-radius: 4px; }"
+            "QLabel { color: white; font-weight: bold; }"
+            "QToolButton { background-color: rgb(60,60,60); color: white; border: none;"
+            "              border-radius: 3px; font-size: 22px; font-weight: bold; }"
+            "QToolButton:hover { background-color: rgb(90,90,90); }"
+            "QToolButton:pressed { background-color: rgb(120,120,120); }");
+
+        QHBoxLayout *layoutDifficulty = new QHBoxLayout(widgetDifficulty);
+        layoutDifficulty->setContentsMargins(0, 0, 0, 0);
+        layoutDifficulty->setSpacing(0);
+        layoutDifficulty->addWidget(btnDecreaseDifficulty);
+        layoutDifficulty->addWidget(labelDifficulty);
+        layoutDifficulty->addWidget(btnIncreaseDifficulty);
+
+        connect(btnIncreaseDifficulty, &QToolButton::clicked, this, &WorkoutPlot::increaseDifficulty);
+        connect(btnDecreaseDifficulty, &QToolButton::clicked, this, &WorkoutPlot::decreaseDifficulty);
 
 
         QFont fontBig;
@@ -372,13 +389,18 @@ void WorkoutPlot::init(bool firstInit) {
         gridLayout->setContentsMargins(0, 0, 0, 0);
         gridLayout->setSpacing(0);
         gridLayout->setContentsMargins(0,0,0,0);
-        gridLayout->addWidget(spinBoxDifficulty, 0, 1, 1, 1, Qt::AlignRight | Qt::AlignTop);
+        gridLayout->addWidget(widgetDifficulty, 0, 1, 1, 1, Qt::AlignRight | Qt::AlignTop);
         gridLayout->addWidget(labelAlertMessage, 0, 0, 0, 0, Qt::AlignLeft | Qt::AlignTop);
         gridLayout->addWidget(labelMsg, 0, 0, 2, 2);
         gridLayout->addWidget(labelMsgInterval, 0, 0, 2, 2, Qt::AlignBottom);
         widgetCanvas->setLayout(gridLayout);
 
-        spinBoxDifficulty->installEventFilter(this);
+        // Suppress the plot's click-picker while the pointer is over the
+        // difficulty control so button clicks don't also register on the graph.
+        widgetDifficulty->installEventFilter(this);
+        labelDifficulty->installEventFilter(this);
+        btnDecreaseDifficulty->installEventFilter(this);
+        btnIncreaseDifficulty->installEventFilter(this);
 //        this->installEventFilter(this);
 
         labelMsg->setAttribute(Qt::WA_TransparentForMouseEvents, true);
@@ -750,7 +772,7 @@ void WorkoutPlot::drawGraphIntervals() {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutPlot::setSpinBoxDisabled() {
 
-    spinBoxDifficulty->hide();
+    widgetDifficulty->hide();
 }
 
 
@@ -770,18 +792,23 @@ void WorkoutPlot::addMarkerInterval(double time) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutPlot::increaseDifficulty() {
-
-    int currentVal = spinBoxDifficulty->value();
-    spinBoxDifficulty->setValue(currentVal+1);
-    emit workoutDifficultyChanged(currentVal+1);
-
+    setDifficulty(difficultyPercent + 1);
 }
 
 void WorkoutPlot::decreaseDifficulty() {
+    setDifficulty(difficultyPercent - 1);
+}
 
-    int currentVal = spinBoxDifficulty->value();
-    spinBoxDifficulty->setValue(currentVal-1);
-    emit workoutDifficultyChanged(currentVal-1);
+void WorkoutPlot::setDifficulty(int percentageIncrease) {
+
+    const int clamped = qBound(-100, percentageIncrease, 100);
+    if (clamped == difficultyPercent)
+        return;
+
+    difficultyPercent = clamped;
+    labelDifficulty->setText((clamped > 0 ? QStringLiteral("+") : QString())
+                             + QString::number(clamped) + QStringLiteral("%"));
+    emit workoutDifficultyChanged(clamped);
 }
 
 

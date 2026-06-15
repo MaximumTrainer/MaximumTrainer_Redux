@@ -19,7 +19,8 @@
 #include "myqwtplotpicker.h"
 #include "myqwtpickermachine.h"
 
-#include <QSpinBox>
+class QLabel;
+class QToolButton;
 
 
 
@@ -111,7 +112,16 @@ private:
 
     MyQwtPlotPicker *d_picker;
     MyQwtPickerMachine *pickerMachine;
-    QSpinBox *spinBoxDifficulty;
+
+    // Difficulty (intensity) nudge control: two buttons around a read-only
+    // label. Replaces a QSpinBox whose native +/- buttons mis-rendered under
+    // the app stylesheet on Windows (#302).
+    QWidget *widgetDifficulty;
+    QToolButton *btnDecreaseDifficulty;
+    QToolButton *btnIncreaseDifficulty;
+    QLabel *labelDifficulty;
+    int difficultyPercent;
+    void setDifficulty(int percentageIncrease);
 
     QwtPlotGrid *grid;
 
