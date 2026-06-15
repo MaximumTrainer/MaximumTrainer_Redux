@@ -87,6 +87,11 @@ void BtleHubWasm::setSlope(int /*antID*/, double grade)
     WebBluetoothBridge::sendFtmsSetIndoorBikeSimulation(static_cast<int>(grade * 100.0));
 }
 
+void BtleHubWasm::setResistanceLevel(int /*antID*/, int levelTenths)
+{
+    WebBluetoothBridge::sendFtmsSetResistanceLevel(levelTenths);
+}
+
 void BtleHubWasm::stopDecodingMsg()
 {
     disconnectFromDevice();
