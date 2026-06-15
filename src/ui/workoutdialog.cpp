@@ -1144,7 +1144,10 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
 
     // Early exit
     if (workout.getWorkoutNameEnum() == Workout::OPEN_RIDE) {
-        sendSlopes(0);
+        if (virtualShiftingActive())
+            sendGearLoad();
+        else
+            sendSlopes(0);
         return;
     }
 
@@ -1787,6 +1790,11 @@ void WorkoutDialog::sendLastSecondData(int seconds) {
                                       avgRightPedal1sec.at(0), avgLeftTorqueEff.at(0), avgRightTorqueEff.at(0), avgLeftPedalSmooth.at(0), avgRightPedalSmooth.at(0), avgCombinedPedalSmooth.at(0),
                                       avgSaturatedHemoglobinPercent1sec.at(0), avgTotalHemoglobinConc1sec.at(0));
     }
+
+    // Re-send the gear's load each second so faster/slower pedaling changes
+    // resistance like a real gear (only while we'd otherwise be at resistance 0).
+    if (isUsingSlopeMode && virtualShiftingActive())
+        sendGearLoad();
 }
 
 
@@ -2356,6 +2364,48 @@ void WorkoutDialog::sendSlopes(double slope) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Virtual shifting (#293) — drive a single-cog trainer's resistance from a
+// rider-controlled gear instead of sending slope 0 (which spins out).
+bool WorkoutDialog::virtualShiftingActive() const {
+    return trainerControlUserId != -1
+        && account && account->control_trainer_resistance
+        && !account->enable_studio_mode;
+}
+
+int WorkoutDialog::gearTargetWatts(int gear, double cadence) const {
+    const int g = qBound(1, gear, kVirtualGearCount);
+    // Per-gear resistance coefficient, easy (0.5) → hard (2.0).
+    const double coeff = 0.5 + (g - 1) / double(kVirtualGearCount - 1) * 1.5;
+    // Cadence factor (aero-like): faster pedaling demands more watts, like a
+    // real gear — distinguishes this from a flat ERG clamp.
+    double cad = (cadence > 0) ? cadence : 85.0;
+    cad = qBound(40.0, cad, 120.0);
+    const double cadFactor = (cad / 85.0) * (cad / 85.0);
+    const double ftp = (account && account->FTP > 0) ? account->FTP : 200.0;
+    const double watts = 0.48 * ftp * coeff * cadFactor;   // mid gear @85rpm ≈ 0.6×FTP
+    return qBound(20, int(qRound(watts)), int(qRound(1.6 * ftp)));
+}
+
+void WorkoutDialog::sendGearLoad() {
+    if (!virtualShiftingActive())
+        return;
+    const double cad = averageCadence1sec.isEmpty() ? -1.0 : averageCadence1sec.at(0);
+    emit setLoad(trainerControlUserId, gearTargetWatts(m_virtualGear, cad));
+}
+
+void WorkoutDialog::shiftGear(int delta) {
+    const int g = qBound(1, m_virtualGear + delta, kVirtualGearCount);
+    if (g == m_virtualGear)
+        return;
+    m_virtualGear = g;
+    const double cad = averageCadence1sec.isEmpty() ? -1.0 : averageCadence1sec.at(0);
+    setWindowTitle(QStringLiteral("Gear %1/%2  →  %3 W")
+                       .arg(m_virtualGear).arg(kVirtualGearCount)
+                       .arg(gearTargetWatts(m_virtualGear, cad)));
+    sendGearLoad();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::sendLoads(double percentageFTP) {
 
     // Studio mode: no smoothing — each rider has a different FTP, broadcast directly.
@@ -2466,7 +2516,12 @@ void WorkoutDialog::targetPowerChanged_f(double percentageTarget, int range) {
 
 
     if (percentageTarget <= 0 || isUsingSlopeMode || !account->control_trainer_resistance) {
-        sendSlopes(0);
+        // Single-cog trainers spin out at slope 0 (#293) — drive the virtual
+        // gear's resistance instead when trainer control is available.
+        if (virtualShiftingActive())
+            sendGearLoad();
+        else
+            sendSlopes(0);
     }
     else if(account->control_trainer_resistance) {
         sendLoads(percentageTarget);
@@ -3156,6 +3211,14 @@ void WorkoutDialog::keyPressEvent(QKeyEvent *event)
         return;
     case Qt::Key_Minus:
         adjustWorkoutDifficulty(currentWorkoutDifficultyPercentage - 5);
+        return;
+    case Qt::Key_Up:        // virtual shift up (harder gear)
+        if (virtualShiftingActive())
+            shiftGear(+1);
+        return;
+    case Qt::Key_Down:      // virtual shift down (easier gear)
+        if (virtualShiftingActive())
+            shiftGear(-1);
         return;
     case Qt::Key_L:
         if (!event->isAutoRepeat())

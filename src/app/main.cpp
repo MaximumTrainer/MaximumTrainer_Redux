@@ -28,6 +28,7 @@
 #include "retroracecontroller.h"
 #ifndef Q_OS_WASM
 #include "zwift_probe.h"
+#include "trainer_gear_test.h"
 #endif
 #endif
 
@@ -264,6 +265,21 @@ int main(int argc, char *argv[]) {
         QObject::connect(probe, &ZwiftProbe::finished, &app, &QCoreApplication::quit);
         probe->start(nameFilter, /*scanSeconds=*/8, /*listenSeconds=*/110,
                      ZwiftProbe::Script::ErgHold);
+        return app.exec();
+    }
+
+    // --trainer-gear-test [nameFilter]: headless auto gear-shift over BtleHub
+    // (the app's working FTMS path) so a rider can feel virtual gears change.
+    if (cliArgs.contains(QLatin1String("--trainer-gear-test"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--trainer-gear-test"));
+        QString nameFilter = QStringLiteral("Victory");
+        if (idx >= 0 && idx + 1 < cliArgs.size()
+            && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-')))
+            nameFilter = cliArgs.at(idx + 1);
+        auto *t = new TrainerGearTest(&app);
+        QObject::connect(t, &TrainerGearTest::finished, &app, &QCoreApplication::quit);
+        t->start(nameFilter);
         return app.exec();
     }
 

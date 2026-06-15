@@ -298,6 +298,17 @@ private:
     bool isUsingSlopeMode;
     QTimer *timerAlertCalibrateCt;
 
+    // Virtual shifting (#293): on single-cog trainers, slope/test intervals
+    // otherwise send resistance 0 and the rider spins out. Up/Down shift a
+    // virtual gear that drives the trainer via the (working) FTMS ERG path,
+    // cadence-aware so it feels like a gear rather than a flat ERG clamp.
+    static constexpr int kVirtualGearCount = 15;
+    int  m_virtualGear = 8;                       // 1..kVirtualGearCount
+    bool virtualShiftingActive() const;           // trainer connected + enabled
+    int  gearTargetWatts(int gear, double cadence) const;
+    void sendGearLoad();                          // emit setLoad for current gear
+    void shiftGear(int delta);                    // +1 up / -1 down, re-sends
+
 
     //Internet radio player
 #ifdef GC_HAVE_QTMULTIMEDIA
