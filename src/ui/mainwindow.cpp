@@ -523,7 +523,11 @@ void MainWindow::onIntervalsIcuWorkoutDownloaded() {
     // Refresh the workout list and navigate to the imported workout
     ui->tab_workout1->refreshUserWorkout();
     ui->tabWidget_workout->setCurrentIndex(0);
-    ui->tab_workout1->setFilterWorkoutName(workout.getName());
+    // Filter on the SAVED filename stem, not the raw name: the workout list
+    // derives a workout's name from its filename, so a colon/slash/etc. removed
+    // for the filename (e.g. "A:B" → "A_B") must be mirrored in the search term
+    // or the just-imported workout can't be found (#294).
+    ui->tab_workout1->setFilterWorkoutName(uniqueSafeName);
     ftb->setCurrentIndex(0);
 
     ui->widget_bottomMenu->setGeneralMessage(
@@ -595,7 +599,9 @@ void MainWindow::goToWorkoutNameFilterFromIntervals(const QString &workoutName) 
             if (XmlUtil::createWorkoutXml(imported, destPath)) {
                 ui->tab_workout1->refreshUserWorkout();
                 ui->tabWidget_workout->setCurrentIndex(0);
-                ui->tab_workout1->setFilterWorkoutName(imported.getName());
+                // Filter on the saved filename stem so a sanitised name (e.g.
+                // colon → "_") still matches the listed workout (#294).
+                ui->tab_workout1->setFilterWorkoutName(uniqueName);
                 ftb->setCurrentIndex(0);
                 ui->widget_bottomMenu->setGeneralMessage(
                     tr("Workout '%1' imported from Intervals.icu.").arg(imported.getName()), 5000);
