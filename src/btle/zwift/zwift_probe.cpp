@@ -26,6 +26,21 @@ QBluetoothUuid jetBlackDebugLogUuid()
     return QBluetoothUuid(QStringLiteral("c4632b08-003f-4cec-8994-e489b04d857f"));
 }
 
+// Standard FTMS (the channel that actually actuates resistance on this trainer).
+QBluetoothUuid ftmsServiceUuid()      { return QBluetoothUuid(quint16(0x1826)); }
+QBluetoothUuid ftmsControlPointUuid() { return QBluetoothUuid(quint16(0x2AD9)); }
+
+// FTMS Set Target Power (opcode 0x05), value = int16 watts, little-endian.
+QByteArray ftmsSetTargetPower(int watts)
+{
+    const qint16 w = static_cast<qint16>(watts);
+    QByteArray cmd(3, '\0');
+    cmd[0] = 0x05;
+    cmd[1] = static_cast<char>(w & 0xFF);
+    cmd[2] = static_cast<char>((w >> 8) & 0xFF);
+    return cmd;
+}
+
 // Console logging — write straight to stdout so output survives the app's
 // installed Qt message handler (which filters qInfo unless --debug).
 void line(const QString &s)
@@ -239,9 +254,22 @@ void ZwiftProbe::dumpService(QLowEnergyService *service)
 void ZwiftProbe::subscribeAndProbe(QLowEnergyService *service)
 {
     connect(service, &QLowEnergyService::characteristicChanged, this,
-            [this](const QLowEnergyCharacteristic &c, const QByteArray &value) {
+            [this, service](const QLowEnergyCharacteristic &c, const QByteArray &value) {
                 const QString hex = QString::fromLatin1(value.toHex());
                 ZwiftProtocol::RidingData rd;
+                // FTMS control-point response: [0x80, opcode, result(0x01=ok)].
+                if (c.uuid() == ftmsControlPointUuid() && value.size() >= 3
+                        && quint8(value[0]) == 0x80) {
+                    const quint8 op = quint8(value[1]);
+                    const quint8 res = quint8(value[2]);
+                    line(QStringLiteral("    ◀ FTMS resp op=0x%1 result=0x%2")
+                             .arg(op, 2, 16, QLatin1Char('0')).arg(res, 2, 16, QLatin1Char('0')));
+                    if (op == 0x00 && res == 0x01 && !m_controlStarted) {
+                        line(QStringLiteral("    ✓ FTMS control GRANTED — starting script"));
+                        beginControlScript(service, ftmsControlPointUuid());
+                    }
+                    return;
+                }
                 if (c.uuid() == jetBlackDebugLogUuid()) {
                     // ASCII diagnostic log — show the text (ResCtrl lines etc.).
                     line(QStringLiteral("    ◀ dbg  %1")
@@ -280,20 +308,54 @@ void ZwiftProbe::subscribeAndProbe(QLowEnergyService *service)
             service->writeCharacteristic(cp, ZwiftProtocol::rideOnHandshake(), mode);
             line(QStringLiteral("    ▶ wrote RideOn handshake to control point"));
 
-            if (m_script != Script::None && !m_controlStarted)
-                beginControlScript(service);
+            // Zwift-protocol scripts drive the Zwift control point directly. The
+            // FTMS script keeps this handshake only for reading power/cadence and
+            // is started later, once FTMS control is granted.
+            const bool zwiftScript = (m_script == Script::ErgDemo
+                                   || m_script == Script::GearSweep
+                                   || m_script == Script::ErgHold);
+            if (zwiftScript && !m_controlStarted)
+                beginControlScript(service, zwiftControlPointUuid());
         }
     }
+
+    // FTMS mode: set up the standard request-control handshake on this trainer's
+    // FTMS service — that is the channel that actually actuates resistance.
+    if (m_script == Script::FtmsErg && service->serviceUuid() == ftmsServiceUuid())
+        setupFtmsControl(service);
+}
+
+// Enable indications on the FTMS control point and, once confirmed, send
+// Request Control (0x00). Mirrors BtleHub's working sequence.
+void ZwiftProbe::setupFtmsControl(QLowEnergyService *service)
+{
+    line(QStringLiteral("  FTMS service found — enabling control"));
+    connect(service, &QLowEnergyService::descriptorWritten, this,
+            [this, service](const QLowEnergyDescriptor &, const QByteArray &v) {
+                // The 0x0200 (indications) write is the FTMS control point's CCCD.
+                if (v != kIndicateOn || m_ftmsRequested)
+                    return;
+                const QLowEnergyCharacteristic cp =
+                    service->characteristic(ftmsControlPointUuid());
+                if (!cp.isValid())
+                    return;
+                m_ftmsRequested = true;
+                service->writeCharacteristic(cp, QByteArray::fromHex("00"),
+                                             QLowEnergyService::WriteWithResponse);
+                line(QStringLiteral("    ▶ FTMS Request Control (0x00) sent"));
+            });
 }
 
 // Phase 2: after the handshake, send a scripted sequence of 0x04 control
 // commands and watch the trainer react (ResCtrl debug log + FTMS data). Steps
 // are spaced so each reaction is visible; the final step releases resistance.
-void ZwiftProbe::beginControlScript(QLowEnergyService *zwiftService)
+void ZwiftProbe::beginControlScript(QLowEnergyService *service,
+                                    const QBluetoothUuid &controlPoint)
 {
     using namespace ZwiftProtocol;
     m_controlStarted = true;
-    m_ctrlService    = zwiftService;
+    m_ctrlService    = service;
+    m_ctrlPointUuid  = controlPoint;
     m_ctrlIndex      = 0;
 
     auto erg = [](quint32 watts) {
@@ -311,7 +373,20 @@ void ZwiftProbe::beginControlScript(QLowEnergyService *zwiftService)
         return encodeControlCommand(c);
     };
 
-    if (m_script == Script::GearSweep) {
+    if (m_script == Script::FtmsErg) {
+        // Decisive test on the PROVEN channel: drive standard FTMS Set Target
+        // Power (0x05). If the rider's power tracks these, FTMS is our actuation
+        // path for virtual shifting. Warmup holds 100 W so it shows immediately.
+        m_ctrlIntervalMs = 15000;
+        m_ctrlPrerollMs  = 30000;
+        m_ctrlSteps = {
+            { QStringLiteral("CONNECTED — get on & pedal; FTMS ERG 100W (30s warmup)"), ftmsSetTargetPower(100) },
+            { QStringLiteral("FTMS ERG 170W → power should rise to ~170"), ftmsSetTargetPower(170) },
+            { QStringLiteral("FTMS ERG 240W → power should rise to ~240"), ftmsSetTargetPower(240) },
+            { QStringLiteral("FTMS ERG 120W → power should drop to ~120"), ftmsSetTargetPower(120) },
+            { QStringLiteral("RESET — FTMS ERG 0 W (release)"),            ftmsSetTargetPower(0)   },
+        };
+    } else if (m_script == Script::GearSweep) {
         // Rider pedals steadily; we step the gear so they FEEL each change with
         // no input. Hold +3% so SIM resistance is non-trivial at speed. The
         // baseline holds for a warmup so the rider can mount + start pedaling
@@ -382,7 +457,7 @@ void ZwiftProbe::onControlStep()
     const int sent = m_ctrlIndex;
     const auto &step = m_ctrlSteps.at(m_ctrlIndex++);
     const QLowEnergyCharacteristic cp =
-        m_ctrlService->characteristic(zwiftControlPointUuid());
+        m_ctrlService->characteristic(m_ctrlPointUuid);
     if (cp.isValid()) {
         const auto mode = (cp.properties() & QLowEnergyCharacteristic::WriteNoResponse)
                               ? QLowEnergyService::WriteWithoutResponse

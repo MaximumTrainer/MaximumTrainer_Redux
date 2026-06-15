@@ -40,7 +40,7 @@ public:
     //   ErgDemo   — ERG power steps (proves control; no pedaling needed).
     //   GearSweep — hold a grade, auto-step the virtual gear up/down so a rider
     //               can FEEL each gear without touching any input.
-    enum class Script { None, ErgDemo, GearSweep, ErgHold };
+    enum class Script { None, ErgDemo, GearSweep, ErgHold, FtmsErg };
 
     // nameFilter: case-insensitive substring; empty => auto (Zwift service or a
     // name hinting at a trainer/Click). listenSeconds: per-device capture window.
@@ -61,7 +61,8 @@ private:
     void retryOrAdvance(const QString &reason);
     void dumpService(QLowEnergyService *service);
     void subscribeAndProbe(QLowEnergyService *service);
-    void beginControlScript(QLowEnergyService *zwiftService);
+    void setupFtmsControl(QLowEnergyService *ftmsService);
+    void beginControlScript(QLowEnergyService *service, const QBluetoothUuid &controlPoint);
     void finishCurrentDevice();
     void teardownController();
 
@@ -87,6 +88,8 @@ private:
     // Phase 2 control script (resistance-changing writes).
     Script                          m_script = Script::None;
     bool                            m_controlStarted = false;
+    bool                            m_ftmsRequested = false;
+    QBluetoothUuid                  m_ctrlPointUuid;   // where onControlStep writes
     QLowEnergyService              *m_ctrlService = nullptr;
     QVector<QPair<QString, QByteArray>> m_ctrlSteps;
     int                             m_ctrlIndex = 0;
