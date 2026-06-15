@@ -4,6 +4,8 @@
 #include <QDialog>
 #include <QTime>
 #include <QTimer>
+
+#include "virtual_gear.h"
 #include <QHash>
 #include <QKeyEvent>
 #include <QNetworkReply>
@@ -58,7 +60,7 @@ public:
     /// the FE-C id came from the removed maximumtrainer.com sensor list,
     /// which left trainerControlUserId at -1 and silently disabled trainer control
     /// for every BLE workout.  Solo hubs ignore the id (1 = solo rider).
-    void enableTrainerControl() { trainerControlUserId = 1; }
+    void enableTrainerControl();   // sets the solo id and reveals the gear indicator
 
     void showVideoPlayer(int choice);
 
@@ -109,6 +111,8 @@ signals:
     // Commands to FE-C
     void setLoad(int antID, double load);
     void setSlope(int antID, double slope);
+    // Virtual-shifting resistance level (FTMS 0x04, 0.1 units) — instant gear feel.
+    void setResistance(int antID, int levelTenths);
 
     void increaseDifficulty();
     void decreaseDifficulty();
@@ -151,6 +155,11 @@ signals:
 public slots:
     // control list master of QThreads hub
     void addToControlList(int antID, int fromHubNumber);
+
+    /// Whether the connected trainer supports FTMS Set Target Resistance Level
+    /// (0x04). When true, virtual shifting uses resistance level (instant, gear-
+    /// like); otherwise it falls back to cadence-aware ERG.
+    void setResistanceLevelSupported(bool supported) { m_trainerSupportsResistanceLevel = supported; }
 
     ///Connected to Clock
     void update1sec(double totalTimeElapsed_sec);
@@ -297,6 +306,21 @@ private:
 private:
     bool isUsingSlopeMode;
     QTimer *timerAlertCalibrateCt;
+
+    // Virtual shifting (#293): on single-cog trainers, slope/test intervals
+    // otherwise send resistance 0 and the rider spins out. Up/Down shift a
+    // virtual gear that drives the trainer via the (working) FTMS ERG path,
+    // cadence-aware so it feels like a gear rather than a flat ERG clamp.
+    static constexpr int kVirtualGearCount = VirtualGear::Count;
+    int  m_virtualGear = (VirtualGear::Count + 1) / 2;   // start mid-gear
+    bool m_trainerSupportsResistanceLevel = false;       // FTMS 0x04 available?
+    bool virtualShiftingActive() const;           // a trainer is under our control
+    bool ergOwnsThisInterval() const;             // ERG enabled + active power target
+    bool gearsDriveNow() const;                   // gears are the active resistance source
+    int  gearTargetWatts(int gear, double cadence) const;
+    void sendGearLoad();                          // emit setLoad for current gear
+    void shiftGear(int delta);                    // +1 up / -1 down, re-sends
+    void updateGearIndicator();                   // refresh the top-bar gear UI
 
 
     //Internet radio player

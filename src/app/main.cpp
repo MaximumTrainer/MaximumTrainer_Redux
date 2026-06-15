@@ -26,6 +26,10 @@
 #include <QPainter>
 #include <QImage>
 #include "retroracecontroller.h"
+#ifndef Q_OS_WASM
+#include "zwift_probe.h"
+#include "trainer_gear_test.h"
+#endif
 #endif
 
 
@@ -213,6 +217,106 @@ int main(int argc, char *argv[]) {
                              || cliArgs.contains(QLatin1String("/screenshots"),  Qt::CaseInsensitive);
 
 #ifndef Q_OS_WASM
+    // --zwift-probe [nameFilter]: headless, read-only BLE exploration of the
+    // Zwift trainer/Click protocol (issue #293, Phase 1). Dumps GATT + frames,
+    // writes only the RideOn handshake (never a control command), then quits.
+    if (cliArgs.contains(QLatin1String("--zwift-probe"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--zwift-probe"));
+        QString nameFilter;
+        if (idx >= 0 && idx + 1 < cliArgs.size()
+            && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-')))
+            nameFilter = cliArgs.at(idx + 1);
+
+        auto *probe = new ZwiftProbe(&app);
+        QObject::connect(probe, &ZwiftProbe::finished, &app, &QCoreApplication::quit);
+        probe->start(nameFilter);
+        return app.exec();
+    }
+
+    // --zwift-control [nameFilter]: Phase 2. Connects to the trainer, runs the
+    // RideOn handshake, then sends a scripted sequence of 0x04 control commands
+    // (ERG + SIM/gear). THIS CHANGES TRAINER RESISTANCE; ends by releasing it.
+    if (cliArgs.contains(QLatin1String("--zwift-control"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--zwift-control"));
+        QString nameFilter = QStringLiteral("Victory");
+        if (idx >= 0 && idx + 1 < cliArgs.size()
+            && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-')))
+            nameFilter = cliArgs.at(idx + 1);
+
+        auto *probe = new ZwiftProbe(&app);
+        QObject::connect(probe, &ZwiftProbe::finished, &app, &QCoreApplication::quit);
+        probe->start(nameFilter, /*scanSeconds=*/8, /*listenSeconds=*/50,
+                     ZwiftProbe::Script::ErgDemo);
+        return app.exec();
+    }
+
+    // --zwift-erghold [nameFilter]: decisive test of whether ERG actuates
+    // resistance while pedaling. Holds 100/160/230/120 W, then releases.
+    if (cliArgs.contains(QLatin1String("--zwift-erghold"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--zwift-erghold"));
+        QString nameFilter = QStringLiteral("Victory");
+        if (idx >= 0 && idx + 1 < cliArgs.size()
+            && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-')))
+            nameFilter = cliArgs.at(idx + 1);
+        auto *probe = new ZwiftProbe(&app);
+        QObject::connect(probe, &ZwiftProbe::finished, &app, &QCoreApplication::quit);
+        probe->start(nameFilter, /*scanSeconds=*/8, /*listenSeconds=*/110,
+                     ZwiftProbe::Script::ErgHold);
+        return app.exec();
+    }
+
+    // --trainer-gear-test [nameFilter]: headless auto gear-shift over BtleHub
+    // (the app's working FTMS path) so a rider can feel virtual gears change.
+    if (cliArgs.contains(QLatin1String("--trainer-gear-test"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--trainer-gear-test"));
+        QString nameFilter = QStringLiteral("Victory");
+        if (idx >= 0 && idx + 1 < cliArgs.size()
+            && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-')))
+            nameFilter = cliArgs.at(idx + 1);
+        auto *t = new TrainerGearTest(&app);
+        QObject::connect(t, &TrainerGearTest::finished, &app, &QCoreApplication::quit);
+        t->start(nameFilter);
+        return app.exec();
+    }
+
+    // --ftms-erg [nameFilter]: drive standard FTMS Set Target Power (the channel
+    // that actually actuates this trainer) to confirm resistance while pedaling.
+    if (cliArgs.contains(QLatin1String("--ftms-erg"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--ftms-erg"));
+        QString nameFilter = QStringLiteral("Victory");
+        if (idx >= 0 && idx + 1 < cliArgs.size()
+            && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-')))
+            nameFilter = cliArgs.at(idx + 1);
+        auto *probe = new ZwiftProbe(&app);
+        QObject::connect(probe, &ZwiftProbe::finished, &app, &QCoreApplication::quit);
+        probe->start(nameFilter, /*scanSeconds=*/8, /*listenSeconds=*/110,
+                     ZwiftProbe::Script::FtmsErg);
+        return app.exec();
+    }
+
+    // --zwift-gearsweep [nameFilter]: Phase 2 gear validation. Holds a grade and
+    // auto-steps the virtual gear up/down every few seconds so a rider can FEEL
+    // each gear without touching any input. CHANGES RESISTANCE; releases at end.
+    if (cliArgs.contains(QLatin1String("--zwift-gearsweep"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--zwift-gearsweep"));
+        QString nameFilter = QStringLiteral("Victory");
+        if (idx >= 0 && idx + 1 < cliArgs.size()
+            && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-')))
+            nameFilter = cliArgs.at(idx + 1);
+
+        auto *probe = new ZwiftProbe(&app);
+        QObject::connect(probe, &ZwiftProbe::finished, &app, &QCoreApplication::quit);
+        probe->start(nameFilter, /*scanSeconds=*/8, /*listenSeconds=*/95,
+                     ZwiftProbe::Script::GearSweep);
+        return app.exec();
+    }
+
     // --retrorace [file.fit] [--shot out.png]: standalone spike of the retro
     // ghost-race view. Skips login/MainWindow entirely. With --shot it grabs one
     // frame to a PNG and quits (headless validation); otherwise it stays open.

@@ -1,4 +1,5 @@
 #include "workoutdialog.h"
+#include "virtual_gear.h"
 #include "ui_workoutdialog.h"
 
 #ifdef Q_OS_WIN32
@@ -485,7 +486,10 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     flags = flags | Qt::WindowTitleHint | Qt::WindowCloseButtonHint | Qt::WindowMinimizeButtonHint;
 #endif
     this->setWindowFlags(flags);
-    installEventFilter(this); //For Hotkeys
+    // App-level filter so workout hotkeys (start/pause, gear ▲▼, lap, …) work
+    // regardless of which child widget holds focus — otherwise the arrow keys
+    // get eaten by button focus-navigation instead of reaching us.
+    qApp->installEventFilter(this);
     loadInterface();
 
 
@@ -494,6 +498,9 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     connect(ui->widget_topMenu, SIGNAL(exit()), this, SLOT(closeWindow()));
     connect(ui->widget_topMenu, SIGNAL(startOrPause()), this, SLOT(start_or_pause_workout()));
     connect(ui->widget_topMenu, SIGNAL(lap()), this, SLOT(lapButtonPressed()) );
+    // On-screen virtual-shift arrows mirror the Up/Down keys.
+    connect(ui->widget_topMenu, &TopMenuWorkout::gearUp,   this, [this]{ shiftGear(+1); });
+    connect(ui->widget_topMenu, &TopMenuWorkout::gearDown, this, [this]{ shiftGear(-1); });
     connect(this, SIGNAL(insideConfig(bool)), ui->widget_topMenu, SLOT(changeConfigIcon(bool)));
 
     // Make the splitter gutters easy to grab — the 1px default was nearly
@@ -1144,7 +1151,10 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
 
     // Early exit
     if (workout.getWorkoutNameEnum() == Workout::OPEN_RIDE) {
-        sendSlopes(0);
+        if (virtualShiftingActive())
+            sendGearLoad();
+        else
+            sendSlopes(0);
         return;
     }
 
@@ -1539,6 +1549,8 @@ void WorkoutDialog::moveToNextInterval() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::startWorkout() {
 
+    m_virtualGear = (VirtualGear::Count + 1) / 2;   // every workout starts mid-gear
+    updateGearIndicator();
 
     emit startClock();
 
@@ -1571,6 +1583,11 @@ void WorkoutDialog::workoutOver() {
 
     isWorkoutOver = true;
     stopErgSmoothing();
+
+    // Release virtual-shifting resistance so the trainer doesn't hold a load
+    // after the workout ends (it would otherwise persist until disconnect).
+    if (virtualShiftingActive())
+        emit setLoad(trainerControlUserId, 0);
 
     if (raceController) raceController->finishRace();   // finish line + celebration
 
@@ -1787,6 +1804,12 @@ void WorkoutDialog::sendLastSecondData(int seconds) {
                                       avgRightPedal1sec.at(0), avgLeftTorqueEff.at(0), avgRightTorqueEff.at(0), avgLeftPedalSmooth.at(0), avgRightPedalSmooth.at(0), avgCombinedPedalSmooth.at(0),
                                       avgSaturatedHemoglobinPercent1sec.at(0), avgTotalHemoglobinConc1sec.at(0));
     }
+
+    // Re-send the gear's load each second so faster/slower pedaling changes
+    // resistance like a real gear (ERG-fallback trainers); harmless dedup for
+    // resistance-level trainers.
+    if (gearsDriveNow())
+        sendGearLoad();
 }
 
 
@@ -2356,6 +2379,76 @@ void WorkoutDialog::sendSlopes(double slope) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Virtual shifting (#293) — drive a single-cog trainer's resistance from a
+// rider-controlled gear instead of sending slope 0 (which spins out).
+void WorkoutDialog::enableTrainerControl() {
+    trainerControlUserId = 1;       // solo rider; hubs ignore the id
+    updateGearIndicator();          // a trainer is now wired → reveal the gear UI
+}
+
+// A trainer is under our control (solo, non-studio). Virtual shifting is offered
+// here regardless of the ERG ("control trainer resistance") checkbox: with ERG
+// off the rider controls resistance *through* the gears.
+bool WorkoutDialog::virtualShiftingActive() const {
+    return trainerControlUserId != -1 && account
+        && account->virtual_shifting          // opt-in; off => real gears / free ride
+        && !account->enable_studio_mode;
+}
+
+// ERG only owns an interval when the checkbox is on AND there's a positive power
+// target (a structured power interval). Then gears are inactive ("ERG").
+bool WorkoutDialog::ergOwnsThisInterval() const {
+    return account && account->control_trainer_resistance
+        && !isUsingSlopeMode && currentTargetPower > 0;
+}
+
+// Gears are the active resistance source whenever a trainer is controllable, the
+// workout isn't over, and ERG isn't currently owning the interval.
+bool WorkoutDialog::gearsDriveNow() const {
+    return virtualShiftingActive() && !isWorkoutOver && !ergOwnsThisInterval();
+}
+
+int WorkoutDialog::gearTargetWatts(int gear, double cadence) const {
+    return VirtualGear::targetWatts(gear, cadence,
+                                    (account && account->FTP > 0) ? account->FTP : 0.0);
+}
+
+void WorkoutDialog::sendGearLoad() {
+    if (!gearsDriveNow())
+        return;
+
+    if (m_trainerSupportsResistanceLevel) {
+        // Instant, real-gear feel: a fixed brake the rider's power works against.
+        emit setResistance(trainerControlUserId, VirtualGear::resistanceLevel(m_virtualGear));
+    } else {
+        // Fallback for trainers without 0x04: cadence-aware ERG.
+        const double cad = averageCadence1sec.isEmpty() ? -1.0 : averageCadence1sec.at(0);
+        emit setLoad(trainerControlUserId, gearTargetWatts(m_virtualGear, cad));
+    }
+}
+
+void WorkoutDialog::shiftGear(int delta) {
+    if (isWorkoutOver)
+        return;
+    const int g = qBound(1, m_virtualGear + delta, kVirtualGearCount);
+    if (g == m_virtualGear)
+        return;
+    m_virtualGear = g;
+    sendGearLoad();
+    updateGearIndicator();
+}
+
+// Refresh the top-bar gear indicator: visible whenever a trainer is controllable
+// (hidden in studio or with no trainer). During an ERG-owned interval it shows
+// dimmed with "ERG"; otherwise the gear is active and shiftable.
+void WorkoutDialog::updateGearIndicator() {
+    const bool show = virtualShiftingActive();
+    ui->widget_topMenu->setGearVisible(show);
+    if (show)
+        ui->widget_topMenu->updateGear(m_virtualGear, kVirtualGearCount, ergOwnsThisInterval());
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::sendLoads(double percentageFTP) {
 
     // Studio mode: no smoothing — each rider has a different FTP, broadcast directly.
@@ -2466,7 +2559,12 @@ void WorkoutDialog::targetPowerChanged_f(double percentageTarget, int range) {
 
 
     if (percentageTarget <= 0 || isUsingSlopeMode || !account->control_trainer_resistance) {
-        sendSlopes(0);
+        // Single-cog trainers spin out at slope 0 (#293) — drive the virtual
+        // gear's resistance instead when trainer control is available.
+        if (virtualShiftingActive())
+            sendGearLoad();
+        else
+            sendSlopes(0);
     }
     else if(account->control_trainer_resistance) {
         sendLoads(percentageTarget);
@@ -2489,6 +2587,9 @@ void WorkoutDialog::targetPowerChanged_f(double percentageTarget, int range) {
     ui->widget_time->setTargetPower(percentageTarget, range);
     ui->widget_topMenu->setTargetPower(percentageTarget, range);
     sendTargetsPower(percentageTarget, range);
+
+    // Reflect the new interval in the gear indicator (active vs dimmed "ERG").
+    updateGearIndicator();
 }
 
 
@@ -4093,7 +4194,10 @@ bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
 
     //    qDebug() << "EventFilter " << watched << "Event:" << event;
 
-    if(event->type() == QEvent::KeyPress) {
+    // Only act while this workout window is the active one (an app-level filter
+    // otherwise sees every key for every window). isActiveWindow() stays true
+    // even when a child button holds focus, but goes false for modal dialogs.
+    if(event->type() == QEvent::KeyPress && isActiveWindow()) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
         if(keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return ) {
             qDebug() << "ENTER PRESSED- STOP/START WORKOUT!" << watched;
@@ -4101,11 +4205,15 @@ bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
             return true; // mark the event as handled
         }
         else if (keyEvent->key() == Qt::Key_Up) {
-            emit increaseDifficulty();
+            // Virtual shifting takes the arrows when enabled; otherwise they keep
+            // their legacy role of nudging workout difficulty.
+            if (virtualShiftingActive()) shiftGear(+1);
+            else emit increaseDifficulty();
             return true;
         }
         else if (keyEvent->key() == Qt::Key_Down) {
-            emit decreaseDifficulty();
+            if (virtualShiftingActive()) shiftGear(-1);
+            else emit decreaseDifficulty();
             return true;
         }
         else if (keyEvent->key() == Qt::Key_Backspace) {

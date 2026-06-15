@@ -89,6 +89,10 @@ void sendFtmsSetIndoorBikeSimulation(int grade100);
 // watts is the target power in whole watts.
 void sendFtmsSetTargetPower(int watts);
 
+// Send FTMS Set Target Resistance Level (opcode 0x04) on 0x2AD9.
+// levelTenths is the resistance level in 0.1 units (virtual-shifting gears).
+void sendFtmsSetResistanceLevel(int levelTenths);
+
 // Send FTMS opcode 0x00 (Request Control) to characteristic 0x2AD9.
 // Must be called once after GATT connection is established, before any
 // Set Target Power (0x05) or Indoor Bike Simulation (0x11) commands.

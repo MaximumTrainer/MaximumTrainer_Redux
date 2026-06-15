@@ -102,6 +102,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
     strava_token_expires_at = 0;
     // intervals_icu_auto_upload is loaded from QSettings above; don't reset it here
     control_trainer_resistance = true;
+    virtual_shifting = false;   // opt-in; off keeps real-gear / free-ride behaviour
     // Clamp the loaded value to the valid range (0–30 s)
     erg_smoothing_duration_s = qBound(0, erg_smoothing_duration_s, 30);
     /* ----- */
@@ -309,6 +310,7 @@ void Account::loadDisplayPrefs() {
 
     // General / trainer / pairing / upload preferences.
     control_trainer_resistance   = settings.value("control_trainer_resistance",   control_trainer_resistance).toBool();
+    virtual_shifting             = settings.value("virtual_shifting",             virtual_shifting).toBool();
     enable_studio_mode           = settings.value("enable_studio_mode",           enable_studio_mode).toBool();
     distance_in_km               = settings.value("distance_in_km",               distance_in_km).toBool();
     force_workout_window_on_top  = settings.value("force_workout_window_on_top",  force_workout_window_on_top).toBool();
@@ -393,6 +395,7 @@ void Account::saveDisplayPrefs() {
     // General / trainer / pairing / upload preferences. Formerly server-saved;
     // persisted locally so they survive a restart.
     settings.setValue("control_trainer_resistance",  control_trainer_resistance);
+    settings.setValue("virtual_shifting",            virtual_shifting);
     settings.setValue("enable_studio_mode",          enable_studio_mode);
     settings.setValue("distance_in_km",              distance_in_km);
     settings.setValue("force_workout_window_on_top", force_workout_window_on_top);

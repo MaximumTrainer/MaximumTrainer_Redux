@@ -351,6 +351,15 @@ void sendFtmsSetTargetPower(int watts)
     js_sendFtmsCommand(cmd, sizeof(cmd));
 }
 
+void sendFtmsSetResistanceLevel(int levelTenths)
+{
+    // FTMS Set Target Resistance Level (opcode 0x04), int16 in 0.1 units.
+    uint8_t cmd[3] = { 0x04 };
+    int16_t level = static_cast<int16_t>(levelTenths);
+    std::memcpy(&cmd[1], &level, 2);
+    js_sendFtmsCommand(cmd, sizeof(cmd));
+}
+
 void requestFtmsControl()
 {
     js_requestFtmsControl();

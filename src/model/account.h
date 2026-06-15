@@ -106,6 +106,7 @@ public:
     QList<int> power_zones;            ///< Power zone upper-bounds retrieved from Intervals.icu
 
     bool control_trainer_resistance;
+    bool virtual_shifting;         ///< Opt-in (default off): drive resistance from a virtual gear (▲/▼) for single-cog / Zwift Cog setups. Off = real gears / free ride unchanged.
     int erg_smoothing_duration_s;  ///< Ramp duration (seconds) for ERG setpoint transitions; 0 = disabled.
 
     /// Battery warning threshold (issue #156): warn when a sensor's battery

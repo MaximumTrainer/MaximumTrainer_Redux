@@ -80,12 +80,23 @@ signals:
     void deviceDisconnected();
     void connectionError(const QString &errorString);
     void serviceDiscoveryFinished();
+    /// Emitted once the FTMS Feature char is read: whether the trainer supports
+    /// Set Target Resistance Level (0x04). Drives ERG-vs-resistance gear mode.
+    void signal_resistanceLevelSupported(bool supported);
 
 public slots:
     // Slots with same signatures as Hub::setLoad / Hub::setSlope so they can
     // be wired up identically from WorkoutDialog signals.
     void setLoad(int antID, double watts);
     void setSlope(int antID, double grade);
+    /// Whether the connected trainer advertised Set Target Resistance Level
+    /// (0x04) support in its FTMS feature char. Valid after discovery.
+    bool resistanceLevelSupported() const { return m_resistanceLevelSupported; }
+    // FTMS Set Target Resistance Level (opcode 0x04). levelTenths is the raw
+    // resistance level in 0.1 units (the 2AD6 "Supported Resistance Level Range"
+    // representation). Unlike ERG, this sets a fixed brake — resistance changes
+    // instantly and power follows effort, so virtual gears feel like real gears.
+    void setResistanceLevel(int antID, int levelTenths);
     void stopDecodingMsg();
 
     // Test hook: inject raw BLE notification bytes as if received from hardware.
@@ -129,6 +140,7 @@ private:
     void parseCscMeasurement(const QByteArray &data);
     void parsePowerMeasurement(const QByteArray &data);
     void parseFtmsIndoorBikeData(const QByteArray &data);
+    void parseFtmsFeature(const QByteArray &data);
     void parseMoxyMeasurement(const QByteArray &data);
     void parseBatteryLevel(const QByteArray &data);
     QString determineSensorType() const; ///< Infer sensor type from connected services
@@ -144,6 +156,7 @@ private:
 
     bool m_ftmsControlRequested = false;
     bool m_ftmsControlGranted   = false;
+    bool m_resistanceLevelSupported = false;   // FTMS 0x04 (from 0x2ACC feature)
 
     // Control-point serialization: one op in flight until the trainer's
     // response indication arrives; the newest deferred command waits in

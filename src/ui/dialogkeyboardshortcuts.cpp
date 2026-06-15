@@ -43,6 +43,7 @@ DialogKeyboardShortcuts::DialogKeyboardShortcuts(QWidget *parent)
         {tr("→  (Right)"),   tr("Skip to next interval")},
         {tr("+  /  ="),      tr("Increase difficulty +5 %")},
         {tr("-"),            tr("Decrease difficulty −5 %")},
+        {tr("↑  /  ↓"),      tr("Virtual shift up / down (or difficulty if shifting is off)")},
         {tr("L"),            tr("Manual lap")},
         {tr("?  /  F1"),     tr("Show keyboard shortcuts")},
         {tr("Escape"),       tr("Exit workout (with confirmation)")},

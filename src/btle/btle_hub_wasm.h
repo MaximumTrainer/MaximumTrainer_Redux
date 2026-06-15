@@ -54,10 +54,20 @@ signals:
     void deviceDisconnected();
     void connectionError(const QString &errorString);
     void serviceDiscoveryFinished();
+    /// Mirrors BtleHub: whether the trainer supports Set Target Resistance Level
+    /// (0x04). The Wasm hub doesn't read the feature char, so we assume support —
+    /// virtual shifting is opt-in and targets FTMS 0x04-capable single-cog trainers.
+    void signal_resistanceLevelSupported(bool supported);
+
+public:
+    bool resistanceLevelSupported() const { return true; }
 
 public slots:
     void setLoad(int antID, double watts);
     void setSlope(int antID, double grade);
+    /// FTMS Set Target Resistance Level (0x04), 0.1 units. Same signature as
+    /// BtleHub so WorkoutDialog wiring compiles on Wasm.
+    void setResistanceLevel(int antID, int levelTenths);
     void stopDecodingMsg();
 
     // Test hook – same as BtleHub::simulateNotification

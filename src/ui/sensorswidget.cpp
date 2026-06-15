@@ -117,6 +117,20 @@ void SensorsWidget::buildUi()
     trainerHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
     trainerLayout->addWidget(trainerHint);
 
+    m_virtualShiftingCheck =
+        new QCheckBox(tr("Virtual shifting (Zwift Cog / single-gear setups)"), trainerGroup);
+    connect(m_virtualShiftingCheck, &QCheckBox::toggled,
+            this, &SensorsWidget::onVirtualShiftingToggled);
+    trainerLayout->addWidget(m_virtualShiftingCheck);
+
+    QLabel *vsHint = new QLabel(
+        tr("Adds ▲/▼ gear shifting (keyboard or the on-screen arrows) so a "
+           "single-cog trainer has usable resistance on free rides and tests. "
+           "Leave off if you shift with a real cassette."), trainerGroup);
+    vsHint->setWordWrap(true);
+    vsHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
+    trainerLayout->addWidget(vsHint);
+
     QHBoxLayout *ergRampRow = new QHBoxLayout();
     ergRampRow->addWidget(new QLabel(tr("ERG transition ramp duration:"), trainerGroup));
     m_ergRampSpin = new QSpinBox(trainerGroup);
@@ -218,6 +232,10 @@ void SensorsWidget::reload()
             QSignalBlocker b(m_controlResistanceCheck);
             m_controlResistanceCheck->setChecked(m_account->control_trainer_resistance);
         }
+        if (m_virtualShiftingCheck) {
+            QSignalBlocker b(m_virtualShiftingCheck);
+            m_virtualShiftingCheck->setChecked(m_account->virtual_shifting);
+        }
         if (m_ergRampSpin) {
             QSignalBlocker b(m_ergRampSpin);
             m_ergRampSpin->setValue(m_account->erg_smoothing_duration_s);
@@ -243,6 +261,14 @@ void SensorsWidget::onControlResistanceToggled(bool checked)
     if (!m_account)
         return;
     m_account->control_trainer_resistance = checked;
+    m_account->saveDisplayPrefs();
+}
+
+void SensorsWidget::onVirtualShiftingToggled(bool checked)
+{
+    if (!m_account)
+        return;
+    m_account->virtual_shifting = checked;
     m_account->saveDisplayPrefs();
 }
 
