@@ -214,13 +214,15 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     // .ui stylesheet doesn't reach these dynamically-created widgets).
     m_gearWidget->setStyleSheet(QStringLiteral("color: white;"));
     m_gearWidget->setVisible(false);
-    // Centre of the bar: just after the timers/targets frame (renders cleanly
-    // there; the far-right radio area clips it).
+    // Centre it: an expanding stretch before the gear balances the bar's right
+    // spacer (the left spacer is fixed), so the gear lands near the middle.
     const int timerIdx = ui->horizontalLayout->indexOf(ui->frame_timer);
-    if (timerIdx >= 0)
-        ui->horizontalLayout->insertWidget(timerIdx + 1, m_gearWidget);
-    else
+    if (timerIdx >= 0) {
+        ui->horizontalLayout->insertStretch(timerIdx + 1, 1);
+        ui->horizontalLayout->insertWidget(timerIdx + 2, m_gearWidget);
+    } else {
         ui->horizontalLayout->addWidget(m_gearWidget);
+    }
 }
 
 void TopMenuWorkout::setGearVisible(bool visible)
