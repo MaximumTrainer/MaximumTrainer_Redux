@@ -71,7 +71,7 @@ void TrainerGearTest::onGearTick()
 
     int gear;
     QString label;
-    if      (t < 25) { gear = 7;  label = QStringLiteral("WARMUP — get on & pedal steady"); }
+    if      (t < 25) { gear = 5;  label = QStringLiteral("WARMUP — get on & pedal steady (easy)"); }
     else if (t < 37) { gear = 3;  label = QStringLiteral("EASY  (gear 3)  → should feel light"); }
     else if (t < 49) { gear = 13; label = QStringLiteral("HARD  (gear 13) → should feel heavy"); }
     else if (t < 61) { gear = 3;  label = QStringLiteral("EASY  (gear 3)  → light again"); }
