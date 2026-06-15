@@ -251,13 +251,19 @@ void RetroRaceController::tick()
                    ? m_livePowerW
                    : m_oppPowerW * m_playerForm;
 
-    // ERG drafting: in ERG you can't out-power the target, so the only honest way
-    // to claw back a gap is the partner's slipstream — when you're behind, lower
-    // drag means the SAME watts carry you faster until you're back on the wheel.
+    // Drafting: when you're behind, the partner's slipstream lowers your drag so
+    // the SAME watts carry you faster until you're back on the wheel — it never
+    // touches your power, only your speed. This is the honest way to claw back a
+    // gap in ERG (where you can't out-power the target) and, just as importantly,
+    // during a free-ride test interval — slope mode is forced there so you can
+    // find your true FTP, and surging past the pacer to catch it would corrupt
+    // the result. So draft applies whenever you're chasing the cooperative bot
+    // pacer (any mode), plus the ERG ghost race; a slope-mode ghost stays a pure
+    // effort-vs-effort contest with no draft.
     double playerCda = m_cda;
     m_drafting    = false;
     m_draftFactor = 0.0;
-    if (m_ergMode) {
+    if (m_ergMode || m_oppIsBot) {
         const double behindM = m_oppDistM - m_playerDistM;   // >0 = player behind
         if (behindM > 0.0) {
             m_draftFactor = qBound(0.0, (kDraftRangeM - behindM) / kDraftRangeM, 1.0);
@@ -270,10 +276,11 @@ void RetroRaceController::tick()
 
     // Partner leash: a cooperative pace partner never drops you. If it would pull
     // more than kPartnerLeashM ahead it soft-pedals (eases) so you can always get
-    // back into draft range. Only the bot partner waits — a recorded ghost (your
-    // past self) stays honest and never holds back.
+    // back into draft range — including in a slope-mode test, where without the
+    // leash you could fall past draft range and never claw back. Only the bot
+    // partner waits — a recorded ghost (your past self) stays honest.
     m_partnerEasing = false;
-    if (m_ergMode && m_oppIsBot) {
+    if (m_oppIsBot) {
         const double leadM = m_oppDistM - m_playerDistM;
         if (leadM > kPartnerLeashM) {
             m_oppDistM      = m_playerDistM + kPartnerLeashM;
