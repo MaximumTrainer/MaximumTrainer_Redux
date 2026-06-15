@@ -116,6 +116,18 @@ qdomyos-zwift (GPLv3), SHIFTR.
     (`trainerControlUserId` / `getFecID()`). New API uses `riderId`, not `antID`.
 - [ ] **Phase 3 — Zwift Click input (device).** Decode Click button frames →
   call the same shift function. Pure add-on.
+  - **Phase 1 recon (Click v2, fw 1.2.0, CC:0A:DF:72:3D:4C) DONE:** advertises
+    the **same `0000fc82`** service; chars `00000002/3/4-19ca-…` PLUS three
+    extra `00000100/101/102-19ca-…`. mfr "Zwift Inc", hw "B.0", battery 80%.
+    After RideOn it streams a handshake incl. `ff03…` + 33 bytes of
+    high-entropy data = an **X25519 public key** → **the Click v2 ENCRYPTS its
+    button data** (ECDH + AES; the `010x` chars are the secure channel). Unlike
+    the trainer, which is plaintext.
+  - **Implication:** Click support requires implementing the Zwift crypto
+    handshake — real effort AND the **DMCA §1201** circumvention angle. NOT on
+    the critical path: keyboard/on-screen shifting (Phase 2) gives full virtual
+    shifting with no crypto. Defer Click; decide separately. Public RE exists
+    (qdomyos-zwift, makinolo "Zwift Play" posts).
 - [ ] **Phase 4 — Polish + distribution call.** Gear indicator UI, gear-range
   persistence; revisit patent/distribution before any merge to public master.
 

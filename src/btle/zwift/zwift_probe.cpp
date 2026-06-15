@@ -136,6 +136,7 @@ void ZwiftProbe::connectNextCandidate()
 
     m_current          = m_candidates.dequeue();
     m_zwiftServiceSeen = false;
+    m_retriesLeft      = 3;   // weak links (distant trainer) drop mid-discovery
     line(QString());
     line(QStringLiteral("== Connecting to %1 [%2] ==")
              .arg(m_current.name(), m_current.address().toString()));
@@ -146,6 +147,18 @@ void ZwiftProbe::connectNextCandidate()
         m_controller->discoverServices();
     });
     connect(m_controller, &QLowEnergyController::disconnected, this, [this]() {
+        // A weak link can drop before per-service detail discovery completes,
+        // so we never see the Zwift service. Retry the same device a few times.
+        if (!m_zwiftServiceSeen && m_retriesLeft > 0 && m_controller) {
+            --m_retriesLeft;
+            if (m_listenTimer) m_listenTimer->stop();
+            qDeleteAll(m_services);
+            m_services.clear();
+            line(QStringLiteral("  link dropped before discovery — retrying (%1 left)")
+                     .arg(m_retriesLeft));
+            m_controller->connectToDevice();
+            return;
+        }
         line(QStringLiteral("  disconnected"));
     });
     connect(m_controller,

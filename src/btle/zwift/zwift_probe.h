@@ -69,6 +69,7 @@ private:
     bool                            m_zwiftServiceSeen = false;
     bool                            m_scanHandled = false;
     int                             m_suppressedCount = 0;
+    int                             m_retriesLeft = 0;
 };
 
 #endif // ZWIFT_PROBE_H
