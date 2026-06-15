@@ -50,6 +50,7 @@ private slots:
     // ── Fixture file parsing ─────────────────────────────────────────────────
     void testSteadyState_intervalCount();
     void testSteadyState_power();
+    void testSteadyState_powerRange();
     void testSteadyState_duration();
     void testSteadyState_name();
 
@@ -110,6 +111,21 @@ void TstImporterWorkoutZwo::testSteadyState_power()
     QCOMPARE(iv.getPowerStepType(), Interval::FLAT);
     QVERIFY(qAbs(iv.getFTP_start() - 0.75) < 1e-6);
     QVERIFY(qAbs(iv.getFTP_end()   - 0.75) < 1e-6);
+}
+
+// Intervals.icu exports a power-range step as a SteadyState carrying
+// PowerLow/PowerHigh instead of a single Power. It must parse as the midpoint,
+// not 0 W (#295).
+void TstImporterWorkoutZwo::testSteadyState_powerRange()
+{
+    const QByteArray data = readFixture("steady_state_range.zwo");
+    Workout w = ImporterWorkoutZwo::importFromByteArray(data, "test");
+    QVERIFY(!w.getLstInterval().isEmpty());
+    const Interval iv = w.getLstInterval().first();
+    QCOMPARE(iv.getPowerStepType(), Interval::FLAT);
+    // (0.43 + 0.75) / 2 = 0.59  (NOT 0)
+    QVERIFY(qAbs(iv.getFTP_start() - 0.59) < 1e-6);
+    QVERIFY(qAbs(iv.getFTP_end()   - 0.59) < 1e-6);
 }
 
 void TstImporterWorkoutZwo::testSteadyState_duration()

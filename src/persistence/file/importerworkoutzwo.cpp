@@ -92,6 +92,17 @@ Workout ImporterWorkoutZwo::importFromByteArray(const QByteArray &data,
                 if (tag == QStringLiteral("SteadyState")) {
                     int    dur   = intAttr("Duration");
                     double power = dblAttr("Power");
+                    // Intervals.icu exports a power-range step as a SteadyState
+                    // with PowerLow/PowerHigh and no single Power — use the
+                    // midpoint so it matches the manual ERG/MRC import instead of
+                    // parsing as 0 W (#295).
+                    if (power <= 0.0 &&
+                        (attrs.hasAttribute(QLatin1String("PowerLow")) ||
+                         attrs.hasAttribute(QLatin1String("PowerHigh")))) {
+                        const double lo = dblAttr("PowerLow");
+                        const double hi = dblAttr("PowerHigh", lo);
+                        power = (lo + hi) / 2.0;
+                    }
                     if (dur > 0)
                         intervals.append(makeFlatInterval(dur, power));
 

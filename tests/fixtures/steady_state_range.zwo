@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<workout_file>
+    <name>Steady State Range Test</name>
+    <author>Test</author>
+    <description>Intervals.icu exports a power-range step as a SteadyState with PowerLow/PowerHigh (no single Power). Expected: midpoint (0.43+0.75)/2 = 0.59.</description>
+    <workout>
+        <SteadyState Duration="3600" PowerLow="0.43" PowerHigh="0.75"/>
+    </workout>
+</workout_file>
