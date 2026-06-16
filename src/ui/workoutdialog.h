@@ -480,13 +480,6 @@ private:
 
     // For Rolling Averaging Power
     //    QQueue<double> queuePower;
-    //    int lastSecondPower;
-    //    int nbPointsPower;
-
-    QQueue<double> arrQueuePower[constants::nbMaxUserStudio];
-    int arrLastSecondPower[constants::nbMaxUserStudio];
-    int arrNbPointPower[constants::nbMaxUserStudio];
-
     //to calculate mean every second ,[0] = Rider#1
     QVector<int> nbPointHr1sec;
     QVector<double> averageHr1sec;

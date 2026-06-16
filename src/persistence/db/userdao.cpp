@@ -120,7 +120,6 @@ QNetworkReply* UserDAO::putAccount(Account *account) {
     postData.addQueryItem("show_workout_remaining", QString::number(account->show_workout_remaining) );
     postData.addQueryItem("show_elapsed", QString::number(account->show_elapsed) );
 
-    postData.addQueryItem("averaging_power", QString::number(account->averaging_power) );
     postData.addQueryItem("offset_power", QString::number(account->offset_power) );
 
     postData.addQueryItem("show_seperator_interval", QString::number(account->show_seperator_interval) );

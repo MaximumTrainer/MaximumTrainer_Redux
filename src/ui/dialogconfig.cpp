@@ -465,7 +465,6 @@ void DialogConfig::initUi() {
     ///Power widget
     ui->checkBox_enablePower->setChecked(account->show_power_widget);
     ui->comboBox_displayPower->setEnabled(account->show_power_widget);
-    ui->comboBox_powerAverage->setEnabled(account->show_power_widget);
 
     ///Power balance widget
     ui->checkBox_enablePowerBalance->setChecked(account->show_power_balance_widget);
@@ -504,7 +503,6 @@ void DialogConfig::initUi() {
     ui->comboBox_displayPower->setCurrentIndex(account->display_power - 1);
     ui->comboBox_displayCadence->setCurrentIndex(account->display_cadence - 1);
     ui->comboBox_displayPowerBalance->setCurrentIndex(account->display_power_balance);
-    ui->comboBox_powerAverage->setCurrentIndex(account->averaging_power);
     ui->spinBox_offsetPower->setValue(account->offset_power);
 
     // The Game (index 2) is single-rider (no use in multi-rider studio) and
@@ -698,7 +696,6 @@ void DialogConfig::on_checkBox_enablePower_clicked(bool checked) {
 
     account->show_power_widget = checked;
     ui->comboBox_displayPower->setEnabled(checked);
-    ui->comboBox_powerAverage->setEnabled(checked);
 
     if (checked) {
         parentDialog->showPowerDisplayWidget(ui->comboBox_displayPower->currentIndex() + 1);
@@ -906,7 +903,6 @@ void DialogConfig::saveSettings() {
     account->display_power = ui->comboBox_displayPower->currentIndex() + 1;
     account->display_cadence = ui->comboBox_displayCadence->currentIndex() + 1;
     account->display_power_balance = ui->comboBox_displayPowerBalance->currentIndex();
-    account->averaging_power = ui->comboBox_powerAverage->currentIndex();
     account->offset_power = ui->spinBox_offsetPower->value();
 
     account->display_video =  ui->comboBox_displayVideo->currentIndex();
