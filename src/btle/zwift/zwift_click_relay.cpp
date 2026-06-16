@@ -22,7 +22,7 @@ const char *const kSetupSteps[] = {
 const QByteArray kZwiftClickName = QByteArrayLiteral("Zwift Click");
 
 // Relayed RideOn that makes the linked Click start streaming buttons (the one
-// command that actually matters — see notes/zwift-cog-protocol-findings.md).
+// command that actually matters).
 QByteArray relayedRideOn() { return QByteArray::fromHex("4e08021208526964654f6e0203"); }
 
 constexpr int  kButtonDebounceMs = 300;   // one physical press counts once

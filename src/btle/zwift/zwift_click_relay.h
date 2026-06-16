@@ -10,24 +10,20 @@
 class QTimer;
 
 /*
- * Reads a Zwift Click v2 controller through the TRAINER'S FC82 relay — the way
- * real Zwift does it — instead of connecting to the flaky Click BLE devices
- * directly. The Click links to the trainer; the trainer relays its button frames
- * to us over FC82, so the link is held by the trainer (BLE central) and stays
- * stable for a whole workout (validated with a ~15-min soak).
+ * Reads a Click v2 controller through the trainer's FC82 relay instead of
+ * connecting to the controller's own (unstable) BLE device directly. The
+ * controller links to the trainer; the trainer relays its button frames to us
+ * over FC82, so the BLE link is held by the trainer and stays stable for a whole
+ * workout (validated with a ~15-min soak).
  *
  * BtleHub owns the trainer connection; when it discovers the FC82 service it
- * hands the service here and this object drives the relay handshake and decodes
- * the relayed button frames into the same high-level action signals the (now
- * removed) direct ZwiftClickManager emitted.
+ * hands the service here, and this object drives the relay handshake and decodes
+ * the relayed button frames into high-level action signals.
  *
- * Protocol (see notes/zwift-cog-protocol-findings.md): subscribe FC82
- * notify/indicate + write "RideOn 02 03" and the relay-setup bytes to the
- * control point; when the trainer announces the linked "Zwift Click" (a 0x47
- * device frame) ask it to connect (441002); once the Click's channel is up relay
- * a "RideOn" to it; buttons then stream as 0x4e-wrapped 0x23 frames (same
- * active-low bitmap we already decode). No crypto. A watchdog re-pings if the
- * relay falls silent. Native only.
+ * The handshake subscribes to FC82 notify/indicate, writes the relay-setup
+ * sequence to the control point, asks the trainer to connect the linked
+ * controller once it is announced, and then reads the streamed button frames. A
+ * watchdog re-pings if the relay falls silent. Native only.
  */
 class ZwiftClickRelay : public QObject
 {

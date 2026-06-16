@@ -102,12 +102,11 @@ inline bool clickButtonPressed(quint32 bitmap, int bitIndex) {
     return (bitmap & (1u << bitIndex)) == 0;
 }
 
-// ── Trainer-relayed Click button frame (the real Zwift path) ─────────────────
-// A Zwift-protocol trainer (0xFC82) RELAYS a linked Click's frames to the app,
-// wrapped as: [0x4e][protobuf{ field2 = <inner Click frame> }]. When the inner
-// frame is a 0x23 button frame, extract its active-low bitmap. Returns false if
-// this isn't a 0x4e relay carrying a button frame. (Captured from a live Zwift
-// session — see notes/zwift-cog-protocol-findings.md.)
+// ── Trainer-relayed Click button frame ───────────────────────────────────────
+// An FC82 trainer RELAYS a linked Click's frames to the app, wrapped as:
+// [0x4e][protobuf{ field2 = <inner Click frame> }]. When the inner frame is a
+// 0x23 button frame, extract its active-low bitmap. Returns false if this isn't
+// a 0x4e relay carrying a button frame.
 bool decodeRelayedClickButtons(const QByteArray &frame, quint32 &bitmapOut);
 
 // The full RideOn handshake Zwift writes to the trainer's FC82 control point to
