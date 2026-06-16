@@ -147,7 +147,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     show_elapsed = true;
     show_current_target = true;
 
-    averaging_power = 2;
     offset_power = 0;
 
 
@@ -295,7 +294,6 @@ void Account::loadDisplayPrefs() {
     if (display_power == 0)   display_power = 1;
     if (display_cadence == 0) display_cadence = 1;
     display_video         = settings.value("display_video",         display_video).toInt();
-    averaging_power       = settings.value("averaging_power",       averaging_power).toInt();
     offset_power          = settings.value("offset_power",          offset_power).toInt();
 
     // Start-workout trigger and its per-mode threshold values.
@@ -377,7 +375,6 @@ void Account::saveDisplayPrefs() {
     settings.setValue("display_power_balance", display_power_balance);
     settings.setValue("display_cadence",       display_cadence);
     settings.setValue("display_video",         display_video);
-    settings.setValue("averaging_power",       averaging_power);
     settings.setValue("offset_power",          offset_power);
 
     // Start-workout trigger and its per-mode threshold values. Formerly loaded

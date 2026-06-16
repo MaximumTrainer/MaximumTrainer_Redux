@@ -591,13 +591,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
 
 
-    //    lastSecondPower = 0;
-    //    nbPointsPower = 0;
-    //New
-    for (int i=0; i<constants::nbMaxUserStudio; i++) {
-        arrLastSecondPower[i] = 0;
-        arrNbPointPower[i] = 0;
-    }
 
     timeElapsedTotal = QTime(0,0,0,0);
     nbUpdate1Sec = 0;
@@ -1120,11 +1113,6 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
     nbPointCadence1sec.fill(0);
     nbPointSpeed1sec.fill(0);
     nbPointPower1sec.fill(0);
-
-    //temp
-    for (int i=0; i<constants::nbMaxUserStudio; i++) {
-        arrNbPointPower[i] = 0;
-    }
 
 
     avgRightPedal1sec.fill(-1);
@@ -2169,91 +2157,27 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 
 
 
-    int rollingAverage = value;
-    ///------- Averaging Power ------------------------------------------------------------------------------
-    if (!isWorkoutPaused && !isWorkoutOver && account->averaging_power > 0) {
-
-        ///For Testing ---------------------
-        //        qDebug() << "Printing Queue Before Value:" << value;
-        //        for (int i=0; i< arrQueuePower[userID-1].size(); i++) {
-        //            qDebug() << "queue["<<i<<"]=" <<  arrQueuePower[userID-1].at(i);
-        //        }
-
-
-        // Get current second
-        int currentSecondPower = (int) timeElapsed_sec;
-        // If the second changed, add new value to top of queue
-        if (currentSecondPower != arrLastSecondPower[userID-1]) {
-            arrQueuePower[userID-1].enqueue(value);
-            // check the queue size, remove element if needed (loop: if settings just changed need to remove more than 1 value)
-            while (arrQueuePower[userID-1].size() > account->averaging_power) {
-                arrQueuePower[userID-1].dequeue();
-            }
-        }
-        // If the second is the same, recalculate average and replace value of the tail
-        else {
-            ///first second workout
-            if (arrQueuePower[userID-1].size() < 1) {
-                arrQueuePower[userID-1].enqueue(value);
-            }
-            else {
-                double firstEle = arrQueuePower[userID-1].last() *((double)arrNbPointPower[userID-1]/(arrNbPointPower[userID-1]+1));
-                double secondEle = ((double)value)/(arrNbPointPower[userID-1]+1);
-                // replace last element of the queue
-                double newAvg = firstEle + secondEle;
-                if (newAvg > 0)
-                    arrQueuePower[userID-1].replace( arrQueuePower[userID-1].size()-1,  newAvg);
-            }
-        }
-        arrNbPointPower[userID-1]++;
-        arrLastSecondPower[userID-1] = currentSecondPower;
-
-
-        /// Get the average of the queue
-        double avgQueue = 0.0;
-        double totalQueue = 0.0;
-        if (arrQueuePower[userID-1].size() > 0) {
-            for (int i=0; i<arrQueuePower[userID-1].size(); i++) {
-                totalQueue += arrQueuePower[userID-1].at(i);
-            }
-            avgQueue = totalQueue/arrQueuePower[userID-1].size();
-            /// replace value with the rolling average
-            if (avgQueue > 0)
-                rollingAverage = qRound(avgQueue);
-        }
-
-
-        ///For Testing ---------------------
-        //        qDebug() << "Printing Queue After Enqueue:";
-        //        for (int i=0; i< arrQueuePower[userID-1].size(); i++) {
-        //            qDebug() << "queue["<<i<<"]=" <<  arrQueuePower[userID-1].at(i);
-        //        }
-        //        qDebug() << "avg Queue is:" << avgQueue << "rollingAverage :" << rollingAverage;
-    }
-    /// -----------------------------------------------------------------------------------------------------
-
-
-
+    const int powerValue = value;
 
     if (!isWorkoutPaused && !isWorkoutOver) {
 
-        arrDataWorkout[userID-1]->checkUpdateMaxPower(rollingAverage);
+        arrDataWorkout[userID-1]->checkUpdateMaxPower(powerValue);
 
         ///Below Pause treshold?
-        if (!account->enable_studio_mode && (account->start_trigger == 1) && (rollingAverage < account->value_power_start) ) {
+        if (!account->enable_studio_mode && (account->start_trigger == 1) && (powerValue < account->value_power_start) ) {
             start_or_pause_workout();
         }
 
         ///Check to play sound, 10sec cooldown between sound and not first/last 3 second of an interval
         if (!account->enable_studio_mode && currentTargetPower != -1 && soundsActive && account->enable_sound) {
             /// TOO LOW
-            if (account->sound_alert_power_under_target && (rollingAverage < currentTargetPower - currentTargetPowerRange) && soundPowerTooLowActive) {
+            if (account->sound_alert_power_under_target && (powerValue < currentTargetPower - currentTargetPowerRange) && soundPowerTooLowActive) {
                 soundPlayer->playSoundPowerTooLow();
                 soundPowerTooLowActive = false;
                 timerCheckReactivateSoundPowerTooLow->start();
             }
             /// TOO HIGH
-            else if (account->sound_alert_power_above_target && (rollingAverage > currentTargetPower + currentTargetPowerRange) && soundPowerTooHighActive) {
+            else if (account->sound_alert_power_above_target && (powerValue > currentTargetPower + currentTargetPowerRange) && soundPowerTooHighActive) {
                 soundPlayer->playSoundPowerTooHigh();
                 soundPowerTooHighActive = false;
                 timerCheckReactivateSoundPowerTooHigh->start();
@@ -2274,7 +2198,7 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
         nbPointPower1sec.replace(userID-1, nbPointPower1sec.at(userID-1) + 1);
 
         //Update Graph (zoomer)
-        ui->wid_2_workoutPlot_PowerZoom->updateCurve(timeElapsed_sec, rollingAverage);
+        ui->wid_2_workoutPlot_PowerZoom->updateCurve(timeElapsed_sec, powerValue);
 
 
     }
@@ -2285,10 +2209,10 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 
 
     // Show raw data to the display
-    ui->wid_2_infoBoxPower->setValue(rollingAverage);
-    ui->wid_2_workoutPlot_PowerZoom->updateTextLabelValue(rollingAverage);
+    ui->wid_2_infoBoxPower->setValue(powerValue);
+    ui->wid_2_workoutPlot_PowerZoom->updateTextLabelValue(powerValue);
     if (account->enable_studio_mode) {
-        arrUserStudioWidget[userID-1]->setPowerValue(rollingAverage);
+        arrUserStudioWidget[userID-1]->setPowerValue(powerValue);
     }
 }
 

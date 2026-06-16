@@ -64,22 +64,6 @@
         "url": "https://stream.radioparadise.com/global-128"
     },
     {
-        "name": "FIP",
-        "genre": "Jazz / Eclectic",
-        "gotAds": "0",
-        "bitrate": "192",
-        "lang": "FR",
-        "url": "https://icecast.radiofrance.fr/fip-midfi.mp3"
-    },
-    {
-        "name": "France Musique",
-        "genre": "Classical",
-        "gotAds": "0",
-        "bitrate": "192",
-        "lang": "FR",
-        "url": "https://icecast.radiofrance.fr/francemusique-midfi.mp3"
-    },
-    {
         "name": "SomaFM The Trip",
         "genre": "Progressive House / Trance",
         "gotAds": "0",
@@ -126,5 +110,53 @@
         "bitrate": "128",
         "lang": "EN",
         "url": "https://stream.nightride.fm/nightride.mp3"
+    },
+    {
+        "name": "Dance Wave Retro!",
+        "genre": "90s/00s Dance / EuroDance",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://dancewave.online/retrodance.mp3"
+    },
+    {
+        "name": "90s90s Eurodance",
+        "genre": "EuroDance",
+        "gotAds": "1",
+        "bitrate": "192",
+        "lang": "DE",
+        "url": "https://streams.90s90s.de/eurodance/mp3-192/"
+    },
+    {
+        "name": "Radio Paradise — Rock Mix",
+        "genre": "Rock",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://stream.radioparadise.com/rock-128"
+    },
+    {
+        "name": "SomaFM Metal Detector",
+        "genre": "Metal",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://ice1.somafm.com/metal-128-mp3"
+    },
+    {
+        "name": "SomaFM PopTron",
+        "genre": "Electro Pop / Upbeat",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://ice1.somafm.com/poptron-128-mp3"
+    },
+    {
+        "name": "SomaFM Left Coast 70s",
+        "genre": "Classic Rock",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://ice1.somafm.com/seventies-128-mp3"
     }
 ]

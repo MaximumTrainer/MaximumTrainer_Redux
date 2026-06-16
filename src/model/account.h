@@ -184,7 +184,6 @@ public:
     bool show_elapsed;
     bool show_current_target;
 
-    int averaging_power;
     int offset_power;
 
     bool show_seperator_interval;
