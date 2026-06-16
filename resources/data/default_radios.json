@@ -112,6 +112,22 @@
         "url": "https://stream.nightride.fm/nightride.mp3"
     },
     {
+        "name": "Dance Wave Retro!",
+        "genre": "90s/00s Dance / EuroDance",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://dancewave.online/retrodance.mp3"
+    },
+    {
+        "name": "90s90s Eurodance",
+        "genre": "EuroDance",
+        "gotAds": "1",
+        "bitrate": "192",
+        "lang": "DE",
+        "url": "https://streams.90s90s.de/eurodance/mp3-192/"
+    },
+    {
         "name": "Radio Paradise — Rock Mix",
         "genre": "Rock",
         "gotAds": "0",
