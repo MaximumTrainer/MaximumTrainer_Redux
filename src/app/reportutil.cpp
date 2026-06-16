@@ -20,22 +20,13 @@ void ReportUtil::printWorkoutToPdf(Workout workout, QwtPlot *plot, QString filen
     QPrinter printer(QPrinter::HighResolution);
     printer.setOutputFormat(QPrinter::PdfFormat);
     printer.setOutputFileName(filename);
-#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
     printer.setPageOrientation(QPageLayout::Landscape);
-#else
-    printer.setOrientation(QPrinter::Landscape);
-#endif
 
-#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
     // QPrinter::width()/height() were removed in Qt6; derive the paintable
     // pixel size from the page layout at the printer's resolution instead.
     const QRect paintRect = printer.pageLayout().paintRectPixels(printer.resolution());
     int width  = paintRect.width();
     int height = paintRect.height();
-#else
-    int width = printer.width();
-    int height = printer.height();
-#endif
     qDebug() << "printer width is" << width << "height is:" << height;
     QPainter painter;
     painter.begin(&printer);

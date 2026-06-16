@@ -70,13 +70,8 @@ void ZwiftClickRelay::attachService(QLowEnergyService *fc82Service)
     connect(m_fc82, &QLowEnergyService::characteristicChanged,
             this, &ZwiftClickRelay::onCharacteristicChanged);
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     const auto discovered  = QLowEnergyService::RemoteServiceDiscovered;
     const auto discovering = QLowEnergyService::RemoteServiceDiscovering;
-#else
-    const auto discovered  = QLowEnergyService::ServiceDiscovered;
-    const auto discovering = QLowEnergyService::DiscoveringServices;
-#endif
     if (m_fc82->state() == discovered)
         beginSetup();
     else if (m_fc82->state() != discovering)
@@ -85,11 +80,7 @@ void ZwiftClickRelay::attachService(QLowEnergyService *fc82Service)
 
 void ZwiftClickRelay::onServiceStateChanged(QLowEnergyService::ServiceState state)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     if (state != QLowEnergyService::RemoteServiceDiscovered)
-#else
-    if (state != QLowEnergyService::ServiceDiscovered)
-#endif
         return;
     beginSetup();
 }

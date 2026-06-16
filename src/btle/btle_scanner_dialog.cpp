@@ -53,15 +53,8 @@ void BtleScannerDialog::init()
             this, &BtleScannerDialog::onDeviceDiscovered);
     connect(m_discoveryAgent, &QBluetoothDeviceDiscoveryAgent::finished,
             this, &BtleScannerDialog::onScanFinished);
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     connect(m_discoveryAgent, &QBluetoothDeviceDiscoveryAgent::errorOccurred,
             this, &BtleScannerDialog::onScanError);
-#else
-    connect(m_discoveryAgent,
-            static_cast<void(QBluetoothDeviceDiscoveryAgent::*)
-                (QBluetoothDeviceDiscoveryAgent::Error)>(&QBluetoothDeviceDiscoveryAgent::error),
-            this, &BtleScannerDialog::onScanError);
-#endif
 
     connect(ui->pushButton_scan,    &QPushButton::clicked,
             this, &BtleScannerDialog::startScan);

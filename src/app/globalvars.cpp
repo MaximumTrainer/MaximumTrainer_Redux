@@ -51,9 +51,6 @@ GlobalVars::GlobalVars(QObject *parent) :
         }
     }
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-#endif
 
 #ifndef Q_OS_WASM
     QWebEngineProfile::defaultProfile()->settings()->setAttribute(QWebEngineSettings::PluginsEnabled, true);

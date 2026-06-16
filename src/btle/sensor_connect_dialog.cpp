@@ -94,15 +94,8 @@ SensorConnectDialog::SensorConnectDialog(
             this, &SensorConnectDialog::onDeviceDiscovered);
     connect(m_agent, &QBluetoothDeviceDiscoveryAgent::finished,
             this, &SensorConnectDialog::onScanFinished);
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     connect(m_agent, &QBluetoothDeviceDiscoveryAgent::errorOccurred,
             this, &SensorConnectDialog::onScanError);
-#else
-    connect(m_agent,
-            static_cast<void(QBluetoothDeviceDiscoveryAgent::*)
-                (QBluetoothDeviceDiscoveryAgent::Error)>(&QBluetoothDeviceDiscoveryAgent::error),
-            this, &SensorConnectDialog::onScanError);
-#endif
 
     m_autoContinueTimer = new QTimer(this);
     m_autoContinueTimer->setSingleShot(true);
