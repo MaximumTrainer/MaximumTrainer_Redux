@@ -183,6 +183,21 @@ void DialogConfig::on_pushButton_nextRadio_clicked()
     playNextOrPreviousRadio(true);
 }
 
+void DialogConfig::radioVolumeUp()
+{
+    ui->slider_volumeRadio->setValue(ui->slider_volumeRadio->value() + 5);
+}
+
+void DialogConfig::radioVolumeDown()
+{
+    ui->slider_volumeRadio->setValue(ui->slider_volumeRadio->value() - 5);
+}
+
+int DialogConfig::radioVolume() const
+{
+    return ui->slider_volumeRadio->value();
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 void DialogConfig::playNextOrPreviousRadio(bool next) {

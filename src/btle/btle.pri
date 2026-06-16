@@ -31,11 +31,13 @@ contains(QMAKE_PLATFORM, wasm) {
         $$PWD/btle_uuids.h \
         $$PWD/simulator_hub.h
 
-    # Read-only Zwift exploration harness (Phase 1) needs native QtBluetooth.
+    # Native-only Zwift harness + the Click-via-trainer relay (QtBluetooth).
     SOURCES += $$PWD/zwift/zwift_probe.cpp \
-               $$PWD/zwift/trainer_gear_test.cpp
+               $$PWD/zwift/trainer_gear_test.cpp \
+               $$PWD/zwift/zwift_click_relay.cpp
     HEADERS += $$PWD/zwift/zwift_probe.h \
-               $$PWD/zwift/trainer_gear_test.h
+               $$PWD/zwift/trainer_gear_test.h \
+               $$PWD/zwift/zwift_click_relay.h
 }
 
 # Zwift virtual-shifting protocol codec — pure bytes, platform-independent.

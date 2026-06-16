@@ -799,6 +799,19 @@ void WorkoutPlot::decreaseDifficulty() {
     setDifficulty(difficultyPercent - 1);
 }
 
+void WorkoutPlot::flashDifficulty(bool increase) {
+    QToolButton *btn = increase ? btnIncreaseDifficulty : btnDecreaseDifficulty;
+    if (!btn)
+        return;
+    // The resting look comes from widgetDifficulty's stylesheet (QToolButton
+    // selector), so the button's own stylesheet is empty at rest — restore to
+    // that. Keep border-radius so the green pulse matches the button shape.
+    btn->setStyleSheet(QStringLiteral(
+        "background-color: #4caf50; color: white; border: none;"
+        " border-radius: 3px; font-size: 22px; font-weight: bold;"));
+    QTimer::singleShot(180, btn, [btn]() { btn->setStyleSheet(QString()); });
+}
+
 void WorkoutPlot::setDifficulty(int percentageIncrease) {
 
     const int clamped = qBound(-100, percentageIncrease, 100);

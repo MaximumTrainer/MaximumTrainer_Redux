@@ -37,6 +37,7 @@ inline constexpr char Response[]     = "00000004-19ca-4651-86e5-fa29dcdd09d1"; /
 enum class Command : quint8 {
     RidingData     = 0x03,  // incoming notification (HubRidingData)
     TrainerControl = 0x04,  // outgoing to control point (HubCommand)
+    ButtonStatus   = 0x23,  // incoming Click button bitmap (notify on 0x0002)
 };
 
 // The handshake the app writes once subscribed. Trailing bytes (if any) are
@@ -86,6 +87,33 @@ struct RidingData {
 // 0x03 or the protobuf stream is malformed. Unknown fields are skipped.
 bool decodeRidingData(const QByteArray &frame, RidingData &out);
 
+// ── Incoming: Zwift Click button status (command 0x23) ───────────────────────
+// The Click (fw 1.2.0) streams an UNENCRYPTED status frame ~2×/s on the 0x0002
+// measurement char: [0x23][field 1 = varint], where field 1 is a 32-bit
+// ACTIVE-LOW button bitmap — idle is 0xFFFFFFFF and a held button clears its
+// bit (e.g. 0xFFFFEFFF = bit 12 down). Confirmed via --zwift-probe on hardware.
+// Decode a 0x23 frame into the raw bitmap. Returns false if the command byte is
+// not 0x23 or the stream is malformed. Map specific bits to +/- with the helper
+// below once the per-button bits are nailed down from a hardware capture.
+bool decodeClickButtons(const QByteArray &frame, quint32 &bitmapOut);
+
+// Convenience: a button is "pressed" when its bit is 0 (active-low).
+inline bool clickButtonPressed(quint32 bitmap, int bitIndex) {
+    return (bitmap & (1u << bitIndex)) == 0;
+}
+
+// ── Trainer-relayed Click button frame ───────────────────────────────────────
+// An FC82 trainer RELAYS a linked Click's frames to the app, wrapped as:
+// [0x4e][protobuf{ field2 = <inner Click frame> }]. When the inner frame is a
+// 0x23 button frame, extract its active-low bitmap. Returns false if this isn't
+// a 0x4e relay carrying a button frame.
+bool decodeRelayedClickButtons(const QByteArray &frame, quint32 &bitmapOut);
+
+// The full RideOn handshake Zwift writes to the trainer's FC82 control point to
+// start the relay stream: "RideOn" + 0x02 0x03 (bare "RideOn" alone is what the
+// trainer's own riding-data needs; the +0203 trailer matches the captured app).
+QByteArray rideOnTrainerHandshake();
+
 } // namespace ZwiftProtocol
 
 // ── Virtual gear table ───────────────────────────────────────────────────────
@@ -101,6 +129,27 @@ namespace ZwiftSim {
 constexpr quint32 CWaX10000  = 5100;   // CW·a·10000  → 0.51
 constexpr quint32 CrrX100000 = 400;    // Crr·100000  → 0.004
 } // namespace ZwiftSim
+
+// ── Zwift Click / Play shifter button bits ───────────────────────────────────
+// The +/- shifters are two separate single-paddle BLE devices (or the two
+// paddles of a Play pair). Each reports its shift paddle on a FIXED bit of the
+// 0x23 active-low bitmap, confirmed on hardware (fw 1.2.0): right/up paddle =
+// bit 12, left/down paddle = bit 8. Other buttons (d-pad, Y/Z/A/B) occupy other
+// bits — surfaced raw for later mapping (radio/volume/pause/etc.).
+namespace ZwiftClick {
+constexpr int UpShiftBit   = 12;  // right paddle → shift up   (+1)
+constexpr int DownShiftBit = 8;   // left  paddle → shift down (-1)
+// Left controller d-pad.
+constexpr int DpadLeftBit  = 0;
+constexpr int DpadUpBit    = 1;
+constexpr int DpadRightBit = 2;
+constexpr int DpadDownBit  = 3;
+// Right controller action buttons.
+constexpr int ButtonABit   = 4;
+constexpr int ButtonBBit   = 5;
+constexpr int ButtonYBit   = 6;
+constexpr int ButtonZBit   = 7;
+} // namespace ZwiftClick
 
 namespace ZwiftGears {
 constexpr int    Count    = 24;

@@ -85,6 +85,10 @@ public slots:
     void increaseDifficulty();
     void decreaseDifficulty();
 
+    // Pulse the matching +/− button green on any difficulty change (keys,
+    // on-screen, or Zwift Click), mirroring the gear/radio flash.
+    void flashDifficulty(bool increase);
+
 
 
 
