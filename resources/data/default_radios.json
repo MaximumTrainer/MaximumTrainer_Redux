@@ -120,14 +120,6 @@
         "url": "https://stream.radioparadise.com/rock-128"
     },
     {
-        "name": "SomaFM BAGeL Radio",
-        "genre": "Alternative / Indie Rock",
-        "gotAds": "0",
-        "bitrate": "128",
-        "lang": "EN",
-        "url": "https://ice1.somafm.com/bagel-128-mp3"
-    },
-    {
         "name": "SomaFM Metal Detector",
         "genre": "Metal",
         "gotAds": "0",
