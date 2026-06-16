@@ -7,7 +7,6 @@ SOURCES     +=\
     $$PWD/versiondao.cpp \
     $$PWD/environnement.cpp \
     $$PWD/sensordao.cpp \
-    $$PWD/radiodao.cpp \
     $$PWD/achievementdao.cpp \
     $$PWD/intervalsicudao.cpp \
     $$PWD/intervalsicuservice.cpp \
@@ -22,7 +21,6 @@ HEADERS     += \
     $$PWD/versiondao.h \
     $$PWD/environnement.h \
     $$PWD/sensordao.h \
-    $$PWD/radiodao.h \
     $$PWD/achievementdao.h \
     $$PWD/intervalsicudao.h \
     $$PWD/intervalsicuservice.h \
