@@ -56,6 +56,12 @@ public:
     // dimmed with "ERG" and inactive arrows.
     void setGearVisible(bool visible);
     void updateGear(int gear, int count, bool ergMode);
+    /// Briefly highlight a toolbar control (green pulse) so the rider sees an
+    /// input registered, whatever the source (keys, on-screen, or a Zwift Click).
+    void flashShift(int direction);   // ▲ if > 0 else ▼ gear button
+    void flashRadioPrev();
+    void flashRadioNext();
+    void flashRadioPlayPause();
 
 
 
@@ -88,6 +94,7 @@ public slots:
     void changeConfigIcon(bool insideConfig);
 
     void updateRadioStatus(QString status);
+    void updateRadioVolume(int percent);
 
     //radio
     void radioStartedPlaying();
@@ -128,11 +135,15 @@ private :
 private:
     Ui::TopMenuWorkout *ui;
 
+    /// Pulse a widget green for ~180 ms, then restore its resting style.
+    void flashWidget(QWidget *w);
+
     // Virtual-shifting gear indicator widgets (built in the constructor).
     QWidget     *m_gearWidget = nullptr;
     QToolButton *m_gearDownBtn = nullptr;
     QToolButton *m_gearUpBtn   = nullptr;
     QLabel      *m_gearLabel   = nullptr;
+    int          m_lastRadioVolumePct = -1;   // flash the volume icon only on change
 
     bool hasTargetPower;
     bool hasTargetCad;

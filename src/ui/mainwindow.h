@@ -249,6 +249,7 @@ private:
     QStringList    m_scLoadLog;    // captured setLoad/setSlope (trainer control)
     WorkoutDialog *m_ssWorkoutDlg = nullptr;
     SimulatorHub  *m_ssSimHub     = nullptr;
+
     QList<SimulatorHub*> m_ssStudioHubs;   // per-rider sim hubs for the studio-workout shot
     // Saved so screenshot mode (which toggles studio mode + rider count for its
     // captures) can restore the user's real settings before quitting.

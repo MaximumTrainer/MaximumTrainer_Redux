@@ -9,6 +9,8 @@
 #include <QPainter>
 #include <QStyle>
 #include <QHBoxLayout>
+#include <QToolButton>
+#include <QTimer>
 #include "util.h"
 
 namespace {
@@ -120,6 +122,8 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     ui->pushButton_playPauseRadio->setIconSize(iconSize);
     ui->pushButton_nextRadio->setIcon(tintedStandardIcon(style(), QStyle::SP_MediaSkipForward, iconSize, iconColor));
     ui->pushButton_nextRadio->setIconSize(iconSize);
+    ui->label_radioVolumeIcon->setPixmap(
+        tintedStandardIcon(style(), QStyle::SP_MediaVolume, iconSize, iconColor).pixmap(iconSize));
 
     // Window/config controls: render light icons on the always-dark toolbar,
     // instead of the legacy opaque-black PNGs that the dark theme broke.
@@ -192,10 +196,11 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     m_gearDownBtn->setAutoRaise(true);
     m_gearDownBtn->setToolTip(tr("Easier gear (Down arrow)"));
 
-    m_gearLabel = new QLabel(QStringLiteral("⚙ –"), m_gearWidget);
+    m_gearLabel = new QLabel(QStringLiteral("Gear –"), m_gearWidget);
     m_gearLabel->setAlignment(Qt::AlignCenter);
-    m_gearLabel->setMinimumWidth(72);
-    m_gearLabel->setToolTip(tr("Virtual gear"));
+    m_gearLabel->setMinimumWidth(92);
+    m_gearLabel->setToolTip(tr("Virtual gear — shift with the ▼/▲ arrows, the "
+                               "Up/Down keys, or a Zwift Click v2"));
 
     m_gearUpBtn = new QToolButton(m_gearWidget);
     m_gearUpBtn->setText(QStringLiteral("▲"));
@@ -214,15 +219,14 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     // .ui stylesheet doesn't reach these dynamically-created widgets).
     m_gearWidget->setStyleSheet(QStringLiteral("color: white;"));
     m_gearWidget->setVisible(false);
-    // Centre it: an expanding stretch before the gear balances the bar's right
-    // spacer (the left spacer is fixed), so the gear lands near the middle.
+    // Anchor it on the LEFT, right after the timer. Don't centre it with a
+    // floating stretch — the radio status label changes width as stations change
+    // and that was shoving the gear indicator around.
     const int timerIdx = ui->horizontalLayout->indexOf(ui->frame_timer);
-    if (timerIdx >= 0) {
-        ui->horizontalLayout->insertStretch(timerIdx + 1, 1);
-        ui->horizontalLayout->insertWidget(timerIdx + 2, m_gearWidget);
-    } else {
+    if (timerIdx >= 0)
+        ui->horizontalLayout->insertWidget(timerIdx + 1, m_gearWidget);
+    else
         ui->horizontalLayout->addWidget(m_gearWidget);
-    }
 }
 
 void TopMenuWorkout::setGearVisible(bool visible)
@@ -236,15 +240,37 @@ void TopMenuWorkout::updateGear(int gear, int count, bool ergMode)
     if (!m_gearLabel)
         return;
     if (ergMode) {
-        m_gearLabel->setText(QStringLiteral("⚙ %1/%2  ERG").arg(gear).arg(count));
+        m_gearLabel->setText(QStringLiteral("Gear %1/%2 · ERG").arg(gear).arg(count));
         m_gearLabel->setStyleSheet(QStringLiteral("color: gray;"));   // dimmed in ERG
     } else {
-        m_gearLabel->setText(QStringLiteral("⚙ %1/%2").arg(gear).arg(count));
+        m_gearLabel->setText(QStringLiteral("Gear %1/%2").arg(gear).arg(count));
         m_gearLabel->setStyleSheet(QString());
     }
     if (m_gearDownBtn) m_gearDownBtn->setEnabled(!ergMode);
     if (m_gearUpBtn)   m_gearUpBtn->setEnabled(!ergMode);
 }
+
+void TopMenuWorkout::flashWidget(QWidget *w)
+{
+    if (!w || !w->isEnabled())
+        return;
+    // Remember the resting style once (so rapid re-flashes don't latch green as
+    // the base), pulse green, then restore.
+    if (!w->property("flashBaseStyle").isValid())
+        w->setProperty("flashBaseStyle", w->styleSheet());
+    const QString base = w->property("flashBaseStyle").toString();
+    w->setStyleSheet(base + QStringLiteral(" background:#4caf50; border-radius:4px;"));
+    QTimer::singleShot(180, w, [w, base]() { w->setStyleSheet(base); });
+}
+
+void TopMenuWorkout::flashShift(int direction)
+{
+    flashWidget(direction > 0 ? m_gearUpBtn : m_gearDownBtn);
+}
+
+void TopMenuWorkout::flashRadioPrev()      { flashWidget(ui->pushButton_prevRadio); }
+void TopMenuWorkout::flashRadioNext()      { flashWidget(ui->pushButton_nextRadio); }
+void TopMenuWorkout::flashRadioPlayPause() { flashWidget(ui->pushButton_playPauseRadio); }
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -338,6 +364,15 @@ void TopMenuWorkout::updateRadioStatus(QString status) {
     ui->label_radioStatus->fadeIn(400);
 
 
+}
+
+void TopMenuWorkout::updateRadioVolume(int percent) {
+    ui->label_radioVolume->setText(QString::number(percent) + QStringLiteral("%"));
+    // Flash the sound icon only on a real volume change — not when a station
+    // change re-applies the same volume (and not on the initial set).
+    if (m_lastRadioVolumePct >= 0 && percent != m_lastRadioVolumePct)
+        flashWidget(ui->label_radioVolumeIcon);
+    m_lastRadioVolumePct = percent;
 }
 
 

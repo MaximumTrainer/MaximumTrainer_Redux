@@ -53,6 +53,12 @@ public slots:
     void radioStoppedPlaying();
 
     void playPauseRadio();
+    /// Nudge radio volume (e.g. from a Zwift Click d-pad). The slider's
+    /// valueChanged already drives the player + persistence.
+    void radioVolumeUp();
+    void radioVolumeDown();
+    /// Current radio volume (0-100), for the workout top-bar indicator.
+    int radioVolume() const;
 
 
 

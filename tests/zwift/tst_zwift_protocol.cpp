@@ -32,6 +32,14 @@ private slots:
     void testDecode_skipsUnknownLengthDelimited();
     void testDecode_truncatedVarint();
 
+    // ── decodeClickButtons (0x23) ────────────────────────────────────────────
+    void testClick_idleBitmap();
+    void testClick_pressedBit();
+    void testClick_wrongCommandByte();
+    void testRelay_extractsButtonBitmap();
+    void testRelay_idle();
+    void testRelay_notAButtonFrame();
+
     // ── gear table ───────────────────────────────────────────────────────────
     void testGears_endpoints();
     void testGears_monotonic();
@@ -127,6 +135,66 @@ void TstZwiftProtocol::testDecode_truncatedVarint()
     const QByteArray frame = QByteArray::fromHex("0308ff");
     RidingData d;
     QVERIFY(!decodeRidingData(frame, d));
+}
+
+void TstZwiftProtocol::testClick_idleBitmap()
+{
+    // Real idle frame captured from a Zwift Click fw 1.2.0 on 0x0002.
+    const QByteArray frame = QByteArray::fromHex("2308ffffffff0f");
+    quint32 bitmap = 0;
+    QVERIFY(decodeClickButtons(frame, bitmap));
+    QCOMPARE(bitmap, quint32(0xFFFFFFFFu));        // all buttons released
+    QVERIFY(!clickButtonPressed(bitmap, 12));
+}
+
+void TstZwiftProtocol::testClick_pressedBit()
+{
+    // Real "button down" frame: bit 12 cleared (active-low) → 0xFFFFEFFF.
+    const QByteArray frame = QByteArray::fromHex("2308ffdfffff0f");
+    quint32 bitmap = 0;
+    QVERIFY(decodeClickButtons(frame, bitmap));
+    QCOMPARE(bitmap, quint32(0xFFFFEFFFu));
+    QVERIFY(clickButtonPressed(bitmap, 12));        // active-low: bit 12 is down
+    QVERIFY(!clickButtonPressed(bitmap, 11));
+    QVERIFY(!clickButtonPressed(bitmap, 13));
+}
+
+void TstZwiftProtocol::testClick_wrongCommandByte()
+{
+    // A riding-data (0x03) frame must not parse as a Click button frame.
+    const QByteArray frame = QByteArray::fromHex("0308c801");
+    quint32 bitmap = 0;
+    QVERIFY(!decodeClickButtons(frame, bitmap));
+    QVERIFY(!decodeClickButtons(QByteArray(), bitmap));
+}
+
+void TstZwiftProtocol::testRelay_extractsButtonBitmap()
+{
+    // Real trainer-relayed frame from a live Zwift capture: 0x4e wrapper around
+    // the inner 0x23 button frame with bit 12 cleared (up shift).
+    const QByteArray frame = QByteArray::fromHex("4e080212072308ffdfffff0f");
+    quint32 bitmap = 0;
+    QVERIFY(decodeRelayedClickButtons(frame, bitmap));
+    QCOMPARE(bitmap, quint32(0xFFFFEFFFu));
+    QVERIFY(clickButtonPressed(bitmap, 12));
+}
+
+void TstZwiftProtocol::testRelay_idle()
+{
+    const QByteArray frame = QByteArray::fromHex("4e080212072308ffffffff0f");
+    quint32 bitmap = 0;
+    QVERIFY(decodeRelayedClickButtons(frame, bitmap));
+    QCOMPARE(bitmap, quint32(0xFFFFFFFFu));
+}
+
+void TstZwiftProtocol::testRelay_notAButtonFrame()
+{
+    // A relayed 0x2a capability frame (field 2 not a 0x23 frame) → not buttons.
+    const QByteArray frame = QByteArray::fromHex("4e080212182a0803121112110818100018");
+    quint32 bitmap = 0;
+    QVERIFY(!decodeRelayedClickButtons(frame, bitmap));
+    // And a plain riding-data frame must not parse as a relay.
+    QVERIFY(!decodeRelayedClickButtons(QByteArray::fromHex("0308c801"), bitmap));
 }
 
 void TstZwiftProtocol::testGears_endpoints()
