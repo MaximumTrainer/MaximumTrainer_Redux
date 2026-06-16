@@ -651,15 +651,18 @@ void TopMenuWorkout::setTargetHeartRate(double percentageLTHR, int range) {
 ////////////////////////////////////////////////////////////
 void TopMenuWorkout::on_pushButton_prevRadio_clicked()
 {
+    flashWidget(ui->pushButton_prevRadio);
     emit prevRadio();
 }
 
 void TopMenuWorkout::on_pushButton_playPauseRadio_clicked()
 {
+    flashWidget(ui->pushButton_playPauseRadio);
     emit playPauseRadio();
 }
 
 void TopMenuWorkout::on_pushButton_nextRadio_clicked()
 {
+    flashWidget(ui->pushButton_nextRadio);
     emit nextRadio();
 }

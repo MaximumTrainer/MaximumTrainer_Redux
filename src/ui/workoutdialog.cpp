@@ -1353,6 +1353,13 @@ void WorkoutDialog::adjustWorkoutDifficulty(int percentageIncrease) {
     currentIntervalObj = workout.getInterval(currentInterval);
     adjustTargets(currentIntervalObj);
 
+    // Pulse the on-screen +/− button green on any difficulty change (keys,
+    // on-screen, or Zwift Click Y/B), like the gear and radio controls.
+    if (percentageIncrease > currentWorkoutDifficultyPercentage)
+        ui->widget_workoutPlot->flashDifficulty(true);
+    else if (percentageIncrease < currentWorkoutDifficultyPercentage)
+        ui->widget_workoutPlot->flashDifficulty(false);
+
     currentWorkoutDifficultyPercentage = percentageIncrease;
 }
 
