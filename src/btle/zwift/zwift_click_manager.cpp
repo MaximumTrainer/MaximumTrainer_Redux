@@ -4,6 +4,8 @@
 #include "zwift_click_protocol.h"
 #include "logger.h"
 
+#include <QTimer>
+
 namespace {
 // Stable per-device key (deviceUuid on macOS, address otherwise) for dedup —
 // the scan surfaces the same controller several times (adv vs scan response)
@@ -58,13 +60,20 @@ int ZwiftClickManager::controllerSide(const QBluetoothDeviceInfo &info)
 
 void ZwiftClickManager::start(const QString &nameFilter, bool singleDevice)
 {
-    if (m_agent)
-        return;   // already scanning
     m_singleDevice = singleDevice;
     m_nameFilter = nameFilter.trimmed();
+    restartDiscovery();
+}
+
+// (Re)start the BLE scan. Scanning is NOT left running continuously: an active
+// scan time-shares the radio with the trainer + Click connections and was
+// causing the Click to drop in-app (the CLI had no trainer, so it stayed under
+// budget). We scan only to (re)connect, then stop once connected.
+void ZwiftClickManager::restartDiscovery()
+{
+    if (m_agent)
+        return;   // already scanning
     m_agent = new QBluetoothDeviceDiscoveryAgent(this);
-    // A controller only advertises for a few seconds after a button press, so
-    // scan continuously to catch late-woken ones.
     m_agent->setLowEnergyDiscoveryTimeout(0);
     connect(m_agent, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered,
             this, &ZwiftClickManager::onDeviceDiscovered);
@@ -123,12 +132,19 @@ void ZwiftClickManager::connectDevice(const QBluetoothDeviceInfo &info)
 
     connect(hub, &ZwiftClickHub::connected, this, [this, hub]() {
         emit deviceConnected(hub->deviceName(), hub->deviceAddress());
+        // Connected — stop scanning shortly (grace for a 2nd controller) so the
+        // radio isn't time-sharing a scan with the live connections.
+        QTimer::singleShot(8000, this, [this]() {
+            if (connectedCount() > 0) stopDiscovery();
+        });
     });
     connect(hub, &ZwiftClickHub::disconnected, this, [this, hub]() {
         emit deviceDisconnected(hub->deviceAddress());
         m_knownIds.remove(hub->deviceAddress());
         m_hubs.removeOne(hub);
         hub->deleteLater();
+        // A controller dropped — re-scan so we can re-find and reconnect it.
+        restartDiscovery();
     });
     connect(hub, &ZwiftClickHub::buttonPressed, this,
             &ZwiftClickManager::onButtonPressed);
