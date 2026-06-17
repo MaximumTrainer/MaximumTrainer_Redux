@@ -1,7 +1,5 @@
 #include "btle_hub.h"
 #include "btle_uuids.h"
-#include "zwift/zwift_click_relay.h"
-#include "zwift/zwift_protocol.h"
 
 #include "logger.h"
 #include <QLowEnergyDescriptor>
@@ -18,8 +16,6 @@ static const QBluetoothUuid CyclingPower          (QBluetoothUuid::ServiceClassU
 static const QBluetoothUuid FitnessMachine        (quint16(0x1826));
 // Battery Service – standard BT SIG service for battery level percentage
 static const QBluetoothUuid BatteryService        (quint16(0x180F));
-// Zwift proprietary trainer service (FC82) – relays a linked Zwift Click v2.
-static const QBluetoothUuid ZwiftService          (QString::fromLatin1(ZwiftProtocol::Uuid::Service));
 
 // Characteristics
 static const QBluetoothUuid HeartRateMeasurement    (QBluetoothUuid::CharacteristicType::HeartRateMeasurement);
@@ -98,12 +94,6 @@ void BtleHub::connectToDevice(const QBluetoothDeviceInfo &device)
     delete m_ftmsService;     m_ftmsService     = nullptr;
     delete m_moxyService;     m_moxyService     = nullptr;
     delete m_batteryService;  m_batteryService  = nullptr;
-    // Keep the Click relay across reconnects so the workout's button wiring stays
-    // valid; just detach it from the service we're about to delete (it re-attaches
-    // when FC82 is re-discovered). The relay (parented to this) is freed with us.
-    if (m_clickRelay)
-        m_clickRelay->detach();
-    delete m_zwiftService;    m_zwiftService    = nullptr;
 
     m_firstCscMeasurement   = true;
     m_ftmsControlRequested  = false;
@@ -343,17 +333,6 @@ void BtleHub::onServiceDiscovered(const QBluetoothUuid &serviceUuid)
             connect(m_batteryService, &QLowEnergyService::characteristicRead,
                     this, &BtleHub::onCharacteristicChanged);
             setupService(m_batteryService);
-        }
-    }
-    else if (serviceUuid == BtleUuid::ZwiftService) {
-        // Zwift Click v2 read through the trainer's FC82 relay. The relay drives
-        // its own setup/notifications on this service (BtleHub doesn't parse it).
-        m_zwiftService = m_controller->createServiceObject(serviceUuid, this);
-        if (m_zwiftService) {
-            if (!m_clickRelay)
-                m_clickRelay = new ZwiftClickRelay(this);
-            m_clickRelay->attachService(m_zwiftService);
-            LOG_INFO("BtleHub", QStringLiteral("Zwift FC82 found — Click relay enabled"));
         }
     }
 }

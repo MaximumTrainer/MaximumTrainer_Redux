@@ -6,6 +6,30 @@ Hardware used: **JetBlack Victory** trainer (fw 4.29) + **Zwift Click v2** (fw 1
 
 ---
 
+> **STATUS (2026-06-16): Zwift Click controller support was REMOVED from the
+> product** (branch `strip-zwift-click`, closes the relay path of #300). The FC82
+> Click relay shipped, then broke ERG: reading the Click through the trainer
+> requires writing Zwift's `RideOn` to the trainer's FC82 control point, which
+> opens a Zwift control session and makes the trainer **stop servicing the FTMS
+> control point** (`Request Control` times out → no ERG, stuck ~120 W). It fired
+> on every connect to a Zwift-protocol trainer, Click or no Click.
+>
+> **Why it can't coexist:** Zwift trainers expose a *proprietary* control service
+> (not FTMS) that is the trainer's **single control plane** — ERG + SIM + gear
+> ratios all flow through it (makinolo, "Zwift trainer protocol", 2024-10-20).
+> FTMS and the Zwift session are mutually exclusive on the trainer, and the
+> proprietary protocol is undocumented + a moving target (Zwift changed the
+> controller service UUID to FC82 in Jan 2025). We keep the **standard FTMS path**
+> (ERG = `0x05`, virtual shifting = `0x04`, shifted by ▲/▼ keys / on-screen).
+>
+> **The only ERG-safe way to read the Click** is a *direct* BLE connection to the
+> controller (never touching the trainer) — parked as a future spike because it
+> was unreliable (LED never solid, mid-session drops). Everything below is kept
+> as the reverse-engineering reference for that future attempt; the protocol is
+> public (makinolo blog), so the findings are not sensitive.
+
+---
+
 ## TL;DR / what shipped
 
 Virtual shifting (#293) ships over **standard FTMS Set Target Resistance Level

@@ -1,5 +1,12 @@
 # Zwift virtual shifting — implementation plan & working notes
 
+> **STATUS (2026-06-16):** Virtual shifting (#293) is shipped over **standard
+> FTMS** and stays. The later **Zwift Click v2 controller** support (FC82 relay)
+> was **removed** — it opened a Zwift session that disabled FTMS ERG. See
+> `zwift-cog-protocol-findings.md` (top banner) for the full rationale. The
+> `--trainer-gear-test` / `--zwift-*` CLI harnesses referenced below were removed
+> with it; virtual shifting now lives entirely in WorkoutDialog (▲/▼ keys).
+
 **Branch:** `zwift-virtual-shifting` (local only — do **not** push until the
 distribution/patent question below is resolved).
 **Status:** PIVOTED OFF the Zwift protocol — it acks but never actuates

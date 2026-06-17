@@ -199,8 +199,8 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     m_gearLabel = new QLabel(QStringLiteral("Gear –"), m_gearWidget);
     m_gearLabel->setAlignment(Qt::AlignCenter);
     m_gearLabel->setMinimumWidth(92);
-    m_gearLabel->setToolTip(tr("Virtual gear — shift with the ▼/▲ arrows, the "
-                               "Up/Down keys, or a Zwift Click v2"));
+    m_gearLabel->setToolTip(tr("Virtual gear — shift with the ▼/▲ arrows or the "
+                               "Up/Down keys"));
 
     m_gearUpBtn = new QToolButton(m_gearWidget);
     m_gearUpBtn->setText(QStringLiteral("▲"));

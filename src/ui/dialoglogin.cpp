@@ -347,10 +347,17 @@ void DialogLogin::slotFinishedGetVersion() {
         LOG_INFO("DialogLogin", QStringLiteral("Current: ") + Environnement::getVersion()
                  + QStringLiteral("  Latest: ") + latestVersion);
 
-        if (!latestVersion.isEmpty() && Util::isVersionNewer(Environnement::getVersion(), latestVersion)) {
+        if (!this->isVisible()) {
+            // Login already completed (dialog accepted, pending deletion) before
+            // the version reply arrived — don't pop an update prompt over the app.
+            LOG_INFO("DialogLogin", QStringLiteral("Version check returned after login – skipping update dialog"));
+        } else if (!latestVersion.isEmpty() && Util::isVersionNewer(Environnement::getVersion(), latestVersion)) {
             LOG_INFO("DialogLogin", QStringLiteral("Update available – showing dialog"));
+            m_updateDialogOpen = true;
             UpdateDialog up(latestVersion, this);
-            if (up.exec() == QDialog::Accepted) {
+            const int updateChoice = up.exec();   // nested event loop
+            m_updateDialogOpen = false;
+            if (updateChoice == QDialog::Accepted) {
                 gotUpdateDialog = true;
             } else {
                 LOG_INFO("DialogLogin", QStringLiteral("User declined update – proceeding to login"));
@@ -365,6 +372,14 @@ void DialogLogin::slotFinishedGetVersion() {
 
     if (gotUpdateDialog) {
         return QDialog::reject();
+    }
+
+    // Silent auto-login may have completed while the update dialog's nested loop
+    // was running; its completeLogin() was deferred to avoid deleting this dialog
+    // from under that loop. Now that the dialog is closed, finish entering the app.
+    if (m_loginCompletePending) {
+        m_loginCompletePending = false;
+        completeLogin();
     }
 }
 
@@ -865,6 +880,16 @@ void DialogLogin::clearTokens()
 void DialogLogin::completeLogin()
 {
     if (!this->isVisible()) return;
+
+    if (m_updateDialogOpen) {
+        // The update dialog's nested event loop is running. Accepting now would
+        // emit accepted() → launchMainWindow()/deleteLater() and destroy this
+        // dialog from inside slotFinishedGetVersion (use-after-free). Defer until
+        // the update dialog closes; slotFinishedGetVersion() will finish login.
+        LOG_INFO("DialogLogin", QStringLiteral("Login complete – deferred until update dialog closes"));
+        m_loginCompletePending = true;
+        return;
+    }
 
     LOG_INFO("DialogLogin", QStringLiteral("Login complete – entering application"));
     this->accept();

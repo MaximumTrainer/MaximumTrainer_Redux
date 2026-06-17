@@ -124,6 +124,13 @@ private:
 
     bool m_loggingInViaIntervalsIcu = false;
 
+    // The update dialog runs a nested event loop. Silent auto-login can finish
+    // inside it; accepting this (non-modal) dialog from there would delete it
+    // mid-callback (use-after-free). While the update dialog is open, defer
+    // login completion and run it once the dialog closes.
+    bool m_updateDialogOpen = false;
+    bool m_loginCompletePending = false;
+
 #ifdef Q_OS_WASM
     QString        m_wasmOAuthState;           ///< CSRF state for the current OAuth popup.
     QNetworkReply *m_wasmTokenReply = nullptr; ///< In-flight token exchange request.

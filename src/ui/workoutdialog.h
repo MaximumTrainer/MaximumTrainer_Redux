@@ -39,7 +39,6 @@ class DialogConfig;     // forward declaration
 class WebBrowserView;   // forward declaration (lazily created web video player)
 class QQuickWidget;
 class RetroRaceController;   // retro ghost-race view
-class ZwiftClickRelay;       // Zwift Click v2 input via the trainer's FC82 relay
 
 namespace Ui {
 class WorkoutDialog;
@@ -55,11 +54,6 @@ public:
     ~WorkoutDialog();
 
     void reject();
-
-    /// Wire a Zwift Click v2 (read via the trainer's FC82 relay) to workout
-    /// actions. The relay is owned by the trainer's BtleHub, not this dialog.
-    /// No-op if relay is nullptr.
-    void setClickRelay(ZwiftClickRelay *relay);
 
     /// Mark a controllable trainer (FTMS / simulator) as wired for this solo
     /// workout so sendLoads()/sendSlopes() emit ERG targets.  Historically
@@ -332,13 +326,6 @@ private:
     //Internet radio player
 #ifdef GC_HAVE_QTMULTIMEDIA
     QtMediaPlayer *radioPlayer;
-#endif
-
-    // Zwift Click v2 controller input (native BLE). Created when virtual
-    // shifting is on and controllers are paired; maps buttons to shift /
-    // difficulty / start-pause / lap / radio actions.
-#ifndef Q_OS_WASM
-    ZwiftClickRelay *m_clickRelay = nullptr;   // owned by the trainer's BtleHub
 #endif
 
     // Embedded web video player (QWebEngine-based), created and loaded in the
