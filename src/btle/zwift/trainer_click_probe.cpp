@@ -5,6 +5,7 @@
 #include "logger.h"
 
 #include <QBluetoothUuid>
+#include <QDateTime>
 #include <QLowEnergyCharacteristic>
 #include <QLowEnergyDescriptor>
 #include <QTimer>
@@ -128,10 +129,43 @@ void TrainerClickProbe::requestFtmsControl()
     // 30 s heartbeat so a 15-min soak stays readable: is everything still alive?
     m_statusTimer = new QTimer(this);
     connect(m_statusTimer, &QTimer::timeout, this, [this]() {
+        const qint64 silent = QDateTime::currentMSecsSinceEpoch() - m_lastRelayMs;
+        const bool live = m_sawRelay && silent < 8000;   // 0x4e frames stream ~2/s when linked
         LOG_WARN("ClickProbe", QStringLiteral("· status: relay=%1  gear=%2/24  presses=%3  ERG-acks=%4")
-                     .arg(m_sawRelay ? "LIVE" : "—").arg(m_gear).arg(m_buttonPresses).arg(m_ergAcks));
+                     .arg(live ? "LIVE" : "SILENT").arg(m_gear).arg(m_buttonPresses).arg(m_ergAcks));
     });
     m_statusTimer->start(30000);
+
+    // Relay watchdog: a healthy relay streams 0x4e frames ~2/s even idle. If they
+    // stop (the Click slept and the trainer dropped its link), re-issue the
+    // connect + relayed RideOn to re-link it — RideOn alone won't bring it back.
+    m_relayWatchdog = new QTimer(this);
+    connect(m_relayWatchdog, &QTimer::timeout, this, &TrainerClickProbe::relayWatchdogTick);
+    m_relayWatchdog->start(3000);
+}
+
+void TrainerClickProbe::relayWatchdogTick()
+{
+    if (!m_sawRelay)
+        return;   // initial establishment is handled by relayRideOn()'s retries
+    const qint64 now    = QDateTime::currentMSecsSinceEpoch();
+    const qint64 silent = now - m_lastRelayMs;
+    if (silent < 8000) {
+        if (m_relayStalled) {
+            m_relayStalled = false;
+            LOG_WARN("ClickProbe", QStringLiteral("relay RECOVERED — Click re-linked"));
+        }
+        return;
+    }
+    if (!m_relayStalled) {
+        m_relayStalled = true;
+        LOG_WARN("ClickProbe", QStringLiteral("relay SILENT %1s — re-linking the Click (441002 + RideOn)").arg(silent / 1000));
+    }
+    if (now - m_lastRearmMs < 6000)
+        return;   // pace re-arms
+    m_lastRearmMs = now;
+    writeFc82(QByteArray::fromHex(kConnectClick));
+    writeFc82(QByteArray::fromHex(kRelayedRideOn));
 }
 
 void TrainerClickProbe::sendResistance(int levelTenths)
@@ -257,10 +291,13 @@ void TrainerClickProbe::onFc82Changed(const QLowEnergyCharacteristic &, const QB
         QTimer::singleShot(4500, this, [this]() { relayRideOn(); });
     }
 
-    // First relayed 0x4e frame ⇒ the relay is live; stop retrying RideOn.
-    if (cmd == 0x4e && !m_sawRelay) {
-        m_sawRelay = true;
-        LOG_WARN("ClickProbe", QStringLiteral("relay LIVE — trainer is forwarding the Click (0x4e)"));
+    // Every relayed 0x4e frame feeds the watchdog (the stream runs ~2/s even idle).
+    if (cmd == 0x4e) {
+        m_lastRelayMs = QDateTime::currentMSecsSinceEpoch();
+        if (!m_sawRelay) {
+            m_sawRelay = true;
+            LOG_WARN("ClickProbe", QStringLiteral("relay LIVE — trainer is forwarding the Click (0x4e)"));
+        }
     }
 
     quint32 bitmap;

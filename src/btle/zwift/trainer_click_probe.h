@@ -56,6 +56,7 @@ private:
     void writeFc82(const QByteArray &bytes);
     void armRelay();      // send the ZCS / RideOn writes per the selected mode
     void relayRideOn();   // relay RideOn to the Click, retrying until frames flow
+    void relayWatchdogTick();  // re-link the Click if the relay stream goes silent
 
     QBluetoothDeviceDiscoveryAgent *m_agent = nullptr;
     QLowEnergyController *m_ctrl = nullptr;
@@ -74,8 +75,12 @@ private:
     int      m_buttonPresses = 0;
     int      m_ergAcks = 0;
     int      m_logNextAcks = 0;       // log the next N 0x04 ACKs (right after a shift)
+    qint64   m_lastRelayMs = 0;       // ms of the last 0x4e relayed frame
+    qint64   m_lastRearmMs = 0;       // last watchdog re-link, to pace re-arms
+    bool     m_relayStalled = false;
     QTimer  *m_ergTimer = nullptr;
     QTimer  *m_statusTimer = nullptr;
+    QTimer  *m_relayWatchdog = nullptr;
     QTimer  *m_runTimer = nullptr;
 };
 
