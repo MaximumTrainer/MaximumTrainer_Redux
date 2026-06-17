@@ -4,6 +4,7 @@
 #include "logger.h"
 
 #include <QBluetoothUuid>
+#include <QDateTime>
 #include <QLowEnergyCharacteristic>
 #include <QLowEnergyDescriptor>
 #include <QTimer>
@@ -35,6 +36,7 @@ bool ZwiftClickHub::isConnected() const
 
 void ZwiftClickHub::teardown()
 {
+    if (m_watchdog) m_watchdog->stop();
     if (m_service) { m_service->deleteLater(); m_service = nullptr; }
     if (m_controller) {
         m_controller->disconnectFromDevice();
@@ -53,31 +55,67 @@ void ZwiftClickHub::connectToDevice(const QBluetoothDeviceInfo &device)
     m_lastBitmap  = 0xFFFFFFFFu;
     m_streamQuiet = false;
     m_frameCount  = 0;
+    m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();
+    m_lastKickMs  = 0;
     m_retriesLeft = MAX_RETRIES;
 
-    if (!m_quietTimer) {
-        m_quietTimer = new QTimer(this);
-        m_quietTimer->setSingleShot(true);
-        m_quietTimer->setInterval(STREAM_QUIET_MS);
-        connect(m_quietTimer, &QTimer::timeout, this, [this]() {
-            m_streamQuiet = true;
-            LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: stream QUIET (no frame for %3 ms after %4 frames) — link still up")
-                         .arg(m_name, deviceAddress()).arg(STREAM_QUIET_MS).arg(m_frameCount));
-        });
+    if (!m_watchdog) {
+        m_watchdog = new QTimer(this);
+        m_watchdog->setInterval(WATCHDOG_TICK_MS);
+        connect(m_watchdog, &QTimer::timeout, this, [this]() { watchdogTick(); });
     }
 
     startController();
 }
 
+// Recover a stream that stopped while the BLE link stayed up: re-kick RideOn
+// once it goes quiet, and force a full reconnect if it stays silent past STALL.
+void ZwiftClickHub::watchdogTick()
+{
+    if (!isConnected())
+        return;
+    const qint64 now    = QDateTime::currentMSecsSinceEpoch();
+    const qint64 silent = now - m_lastFrameMs;
+
+    if (silent >= STALL_MS) {
+        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: stalled %3 ms — reconnecting")
+                     .arg(m_name, deviceAddress()).arg(silent));
+        m_streamQuiet  = true;
+        m_lastFrameMs  = now;   // reset so we give the reconnect time before re-stalling
+        startController();      // re-handshakes; does not emit our disconnected()
+        return;
+    }
+
+    if (silent >= STREAM_QUIET_MS) {
+        if (!m_streamQuiet) {
+            m_streamQuiet = true;
+            LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: stream QUIET (no frame for %3 ms after %4 frames) — re-kicking")
+                         .arg(m_name, deviceAddress()).arg(silent).arg(m_frameCount));
+        }
+        if (now - m_lastKickMs >= KICK_EVERY_MS) {
+            m_lastKickMs = now;
+            sendRideOn();   // idempotent — restart a stalled (or sleeping) stream
+        }
+    }
+}
+
 void ZwiftClickHub::startController()
 {
-    if (m_controller) { m_controller->deleteLater(); m_controller = nullptr; }
+    if (m_controller) {
+        // A watchdog reconnect tears the old controller down; detach its signals
+        // first so its dying disconnected() does not propagate to the manager
+        // (which would delete this hub mid-reconnect).
+        disconnect(m_controller, nullptr, this, nullptr);
+        m_controller->disconnectFromDevice();
+        m_controller->deleteLater();
+        m_controller = nullptr;
+    }
     m_controller = QLowEnergyController::createCentral(m_device, this);
 
     connect(m_controller, &QLowEnergyController::connected, this,
             [this]() { m_controller->discoverServices(); });
     connect(m_controller, &QLowEnergyController::disconnected, this, [this]() {
-        if (m_quietTimer) m_quietTimer->stop();
+        if (m_watchdog) m_watchdog->stop();
         LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: DISCONNECTED")
                      .arg(m_name, deviceAddress()));
         emit disconnected();
@@ -142,7 +180,9 @@ void ZwiftClickHub::setupService()
     QTimer::singleShot(1200, this, [this]() { sendRideOn(); });
 
     LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: CONNECTED").arg(m_name, deviceAddress()));
-    if (m_quietTimer) m_quietTimer->start();   // expect the stream to begin
+    m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();   // give the stream time before the watchdog acts
+    m_lastKickMs  = 0;
+    if (m_watchdog) m_watchdog->start();
     emit connected();
 }
 
@@ -168,11 +208,11 @@ void ZwiftClickHub::onCharacteristicChanged(const QLowEnergyCharacteristic &,
         return;  // not a 0x23 button frame (handshake echo, capability, etc.)
 
     ++m_frameCount;
+    m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();   // feed the watchdog
     if (m_streamQuiet) {
         m_streamQuiet = false;
         LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: stream RESUMED").arg(m_name, deviceAddress()));
     }
-    if (m_quietTimer) m_quietTimer->start();   // reset quiet detector
 
     const quint32 changed = bitmap ^ m_lastBitmap;
     if (!changed)
