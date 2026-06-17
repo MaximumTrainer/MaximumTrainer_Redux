@@ -20,7 +20,6 @@
 #include "util.h"
 #include "logger.h"
 #include "environnement.h"
-#include "userdao.h"
 #include "soundplayer.h"
 #include "dialogmainwindowconfig.h"
 #include "workoutdialog.h"

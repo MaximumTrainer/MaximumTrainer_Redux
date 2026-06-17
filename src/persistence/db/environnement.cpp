@@ -12,33 +12,6 @@ Environnement::Environnement()
 
 
 //////////////////////////////////////////////////////////////
-QString Environnement::getURLEnvironnement() {
-
-    if (current_env == "dev"){
-        return dev;
-    }
-    else if (current_env == "prod") {
-        return prod;
-    }
-    else {
-        return dev;
-    }
-}
-//////////////////////////////////////////////////////////////
-QString Environnement::getURLEnvironnementWS() {
-
-    if (current_env == "dev"){
-        return dev;
-    }
-    else if (current_env == "prod") {
-        return prod + indexPage;
-    }
-    else {
-        return dev;
-    }
-}
-
-//////////////////////////////////////////////////////////////
 QString Environnement::getVersion() {
 #ifdef APP_VERSION
     // trimmed() removes any trailing \r or \n that qmake's $$system() may
