@@ -86,17 +86,6 @@ void ZwiftClickHub::watchdogTick()
         return;
     }
 
-    // EXPERIMENT (left Click v2 keepalive): the locked left unit keeps emitting
-    // idle frames (so it never looks "silent"), but its buttons stop registering.
-    // Silence-detection can't catch that — so reset PROACTIVELY on a timer, like
-    // BikeControl ("restart every minute"). Send RESET (0x18) every ~50 s.
-    if (now - m_lastResetMs >= PROACTIVE_RESET_MS) {
-        m_lastResetMs = now;
-        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: proactive RESET (0x18) — refresh (BikeControl restart-every-minute)")
-                     .arg(m_name, deviceAddress()));
-        sendReset();
-    }
-
     if (silent >= STREAM_QUIET_MS) {
         if (!m_streamQuiet) {
             m_streamQuiet = true;
@@ -227,7 +216,6 @@ void ZwiftClickHub::setupService()
     LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: CONNECTED").arg(m_name, deviceAddress()));
     m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();   // give the stream time before the watchdog acts
     m_lastKickMs  = 0;
-    m_lastResetMs = m_lastFrameMs;   // first proactive RESET ~PROACTIVE_RESET_MS after connect
     if (m_watchdog) m_watchdog->start();
     emit connected();
 }
@@ -244,23 +232,6 @@ void ZwiftClickHub::sendRideOn()
                           ? QLowEnergyService::WriteWithoutResponse
                           : QLowEnergyService::WriteWithResponse;
     m_service->writeCharacteristic(cp, ZwiftClickProtocol::rideOnHandshake(), mode);
-}
-
-void ZwiftClickHub::sendReset()
-{
-    // Zwift Opcode.RESET = 24 (0x18), single byte to the control point. BikeControl
-    // uses this to "restart" the left Click v2 (~every minute) to keep it from
-    // locking up. Experiment: send it when a controller goes silent to refresh it.
-    if (!m_service)
-        return;
-    const QLowEnergyCharacteristic cp =
-        m_service->characteristic(uuid(ZwiftClickProtocol::Uuid::ControlPoint));
-    if (!cp.isValid())
-        return;
-    const auto mode = (cp.properties() & QLowEnergyCharacteristic::WriteNoResponse)
-                          ? QLowEnergyService::WriteWithoutResponse
-                          : QLowEnergyService::WriteWithResponse;
-    m_service->writeCharacteristic(cp, QByteArray::fromHex("18"), mode);
 }
 
 void ZwiftClickHub::onCharacteristicChanged(const QLowEnergyCharacteristic &,

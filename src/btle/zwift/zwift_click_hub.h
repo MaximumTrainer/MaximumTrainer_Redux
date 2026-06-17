@@ -62,7 +62,6 @@ private:
     void setupService();
     void sendRideOn();        // write the RideOn handshake (kicks the stream)
     void sendUnlockAck();     // BikeControl's ff0400 ack (keeps an unlocked Click awake)
-    void sendReset();         // Opcode.RESET (0x18) — refresh a locked-up left Click v2
     void watchdogTick();      // re-kick / reconnect a stream that went silent
     void onCharacteristicChanged(const QLowEnergyCharacteristic &c,
                                  const QByteArray &value);
@@ -88,8 +87,6 @@ private:
     qint64  m_lastKickMs  = 0;     // last RideOn re-kick, so we don't spam it
     qint64  m_lastAckMs   = 0;     // last ff0400 unlock-ack keepalive
     static constexpr int ACK_EVERY_MS = 3000;
-    qint64  m_lastResetMs = 0;     // last RESET(0x18) refresh
-    static constexpr int PROACTIVE_RESET_MS = 50000;   // reset on a timer (BikeControl-style)
     static constexpr int STREAM_QUIET_MS = 2500;   // log/“quiet” threshold
     static constexpr int KICK_EVERY_MS   = 3000;   // min gap between RideOn re-kicks
     static constexpr int STALL_MS        = 20000;  // silent this long ⇒ reconnect
