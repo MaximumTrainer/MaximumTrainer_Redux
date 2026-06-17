@@ -25,6 +25,18 @@ const QByteArray kZwiftClickName = QByteArrayLiteral("Zwift Click");
 // command that actually matters).
 QByteArray relayedRideOn() { return QByteArray::fromHex("4e08021208526964654f6e0203"); }
 
+// EXPERIMENT: the follow-up frames Zwift sent after the relayed RideOn (from the
+// capture, handle-83 writes). Includes the long ff04 key frame — that value is
+// SESSION-SPECIFIC (tied to the Click's ephemeral ECDH pubkey), so replaying the
+// captured bytes may not satisfy the current session; we try it to see if it
+// keeps the Click awake (LED solid) without computing real crypto.
+const char *const kZwiftFollowup[] = {
+    "4e08021203000800", "4e08021203410805", "4e08021203000810",
+    "4e0802120400088008", "4e0802120400088306", "440800",
+    "4e08021203ff0400",
+    "4e0802121aff04000a153899a425aa40d1200ddf",
+};
+
 constexpr int  kButtonDebounceMs = 300;   // one physical press counts once
 constexpr int  kRideOnDelayMs    = 4500;  // 441002 → RideOn gap (matches capture)
 constexpr int  kProgressMs       = 4000;  // re-send RideOn if no frames yet
@@ -152,6 +164,17 @@ void ZwiftClickRelay::onCharacteristicChanged(const QLowEnergyCharacteristic &c,
                 connect(m_watchdog, &QTimer::timeout, this, &ZwiftClickRelay::watchdogTick);
             }
             m_watchdog->start(kWatchdogMs);
+
+            // EXPERIMENT: replay Zwift's follow-up frames (incl. the captured ff04
+            // key frame), paced, to see if completing the post-RideOn sequence
+            // keeps the Click session alive through idle.
+            int delay = 0;
+            for (const char *hex : kZwiftFollowup) {
+                const QByteArray b = QByteArray::fromHex(hex);
+                delay += 300;
+                QTimer::singleShot(delay, this, [this, b] { writeControl(b); });
+            }
+            LOG_INFO("ZwiftClickRelay", QStringLiteral("sent Zwift follow-up sequence (incl. captured ff04) — keep-alive experiment"));
         }
     }
 
