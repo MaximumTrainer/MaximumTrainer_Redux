@@ -89,7 +89,7 @@ private:
     qint64  m_lastAckMs   = 0;     // last ff0400 unlock-ack keepalive
     static constexpr int ACK_EVERY_MS = 3000;
     qint64  m_lastResetMs = 0;     // last RESET(0x18) refresh
-    static constexpr int RESET_AFTER_MS = 12000;   // silent this long ⇒ send RESET
+    static constexpr int PROACTIVE_RESET_MS = 50000;   // reset on a timer (BikeControl-style)
     static constexpr int STREAM_QUIET_MS = 2500;   // log/“quiet” threshold
     static constexpr int KICK_EVERY_MS   = 3000;   // min gap between RideOn re-kicks
     static constexpr int STALL_MS        = 20000;  // silent this long ⇒ reconnect

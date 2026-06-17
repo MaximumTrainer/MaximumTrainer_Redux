@@ -86,13 +86,14 @@ void ZwiftClickHub::watchdogTick()
         return;
     }
 
-    // EXPERIMENT (left Click v2 keepalive): a healthy controller never goes silent
-    // this long (re-kicks bring it back within ~3 s); sustained silence = the
-    // left unit locking up. Send RESET (0x18) to refresh it, as BikeControl does.
-    if (silent >= RESET_AFTER_MS && now - m_lastResetMs >= RESET_AFTER_MS) {
+    // EXPERIMENT (left Click v2 keepalive): the locked left unit keeps emitting
+    // idle frames (so it never looks "silent"), but its buttons stop registering.
+    // Silence-detection can't catch that — so reset PROACTIVELY on a timer, like
+    // BikeControl ("restart every minute"). Send RESET (0x18) every ~50 s.
+    if (now - m_lastResetMs >= PROACTIVE_RESET_MS) {
         m_lastResetMs = now;
-        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: silent %3 ms — sending RESET (0x18) to refresh")
-                     .arg(m_name, deviceAddress()).arg(silent));
+        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: proactive RESET (0x18) — refresh (BikeControl restart-every-minute)")
+                     .arg(m_name, deviceAddress()));
         sendReset();
     }
 
@@ -226,6 +227,7 @@ void ZwiftClickHub::setupService()
     LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: CONNECTED").arg(m_name, deviceAddress()));
     m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();   // give the stream time before the watchdog acts
     m_lastKickMs  = 0;
+    m_lastResetMs = m_lastFrameMs;   // first proactive RESET ~PROACTIVE_RESET_MS after connect
     if (m_watchdog) m_watchdog->start();
     emit connected();
 }
