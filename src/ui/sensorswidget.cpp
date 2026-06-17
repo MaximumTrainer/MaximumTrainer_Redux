@@ -132,7 +132,7 @@ void SensorsWidget::buildUi()
     trainerLayout->addWidget(vsHint);
 
     m_useZwiftClickCheck =
-        new QCheckBox(tr("Use Zwift Click v2 controller (right side) — BETA"), trainerGroup);
+        new QCheckBox(tr("Use Zwift Click v2 controller (right side only) - Beta"), trainerGroup);
     connect(m_useZwiftClickCheck, &QCheckBox::toggled,
             this, &SensorsWidget::onUseZwiftClickToggled);
     trainerLayout->addWidget(m_useZwiftClickCheck);
