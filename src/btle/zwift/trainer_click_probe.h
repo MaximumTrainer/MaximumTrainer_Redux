@@ -70,7 +70,12 @@ private:
     int      m_relayRetries = 0;
     quint64  m_fc82Frames = 0;
     quint32  m_lastBitmap = 0xFFFFFFFFu;
+    int      m_gear = 12;             // virtual gear 1..24 (paddles shift it)
+    int      m_buttonPresses = 0;
+    int      m_ergAcks = 0;
+    int      m_logNextAcks = 0;       // log the next N 0x04 ACKs (right after a shift)
     QTimer  *m_ergTimer = nullptr;
+    QTimer  *m_statusTimer = nullptr;
     QTimer  *m_runTimer = nullptr;
 };
 

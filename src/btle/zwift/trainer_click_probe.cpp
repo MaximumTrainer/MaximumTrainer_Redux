@@ -1,6 +1,7 @@
 #include "trainer_click_probe.h"
 
 #include "zwift_click_protocol.h"
+#include "virtual_gear.h"
 #include "logger.h"
 
 #include <QBluetoothUuid>
@@ -116,14 +117,21 @@ void TrainerClickProbe::requestFtmsControl()
     const QLowEnergyCharacteristic cp = m_ftms->characteristic(FtmsControlPt);
     m_ftms->writeCharacteristic(cp, QByteArray(1, '\x00'), QLowEnergyService::WriteWithResponse);
     LOG_WARN("ClickProbe", QStringLiteral("FTMS Request Control sent"));
-    // Periodically push a resistance target so we can see ongoing ERG-channel acks.
+    // Hold the current gear's resistance, re-sent periodically (keeps the trainer
+    // at the shifted level + shows the ERG channel still ACKing).
     m_ergTimer = new QTimer(this);
     connect(m_ergTimer, &QTimer::timeout, this, [this]() {
-        static int lvl = 20;
-        lvl = (lvl == 20) ? 40 : 20;   // toggle so each command is a fresh value
-        if (m_ftmsGranted) sendResistance(lvl);
+        if (m_ftmsGranted) sendResistance(VirtualGear::resistanceLevel(m_gear));
     });
     m_ergTimer->start(3000);
+
+    // 30 s heartbeat so a 15-min soak stays readable: is everything still alive?
+    m_statusTimer = new QTimer(this);
+    connect(m_statusTimer, &QTimer::timeout, this, [this]() {
+        LOG_WARN("ClickProbe", QStringLiteral("· status: relay=%1  gear=%2/24  presses=%3  ERG-acks=%4")
+                     .arg(m_sawRelay ? "LIVE" : "—").arg(m_gear).arg(m_buttonPresses).arg(m_ergAcks));
+    });
+    m_statusTimer->start(30000);
 }
 
 void TrainerClickProbe::sendResistance(int levelTenths)
@@ -146,8 +154,16 @@ void TrainerClickProbe::onFtmsChanged(const QLowEnergyCharacteristic &, const QB
         LOG_WARN("ClickProbe", QStringLiteral("FTMS control GRANTED — ERG channel is alive"));
         armRelay();   // only now arm the relay, so ERG is established first
     } else if (op == 0x04) {
-        LOG_WARN("ClickProbe", QStringLiteral("FTMS 0x04 resistance %1 — ERG still actuating")
-                     .arg(res == 0x01 ? "ACK" : "refused"));
+        if (res == 0x01) {
+            ++m_ergAcks;   // counted; reported by the 30 s heartbeat
+            if (m_logNextAcks > 0) {
+                --m_logNextAcks;
+                LOG_WARN("ClickProbe", QStringLiteral("  ↳ FTMS 0x04 ACK — gear %1 resistance ACCEPTED (relay still live)").arg(m_gear));
+            }
+        } else {
+            LOG_WARN("ClickProbe", QStringLiteral("FTMS 0x04 resistance REFUSED (res=0x%1)")
+                          .arg(res, 2, 16, QLatin1Char('0')));
+        }
     } else {
         LOG_WARN("ClickProbe", QStringLiteral("FTMS resp op=0x%1 res=0x%2")
                      .arg(op,2,16,QLatin1Char('0')).arg(res,2,16,QLatin1Char('0')));
@@ -225,7 +241,7 @@ void TrainerClickProbe::onFc82Changed(const QLowEnergyCharacteristic &, const QB
     // tell whether the Click is being relayed at all. 0x47 = device announce
     // (carries "Zwift Click"), 0x4e = relayed Click frame, 0x03 = riding data.
     const quint8 cmd = v.isEmpty() ? 0 : quint8(v.at(0));
-    if (++m_fc82Frames <= 15 || cmd == 0x47 || cmd == 0x4e)
+    if (++m_fc82Frames <= 20)   // first frames only — keep a 15-min soak readable
         LOG_WARN("ClickProbe", QStringLiteral("FC82 rx [%1]: %2")
                      .arg(m_fc82Frames).arg(QString::fromLatin1(v.toHex())));
 
@@ -253,7 +269,21 @@ void TrainerClickProbe::onFc82Changed(const QLowEnergyCharacteristic &, const QB
     const quint32 changed = bitmap ^ m_lastBitmap;
     m_lastBitmap = bitmap;
     for (int bit = 0; bit < 32; ++bit) {
-        if ((changed & (1u << bit)) && ZwiftClickProtocol::clickButtonPressed(bitmap, bit))
+        if (!((changed & (1u << bit)) && ZwiftClickProtocol::clickButtonPressed(bitmap, bit)))
+            continue;
+        ++m_buttonPresses;
+        // Paddles shift the virtual gear and push the new resistance over FTMS so
+        // we can confirm (via the 0x04 ACK) that shifting actuates while the relay
+        // runs. Other buttons just log.
+        if (bit == ZwiftClick::UpShiftBit || bit == ZwiftClick::DownShiftBit) {
+            const int delta = (bit == ZwiftClick::UpShiftBit) ? +1 : -1;
+            m_gear = qBound(1, m_gear + delta, VirtualGear::Count);
+            const int level = VirtualGear::resistanceLevel(m_gear);
+            if (m_ftmsGranted) { sendResistance(level); m_logNextAcks = 1; }
+            LOG_WARN("ClickProbe", QStringLiteral("SHIFT %1 → gear %2/24 → FTMS resistance level %3 sent")
+                         .arg(delta > 0 ? "UP" : "DOWN").arg(m_gear).arg(level));
+        } else {
             LOG_WARN("ClickProbe", QStringLiteral("CLICK button bit %1 pressed (relayed via trainer)").arg(bit));
+        }
     }
 }
