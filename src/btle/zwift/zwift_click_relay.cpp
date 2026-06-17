@@ -155,6 +155,20 @@ void ZwiftClickRelay::onCharacteristicChanged(const QLowEnergyCharacteristic &c,
         }
     }
 
+    // EXPERIMENT: the Click periodically sends an ff03 secure-handshake frame
+    // (its session pubkey). Zwift replies (ff0400 ack, then key material); we
+    // never did, so the Click may abandon the session and sleep (LED off). Reply
+    // with the short fixed ff0400 ack — a constant byte sequence, no key
+    // derivation — to see if it keeps the session alive without real crypto.
+    if (value.contains(QByteArray::fromHex("ff03"))) {
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        if (now - m_lastSecureAckMs > 500) {
+            m_lastSecureAckMs = now;
+            writeControl(QByteArray::fromHex("4e08021203ff0400"));
+            LOG_INFO("ZwiftClickRelay", QStringLiteral("ff03 seen → replied ff0400 ack (keep-alive experiment)"));
+        }
+    }
+
     // Decode a relayed button frame and dispatch transitions.
     quint32 bitmap;
     if (ZwiftClickProtocol::decodeRelayedClickButtons(value, bitmap)) {

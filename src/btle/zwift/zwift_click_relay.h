@@ -88,6 +88,7 @@ private:
     bool   m_sawRelay     = false;   // a relayed 0x4e frame arrived → live
     int    m_retries      = 0;
     qint64 m_lastRelayMs  = 0;
+    qint64 m_lastSecureAckMs = 0;    // last reply to the Click's ff03 (keep-alive experiment)
     bool   m_stalled      = false;
 
     quint32       m_lastBitmap = 0xFFFFFFFFu;
