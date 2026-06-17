@@ -37,6 +37,7 @@ bool ZwiftClickHub::isConnected() const
 void ZwiftClickHub::teardown()
 {
     m_tearingDown = true;   // a disconnect from here is deliberate, not a drop
+    if (m_keepAlive) m_keepAlive->stop();
     if (m_service) { m_service->deleteLater(); m_service = nullptr; }
     if (m_controller) {
         m_controller->disconnectFromDevice();
@@ -174,6 +175,17 @@ void ZwiftClickHub::setupService()
         params.setSupervisionTimeout(6000);   // ms — tolerate ~missed events vs the trainer
         m_controller->requestConnectionUpdate(params);
     }
+
+    // Keep-alive: re-send RideOn periodically so the Click doesn't deep-sleep
+    // (~1 min idle → supervision-timeout drop). Well under that window.
+    if (!m_keepAlive) {
+        m_keepAlive = new QTimer(this);
+        m_keepAlive->setInterval(KEEPALIVE_MS);
+        connect(m_keepAlive, &QTimer::timeout, this, [this]() {
+            if (isConnected()) sendRideOn();
+        });
+    }
+    m_keepAlive->start();
 
     LOG_INFO("ZwiftClick", QStringLiteral("%1 [%2]: CONNECTED").arg(m_name, deviceAddress()));
     emit connected();

@@ -60,7 +60,7 @@ private:
     void teardown();
     void startController();   // (re)create the controller and connect (with retry)
     void setupService();
-    void sendRideOn();        // write the RideOn handshake once (starts the stream)
+    void sendRideOn();        // write the RideOn handshake (also used as keep-alive)
     void onCharacteristicChanged(const QLowEnergyCharacteristic &c,
                                  const QByteArray &value);
 
@@ -74,6 +74,12 @@ private:
 
     // A disconnect from a deliberate teardown is not a drop (no auto-reconnect).
     bool    m_tearingDown = false;
+
+    // Keep-alive: the Click v2 deep-sleeps after ~1 min of no button presses and
+    // stops servicing the connection (HCI 0x08 supervision timeout). Send a light
+    // RideOn well under that window so its inactivity timer never expires.
+    QTimer *m_keepAlive = nullptr;
+    static constexpr int KEEPALIVE_MS = 20000;
 
     // Connect retry: "Unknown Error" on connect/reconnect is usually transient.
     int m_retriesLeft = 0;
