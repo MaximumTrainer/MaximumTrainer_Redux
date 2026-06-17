@@ -5,6 +5,7 @@
 
 #include <QBluetoothUuid>
 #include <QLowEnergyCharacteristic>
+#include <QLowEnergyConnectionParameters>
 #include <QLowEnergyDescriptor>
 #include <QTimer>
 
@@ -160,6 +161,19 @@ void ZwiftClickHub::setupService()
     sendRideOn();
     QTimer::singleShot(500,  this, [this]() { sendRideOn(); });
     QTimer::singleShot(1200, this, [this]() { sendRideOn(); });
+
+    // The Click drops with HCI reason 0x08 (supervision timeout) when it shares the
+    // adapter with the trainer: its connection events get crowded out and the link
+    // supervisor kills it. Ask for a resilient connection — a long supervision
+    // timeout tolerates missed events while the trainer is busy. (No-op if the
+    // platform/peripheral ignores the request; harmless.)
+    if (m_controller) {
+        QLowEnergyConnectionParameters params;
+        params.setIntervalRange(30, 50);      // ms
+        params.setLatency(0);
+        params.setSupervisionTimeout(6000);   // ms — tolerate ~missed events vs the trainer
+        m_controller->requestConnectionUpdate(params);
+    }
 
     LOG_INFO("ZwiftClick", QStringLiteral("%1 [%2]: CONNECTED").arg(m_name, deviceAddress()));
     emit connected();
