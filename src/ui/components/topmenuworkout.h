@@ -57,7 +57,7 @@ public:
     void setGearVisible(bool visible);
     void updateGear(int gear, int count, bool ergMode);
     /// Briefly highlight a toolbar control (green pulse) so the rider sees an
-    /// input registered, whatever the source (keys, on-screen, or a Zwift Click).
+    /// input registered, whatever the source (keys or on-screen).
     void flashShift(int direction);   // ▲ if > 0 else ▼ gear button
     void flashRadioPrev();
     void flashRadioNext();

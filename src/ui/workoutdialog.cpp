@@ -39,9 +39,6 @@
 #include <QQuickWidget>
 #include <QQmlContext>
 #include "retroracecontroller.h"
-#ifndef Q_OS_WASM
-#include "zwift_click_relay.h"
-#endif
 #include "dialogcalibrate.h"
 #include "dialogcalibratepm.h"
 #include "dialogkeyboardshortcuts.h"
@@ -645,12 +642,12 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     connect(ui->widget_topMenu, SIGNAL(nextRadio()), dconfig, SLOT(on_pushButton_nextRadio_clicked()) );
 
     // Radio volume indicator in the top bar — reflects the config slider, so it
-    // updates whether the volume changes via the dialog or a Zwift Click d-pad.
+    // updates whether the volume changes via the dialog or a keyboard shortcut.
     connect(dconfig, SIGNAL(signal_volumeRadioChanged(int)), ui->widget_topMenu, SLOT(updateRadioVolume(int)) );
     ui->widget_topMenu->updateRadioVolume(dconfig->radioVolume());
 
-    // Flash the matching top-bar control on each radio action (any source: keys,
-    // on-screen, or a Zwift Click d-pad/Z), mirroring the gear-shift feedback.
+    // Flash the matching top-bar control on each radio action (any source: keys
+    // or on-screen), mirroring the gear-shift feedback.
     // (Volume flashes from updateRadioVolume on an actual value change, so it
     // doesn't pulse when a station change merely re-applies the same volume.)
     connect(this, &WorkoutDialog::F6previous,  ui->widget_topMenu, &TopMenuWorkout::flashRadioPrev);
@@ -1341,8 +1338,8 @@ void WorkoutDialog::adjustWorkoutDifficulty(int percentageIncrease) {
     currentIntervalObj = workout.getInterval(currentInterval);
     adjustTargets(currentIntervalObj);
 
-    // Pulse the on-screen +/− button green on any difficulty change (keys,
-    // on-screen, or Zwift Click Y/B), like the gear and radio controls.
+    // Pulse the on-screen +/− button green on any difficulty change (keys
+    // or on-screen), like the gear and radio controls.
     if (percentageIncrease > currentWorkoutDifficultyPercentage)
         ui->widget_workoutPlot->flashDifficulty(true);
     else if (percentageIncrease < currentWorkoutDifficultyPercentage)
@@ -2378,31 +2375,6 @@ void WorkoutDialog::sendGearLoad() {
         const double cad = averageCadence1sec.isEmpty() ? -1.0 : averageCadence1sec.at(0);
         emit setLoad(trainerControlUserId, gearTargetWatts(m_virtualGear, cad));
     }
-}
-
-void WorkoutDialog::setClickRelay(ZwiftClickRelay *relay)
-{
-#ifndef Q_OS_WASM
-    if (!relay)
-        return;
-    // The relay is owned by the trainer's BtleHub (lives as long as the trainer
-    // connection); we just wire its button actions for this workout.
-    m_clickRelay = relay;
-    // Button → action map (edit here if you want to remap a button; the relay
-    // only reports which button was pressed).
-    connect(m_clickRelay, &ZwiftClickRelay::paddleUpPressed,   this, [this]() { shiftGear(+1); });
-    connect(m_clickRelay, &ZwiftClickRelay::paddleDownPressed, this, [this]() { shiftGear(-1); });
-    connect(m_clickRelay, &ZwiftClickRelay::buttonYPressed, this, &WorkoutDialog::increaseDifficulty);
-    connect(m_clickRelay, &ZwiftClickRelay::buttonBPressed, this, &WorkoutDialog::decreaseDifficulty);
-    connect(m_clickRelay, &ZwiftClickRelay::buttonAPressed, this, [this]() { start_or_pause_workout(); });
-    connect(m_clickRelay, &ZwiftClickRelay::buttonZPressed, this, [this]() { emit F7playPause(); });  // stop/start music
-    connect(m_clickRelay, &ZwiftClickRelay::dpadLeftPressed,  this, &WorkoutDialog::F6previous);
-    connect(m_clickRelay, &ZwiftClickRelay::dpadRightPressed, this, &WorkoutDialog::F8next);
-    connect(m_clickRelay, &ZwiftClickRelay::dpadUpPressed,   dconfig, &DialogConfig::radioVolumeUp);
-    connect(m_clickRelay, &ZwiftClickRelay::dpadDownPressed, dconfig, &DialogConfig::radioVolumeDown);
-#else
-    Q_UNUSED(relay);
-#endif
 }
 
 void WorkoutDialog::shiftGear(int delta) {

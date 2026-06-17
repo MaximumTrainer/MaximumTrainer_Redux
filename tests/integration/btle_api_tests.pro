@@ -29,13 +29,9 @@ INCLUDEPATH += ../../src/btle ../../src/btle/zwift ../../src/app
 SOURCES += \
     ../../src/app/logger.cpp \
     ../../src/btle/btle_hub.cpp \
-    ../../src/btle/zwift/zwift_click_relay.cpp \
-    ../../src/btle/zwift/zwift_protocol.cpp \
     tst_btle_api.cpp
 
 HEADERS += \
     ../../src/app/logger.h \
     ../../src/btle/btle_hub.h \
-    ../../src/btle/btle_uuids.h \
-    ../../src/btle/zwift/zwift_click_relay.h \
-    ../../src/btle/zwift/zwift_protocol.h
+    ../../src/btle/btle_uuids.h

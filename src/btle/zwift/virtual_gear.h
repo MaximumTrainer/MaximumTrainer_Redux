@@ -5,8 +5,8 @@
 #include <QtMath>
 
 /*
- * Virtual shifting gear model (#293). Single source of truth shared by the
- * in-app feature (WorkoutDialog) and the headless feel test (TrainerGearTest).
+ * Virtual shifting gear model (#293). Single source of truth for the in-app
+ * shifting feature (WorkoutDialog), driven by the ▲/▼ keys / on-screen arrows.
  *
  * The trainer is driven in ERG (FTMS Set Target Power), but the *target* is
  * recomputed from gear + live cadence so it feels like a real gear rather than

@@ -63,7 +63,6 @@
 #include "btle_scanner_dialog.h"
 #include "btle_sensor_store.h"
 #include "sensor_connect_dialog.h"
-#include "zwift_click_relay.h"
 #endif
 #include "sensorswidget.h"
 #include "studiowidget.h"
@@ -1586,12 +1585,6 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
     WorkoutDialog *w = new WorkoutDialog(workout, lstRadio, vecUserStudio);
     w->setAttribute(Qt::WA_DeleteOnClose);
     w->setWindowModality(Qt::ApplicationModal);
-
-    // Zwift Click v2 read through the trainer's FC82 relay (opt-in). The relay is
-    // owned by the trainer hub; non-null only for a Zwift-protocol trainer with
-    // the option enabled.
-    if (BtleHub *trainerHub = hubsByRole.value(BtleSensorRole::Trainer, nullptr))
-        w->setClickRelay(trainerHub->zwiftClickRelay());
 
     QSet<BtleHub*> allHubs;
     wireHubsToDialog(w, hubsByRole, allHubs);

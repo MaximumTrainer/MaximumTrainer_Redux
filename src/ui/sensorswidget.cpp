@@ -124,10 +124,9 @@ void SensorsWidget::buildUi()
     trainerLayout->addWidget(m_virtualShiftingCheck);
 
     QLabel *vsHint = new QLabel(
-        tr("Adds ▲/▼ gear shifting — by keyboard, the on-screen arrows, or the "
-           "paddles on a Zwift Click v2 — so a single-cog trainer has usable "
-           "resistance on free rides and tests. Leave off if you shift with a "
-           "real cassette."), trainerGroup);
+        tr("Adds ▲/▼ gear shifting — by keyboard or the on-screen arrows — so a "
+           "single-cog trainer has usable resistance on free rides and tests. "
+           "Leave off if you shift with a real cassette."), trainerGroup);
     vsHint->setWordWrap(true);
     vsHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
     trainerLayout->addWidget(vsHint);

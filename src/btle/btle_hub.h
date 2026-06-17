@@ -23,8 +23,6 @@
  *   - Fitness Machine Service / FTMS   (0x1826)  indoor-bike data + resistance control
  *   - Moxy Muscle Oxygen Service (0xAAB0) SmO2 + tHb
  */
-class ZwiftClickRelay;
-
 class BtleHub : public QObject
 {
     Q_OBJECT
@@ -32,11 +30,6 @@ class BtleHub : public QObject
 public:
     explicit BtleHub(QObject *parent = nullptr);
     ~BtleHub();
-
-    // If the connected trainer exposes the Zwift FC82 service, a linked Zwift
-    // Click v2 is read through the trainer's relay (auto-detected — no opt-in;
-    // the relay no-ops until a Click is woken). Non-null only for such trainers.
-    ZwiftClickRelay *zwiftClickRelay() const { return m_clickRelay; }
 
     // Connect to the selected BLE device. Call after the scanner dialog has
     // chosen a device.
@@ -160,10 +153,6 @@ private:
     QLowEnergyService *m_ftmsService     = nullptr;
     QLowEnergyService *m_moxyService     = nullptr;
     QLowEnergyService *m_batteryService  = nullptr;
-    QLowEnergyService *m_zwiftService    = nullptr;   // FC82 (Zwift Click relay)
-
-    // Zwift Click v2 read via the trainer's FC82 relay (auto-detected). Owned here.
-    ZwiftClickRelay *m_clickRelay = nullptr;
 
     bool m_ftmsControlRequested = false;
     bool m_ftmsControlGranted   = false;
