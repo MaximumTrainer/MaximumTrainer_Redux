@@ -296,7 +296,7 @@ void TrainerClickProbe::onFc82Changed(const QLowEnergyCharacteristic &, const QB
         m_lastRelayMs = QDateTime::currentMSecsSinceEpoch();
         if (!m_sawRelay) {
             m_sawRelay = true;
-            LOG_WARN("ClickProbe", QStringLiteral("relay LIVE — trainer is forwarding the Click (0x4e)"));
+            LOG_WARN("ClickProbe", QStringLiteral("✅ relay LIVE — ▶▶▶ NOW press the Click buttons ◀◀◀"));
         }
     }
 
