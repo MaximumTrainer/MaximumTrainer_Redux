@@ -79,12 +79,12 @@ void ZwiftClickHub::startController()
             emit disconnected();
             return;
         }
-        // Unexpected drop (common when sharing the BLE adapter with the trainer).
-        // Reconnect directly to the known device — much faster than tearing down
-        // and waiting for a fresh scan to re-discover it. The controller will
-        // complete the connection as soon as the Click is back in range/awake.
-        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: dropped — reconnecting directly")
-                     .arg(m_name, deviceAddress()));
+        // Unexpected drop. Log Qt's view (error/state) to help pin the cause, then
+        // reconnect directly to the known device.
+        const int errCode = m_controller ? int(m_controller->error()) : -1;
+        const QString errStr = m_controller ? m_controller->errorString() : QStringLiteral("(no controller)");
+        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: dropped (qt error %3: %4) — reconnecting directly")
+                     .arg(m_name, deviceAddress()).arg(errCode).arg(errStr));
         m_retriesLeft = MAX_RETRIES;
         QTimer::singleShot(300, this, [this]() { if (!m_tearingDown) startController(); });
     });
