@@ -36,6 +36,7 @@ bool ZwiftClickHub::isConnected() const
 
 void ZwiftClickHub::teardown()
 {
+    m_tearingDown = true;   // a disconnect from here is deliberate, not a drop
     if (m_watchdog) m_watchdog->stop();
     if (m_service) { m_service->deleteLater(); m_service = nullptr; }
     if (m_controller) {
@@ -58,6 +59,7 @@ void ZwiftClickHub::connectToDevice(const QBluetoothDeviceInfo &device)
     m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();
     m_lastKickMs  = 0;
     m_retriesLeft = MAX_RETRIES;
+    m_tearingDown = false;
 
     if (!m_watchdog) {
         m_watchdog = new QTimer(this);
@@ -97,27 +99,6 @@ void ZwiftClickHub::watchdogTick()
             sendRideOn();   // idempotent — restart a stalled (or sleeping) stream
         }
     }
-
-    // Periodic unlock-ack keepalive (BikeControl sends ff0400 on an unlocked
-    // device). Harmless if locked; may keep an unlocked Click's session alive.
-    if (now - m_lastAckMs >= ACK_EVERY_MS) {
-        m_lastAckMs = now;
-        sendUnlockAck();
-    }
-}
-
-void ZwiftClickHub::sendUnlockAck()
-{
-    if (!m_service)
-        return;
-    const QLowEnergyCharacteristic cp =
-        m_service->characteristic(uuid(ZwiftClickProtocol::Uuid::ControlPoint));
-    if (!cp.isValid())
-        return;
-    const auto mode = (cp.properties() & QLowEnergyCharacteristic::WriteNoResponse)
-                          ? QLowEnergyService::WriteWithoutResponse
-                          : QLowEnergyService::WriteWithResponse;
-    m_service->writeCharacteristic(cp, QByteArray::fromHex("ff0400"), mode);
 }
 
 void ZwiftClickHub::startController()
@@ -137,9 +118,19 @@ void ZwiftClickHub::startController()
             [this]() { m_controller->discoverServices(); });
     connect(m_controller, &QLowEnergyController::disconnected, this, [this]() {
         if (m_watchdog) m_watchdog->stop();
-        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: DISCONNECTED")
+        if (m_tearingDown) {
+            LOG_INFO("ZwiftClick", QStringLiteral("%1 [%2]: disconnected (teardown)").arg(m_name, deviceAddress()));
+            emit disconnected();
+            return;
+        }
+        // Unexpected drop (common when sharing the BLE adapter with the trainer).
+        // Reconnect directly to the known device — much faster than tearing down
+        // and waiting for a fresh scan to re-discover it. The controller will
+        // complete the connection as soon as the Click is back in range/awake.
+        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: dropped — reconnecting directly")
                      .arg(m_name, deviceAddress()));
-        emit disconnected();
+        m_retriesLeft = MAX_RETRIES;
+        QTimer::singleShot(300, this, [this]() { if (!m_tearingDown) startController(); });
     });
     connect(m_controller,
             static_cast<void (QLowEnergyController::*)(QLowEnergyController::Error)>(
@@ -155,9 +146,12 @@ void ZwiftClickHub::startController()
                     QTimer::singleShot(1500, this, [this]() { startController(); });
                     return;
                 }
-                LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: controller error %3 (%4) — giving up")
+                // Out of direct-reconnect attempts: hand back to the manager so it
+                // removes us and lets discovery re-find + reconnect the device when
+                // it next advertises (avoids a dead-end where we never retry again).
+                LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: controller error %3 (%4) — handing back to discovery")
                              .arg(m_name, deviceAddress()).arg(int(err)).arg(es));
-                emit connectionError(es);
+                emit disconnected();
             });
     connect(m_controller, &QLowEnergyController::discoveryFinished, this, [this]() {
         m_service = m_controller->createServiceObject(
@@ -208,10 +202,6 @@ void ZwiftClickHub::setupService()
     sendRideOn();
     QTimer::singleShot(500,  this, [this]() { sendRideOn(); });
     QTimer::singleShot(1200, this, [this]() { sendRideOn(); });
-    // BikeControl's Click-v2 "unlock ack" — sent on an UNLOCKED device to keep the
-    // session alive (no effect if the device is still locked). Send it shortly
-    // after RideOn, then periodically as a keepalive.
-    QTimer::singleShot(1600, this, [this]() { sendUnlockAck(); });
 
     LOG_INFO("ZwiftClick", QStringLiteral("%1 [%2]: CONNECTED").arg(m_name, deviceAddress()));
     m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();   // give the stream time before the watchdog acts

@@ -61,7 +61,6 @@ private:
     void startController();   // (re)create the controller and connect (with retry)
     void setupService();
     void sendRideOn();        // write the RideOn handshake (kicks the stream)
-    void sendUnlockAck();     // BikeControl's ff0400 ack (keeps an unlocked Click awake)
     void watchdogTick();      // re-kick / reconnect a stream that went silent
     void onCharacteristicChanged(const QLowEnergyCharacteristic &c,
                                  const QByteArray &value);
@@ -82,13 +81,12 @@ private:
     // reconnect. A healthy stream (frames flowing) never triggers either.
     QTimer *m_watchdog = nullptr;
     bool    m_streamQuiet = false;
+    bool    m_tearingDown = false;   // deliberate teardown vs unexpected disconnect
     quint64 m_frameCount = 0;
     qint64  m_lastFrameMs = 0;     // QDateTime::currentMSecsSinceEpoch of last frame
     qint64  m_lastKickMs  = 0;     // last RideOn re-kick, so we don't spam it
-    qint64  m_lastAckMs   = 0;     // last ff0400 unlock-ack keepalive
-    static constexpr int ACK_EVERY_MS = 3000;
     static constexpr int STREAM_QUIET_MS = 2500;   // log/“quiet” threshold
-    static constexpr int KICK_EVERY_MS   = 3000;   // min gap between RideOn re-kicks
+    static constexpr int KICK_EVERY_MS   = 6000;   // min gap between RideOn re-kicks (eased to cut BLE contention with the trainer)
     static constexpr int STALL_MS        = 20000;  // silent this long ⇒ reconnect
     static constexpr int WATCHDOG_TICK_MS = 1000;
 
