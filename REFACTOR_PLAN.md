@@ -17,7 +17,7 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 | 4 — Latent naming hazard | ☑ done | #235 |
 | 5 — Quick correctness fixes | ☑ done (1 of 3; 2 dropped after inspection) | #234 |
 | 6 — Large mechanical modernization | ☐ todo | — |
-| 7 — Dead maximumtrainer.com backend | ☑ done | (this MR) |
+| 7 — Dead maximumtrainer.com backend | ☑ done | #308 |
 
 Related work already merged: QWT 6.3 bump, AppImage dark-mode + OpenSSL fixes,
 `QwtSystemClock` → `QElapsedTimer` (#228), `CLAUDE.md` (#229). Adjacent cleanup
@@ -71,7 +71,7 @@ skipped (risk to core data paths for no measurable gain).
 - ☐ `parent = 0` → `nullptr` (~60 headers); stringly-typed dispatch (`"power"/"hr"/"cad"`, `"workout"/"course"`) → enums; `typedef enum` → `enum class`.
 - ☐ God-file decomposition: `workoutdialog.cpp` (4,298 lines; 590-line constructor → extract `createPairingOverlay/BatteryOverlay/AchievementOverlay/setupClockThread/setupSoundTimers`), `mainwindow.cpp` (2,629).
 
-## Group 7 — Dead maximumtrainer.com backend removal  ☑  (this MR)
+## Group 7 — Dead maximumtrainer.com backend removal  ☑  (#308)
 The original ~2014 app talked to a PHP REST backend at `maximumtrainer.com`
 (`api/*_rest/...`). That backend no longer exists, so every call against it was
 dead (silently failing, in the achievement case retry-looping forever).
