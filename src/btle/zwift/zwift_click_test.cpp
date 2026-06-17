@@ -40,25 +40,21 @@ void ZwiftClickTest::start(const QString &nameFilter, int scanSeconds, int runSe
     connect(m_manager, &ZwiftClickManager::deviceDisconnected, this,
             [](const QString &addr) { line(QStringLiteral("  ✗ disconnected: %1").arg(addr)); });
 
+    // RIGHT-controller-only mapping (see ZwiftClickManager::onButtonPressed).
     auto act = [](const QString &s) { line(QStringLiteral("    → %1").arg(s)); };
-    connect(m_manager, &ZwiftClickManager::shiftUp, this, [this, act]() {
+    connect(m_manager, &ZwiftClickManager::shiftUp, this, [this, act]() {   // Y
         m_gear = qBound(1, m_gear + 1, kGearCount);
-        act(QStringLiteral("▲ SHIFT UP    gear %1/%2").arg(m_gear).arg(kGearCount));
+        act(QStringLiteral("▲ GEAR UP    gear %1/%2  (Y)").arg(m_gear).arg(kGearCount));
     });
-    connect(m_manager, &ZwiftClickManager::shiftDown, this, [this, act]() {
+    connect(m_manager, &ZwiftClickManager::shiftDown, this, [this, act]() { // B
         m_gear = qBound(1, m_gear - 1, kGearCount);
-        act(QStringLiteral("▼ SHIFT DOWN  gear %1/%2").arg(m_gear).arg(kGearCount));
+        act(QStringLiteral("▼ GEAR DOWN  gear %1/%2  (B)").arg(m_gear).arg(kGearCount));
     });
-    connect(m_manager, &ZwiftClickManager::difficultyUp,  this, [act]() { act(QStringLiteral("difficulty +1%%  (Y)")); });
-    connect(m_manager, &ZwiftClickManager::difficultyDown, this, [act]() { act(QStringLiteral("difficulty -1%%  (B)")); });
-    connect(m_manager, &ZwiftClickManager::startPauseWorkout, this, [act]() { act(QStringLiteral("START / PAUSE workout  (A)")); });
-    connect(m_manager, &ZwiftClickManager::lap, this, [act]() { act(QStringLiteral("LAP  (Z)")); });
-    connect(m_manager, &ZwiftClickManager::radioPrev, this, [act]() { act(QStringLiteral("radio ◀ previous station  (d-pad left)")); });
-    connect(m_manager, &ZwiftClickManager::radioNext, this, [act]() { act(QStringLiteral("radio ▶ next station  (d-pad right)")); });
-    connect(m_manager, &ZwiftClickManager::radioVolumeUp,   this, [act]() { act(QStringLiteral("radio volume +  (d-pad up)")); });
-    connect(m_manager, &ZwiftClickManager::radioVolumeDown, this, [act]() { act(QStringLiteral("radio volume -  (d-pad down)")); });
+    connect(m_manager, &ZwiftClickManager::radioNext, this, [act]() { act(QStringLiteral("radio ▶ next station  (A)")); });
+    connect(m_manager, &ZwiftClickManager::radioPrev, this, [act]() { act(QStringLiteral("radio ◀ prev station  (Z)")); });
+    connect(m_manager, &ZwiftClickManager::startPauseWorkout, this, [act]() { act(QStringLiteral("START / PAUSE workout  (+ right paddle)")); });
     connect(m_manager, &ZwiftClickManager::unmappedButton, this,
-            [act](int bit) { act(QStringLiteral("(unmapped bit %1)").arg(bit)); });
+            [act](int bit) { act(QStringLiteral("(left-side / unmapped bit %1 — ignored)").arg(bit)); });
 
     m_manager->start(nameFilter, singleDevice);
     line(QStringLiteral("Gear starts at %1/%2").arg(m_gear).arg(kGearCount));

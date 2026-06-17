@@ -152,18 +152,18 @@ void ZwiftClickManager::onButtonPressed(int bit)
     if (!acceptButton(bit))
         return;
 
+    // RIGHT-controller-only mapping (the left Click v2 needs the proprietary
+    // unlock we can't do, so only the right's buttons are wired):
+    //   Y → gear up   B → gear down   A → radio next   Z → radio prev
+    //   right paddle (+) → start/pause workout
+    // Left-side inputs (d-pad, navigation, left paddle) are intentionally ignored.
     using namespace ZwiftClick;
     switch (bit) {
-    case UpShiftBit:   emit shiftUp();            break;
-    case DownShiftBit: emit shiftDown();          break;
-    case ButtonYBit:   emit difficultyUp();       break;
-    case ButtonBBit:   emit difficultyDown();     break;
-    case ButtonABit:   emit startPauseWorkout();  break;
-    case ButtonZBit:   emit lap();                break;
-    case DpadLeftBit:  emit radioPrev();          break;
-    case DpadRightBit: emit radioNext();          break;
-    case DpadUpBit:    emit radioVolumeUp();       break;
-    case DpadDownBit:  emit radioVolumeDown();     break;
-    default:           emit unmappedButton(bit);   break;
+    case ButtonYBit:   emit shiftUp();            break;  // Y → gear up
+    case ButtonBBit:   emit shiftDown();          break;  // B → gear down
+    case ButtonABit:   emit radioNext();          break;  // A → radio right/next
+    case ButtonZBit:   emit radioPrev();          break;  // Z → radio left/prev
+    case UpShiftBit:   emit startPauseWorkout();  break;  // right paddle (+) → start/pause
+    default:           emit unmappedButton(bit);   break;  // left side / unmapped
     }
 }
