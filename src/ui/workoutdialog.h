@@ -39,6 +39,7 @@ class DialogConfig;     // forward declaration
 class WebBrowserView;   // forward declaration (lazily created web video player)
 class QQuickWidget;
 class RetroRaceController;   // retro ghost-race view
+class ZwiftClickManager;     // Zwift Click v2 (right) controller input, direct BLE
 
 namespace Ui {
 class WorkoutDialog;
@@ -322,6 +323,13 @@ private:
     void shiftGear(int delta);                    // +1 up / -1 down, re-sends
     void updateGearIndicator();                   // refresh the top-bar gear UI
 
+    // Zwift Click v2 RIGHT controller, read over its own BLE link (separate from
+    // the trainer — ERG unaffected). Opt-in via account.use_zwift_click. Owned by
+    // this dialog; scanning/connections are freed when the workout closes.
+    void setupZwiftClick();
+#ifndef Q_OS_WASM
+    ZwiftClickManager *m_clickManager = nullptr;
+#endif
 
     //Internet radio player
 #ifdef GC_HAVE_QTMULTIMEDIA

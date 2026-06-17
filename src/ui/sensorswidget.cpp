@@ -131,6 +131,25 @@ void SensorsWidget::buildUi()
     vsHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
     trainerLayout->addWidget(vsHint);
 
+    m_useZwiftClickCheck =
+        new QCheckBox(tr("Use Zwift Click v2 controller (right side only) - Beta"), trainerGroup);
+    m_useZwiftClickCheck->setToolTip(
+        tr("Wake BOTH controllers (press a button on each). The left/main one only "
+           "keeps the link stable - its buttons aren't used; only the right side is "
+           "supported."));
+    connect(m_useZwiftClickCheck, &QCheckBox::toggled,
+            this, &SensorsWidget::onUseZwiftClickToggled);
+    trainerLayout->addWidget(m_useZwiftClickCheck);
+
+    QLabel *clickHint = new QLabel(
+        tr("Wake BOTH controllers before the workout (press a button on each). The "
+           "left/main one only keeps the connection stable; its buttons aren't used. "
+           "Right side: Y = gear up, B = gear down, A/Z = radio next/prev, "
+           "+ paddle = start/pause."), trainerGroup);
+    clickHint->setWordWrap(true);
+    clickHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
+    trainerLayout->addWidget(clickHint);
+
     QHBoxLayout *ergRampRow = new QHBoxLayout();
     ergRampRow->addWidget(new QLabel(tr("ERG transition ramp duration:"), trainerGroup));
     m_ergRampSpin = new QSpinBox(trainerGroup);
@@ -236,6 +255,10 @@ void SensorsWidget::reload()
             QSignalBlocker b(m_virtualShiftingCheck);
             m_virtualShiftingCheck->setChecked(m_account->virtual_shifting);
         }
+        if (m_useZwiftClickCheck) {
+            QSignalBlocker b(m_useZwiftClickCheck);
+            m_useZwiftClickCheck->setChecked(m_account->use_zwift_click);
+        }
         if (m_ergRampSpin) {
             QSignalBlocker b(m_ergRampSpin);
             m_ergRampSpin->setValue(m_account->erg_smoothing_duration_s);
@@ -269,6 +292,14 @@ void SensorsWidget::onVirtualShiftingToggled(bool checked)
     if (!m_account)
         return;
     m_account->virtual_shifting = checked;
+    m_account->saveDisplayPrefs();
+}
+
+void SensorsWidget::onUseZwiftClickToggled(bool checked)
+{
+    if (!m_account)
+        return;
+    m_account->use_zwift_click = checked;
     m_account->saveDisplayPrefs();
 }
 
