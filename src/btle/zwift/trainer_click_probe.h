@@ -64,6 +64,8 @@ private:
     Relay    m_relay = Relay::Passive;
     bool     m_ftmsGranted = false;
     bool     m_started = false;
+    bool     m_connectSent = false;   // 441002 sent after the trainer announced the Click
+    quint64  m_fc82Frames = 0;
     quint32  m_lastBitmap = 0xFFFFFFFFu;
     QTimer  *m_ergTimer = nullptr;
     QTimer  *m_runTimer = nullptr;

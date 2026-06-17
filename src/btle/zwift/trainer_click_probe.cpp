@@ -14,14 +14,16 @@ const QBluetoothUuid FtmsControlPt  (quint16(0x2AD9));
 QBluetoothUuid uuid(const char *s) { return QBluetoothUuid(QString::fromLatin1(s)); }
 const QBluetoothUuid Cccd(QBluetoothUuid::DescriptorType::ClientCharacteristicConfiguration);
 
-// The trainer's ZCS relay setup + connect, WITHOUT the leading RideOn. From the
-// Zwift capture (handle 83 writes), minus 526964654f6e0203.
-const char *const kZcsSteps[] = {
-    "410805", "000800", "442001", "440801", "410805", "000810", "0008800a",
-    "450801", "441002",
+// The trainer's ZCS relay setup (NO RideOn, NO 441002 connect). From the Zwift
+// capture (handle 83 writes). 441002 is sent only AFTER the trainer announces
+// the Click (a 0x47 frame), per the proven recipe in notes/zwift-cog-…md.
+const char *const kSetupSteps[] = {
+    "410805", "000800", "442001", "440801", "410805", "000810", "0008800a", "450801",
 };
 const char kRideOn[]        = "526964654f6e0203";
+const char kConnectClick[]  = "441002";
 const char kRelayedRideOn[] = "4e08021208526964654f6e0203";
+const QByteArray kClickName = QByteArrayLiteral("Zwift Click");
 } // namespace
 
 TrainerClickProbe::TrainerClickProbe(QObject *parent) : QObject(parent) {}
@@ -154,13 +156,19 @@ void TrainerClickProbe::onFtmsChanged(const QLowEnergyCharacteristic &, const QB
 
 void TrainerClickProbe::setupFc82()
 {
-    // Subscribe notify (this is a CCCD write, NOT a control command).
+    // Subscribe notify (0002) AND indicate (0004) — both are CCCD writes, NOT
+    // control commands. The proven recipe subscribes both before arming.
     const QLowEnergyCharacteristic meas =
         m_fc82->characteristic(uuid(ZwiftClickProtocol::Uuid::Measurement));
-    const QLowEnergyDescriptor cccd = meas.descriptor(Cccd);
-    if (cccd.isValid())
-        m_fc82->writeDescriptor(cccd, QByteArray::fromHex("0100"));
-    LOG_WARN("ClickProbe", QStringLiteral("FC82 notify subscribed (no control write yet)"));
+    const QLowEnergyDescriptor mcccd = meas.descriptor(Cccd);
+    if (mcccd.isValid())
+        m_fc82->writeDescriptor(mcccd, QByteArray::fromHex("0100"));
+    const QLowEnergyCharacteristic resp =
+        m_fc82->characteristic(uuid(ZwiftClickProtocol::Uuid::Response));
+    const QLowEnergyDescriptor rcccd = resp.descriptor(Cccd);
+    if (rcccd.isValid())
+        m_fc82->writeDescriptor(rcccd, QByteArray::fromHex("0200"));
+    LOG_WARN("ClickProbe", QStringLiteral("FC82 notify+indicate subscribed (no control write yet)"));
     // If FTMS isn't present, arm immediately; otherwise armRelay() runs after grant.
     if (!m_ftms) armRelay();
 }
@@ -177,14 +185,12 @@ void TrainerClickProbe::armRelay()
     if (m_relay == Relay::RideOn)
         writeFc82(QByteArray::fromHex(kRideOn));
     int delay = 0;
-    for (const char *hex : kZcsSteps) {
+    for (const char *hex : kSetupSteps) {
         const QByteArray b = QByteArray::fromHex(hex);
         delay += 150;
         QTimer::singleShot(delay, this, [this, b]() { writeFc82(b); });
     }
-    delay += 4500;   // capture gap before the relayed RideOn
-    QTimer::singleShot(delay, this, [this]() { writeFc82(QByteArray::fromHex(kRelayedRideOn)); });
-    LOG_WARN("ClickProbe", QStringLiteral("relay arm sent (mode=%1) — press Click buttons…")
+    LOG_WARN("ClickProbe", QStringLiteral("relay setup sent (mode=%1) — WAKE the Click so the trainer announces it…")
                  .arg(m_relay == Relay::RideOn ? "RideOn+ZCS" : "ZCS-only"));
 }
 
@@ -201,6 +207,27 @@ void TrainerClickProbe::writeFc82(const QByteArray &bytes)
 
 void TrainerClickProbe::onFc82Changed(const QLowEnergyCharacteristic &, const QByteArray &v)
 {
+    // Diagnostics: show what the trainer is actually streaming on FC82 so we can
+    // tell whether the Click is being relayed at all. 0x47 = device announce
+    // (carries "Zwift Click"), 0x4e = relayed Click frame, 0x03 = riding data.
+    const quint8 cmd = v.isEmpty() ? 0 : quint8(v.at(0));
+    if (++m_fc82Frames <= 15 || cmd == 0x47 || cmd == 0x4e)
+        LOG_WARN("ClickProbe", QStringLiteral("FC82 rx [%1]: %2")
+                     .arg(m_fc82Frames).arg(QString::fromLatin1(v.toHex())));
+
+    // Trainer announced the linked Click (0x47 device frame carrying its name) →
+    // NOW connect it (441002), then relay RideOn ~4.5 s later (per the recipe).
+    if (!m_connectSent && m_relay != Relay::Passive
+        && cmd == 0x47 && v.contains(kClickName)) {
+        m_connectSent = true;
+        LOG_WARN("ClickProbe", QStringLiteral("Click announced by trainer → connecting (441002)"));
+        writeFc82(QByteArray::fromHex(kConnectClick));
+        QTimer::singleShot(4500, this, [this]() {
+            LOG_WARN("ClickProbe", QStringLiteral("relaying RideOn to the Click…"));
+            writeFc82(QByteArray::fromHex(kRelayedRideOn));
+        });
+    }
+
     quint32 bitmap;
     if (!ZwiftClickProtocol::decodeRelayedClickButtons(v, bitmap))
         return;   // riding data / device frame / not a relayed button frame
