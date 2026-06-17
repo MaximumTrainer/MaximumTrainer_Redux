@@ -132,15 +132,14 @@ void SensorsWidget::buildUi()
     trainerLayout->addWidget(vsHint);
 
     m_useZwiftClickCheck =
-        new QCheckBox(tr("Use Zwift Click v2 controller (right side)"), trainerGroup);
+        new QCheckBox(tr("Use Zwift Click v2 controller (right side) — BETA"), trainerGroup);
     connect(m_useZwiftClickCheck, &QCheckBox::toggled,
             this, &SensorsWidget::onUseZwiftClickToggled);
     trainerLayout->addWidget(m_useZwiftClickCheck);
 
     QLabel *clickHint = new QLabel(
-        tr("Reads a Zwift Click v2 over its own Bluetooth link (the trainer/ERG is "
-           "unaffected). Wake the controller before the workout. Right side: Y = gear "
-           "up, B = gear down, A/Z = radio next/prev, + paddle = start/pause. The left "
+        tr("Wake the controller before the workout. Right side: Y = gear up, "
+           "B = gear down, A/Z = radio next/prev, + paddle = start/pause. The left "
            "side isn't supported yet."), trainerGroup);
     clickHint->setWordWrap(true);
     clickHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
