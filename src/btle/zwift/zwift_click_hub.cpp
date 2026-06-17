@@ -86,6 +86,16 @@ void ZwiftClickHub::watchdogTick()
         return;
     }
 
+    // EXPERIMENT (left Click v2 keepalive): a healthy controller never goes silent
+    // this long (re-kicks bring it back within ~3 s); sustained silence = the
+    // left unit locking up. Send RESET (0x18) to refresh it, as BikeControl does.
+    if (silent >= RESET_AFTER_MS && now - m_lastResetMs >= RESET_AFTER_MS) {
+        m_lastResetMs = now;
+        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: silent %3 ms — sending RESET (0x18) to refresh")
+                     .arg(m_name, deviceAddress()).arg(silent));
+        sendReset();
+    }
+
     if (silent >= STREAM_QUIET_MS) {
         if (!m_streamQuiet) {
             m_streamQuiet = true;
@@ -232,6 +242,23 @@ void ZwiftClickHub::sendRideOn()
                           ? QLowEnergyService::WriteWithoutResponse
                           : QLowEnergyService::WriteWithResponse;
     m_service->writeCharacteristic(cp, ZwiftClickProtocol::rideOnHandshake(), mode);
+}
+
+void ZwiftClickHub::sendReset()
+{
+    // Zwift Opcode.RESET = 24 (0x18), single byte to the control point. BikeControl
+    // uses this to "restart" the left Click v2 (~every minute) to keep it from
+    // locking up. Experiment: send it when a controller goes silent to refresh it.
+    if (!m_service)
+        return;
+    const QLowEnergyCharacteristic cp =
+        m_service->characteristic(uuid(ZwiftClickProtocol::Uuid::ControlPoint));
+    if (!cp.isValid())
+        return;
+    const auto mode = (cp.properties() & QLowEnergyCharacteristic::WriteNoResponse)
+                          ? QLowEnergyService::WriteWithoutResponse
+                          : QLowEnergyService::WriteWithResponse;
+    m_service->writeCharacteristic(cp, QByteArray::fromHex("18"), mode);
 }
 
 void ZwiftClickHub::onCharacteristicChanged(const QLowEnergyCharacteristic &,
