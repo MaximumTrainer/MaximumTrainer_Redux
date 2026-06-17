@@ -131,6 +131,21 @@ void SensorsWidget::buildUi()
     vsHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
     trainerLayout->addWidget(vsHint);
 
+    m_useZwiftClickCheck =
+        new QCheckBox(tr("Use Zwift Click v2 controller (right side)"), trainerGroup);
+    connect(m_useZwiftClickCheck, &QCheckBox::toggled,
+            this, &SensorsWidget::onUseZwiftClickToggled);
+    trainerLayout->addWidget(m_useZwiftClickCheck);
+
+    QLabel *clickHint = new QLabel(
+        tr("Reads a Zwift Click v2 over its own Bluetooth link (the trainer/ERG is "
+           "unaffected). Wake the controller before the workout. Right side: Y = gear "
+           "up, B = gear down, A/Z = radio next/prev, + paddle = start/pause. The left "
+           "side isn't supported yet."), trainerGroup);
+    clickHint->setWordWrap(true);
+    clickHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
+    trainerLayout->addWidget(clickHint);
+
     QHBoxLayout *ergRampRow = new QHBoxLayout();
     ergRampRow->addWidget(new QLabel(tr("ERG transition ramp duration:"), trainerGroup));
     m_ergRampSpin = new QSpinBox(trainerGroup);
@@ -236,6 +251,10 @@ void SensorsWidget::reload()
             QSignalBlocker b(m_virtualShiftingCheck);
             m_virtualShiftingCheck->setChecked(m_account->virtual_shifting);
         }
+        if (m_useZwiftClickCheck) {
+            QSignalBlocker b(m_useZwiftClickCheck);
+            m_useZwiftClickCheck->setChecked(m_account->use_zwift_click);
+        }
         if (m_ergRampSpin) {
             QSignalBlocker b(m_ergRampSpin);
             m_ergRampSpin->setValue(m_account->erg_smoothing_duration_s);
@@ -269,6 +288,14 @@ void SensorsWidget::onVirtualShiftingToggled(bool checked)
     if (!m_account)
         return;
     m_account->virtual_shifting = checked;
+    m_account->saveDisplayPrefs();
+}
+
+void SensorsWidget::onUseZwiftClickToggled(bool checked)
+{
+    if (!m_account)
+        return;
+    m_account->use_zwift_click = checked;
     m_account->saveDisplayPrefs();
 }
 

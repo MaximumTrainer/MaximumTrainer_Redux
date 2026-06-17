@@ -37,6 +37,7 @@ private slots:
     void onClearClicked(int rowIndex);
     void onControlResistanceToggled(bool checked);
     void onVirtualShiftingToggled(bool checked);
+    void onUseZwiftClickToggled(bool checked);
     void onErgRampChanged(int seconds);
     void onSensorDropoutChanged();
     void onBatteryThresholdChanged(int percent);
@@ -58,6 +59,7 @@ private:
     QVector<SlotRow> m_rows;
     QCheckBox *m_controlResistanceCheck = nullptr;
     QCheckBox *m_virtualShiftingCheck = nullptr;
+    QCheckBox *m_useZwiftClickCheck = nullptr;
     QSpinBox  *m_ergRampSpin            = nullptr;
     QCheckBox *m_dropoutEnabledCheck    = nullptr;
     QSpinBox  *m_dropoutTimeoutSpin     = nullptr;

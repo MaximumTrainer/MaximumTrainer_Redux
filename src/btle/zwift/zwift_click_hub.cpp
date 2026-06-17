@@ -89,7 +89,7 @@ void ZwiftClickHub::watchdogTick()
     if (silent >= STREAM_QUIET_MS) {
         if (!m_streamQuiet) {
             m_streamQuiet = true;
-            LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: stream QUIET (no frame for %3 ms after %4 frames) — re-kicking")
+            LOG_DEBUG("ZwiftClick", QStringLiteral("%1 [%2]: stream QUIET (no frame for %3 ms after %4 frames) — re-kicking")
                          .arg(m_name, deviceAddress()).arg(silent).arg(m_frameCount));
         }
         if (now - m_lastKickMs >= KICK_EVERY_MS) {
@@ -213,7 +213,7 @@ void ZwiftClickHub::setupService()
     // after RideOn, then periodically as a keepalive.
     QTimer::singleShot(1600, this, [this]() { sendUnlockAck(); });
 
-    LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: CONNECTED").arg(m_name, deviceAddress()));
+    LOG_INFO("ZwiftClick", QStringLiteral("%1 [%2]: CONNECTED").arg(m_name, deviceAddress()));
     m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();   // give the stream time before the watchdog acts
     m_lastKickMs  = 0;
     if (m_watchdog) m_watchdog->start();
@@ -245,7 +245,7 @@ void ZwiftClickHub::onCharacteristicChanged(const QLowEnergyCharacteristic &,
     m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();
     if (m_streamQuiet) {
         m_streamQuiet = false;
-        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: stream RESUMED").arg(m_name, deviceAddress()));
+        LOG_DEBUG("ZwiftClick", QStringLiteral("%1 [%2]: stream RESUMED").arg(m_name, deviceAddress()));
     }
 
     quint32 bitmap;

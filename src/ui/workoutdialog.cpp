@@ -2,6 +2,10 @@
 #include "virtual_gear.h"
 #include "ui_workoutdialog.h"
 
+#ifndef Q_OS_WASM
+#include "zwift_click_manager.h"
+#endif
+
 #ifdef Q_OS_WIN32
 #   include <windows.h>
 #endif
@@ -501,6 +505,7 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     // On-screen virtual-shift arrows mirror the Up/Down keys.
     connect(ui->widget_topMenu, &TopMenuWorkout::gearUp,   this, [this]{ shiftGear(+1); });
     connect(ui->widget_topMenu, &TopMenuWorkout::gearDown, this, [this]{ shiftGear(-1); });
+    setupZwiftClick();   // opt-in Zwift Click v2 (right) controller, direct BLE
     connect(this, SIGNAL(insideConfig(bool)), ui->widget_topMenu, SLOT(changeConfigIcon(bool)));
 
     // Make the splitter gutters easy to grab — the 1px default was nearly
@@ -2375,6 +2380,26 @@ void WorkoutDialog::sendGearLoad() {
         const double cad = averageCadence1sec.isEmpty() ? -1.0 : averageCadence1sec.at(0);
         emit setLoad(trainerControlUserId, gearTargetWatts(m_virtualGear, cad));
     }
+}
+
+void WorkoutDialog::setupZwiftClick()
+{
+#ifndef Q_OS_WASM
+    if (!account || !account->use_zwift_click)
+        return;
+    // The right Click v2 is read over its own BLE connection — independent of the
+    // trainer, so ERG/FTMS is unaffected. Right-side mapping (left unsupported):
+    //   Y → gear up   B → gear down   A → radio next   Z → radio prev
+    //   right paddle (+) → start/pause workout
+    m_clickManager = new ZwiftClickManager(this);   // freed with the dialog (BLE released)
+    connect(m_clickManager, &ZwiftClickManager::shiftUp,   this, [this]{ shiftGear(+1); });
+    connect(m_clickManager, &ZwiftClickManager::shiftDown, this, [this]{ shiftGear(-1); });
+    connect(m_clickManager, &ZwiftClickManager::radioNext, this, &WorkoutDialog::F8next);
+    connect(m_clickManager, &ZwiftClickManager::radioPrev, this, &WorkoutDialog::F6previous);
+    connect(m_clickManager, &ZwiftClickManager::startPauseWorkout,
+            this, [this]{ start_or_pause_workout(); });
+    m_clickManager->start();   // scan + connect; only the right controller's buttons are mapped
+#endif
 }
 
 void WorkoutDialog::shiftGear(int delta) {
