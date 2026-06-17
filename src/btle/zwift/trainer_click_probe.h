@@ -8,38 +8,28 @@
 #include <QLowEnergyService>
 
 class QTimer;
+class ZwiftClickRelay;
 
 /*
- * TrainerClickProbe — experiment (issue #300 follow-up).
+ * TrainerClickProbe — CLI experiment (issue #300 follow-up).
  *
- * Connects to the trainer ONCE and runs FTMS control and the FC82 Click relay on
- * the same connection, to answer: can we read the trainer-relayed Zwift Click
- * WITHOUT breaking FTMS ERG? The Wireshark capture showed Zwift drives the
- * trainer entirely over FC82 (never FTMS) and the relay only streamed after the
- * host wrote RideOn + ZCS setup. This probe sweeps which of those writes are
- * actually needed and whether each keeps FTMS control alive.
+ * Connects to the trainer ONCE and proves that the trainer-relayed Zwift Click
+ * and FTMS ERG coexist, using the PROVEN ZwiftClickRelay (the shipped relay with
+ * its watchdog/retry) armed AFTER FTMS control is granted — the ordering fix.
  *
- * It always: enables FTMS control (Request Control), then periodically sends a
- * Set Target Resistance Level (0x04) and logs whether the trainer grants/acks
- * (⇒ ERG is alive) or times out (⇒ FTMS is blocked). And it subscribes the FC82
- * notify char and logs any relayed 0x4e Click button frames.
- *
- * Modes (CLI flags), to find the minimal recipe that relays the Click yet keeps
- * ERG:
- *   passive  (default) — subscribe FC82 only, write nothing to it.
- *   --zcs              — also send the ZCS relay setup + 441002 (connect Click),
- *                        but NOT RideOn (tests if RideOn is the FTMS-killer).
- *   --rideon           — also send RideOn first (the full original arming).
+ * It enables FTMS control (Request Control), then re-sends the current virtual
+ * gear's resistance (0x04) every 3 s and logs the ACK (⇒ ERG alive). Once
+ * control is granted it attaches ZwiftClickRelay to the FC82 service; paddle
+ * presses shift the gear and push the new resistance (logged + ACK-confirmed),
+ * other buttons log. A 30 s heartbeat reports relay/gear/press/ack state for a
+ * long soak.
  */
 class TrainerClickProbe : public QObject
 {
     Q_OBJECT
 public:
     explicit TrainerClickProbe(QObject *parent = nullptr);
-
-    enum class Relay { Passive, Zcs, RideOn };
-    void start(const QString &nameFilter = QStringLiteral("Victory"),
-               int runSeconds = 120, Relay relay = Relay::Passive);
+    void start(const QString &nameFilter = QStringLiteral("Victory"), int runSeconds = 120);
 
 signals:
     void finished();
@@ -48,40 +38,27 @@ private:
     void onDeviceDiscovered(const QBluetoothDeviceInfo &info);
     void onDiscoveryFinished();
     void setupFtms();
-    void setupFc82();
     void requestFtmsControl();
     void sendResistance(int levelTenths);
     void onFtmsChanged(const QLowEnergyCharacteristic &c, const QByteArray &v);
-    void onFc82Changed(const QLowEnergyCharacteristic &c, const QByteArray &v);
-    void writeFc82(const QByteArray &bytes);
-    void armRelay();      // send the ZCS / RideOn writes per the selected mode
-    void relayRideOn();   // relay RideOn to the Click, retrying until frames flow
-    void relayWatchdogTick();  // re-link the Click if the relay stream goes silent
+    void armRelay();          // create ZwiftClickRelay + attach FC82 (after grant)
+    void shift(int delta);
 
     QBluetoothDeviceDiscoveryAgent *m_agent = nullptr;
     QLowEnergyController *m_ctrl = nullptr;
     QLowEnergyService    *m_ftms = nullptr;
     QLowEnergyService    *m_fc82 = nullptr;
+    ZwiftClickRelay      *m_clickRelay = nullptr;
     QString  m_nameFilter;
-    Relay    m_relay = Relay::Passive;
     bool     m_ftmsGranted = false;
     bool     m_started = false;
-    bool     m_connectSent = false;   // 441002 sent after the trainer announced the Click
-    bool     m_sawRelay = false;      // a 0x4e relayed frame arrived ⇒ relay is live
-    int      m_relayRetries = 0;
-    quint64  m_fc82Frames = 0;
-    quint32  m_lastBitmap = 0xFFFFFFFFu;
+    bool     m_relayActive = false;
     int      m_gear = 12;             // virtual gear 1..24 (paddles shift it)
     int      m_buttonPresses = 0;
     int      m_ergAcks = 0;
     int      m_logNextAcks = 0;       // log the next N 0x04 ACKs (right after a shift)
-    qint64   m_lastRelayMs = 0;       // ms of the last 0x4e relayed frame
-    qint64   m_lastRearmMs = 0;       // last watchdog re-link, to pace re-arms
-    qint64   m_lastKeepaliveMs = 0;   // last keepalive RideOn (keeps the Click awake)
-    bool     m_relayStalled = false;
     QTimer  *m_ergTimer = nullptr;
     QTimer  *m_statusTimer = nullptr;
-    QTimer  *m_relayWatchdog = nullptr;
     QTimer  *m_runTimer = nullptr;
 };
 

@@ -38,6 +38,10 @@ inline constexpr quint8 ButtonStatusCommand = 0x23;
 // The handshake the app writes once subscribed; "RideOn" kicks the stream.
 QByteArray rideOnHandshake();
 
+// The handshake written to the TRAINER's FC82 control point to start the relay
+// stream: "RideOn" + 0x02 0x03 (matches the captured Zwift app).
+QByteArray rideOnTrainerHandshake();
+
 // Decode a 0x23 button frame into the raw active-low bitmap. Returns false if
 // the command byte is not 0x23 or the protobuf stream is malformed.
 bool decodeClickButtons(const QByteArray &frame, quint32 &bitmapOut);

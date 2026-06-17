@@ -26,6 +26,11 @@ QByteArray rideOnHandshake()
     return QByteArrayLiteral("RideOn");
 }
 
+QByteArray rideOnTrainerHandshake()
+{
+    return QByteArray::fromHex("526964654f6e0203");   // "RideOn" + 0x02 0x03
+}
+
 bool decodeClickButtons(const QByteArray &frame, quint32 &bitmapOut)
 {
     if (frame.isEmpty() ||

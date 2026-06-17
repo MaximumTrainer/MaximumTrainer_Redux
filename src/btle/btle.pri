@@ -34,11 +34,13 @@ contains(QMAKE_PLATFORM, wasm) {
     # Zwift Click/Play/Ride controller INPUT (its own BLE peripheral — never
     # touches the trainer connection, so ERG/FTMS stays live). Buttons only.
     SOURCES += $$PWD/zwift/zwift_click_protocol.cpp \
+               $$PWD/zwift/zwift_click_relay.cpp \
                $$PWD/zwift/zwift_click_hub.cpp \
                $$PWD/zwift/zwift_click_manager.cpp \
                $$PWD/zwift/zwift_click_test.cpp \
                $$PWD/zwift/trainer_click_probe.cpp
     HEADERS += $$PWD/zwift/zwift_click_protocol.h \
+               $$PWD/zwift/zwift_click_relay.h \
                $$PWD/zwift/zwift_click_hub.h \
                $$PWD/zwift/zwift_click_manager.h \
                $$PWD/zwift/zwift_click_test.h \
