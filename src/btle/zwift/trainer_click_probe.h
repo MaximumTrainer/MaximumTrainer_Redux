@@ -77,6 +77,7 @@ private:
     int      m_logNextAcks = 0;       // log the next N 0x04 ACKs (right after a shift)
     qint64   m_lastRelayMs = 0;       // ms of the last 0x4e relayed frame
     qint64   m_lastRearmMs = 0;       // last watchdog re-link, to pace re-arms
+    qint64   m_lastKeepaliveMs = 0;   // last keepalive RideOn (keeps the Click awake)
     bool     m_relayStalled = false;
     QTimer  *m_ergTimer = nullptr;
     QTimer  *m_statusTimer = nullptr;

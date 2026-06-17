@@ -155,6 +155,13 @@ void TrainerClickProbe::relayWatchdogTick()
             m_relayStalled = false;
             LOG_WARN("ClickProbe", QStringLiteral("relay RECOVERED — Click re-linked"));
         }
+        // Keepalive: the Click sleeps after ~15-30s idle (LED off) and drops its
+        // trainer link while the trainer keeps emitting stale idle frames. Relay a
+        // RideOn through the trainer every 10s to keep the Click awake/linked.
+        if (now - m_lastKeepaliveMs > 10000) {
+            m_lastKeepaliveMs = now;
+            writeFc82(QByteArray::fromHex(kRelayedRideOn));
+        }
         return;
     }
     if (!m_relayStalled) {
