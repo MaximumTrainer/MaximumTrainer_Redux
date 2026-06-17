@@ -60,8 +60,7 @@ private:
     void teardown();
     void startController();   // (re)create the controller and connect (with retry)
     void setupService();
-    void sendRideOn();        // write the RideOn handshake (kicks the stream)
-    void watchdogTick();      // re-kick / reconnect a stream that went silent
+    void sendRideOn();        // write the RideOn handshake once (starts the stream)
     void onCharacteristicChanged(const QLowEnergyCharacteristic &c,
                                  const QByteArray &value);
 
@@ -73,24 +72,10 @@ private:
     // Last seen active-low bitmap (idle 0xFFFFFFFF) for edge detection.
     quint32 m_lastBitmap = 0xFFFFFFFFu;
 
-    // Stream health watchdog. A connected controller can stop streaming with the
-    // BLE link still up (no disconnect fires) — observed on a Click v2 pair where
-    // one unit went silent and never recovered. The watchdog ticks while
-    // connected: when a device has been silent past QUIET it re-kicks RideOn to
-    // restart the stream, and if it stays silent past STALL it forces a full
-    // reconnect. A healthy stream (frames flowing) never triggers either.
-    QTimer *m_watchdog = nullptr;
-    bool    m_streamQuiet = false;
-    bool    m_tearingDown = false;   // deliberate teardown vs unexpected disconnect
-    quint64 m_frameCount = 0;
-    qint64  m_lastFrameMs = 0;     // QDateTime::currentMSecsSinceEpoch of last frame
-    qint64  m_lastKickMs  = 0;     // last RideOn re-kick, so we don't spam it
-    static constexpr int STREAM_QUIET_MS = 2500;   // log/“quiet” threshold
-    static constexpr int KICK_EVERY_MS   = 6000;   // min gap between RideOn re-kicks (eased to cut BLE contention with the trainer)
-    static constexpr int STALL_MS        = 20000;  // silent this long ⇒ reconnect
-    static constexpr int WATCHDOG_TICK_MS = 1000;
+    // A disconnect from a deliberate teardown is not a drop (no auto-reconnect).
+    bool    m_tearingDown = false;
 
-    // Connect retry: "Unknown Error" on connect is usually transient.
+    // Connect retry: "Unknown Error" on connect/reconnect is usually transient.
     int m_retriesLeft = 0;
     static constexpr int MAX_RETRIES = 4;
 };
