@@ -60,29 +60,38 @@ private:
     void teardown();
     void startController();   // (re)create the controller and connect (with retry)
     void setupService();
-    void sendRideOn();        // write the RideOn handshake (also used as keep-alive)
+    void readBatteryLevel();  // read the standard Battery Service (0x180F) once, diagnostic
+    void sendRideOn();        // write the RideOn handshake (kicks the stream)
+    void watchdogTick();      // re-kick / reconnect a stream that went silent
     void onCharacteristicChanged(const QLowEnergyCharacteristic &c,
                                  const QByteArray &value);
 
     QLowEnergyController *m_controller = nullptr;
     QLowEnergyService    *m_service    = nullptr;
+    QLowEnergyService    *m_batteryService = nullptr;
     QBluetoothDeviceInfo  m_device;
     QString               m_name;
 
     // Last seen active-low bitmap (idle 0xFFFFFFFF) for edge detection.
     quint32 m_lastBitmap = 0xFFFFFFFFu;
 
-    // A disconnect from a deliberate teardown is not a drop (no auto-reconnect).
-    bool    m_tearingDown = false;
+    // Stream health watchdog. A connected controller can stop streaming with the
+    // BLE link still up (no disconnect fires) — observed on a Click v2 pair where
+    // one unit went silent and never recovered. The watchdog ticks while
+    // connected: when a device has been silent past QUIET it re-kicks RideOn to
+    // restart the stream, and if it stays silent past STALL it forces a full
+    // reconnect. A healthy stream (frames flowing) never triggers either.
+    QTimer *m_watchdog = nullptr;
+    bool    m_streamQuiet = false;
+    quint64 m_frameCount = 0;
+    qint64  m_lastFrameMs = 0;     // QDateTime::currentMSecsSinceEpoch of last frame
+    qint64  m_lastKickMs  = 0;     // last RideOn re-kick, so we don't spam it
+    static constexpr int STREAM_QUIET_MS = 2500;   // log/“quiet” threshold
+    static constexpr int KICK_EVERY_MS   = 3000;   // min gap between RideOn re-kicks
+    static constexpr int STALL_MS        = 20000;  // silent this long ⇒ reconnect
+    static constexpr int WATCHDOG_TICK_MS = 1000;
 
-    // Keep-alive: re-send RideOn frequently so the Click stays in its active,
-    // solid-LED streaming session. Without this the link decays to advertising
-    // (flashing LED) and drops with HCI 0x08. ~3s matches the build that ran an
-    // hour clean in the CLI.
-    QTimer *m_keepAlive = nullptr;
-    static constexpr int KEEPALIVE_MS = 3000;
-
-    // Connect retry: "Unknown Error" on connect/reconnect is usually transient.
+    // Connect retry: "Unknown Error" on connect is usually transient.
     int m_retriesLeft = 0;
     static constexpr int MAX_RETRIES = 4;
 };

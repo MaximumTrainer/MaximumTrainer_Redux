@@ -4,8 +4,8 @@
 #include "logger.h"
 
 #include <QBluetoothUuid>
+#include <QDateTime>
 #include <QLowEnergyCharacteristic>
-#include <QLowEnergyConnectionParameters>
 #include <QLowEnergyDescriptor>
 #include <QTimer>
 
@@ -36,8 +36,8 @@ bool ZwiftClickHub::isConnected() const
 
 void ZwiftClickHub::teardown()
 {
-    m_tearingDown = true;   // a disconnect from here is deliberate, not a drop
-    if (m_keepAlive) m_keepAlive->stop();
+    if (m_watchdog) m_watchdog->stop();
+    if (m_batteryService) { m_batteryService->deleteLater(); m_batteryService = nullptr; }
     if (m_service) { m_service->deleteLater(); m_service = nullptr; }
     if (m_controller) {
         m_controller->disconnectFromDevice();
@@ -54,10 +54,50 @@ void ZwiftClickHub::connectToDevice(const QBluetoothDeviceInfo &device)
     m_device      = device;
     m_name        = device.name();
     m_lastBitmap  = 0xFFFFFFFFu;
+    m_streamQuiet = false;
+    m_frameCount  = 0;
+    m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();
+    m_lastKickMs  = 0;
     m_retriesLeft = MAX_RETRIES;
-    m_tearingDown = false;
+
+    if (!m_watchdog) {
+        m_watchdog = new QTimer(this);
+        m_watchdog->setInterval(WATCHDOG_TICK_MS);
+        connect(m_watchdog, &QTimer::timeout, this, [this]() { watchdogTick(); });
+    }
 
     startController();
+}
+
+// Recover a stream that stopped while the BLE link stayed up: re-kick RideOn
+// once it goes quiet, and force a full reconnect if it stays silent past STALL.
+void ZwiftClickHub::watchdogTick()
+{
+    if (!isConnected())
+        return;
+    const qint64 now    = QDateTime::currentMSecsSinceEpoch();
+    const qint64 silent = now - m_lastFrameMs;
+
+    if (silent >= STALL_MS) {
+        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: stalled %3 ms — reconnecting")
+                     .arg(m_name, deviceAddress()).arg(silent));
+        m_streamQuiet  = true;
+        m_lastFrameMs  = now;   // reset so we give the reconnect time before re-stalling
+        startController();      // re-handshakes; does not emit our disconnected()
+        return;
+    }
+
+    if (silent >= STREAM_QUIET_MS) {
+        if (!m_streamQuiet) {
+            m_streamQuiet = true;
+            LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: stream QUIET (no frame for %3 ms after %4 frames) — re-kicking")
+                         .arg(m_name, deviceAddress()).arg(silent).arg(m_frameCount));
+        }
+        if (now - m_lastKickMs >= KICK_EVERY_MS) {
+            m_lastKickMs = now;
+            sendRideOn();   // idempotent — restart a stalled (or sleeping) stream
+        }
+    }
 }
 
 void ZwiftClickHub::startController()
@@ -76,19 +116,10 @@ void ZwiftClickHub::startController()
     connect(m_controller, &QLowEnergyController::connected, this,
             [this]() { m_controller->discoverServices(); });
     connect(m_controller, &QLowEnergyController::disconnected, this, [this]() {
-        if (m_tearingDown) {
-            LOG_INFO("ZwiftClick", QStringLiteral("%1 [%2]: disconnected (teardown)").arg(m_name, deviceAddress()));
-            emit disconnected();
-            return;
-        }
-        // Unexpected drop. Log Qt's view (error/state) to help pin the cause, then
-        // reconnect directly to the known device.
-        const int errCode = m_controller ? int(m_controller->error()) : -1;
-        const QString errStr = m_controller ? m_controller->errorString() : QStringLiteral("(no controller)");
-        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: dropped (qt error %3: %4) — reconnecting directly")
-                     .arg(m_name, deviceAddress()).arg(errCode).arg(errStr));
-        m_retriesLeft = MAX_RETRIES;
-        QTimer::singleShot(300, this, [this]() { if (!m_tearingDown) startController(); });
+        if (m_watchdog) m_watchdog->stop();
+        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: DISCONNECTED")
+                     .arg(m_name, deviceAddress()));
+        emit disconnected();
     });
     connect(m_controller,
             static_cast<void (QLowEnergyController::*)(QLowEnergyController::Error)>(
@@ -104,12 +135,9 @@ void ZwiftClickHub::startController()
                     QTimer::singleShot(1500, this, [this]() { startController(); });
                     return;
                 }
-                // Out of direct-reconnect attempts: hand back to the manager so it
-                // removes us and lets discovery re-find + reconnect the device when
-                // it next advertises (avoids a dead-end where we never retry again).
-                LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: controller error %3 (%4) — handing back to discovery")
+                LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: controller error %3 (%4) — giving up")
                              .arg(m_name, deviceAddress()).arg(int(err)).arg(es));
-                emit disconnected();
+                emit connectionError(es);
             });
     connect(m_controller, &QLowEnergyController::discoveryFinished, this, [this]() {
         m_service = m_controller->createServiceObject(
@@ -124,6 +152,7 @@ void ZwiftClickHub::startController()
                         setupService();
                 });
         m_service->discoverDetails();
+        readBatteryLevel();
     });
 
     m_controller->connectToDevice();
@@ -153,42 +182,59 @@ void ZwiftClickHub::setupService()
             m_service->writeDescriptor(cccd, QByteArray::fromHex("0200"));   // indications
     }
 
-    // RideOn handshake, ONCE (like BikeControl). A WriteWithoutResponse can be
-    // silently lost when both controllers connect at once, so send it a few times
-    // at startup to reliably begin button notifications. We do NOT re-kick
-    // periodically afterwards: the device stays connected at the link layer and
-    // sends a frame on each button press, and a periodic re-kick write only adds
-    // radio contention (and drops) when sharing the adapter with the trainer.
+    // RideOn handshake — makes the (unencrypted) shifter start streaming. It's a
+    // WriteWithoutResponse (fire-and-forget) that can be silently lost when both
+    // controllers connect at once, so send it a few times to reliably start the
+    // stream (idempotent — extra RideOns are harmless once it's streaming).
     sendRideOn();
     QTimer::singleShot(500,  this, [this]() { sendRideOn(); });
     QTimer::singleShot(1200, this, [this]() { sendRideOn(); });
 
-    // The Click drops with HCI reason 0x08 (supervision timeout) when it shares the
-    // adapter with the trainer: its connection events get crowded out and the link
-    // supervisor kills it. Ask for a resilient connection — a long supervision
-    // timeout tolerates missed events while the trainer is busy. (No-op if the
-    // platform/peripheral ignores the request; harmless.)
-    if (m_controller) {
-        QLowEnergyConnectionParameters params;
-        params.setIntervalRange(30, 50);      // ms
-        params.setLatency(0);
-        params.setSupervisionTimeout(6000);   // ms — tolerate ~missed events vs the trainer
-        m_controller->requestConnectionUpdate(params);
-    }
-
-    // Keep-alive: re-send RideOn periodically so the Click doesn't deep-sleep
-    // (~1 min idle → supervision-timeout drop). Well under that window.
-    if (!m_keepAlive) {
-        m_keepAlive = new QTimer(this);
-        m_keepAlive->setInterval(KEEPALIVE_MS);
-        connect(m_keepAlive, &QTimer::timeout, this, [this]() {
-            if (isConnected()) sendRideOn();
-        });
-    }
-    m_keepAlive->start();
-
-    LOG_INFO("ZwiftClick", QStringLiteral("%1 [%2]: CONNECTED").arg(m_name, deviceAddress()));
+    LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: CONNECTED").arg(m_name, deviceAddress()));
+    m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();   // give the stream time before the watchdog acts
+    m_lastKickMs  = 0;
+    if (m_watchdog) m_watchdog->start();
     emit connected();
+}
+
+// Read the standard Battery Service (0x180F / Battery Level 0x2A19) once and log
+// it. Flashing-LED + supervision-timeout drops on a Click v2 are classically a
+// weak coin cell; a hard number rules that in or out.
+void ZwiftClickHub::readBatteryLevel()
+{
+    if (!m_controller || m_batteryService)
+        return;
+    m_batteryService = m_controller->createServiceObject(
+        QBluetoothUuid(QBluetoothUuid::ServiceClassUuid::BatteryService), this);
+    if (!m_batteryService) {
+        LOG_INFO("ZwiftClick", QStringLiteral("%1 [%2]: no Battery Service (0x180F) advertised")
+                     .arg(m_name, deviceAddress()));
+        return;
+    }
+    auto logLevel = [this](const QByteArray &v) {
+        if (!v.isEmpty())
+            LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: battery %3%%")
+                         .arg(m_name, deviceAddress()).arg(quint8(v.at(0))));
+    };
+    connect(m_batteryService, &QLowEnergyService::stateChanged, this,
+            [this, logLevel](QLowEnergyService::ServiceState st) {
+                if (st != QLowEnergyService::RemoteServiceDiscovered)
+                    return;
+                const QLowEnergyCharacteristic batt = m_batteryService->characteristic(
+                    QBluetoothUuid(QBluetoothUuid::CharacteristicType::BatteryLevel));
+                if (!batt.isValid()) {
+                    LOG_INFO("ZwiftClick", QStringLiteral("%1 [%2]: no Battery Level char (0x2A19)")
+                                 .arg(m_name, deviceAddress()));
+                    return;
+                }
+                if (!batt.value().isEmpty())
+                    logLevel(batt.value());
+                else
+                    m_batteryService->readCharacteristic(batt);
+            });
+    connect(m_batteryService, &QLowEnergyService::characteristicRead, this,
+            [logLevel](const QLowEnergyCharacteristic &, const QByteArray &v) { logLevel(v); });
+    m_batteryService->discoverDetails();
 }
 
 void ZwiftClickHub::sendRideOn()
@@ -208,9 +254,20 @@ void ZwiftClickHub::sendRideOn()
 void ZwiftClickHub::onCharacteristicChanged(const QLowEnergyCharacteristic &,
                                             const QByteArray &value)
 {
+    // ANY notification keeps the stream alive — when idle the controller sends
+    // periodic 0x19/0x15 heartbeat frames (Makinolo, "Zwift Ride protocol"), not
+    // the 0x23 button frame. Feed the watchdog on every frame so normal idle is
+    // never mistaken for a stall (which would trigger a needless reconnect).
+    ++m_frameCount;
+    m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();
+    if (m_streamQuiet) {
+        m_streamQuiet = false;
+        LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: stream RESUMED").arg(m_name, deviceAddress()));
+    }
+
     quint32 bitmap;
     if (!ZwiftClickProtocol::decodeClickButtons(value, bitmap))
-        return;  // idle/heartbeat frame (0x19/0x15) — not a button frame
+        return;  // idle/heartbeat frame (0x19/0x15) — liveness only, no buttons
 
     const quint32 changed = bitmap ^ m_lastBitmap;
     if (!changed)

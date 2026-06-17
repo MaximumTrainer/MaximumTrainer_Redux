@@ -133,14 +133,19 @@ void SensorsWidget::buildUi()
 
     m_useZwiftClickCheck =
         new QCheckBox(tr("Use Zwift Click v2 controller (right side only) - Beta"), trainerGroup);
+    m_useZwiftClickCheck->setToolTip(
+        tr("Wake BOTH controllers (press a button on each). The left/main one only "
+           "keeps the link stable - its buttons aren't used; only the right side is "
+           "supported."));
     connect(m_useZwiftClickCheck, &QCheckBox::toggled,
             this, &SensorsWidget::onUseZwiftClickToggled);
     trainerLayout->addWidget(m_useZwiftClickCheck);
 
     QLabel *clickHint = new QLabel(
-        tr("Wake the controller before the workout. Right side: Y = gear up, "
-           "B = gear down, A/Z = radio next/prev, + paddle = start/pause. The left "
-           "side isn't supported yet."), trainerGroup);
+        tr("Wake BOTH controllers before the workout (press a button on each). The "
+           "left/main one only keeps the connection stable; its buttons aren't used. "
+           "Right side: Y = gear up, B = gear down, A/Z = radio next/prev, "
+           "+ paddle = start/pause."), trainerGroup);
     clickHint->setWordWrap(true);
     clickHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
     trainerLayout->addWidget(clickHint);
