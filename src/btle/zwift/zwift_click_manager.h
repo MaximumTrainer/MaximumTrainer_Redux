@@ -38,8 +38,12 @@ public:
     explicit ZwiftClickManager(QObject *parent = nullptr);
 
     /// Scan for Click v2 controllers and connect to each as it advertises (used
-    /// by the standalone test harness). stop() tears everything down.
-    void start(const QString &nameFilter = QString());
+    /// by the standalone test harness). stop() tears everything down. With
+    /// singleDevice, connect only the FIRST matching shifter (its side — left/
+    /// right — is logged from the advertised manufacturer data) and stop
+    /// discovering, to test whether one link reports every button (the linked
+    /// pair may echo both units). Wake the unit you want to target first.
+    void start(const QString &nameFilter = QString(), bool singleDevice = false);
     /// Connect a hub to one already-discovered shifter (fed from another screen's
     /// shared BLE scan, so we don't run a second discovery agent).
     void connectDevice(const QBluetoothDeviceInfo &info);
@@ -79,10 +83,15 @@ private:
     bool acceptButton(int bit);   // false if this bit fired too recently
     void restartDiscovery();      // (re)start the LE scan if not already running
 
+    /// Zwift advertises controllers under company id 0x094A; the payload's first
+    /// byte identifies the unit (8 = left/main, 7 = right). Returns -1 if absent.
+    static int controllerSide(const QBluetoothDeviceInfo &info);
+
     QBluetoothDeviceDiscoveryAgent *m_agent = nullptr;
     QString                         m_nameFilter;
     QSet<QString>                   m_knownIds;  // device keys already handled (dedup)
     QList<ZwiftClickHub*>           m_hubs;
+    bool                            m_singleDevice = false;  // connect only one (test)
 
     QElapsedTimer m_clock;
     qint64        m_lastButtonMs[32];

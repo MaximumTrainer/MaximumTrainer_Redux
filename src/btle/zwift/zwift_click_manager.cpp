@@ -2,6 +2,7 @@
 
 #include "zwift_click_hub.h"
 #include "zwift_click_protocol.h"
+#include "logger.h"
 
 namespace {
 // Stable per-device key (deviceUuid on macOS, address otherwise) for dedup —
@@ -47,10 +48,19 @@ bool ZwiftClickManager::looksLikeShifter(const QBluetoothDeviceInfo &info,
     return n.contains("click") || n.contains("play") || n.contains("zwift");
 }
 
-void ZwiftClickManager::start(const QString &nameFilter)
+int ZwiftClickManager::controllerSide(const QBluetoothDeviceInfo &info)
+{
+    const QByteArray data = info.manufacturerData(0x094A);
+    if (data.isEmpty())
+        return -1;
+    return static_cast<quint8>(data.at(0));   // 8 = left/main, 7 = right
+}
+
+void ZwiftClickManager::start(const QString &nameFilter, bool singleDevice)
 {
     if (m_agent)
         return;   // already scanning
+    m_singleDevice = singleDevice;
     m_nameFilter = nameFilter.trimmed();
     m_agent = new QBluetoothDeviceDiscoveryAgent(this);
     // A controller only advertises for a few seconds after a button press, so
@@ -84,8 +94,15 @@ void ZwiftClickManager::stop()
 
 void ZwiftClickManager::onDeviceDiscovered(const QBluetoothDeviceInfo &info)
 {
-    if (looksLikeShifter(info, m_nameFilter))
-        connectDevice(info);
+    if (!looksLikeShifter(info, m_nameFilter))
+        return;
+    // In single-device mode, connect only the first shifter we accept, then stop
+    // discovering so no second device connects.
+    if (m_singleDevice && !m_hubs.isEmpty())
+        return;
+    connectDevice(info);
+    if (m_singleDevice && !m_hubs.isEmpty())
+        stopDiscovery();
 }
 
 void ZwiftClickManager::connectDevice(const QBluetoothDeviceInfo &info)
@@ -93,6 +110,13 @@ void ZwiftClickManager::connectDevice(const QBluetoothDeviceInfo &info)
     if (m_knownIds.contains(deviceKey(info)))
         return;   // already connecting this physical device
     m_knownIds.insert(deviceKey(info));
+
+    const int side = controllerSide(info);
+    const QString sideStr = side == 8 ? QStringLiteral("LEFT/main")
+                          : side == 7 ? QStringLiteral("RIGHT")
+                                      : QStringLiteral("unknown");
+    LOG_INFO("ZwiftClick", QStringLiteral("discovered %1 [%2] side=%3 (mfr-id byte %4)")
+                 .arg(info.name(), deviceKey(info), sideStr).arg(side));
 
     auto *hub = new ZwiftClickHub(this);
     m_hubs.append(hub);

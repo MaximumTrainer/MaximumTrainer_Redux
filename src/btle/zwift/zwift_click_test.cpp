@@ -14,7 +14,8 @@ constexpr int kGearCount = 24;   // demo gear range for this harness only
 
 ZwiftClickTest::ZwiftClickTest(QObject *parent) : QObject(parent) {}
 
-void ZwiftClickTest::start(const QString &nameFilter, int scanSeconds, int runSeconds)
+void ZwiftClickTest::start(const QString &nameFilter, int scanSeconds, int runSeconds,
+                           bool singleDevice)
 {
     Q_UNUSED(scanSeconds);
     m_runSeconds = runSeconds;
@@ -22,6 +23,9 @@ void ZwiftClickTest::start(const QString &nameFilter, int scanSeconds, int runSe
     line(QStringLiteral("── Zwift Click v2 controller test ───────────────────"));
     line(QStringLiteral("  name filter : %1")
              .arg(nameFilter.isEmpty() ? QStringLiteral("(auto: click/play)") : nameFilter));
+    line(QStringLiteral("  mode        : %1")
+             .arg(singleDevice ? QStringLiteral("SINGLE device (one link — does it report all buttons?)")
+                               : QStringLiteral("all devices")));
     line(QStringLiteral("  listening %1 s — wake each controller (press a button);")
              .arg(runSeconds));
     line(QStringLiteral("  then try the paddles, d-pad, and A/B/Y/Z"));
@@ -56,7 +60,7 @@ void ZwiftClickTest::start(const QString &nameFilter, int scanSeconds, int runSe
     connect(m_manager, &ZwiftClickManager::unmappedButton, this,
             [act](int bit) { act(QStringLiteral("(unmapped bit %1)").arg(bit)); });
 
-    m_manager->start(nameFilter);
+    m_manager->start(nameFilter, singleDevice);
     line(QStringLiteral("Gear starts at %1/%2").arg(m_gear).arg(kGearCount));
 
     m_runTimer = new QTimer(this);

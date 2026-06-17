@@ -20,7 +20,8 @@ public:
     explicit ZwiftClickTest(QObject *parent = nullptr);
 
     void start(const QString &nameFilter = QString(),
-               int scanSeconds = 8, int runSeconds = 120);
+               int scanSeconds = 8, int runSeconds = 120,
+               bool singleDevice = false);
 
 signals:
     void finished();

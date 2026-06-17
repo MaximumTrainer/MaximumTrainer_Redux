@@ -236,9 +236,12 @@ int main(int argc, char *argv[]) {
             const int n = cliArgs.at(idx + 2).toInt(&isNum);
             if (isNum) runSeconds = n;
         }
+        // --one: connect to only one controller, to test whether a single link
+        // surfaces every button (the linked pair may echo both units' presses).
+        const bool singleDevice = cliArgs.contains(QLatin1String("--one"), Qt::CaseInsensitive);
         auto *t = new ZwiftClickTest(&app);
         QObject::connect(t, &ZwiftClickTest::finished, &app, &QCoreApplication::quit);
-        t->start(nameFilter, /*scanSeconds=*/8, runSeconds);
+        t->start(nameFilter, /*scanSeconds=*/8, runSeconds, singleDevice);
         return app.exec();
     }
 

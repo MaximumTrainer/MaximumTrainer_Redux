@@ -203,16 +203,20 @@ void ZwiftClickHub::sendRideOn()
 void ZwiftClickHub::onCharacteristicChanged(const QLowEnergyCharacteristic &,
                                             const QByteArray &value)
 {
-    quint32 bitmap;
-    if (!ZwiftClickProtocol::decodeClickButtons(value, bitmap))
-        return;  // not a 0x23 button frame (handshake echo, capability, etc.)
-
+    // ANY notification keeps the stream alive — when idle the controller sends
+    // periodic 0x19/0x15 heartbeat frames (Makinolo, "Zwift Ride protocol"), not
+    // the 0x23 button frame. Feed the watchdog on every frame so normal idle is
+    // never mistaken for a stall (which would trigger a needless reconnect).
     ++m_frameCount;
-    m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();   // feed the watchdog
+    m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();
     if (m_streamQuiet) {
         m_streamQuiet = false;
         LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: stream RESUMED").arg(m_name, deviceAddress()));
     }
+
+    quint32 bitmap;
+    if (!ZwiftClickProtocol::decodeClickButtons(value, bitmap))
+        return;  // idle/heartbeat frame (0x19/0x15) — liveness only, no buttons
 
     const quint32 changed = bitmap ^ m_lastBitmap;
     if (!changed)
