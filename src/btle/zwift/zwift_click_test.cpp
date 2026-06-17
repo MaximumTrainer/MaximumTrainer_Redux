@@ -26,8 +26,9 @@ void ZwiftClickTest::start(const QString &nameFilter, int scanSeconds, int runSe
     line(QStringLiteral("  mode        : %1")
              .arg(singleDevice ? QStringLiteral("SINGLE device (one link — does it report all buttons?)")
                                : QStringLiteral("all devices")));
-    line(QStringLiteral("  listening %1 s — wake each controller (press a button);")
-             .arg(runSeconds));
+    line(runSeconds > 0
+             ? QStringLiteral("  listening %1 s — wake each controller (press a button);").arg(runSeconds)
+             : QStringLiteral("  listening until Ctrl-C — wake each controller (press a button);"));
     line(QStringLiteral("  then try the paddles, d-pad, and A/B/Y/Z"));
     line(QString());
 
@@ -59,13 +60,16 @@ void ZwiftClickTest::start(const QString &nameFilter, int scanSeconds, int runSe
     m_manager->start(nameFilter, singleDevice);
     line(QStringLiteral("Gear starts at %1/%2").arg(m_gear).arg(kGearCount));
 
-    m_runTimer = new QTimer(this);
-    m_runTimer->setSingleShot(true);
-    connect(m_runTimer, &QTimer::timeout, this, [this]() {
-        line(QString());
-        line(QStringLiteral("── test complete — releasing controllers ──"));
-        m_manager->stop();
-        emit finished();
-    });
-    m_runTimer->start(m_runSeconds * 1000);
+    if (m_runSeconds > 0) {
+        m_runTimer = new QTimer(this);
+        m_runTimer->setSingleShot(true);
+        connect(m_runTimer, &QTimer::timeout, this, [this]() {
+            line(QString());
+            line(QStringLiteral("── test complete — releasing controllers ──"));
+            m_manager->stop();
+            emit finished();
+        });
+        m_runTimer->start(m_runSeconds * 1000);
+    }
+    // runSeconds <= 0 → no timer; run until Ctrl-C.
 }
