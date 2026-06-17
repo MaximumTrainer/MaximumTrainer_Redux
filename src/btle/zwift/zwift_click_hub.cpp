@@ -97,6 +97,27 @@ void ZwiftClickHub::watchdogTick()
             sendRideOn();   // idempotent — restart a stalled (or sleeping) stream
         }
     }
+
+    // Periodic unlock-ack keepalive (BikeControl sends ff0400 on an unlocked
+    // device). Harmless if locked; may keep an unlocked Click's session alive.
+    if (now - m_lastAckMs >= ACK_EVERY_MS) {
+        m_lastAckMs = now;
+        sendUnlockAck();
+    }
+}
+
+void ZwiftClickHub::sendUnlockAck()
+{
+    if (!m_service)
+        return;
+    const QLowEnergyCharacteristic cp =
+        m_service->characteristic(uuid(ZwiftClickProtocol::Uuid::ControlPoint));
+    if (!cp.isValid())
+        return;
+    const auto mode = (cp.properties() & QLowEnergyCharacteristic::WriteNoResponse)
+                          ? QLowEnergyService::WriteWithoutResponse
+                          : QLowEnergyService::WriteWithResponse;
+    m_service->writeCharacteristic(cp, QByteArray::fromHex("ff0400"), mode);
 }
 
 void ZwiftClickHub::startController()
@@ -161,7 +182,8 @@ void ZwiftClickHub::setupService()
     connect(m_service, &QLowEnergyService::characteristicChanged, this,
             &ZwiftClickHub::onCharacteristicChanged);
 
-    // Subscribe to the button stream.
+    // Subscribe to the button stream (ASYNC notify) AND the SYNC_TX indicate —
+    // BikeControl subscribes both before the handshake.
     const QLowEnergyCharacteristic meas =
         m_service->characteristic(uuid(ZwiftClickProtocol::Uuid::Measurement));
     if (meas.isValid()) {
@@ -169,6 +191,14 @@ void ZwiftClickHub::setupService()
             QBluetoothUuid::DescriptorType::ClientCharacteristicConfiguration);
         if (cccd.isValid())
             m_service->writeDescriptor(cccd, kNotifyOn);
+    }
+    const QLowEnergyCharacteristic resp =
+        m_service->characteristic(uuid(ZwiftClickProtocol::Uuid::Response));
+    if (resp.isValid()) {
+        const QLowEnergyDescriptor cccd = resp.descriptor(
+            QBluetoothUuid::DescriptorType::ClientCharacteristicConfiguration);
+        if (cccd.isValid())
+            m_service->writeDescriptor(cccd, QByteArray::fromHex("0200"));   // indications
     }
 
     // RideOn handshake — makes the (unencrypted) shifter start streaming. It's a
@@ -178,6 +208,10 @@ void ZwiftClickHub::setupService()
     sendRideOn();
     QTimer::singleShot(500,  this, [this]() { sendRideOn(); });
     QTimer::singleShot(1200, this, [this]() { sendRideOn(); });
+    // BikeControl's Click-v2 "unlock ack" — sent on an UNLOCKED device to keep the
+    // session alive (no effect if the device is still locked). Send it shortly
+    // after RideOn, then periodically as a keepalive.
+    QTimer::singleShot(1600, this, [this]() { sendUnlockAck(); });
 
     LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: CONNECTED").arg(m_name, deviceAddress()));
     m_lastFrameMs = QDateTime::currentMSecsSinceEpoch();   // give the stream time before the watchdog acts
