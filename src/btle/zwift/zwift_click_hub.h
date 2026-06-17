@@ -75,11 +75,12 @@ private:
     // A disconnect from a deliberate teardown is not a drop (no auto-reconnect).
     bool    m_tearingDown = false;
 
-    // Keep-alive: the Click v2 deep-sleeps after ~1 min of no button presses and
-    // stops servicing the connection (HCI 0x08 supervision timeout). Send a light
-    // RideOn well under that window so its inactivity timer never expires.
+    // Keep-alive: re-send RideOn frequently so the Click stays in its active,
+    // solid-LED streaming session. Without this the link decays to advertising
+    // (flashing LED) and drops with HCI 0x08. ~3s matches the build that ran an
+    // hour clean in the CLI.
     QTimer *m_keepAlive = nullptr;
-    static constexpr int KEEPALIVE_MS = 20000;
+    static constexpr int KEEPALIVE_MS = 3000;
 
     // Connect retry: "Unknown Error" on connect/reconnect is usually transient.
     int m_retriesLeft = 0;
