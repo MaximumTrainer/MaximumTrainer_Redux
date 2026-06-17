@@ -26,6 +26,7 @@
 #include <QPainter>
 #include <QImage>
 #include "retroracecontroller.h"
+#include "zwift_click_test.h"
 #endif
 
 
@@ -213,6 +214,34 @@ int main(int argc, char *argv[]) {
                              || cliArgs.contains(QLatin1String("/screenshots"),  Qt::CaseInsensitive);
 
 #ifndef Q_OS_WASM
+    // --zwift-click-test [nameFilter] [seconds]: headless test of Zwift Click v2
+    // controller INPUT read over a direct BLE connection to the controller (its
+    // own peripheral — never touches the trainer, so ERG/FTMS is unaffected).
+    // Connects to the controller(s), then prints the mapped action for every
+    // button press. Proves button reading on hardware before any UI wiring.
+    if (cliArgs.contains(QLatin1String("--zwift-click-test"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--zwift-click-test"));
+        QString nameFilter;
+        int runSeconds = 120;
+        if (idx >= 0 && idx + 1 < cliArgs.size()
+            && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-'))) {
+            bool isNum = false;
+            const int n = cliArgs.at(idx + 1).toInt(&isNum);
+            if (isNum) runSeconds = n;            // first arg numeric ⇒ duration
+            else       nameFilter = cliArgs.at(idx + 1);
+        }
+        if (idx >= 0 && idx + 2 < cliArgs.size()) {
+            bool isNum = false;
+            const int n = cliArgs.at(idx + 2).toInt(&isNum);
+            if (isNum) runSeconds = n;
+        }
+        auto *t = new ZwiftClickTest(&app);
+        QObject::connect(t, &ZwiftClickTest::finished, &app, &QCoreApplication::quit);
+        t->start(nameFilter, /*scanSeconds=*/8, runSeconds);
+        return app.exec();
+    }
+
     // --retrorace [file.fit] [--shot out.png]: standalone spike of the retro
     // ghost-race view. Skips login/MainWindow entirely. With --shot it grabs one
     // frame to a PNG and quits (headless validation); otherwise it stays open.
