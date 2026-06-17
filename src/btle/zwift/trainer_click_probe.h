@@ -54,7 +54,8 @@ private:
     void onFtmsChanged(const QLowEnergyCharacteristic &c, const QByteArray &v);
     void onFc82Changed(const QLowEnergyCharacteristic &c, const QByteArray &v);
     void writeFc82(const QByteArray &bytes);
-    void armRelay();   // send the ZCS / RideOn writes per the selected mode
+    void armRelay();      // send the ZCS / RideOn writes per the selected mode
+    void relayRideOn();   // relay RideOn to the Click, retrying until frames flow
 
     QBluetoothDeviceDiscoveryAgent *m_agent = nullptr;
     QLowEnergyController *m_ctrl = nullptr;
@@ -65,6 +66,8 @@ private:
     bool     m_ftmsGranted = false;
     bool     m_started = false;
     bool     m_connectSent = false;   // 441002 sent after the trainer announced the Click
+    bool     m_sawRelay = false;      // a 0x4e relayed frame arrived ⇒ relay is live
+    int      m_relayRetries = 0;
     quint64  m_fc82Frames = 0;
     quint32  m_lastBitmap = 0xFFFFFFFFu;
     QTimer  *m_ergTimer = nullptr;

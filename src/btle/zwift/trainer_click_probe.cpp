@@ -194,6 +194,20 @@ void TrainerClickProbe::armRelay()
                  .arg(m_relay == Relay::RideOn ? "RideOn+ZCS" : "ZCS-only"));
 }
 
+void TrainerClickProbe::relayRideOn()
+{
+    if (m_sawRelay)
+        return;   // relay already flowing
+    if (m_relayRetries >= 10) {
+        LOG_WARN("ClickProbe", QStringLiteral("no relayed frames after %1 RideOn attempts").arg(m_relayRetries));
+        return;
+    }
+    ++m_relayRetries;
+    LOG_WARN("ClickProbe", QStringLiteral("relaying RideOn to the Click (attempt %1)…").arg(m_relayRetries));
+    writeFc82(QByteArray::fromHex(kRelayedRideOn));
+    QTimer::singleShot(4000, this, [this]() { relayRideOn(); });
+}
+
 void TrainerClickProbe::writeFc82(const QByteArray &bytes)
 {
     if (!m_fc82) return;
@@ -222,10 +236,15 @@ void TrainerClickProbe::onFc82Changed(const QLowEnergyCharacteristic &, const QB
         m_connectSent = true;
         LOG_WARN("ClickProbe", QStringLiteral("Click announced by trainer → connecting (441002)"));
         writeFc82(QByteArray::fromHex(kConnectClick));
-        QTimer::singleShot(4500, this, [this]() {
-            LOG_WARN("ClickProbe", QStringLiteral("relaying RideOn to the Click…"));
-            writeFc82(QByteArray::fromHex(kRelayedRideOn));
-        });
+        // The trainer needs a few seconds to discover the Click's GATT before a
+        // relayed RideOn lands; then retry it until relayed frames actually flow.
+        QTimer::singleShot(4500, this, [this]() { relayRideOn(); });
+    }
+
+    // First relayed 0x4e frame ⇒ the relay is live; stop retrying RideOn.
+    if (cmd == 0x4e && !m_sawRelay) {
+        m_sawRelay = true;
+        LOG_WARN("ClickProbe", QStringLiteral("relay LIVE — trainer is forwarding the Click (0x4e)"));
     }
 
     quint32 bitmap;
