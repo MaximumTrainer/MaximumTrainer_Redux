@@ -66,4 +66,43 @@ bool decodeClickButtons(const QByteArray &frame, quint32 &bitmapOut)
     return true;
 }
 
+bool decodeRelayedClickButtons(const QByteArray &frame, quint32 &bitmapOut)
+{
+    if (frame.isEmpty() || static_cast<quint8>(frame.at(0)) != 0x4e)
+        return false;
+
+    int pos = 1;
+    while (pos < frame.size()) {
+        quint64 tag;
+        if (!getVarint(frame, pos, tag))
+            return false;
+        const int field    = static_cast<int>(tag >> 3);
+        const int wireType = static_cast<int>(tag & 0x7);
+
+        switch (wireType) {
+        case 0: {                       // varint — skip
+            quint64 v;
+            if (!getVarint(frame, pos, v))
+                return false;
+            break;
+        }
+        case 2: {                       // length-delimited
+            quint64 len;
+            if (!getVarint(frame, pos, len))
+                return false;
+            if (pos + static_cast<int>(len) > frame.size())
+                return false;
+            if (field == 2)             // the inner relayed Click frame
+                return decodeClickButtons(frame.mid(pos, static_cast<int>(len)), bitmapOut);
+            pos += static_cast<int>(len);
+            break;
+        }
+        case 5: pos += 4; break;
+        case 1: pos += 8; break;
+        default: return false;
+        }
+    }
+    return false;
+}
+
 } // namespace ZwiftClickProtocol

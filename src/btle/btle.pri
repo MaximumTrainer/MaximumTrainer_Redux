@@ -36,11 +36,13 @@ contains(QMAKE_PLATFORM, wasm) {
     SOURCES += $$PWD/zwift/zwift_click_protocol.cpp \
                $$PWD/zwift/zwift_click_hub.cpp \
                $$PWD/zwift/zwift_click_manager.cpp \
-               $$PWD/zwift/zwift_click_test.cpp
+               $$PWD/zwift/zwift_click_test.cpp \
+               $$PWD/zwift/trainer_click_probe.cpp
     HEADERS += $$PWD/zwift/zwift_click_protocol.h \
                $$PWD/zwift/zwift_click_hub.h \
                $$PWD/zwift/zwift_click_manager.h \
-               $$PWD/zwift/zwift_click_test.h
+               $$PWD/zwift/zwift_click_test.h \
+               $$PWD/zwift/trainer_click_probe.h
 }
 
 # Virtual-shifting gear table (FTMS resistance/power) — header-only, platform-independent.

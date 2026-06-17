@@ -27,6 +27,7 @@
 #include <QImage>
 #include "retroracecontroller.h"
 #include "zwift_click_test.h"
+#include "trainer_click_probe.h"
 #endif
 
 
@@ -242,6 +243,37 @@ int main(int argc, char *argv[]) {
         auto *t = new ZwiftClickTest(&app);
         QObject::connect(t, &ZwiftClickTest::finished, &app, &QCoreApplication::quit);
         t->start(nameFilter, /*scanSeconds=*/8, runSeconds, singleDevice);
+        return app.exec();
+    }
+
+    // --trainer-click-probe [name=Victory] [seconds] [--zcs|--rideon]: experiment
+    // to read the trainer-RELAYED Click while keeping FTMS ERG alive. Runs FTMS
+    // control + FC82 on one connection; logs whether ERG stays granted and whether
+    // Click buttons relay. Default mode is passive (FC82 subscribe, no writes).
+    if (cliArgs.contains(QLatin1String("--trainer-click-probe"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--trainer-click-probe"));
+        QString nameFilter = QStringLiteral("Victory");
+        int runSeconds = 120;
+        if (idx >= 0 && idx + 1 < cliArgs.size()
+            && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-'))) {
+            bool isNum = false;
+            const int n = cliArgs.at(idx + 1).toInt(&isNum);
+            if (isNum) runSeconds = n; else nameFilter = cliArgs.at(idx + 1);
+        }
+        if (idx >= 0 && idx + 2 < cliArgs.size()) {
+            bool isNum = false;
+            const int n = cliArgs.at(idx + 2).toInt(&isNum);
+            if (isNum) runSeconds = n;
+        }
+        auto relay = TrainerClickProbe::Relay::Passive;
+        if (cliArgs.contains(QLatin1String("--rideon"), Qt::CaseInsensitive))
+            relay = TrainerClickProbe::Relay::RideOn;
+        else if (cliArgs.contains(QLatin1String("--zcs"), Qt::CaseInsensitive))
+            relay = TrainerClickProbe::Relay::Zcs;
+        auto *pr = new TrainerClickProbe(&app);
+        QObject::connect(pr, &TrainerClickProbe::finished, &app, &QCoreApplication::quit);
+        pr->start(nameFilter, runSeconds, relay);
         return app.exec();
     }
 

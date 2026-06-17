@@ -42,6 +42,12 @@ QByteArray rideOnHandshake();
 // the command byte is not 0x23 or the protobuf stream is malformed.
 bool decodeClickButtons(const QByteArray &frame, quint32 &bitmapOut);
 
+// Decode a trainer-RELAYED Click frame: [0x4e][protobuf{ field2 = inner frame }].
+// When the inner frame is a 0x23 button frame, extract its bitmap. Returns false
+// if this isn't a 0x4e relay carrying a button frame. (Used by the trainer-relay
+// experiment — the trainer forwards a linked Click's frames wrapped in 0x4e.)
+bool decodeRelayedClickButtons(const QByteArray &frame, quint32 &bitmapOut);
+
 // A button is "pressed" when its bit is 0 (active-low).
 inline bool clickButtonPressed(quint32 bitmap, int bitIndex) {
     return (bitmap & (1u << bitIndex)) == 0;
