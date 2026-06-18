@@ -208,23 +208,28 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ftb->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     // Tab indices must stay in sync with the pages in stackedWidget_menu
-    // (see leftMenuChanged): 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio,
-    // 4 Sensors, 5 History. The former Profile and Settings web-view tabs were
-    // removed — FTP/LTHR/weight now live in the Preferences dialog, and the
-    // server-hosted settings page is superseded by it.
+    // (see leftMenuChanged): 0 Workout, 1 Intervals.icu, 2 Studio, 3 Devices,
+    // 4 History. The former Profile and Settings web-view tabs were removed —
+    // FTP/LTHR/weight now live in the Preferences dialog.
+    //
+    // The "Plan" tab is intentionally HIDDEN (not inserted) pending a clear spec
+    // — see issue #299: its Intervals.icu-calendar view needs a separate web
+    // login (the app's OAuth/API auth doesn't carry into the embedded browser),
+    // and the Trainerweb (TrainerDB) view's downloads are broken, so it only
+    // confused users. The page still lives in stackedWidget_menu (index 2); to
+    // bring it back, re-insert the tab below and restore tabToPage in
+    // leftMenuChanged().
     ftb->insertTab(0, QIcon(":/image/icon/workoutMan"), tr("Workout"));
     ftb->insertTab(1, QIcon(":/image/icon/intervals"),   tr("Intervals.icu"));
-    ftb->insertTab(2, QIcon(":/image/icon/calendar"),  tr("Plan"));
-    ftb->insertTab(3, QIcon(":/image/icon/studio"), tr("Studio"));
-    ftb->insertTab(4, QIcon(":/image/icon/bluetooth"), tr("Devices"));
-    ftb->insertTab(5, QIcon(":/image/icon/chart"), tr("History"));
+    ftb->insertTab(2, QIcon(":/image/icon/studio"), tr("Studio"));
+    ftb->insertTab(3, QIcon(":/image/icon/bluetooth"), tr("Devices"));
+    ftb->insertTab(4, QIcon(":/image/icon/chart"), tr("History"));
 
     ftb->setTabEnabled(0, true);
     ftb->setTabEnabled(1, true);
     ftb->setTabEnabled(2, true);
     ftb->setTabEnabled(3, true);
     ftb->setTabEnabled(4, true);
-    ftb->setTabEnabled(5, true);
 
 
 
@@ -805,12 +810,13 @@ void MainWindow::leftMenuChanged(int tabSelected) {
 
 
 
-    // The Profile and Settings web-view pages were removed from stackedWidget_menu,
-    // so the visible tabs no longer map 1:1 to page indices. Tab order is
-    // 0 Workout, 1 Intervals.icu, 2 Plan, 3 Studio, 4 Sensors, 5 History; the
-    // matching stacked pages are 0/1/2/3 then 5 Sensors and 4 History.
-    static const int tabToPage[] = {0, 1, 2, 3, 5, 4};
-    const int pageIndex = (tabSelected >= 0 && tabSelected < 6)
+    // Visible tabs don't map 1:1 to stacked-page indices: the Profile/Settings
+    // pages were removed, and the "Plan" page (stacked index 2) is kept but its
+    // tab is hidden (see the insertTab block / issue #299). Visible tab order is
+    // 0 Workout, 1 Intervals.icu, 2 Studio, 3 Devices, 4 History; the matching
+    // stacked pages are Workout 0, Intervals 1, Studio 3, Sensors 5, History 4.
+    static const int tabToPage[] = {0, 1, 3, 5, 4};
+    const int pageIndex = (tabSelected >= 0 && tabSelected < 5)
                               ? tabToPage[tabSelected]
                               : tabSelected;
     ui->stackedWidget_menu->setCurrentIndex(pageIndex);
@@ -1283,7 +1289,9 @@ void MainWindow::on_actionWorkout_triggered()
 //-----------------------------------------------
 void MainWindow::on_actionHistory_triggered()
 {
-    ftb->setCurrentIndex(5); // History
+    // "Folder → Open History Folder": open the history folder in the file
+    // manager (it previously just switched to the History tab by mistake).
+    Util::openHistoryFolder();
 }
 
 
@@ -1460,7 +1468,7 @@ void MainWindow::executeWorkout(Workout workout) {
                         // "Manage Sensors" – cancel the connect flow and switch
                         // to the Sensors tab so the user can edit their devices.
                         connectDlg.reject();
-                        ftb->setCurrentIndex(4);
+                        ftb->setCurrentIndex(3);
                     });
 
             if (connectDlg.exec() != QDialog::Accepted)
@@ -2189,9 +2197,9 @@ void MainWindow::screenshotNextStep()
             dconfig->hide();
             qDebug() << "Screenshot: settings (Preferences dialog)";
         }
-        // Capture the Bluetooth Sensors page (FancyTabBar index 4), which hosts
+        // Capture the Bluetooth Sensors page (FancyTabBar index 3), which hosts
         // sensor pairing plus the trainer/sensor settings.
-        ftb->setCurrentIndex(4);
+        ftb->setCurrentIndex(3);
         QCoreApplication::processEvents();
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_sensors.png"), "PNG");
         qDebug() << "Screenshot: sensors";
@@ -2250,7 +2258,7 @@ void MainWindow::screenshotNextStep()
     // ── Step 6: capture the Studio tab off (switch only) then on ─────────
     case 6: {
         StudioWidget *sw = qobject_cast<StudioWidget*>(ui->studioWidget);
-        ftb->setCurrentIndex(3);
+        ftb->setCurrentIndex(2);
 
         // Off: only the Studio Mode switch row should show, pinned at the top.
         enableStudioMode(false);
@@ -2290,9 +2298,10 @@ void MainWindow::screenshotNextStep()
         qDebug() << "Screenshot: activity_history (Intervals.icu tab)";
         break;
 
-    // ── Step 10: switch to Plan tab (tab 2) ───────────────────────────────
+    // ── Step 10: show the Plan page. Its left tab is hidden (see #299), so
+    //    select the stacked page directly to still capture the screenshot. ──
     case 10:
-        ftb->setCurrentIndex(2);
+        ui->stackedWidget_menu->setCurrentIndex(2);   // Plan page (tab hidden)
         ui->tabWidget->setCurrentIndex(0);   // Plan sub-tab
         raise();
         activateWindow();
@@ -2305,9 +2314,9 @@ void MainWindow::screenshotNextStep()
         qDebug() << "Screenshot: plan";
         break;
 
-    // ── Step 12: switch to History tab (tab 5) ────────────────────────────
+    // ── Step 12: switch to History tab (tab 4) ────────────────────────────
     case 12:
-        ftb->setCurrentIndex(5);
+        ftb->setCurrentIndex(4);
         raise();
         activateWindow();
         QCoreApplication::processEvents();
