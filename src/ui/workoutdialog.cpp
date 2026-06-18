@@ -1093,6 +1093,14 @@ void WorkoutDialog::checkMAPTestOver() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
 
+    // Diagnostic (temporary): the log timestamps on this line reveal whether the
+    // Clock ticks faster than real time (the "workout / race finishes instantly"
+    // report seen on one PC). Normally one line per real second with clockElapsed
+    // incrementing by 1; a burst of lines, or clockElapsed jumping, points at the
+    // Clock / QElapsedTimer.
+    qDebug() << "[update1sec] clockElapsed=" << totalTimeElapsed_sec
+             << "interval" << currentInterval << "/" << workout.getNbInterval();
+
     //    qDebug() << "#Update 1sec" << totalTimeElapsed_sec;
     int totalTimeElapsed_sec_i = (int)totalTimeElapsed_sec;
 
