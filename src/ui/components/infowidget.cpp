@@ -3,6 +3,7 @@
 
 #include <QDebug>
 #include "myconstants.h"
+#include "util.h"
 
 
 
@@ -272,17 +273,12 @@ void InfoWidget::setTypeInfoBox(TypeInfoBox type) {
     this->type = type;
 
     int size = 35;
-    QPixmap pixmapPower = QPixmap(":/image/icon/power2");
-    QPixmap pixmapCadence = QPixmap(":/image/icon/crank2");
-    QPixmap pixmapSpeed = QPixmap(":/image/icon/speed");
-    QPixmap pixmapHr = QPixmap(":/image/icon/heart2");
-    QPixmap pixmapTarget = QPixmap(":/image/icon/target");
-
-    pixmapPower = pixmapPower.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    pixmapCadence = pixmapCadence.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    pixmapSpeed = pixmapSpeed.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    pixmapHr = pixmapHr.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    pixmapTarget = pixmapTarget.scaled(size-10, size-10, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    const qreal dpr = devicePixelRatioF();
+    QPixmap pixmapPower   = Util::loadIconForDpr(":/image/icon/power2", size, dpr);
+    QPixmap pixmapCadence = Util::loadIconForDpr(":/image/icon/crank2", size, dpr);
+    QPixmap pixmapSpeed   = Util::loadIconForDpr(":/image/icon/speed",  size, dpr);
+    QPixmap pixmapHr      = Util::loadIconForDpr(":/image/icon/heart2", size, dpr);
+    QPixmap pixmapTarget  = Util::loadIconForDpr(":/image/icon/target", size - 10, dpr);
 
 
     ui->label_imageTarget->setPixmap(pixmapTarget);

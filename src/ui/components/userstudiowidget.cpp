@@ -2,6 +2,7 @@
 #include "ui_userstudiowidget.h"
 
 #include "myconstants.h"
+#include "util.h"
 
 
 
@@ -18,16 +19,11 @@ UserStudioWidget::UserStudioWidget(int userID, QString displayName, double FTP, 
     ui->setupUi(this);
 
     int size = 20; //20x20
-    QPixmap pixmapPower = QPixmap(":/image/icon/power2");
-    QPixmap pixmapCadence = QPixmap(":/image/icon/crank2");
-    QPixmap pixmapHr = QPixmap(":/image/icon/heart2");
-    QPixmap pixmapTarget = QPixmap(":/image/icon/target");
-
-
-    pixmapPower = pixmapPower.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    pixmapCadence = pixmapCadence.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    pixmapHr = pixmapHr.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    pixmapTarget = pixmapTarget.scaled(size-5, size-5, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    const qreal dpr = devicePixelRatioF();
+    QPixmap pixmapPower   = Util::loadIconForDpr(":/image/icon/power2", size, dpr);
+    QPixmap pixmapCadence = Util::loadIconForDpr(":/image/icon/crank2", size, dpr);
+    QPixmap pixmapHr      = Util::loadIconForDpr(":/image/icon/heart2", size, dpr);
+    QPixmap pixmapTarget  = Util::loadIconForDpr(":/image/icon/target", size - 5, dpr);
 
 
     ui->label_image_power->setPixmap(pixmapPower);

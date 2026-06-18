@@ -59,6 +59,13 @@ public:
     static QString getStringFromUCHAR(unsigned char* ch);
     static QColor getColor(Color color);
 
+    // Load a resource pixmap scaled into a `logicalSize` square, rendered crisp
+    // for the given device pixel ratio. The result carries the DPR, so a QLabel
+    // or QIcon lays it out at logicalSize device-independent px but renders at
+    // full resolution - no blur on HiDPI / fractional-scale (e.g. Windows 150%)
+    // displays. Pass a widget's devicePixelRatioF() (or qApp->devicePixelRatio()).
+    static QPixmap loadIconForDpr(const QString &resourcePath, int logicalSize, qreal devicePixelRatio);
+
 
     //// Folders
     static bool checkFolderPathIsValidForWrite(QString path);

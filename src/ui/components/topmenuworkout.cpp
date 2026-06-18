@@ -19,20 +19,26 @@ QIcon tintedStandardIcon(QStyle *style, QStyle::StandardPixmap sp,
     // Qt's title-bar standard pixmaps have differing native sizes (e.g. min and
     // close are ~11x13 while max is 16x16) and pixmap(size) does not upscale.
     // Scale the source up to the requested size so the toolbar icons render at
-    // a uniform visual size.
-    QPixmap source = style->standardIcon(sp).pixmap(size);
-    if (source.size() != size)
-        source = source.scaled(size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    QPixmap out(size);
+    // a uniform visual size. Composite in real device pixels (size * DPR) and
+    // tag the result with the DPR, or the glyph is rasterised at 1x and upscaled
+    // by the compositor - blurry on HiDPI / fractional-scale (Windows 150%).
+    const qreal dpr = qApp->devicePixelRatio();
+    const QSize physical(qRound(size.width() * dpr), qRound(size.height() * dpr));
+    QPixmap source = style->standardIcon(sp).pixmap(size, dpr);
+    source.setDevicePixelRatio(1.0);   // composite below in raw device pixels
+    if (source.size() != physical)
+        source = source.scaled(physical, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    QPixmap out(physical);
     out.fill(Qt::transparent);
     QPainter p(&out);
     // Centre the (aspect-preserved) glyph within the target canvas.
-    const int x = (size.width()  - source.width())  / 2;
-    const int y = (size.height() - source.height()) / 2;
+    const int x = (physical.width()  - source.width())  / 2;
+    const int y = (physical.height() - source.height()) / 2;
     p.drawPixmap(x, y, source);
     p.setCompositionMode(QPainter::CompositionMode_SourceIn);
     p.fillRect(out.rect(), color);
     p.end();
+    out.setDevicePixelRatio(dpr);
     return QIcon(out);
 }
 
@@ -73,15 +79,11 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
 
 
     int size = 25;
-    QPixmap pixmapPower = QPixmap(":/image/icon/power2");
-    QPixmap pixmapCadence = QPixmap(":/image/icon/crank2");
-    QPixmap pixmapHr = QPixmap(":/image/icon/heart2");
-    QPixmap pixmapRadio = QPixmap(":/image/icon/radio");
-
-    pixmapPower = pixmapPower.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    pixmapCadence = pixmapCadence.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    pixmapHr = pixmapHr.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    pixmapRadio = pixmapRadio.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    const qreal dpr = devicePixelRatioF();
+    QPixmap pixmapPower   = Util::loadIconForDpr(":/image/icon/power2", size, dpr);
+    QPixmap pixmapCadence = Util::loadIconForDpr(":/image/icon/crank2", size, dpr);
+    QPixmap pixmapHr      = Util::loadIconForDpr(":/image/icon/heart2", size, dpr);
+    QPixmap pixmapRadio   = Util::loadIconForDpr(":/image/icon/radio",  size, dpr);
 
 
     ui->label_imagePower->setPixmap(pixmapPower);
@@ -123,7 +125,8 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     ui->pushButton_nextRadio->setIcon(tintedStandardIcon(style(), QStyle::SP_MediaSkipForward, iconSize, iconColor));
     ui->pushButton_nextRadio->setIconSize(iconSize);
     ui->label_radioVolumeIcon->setPixmap(
-        tintedStandardIcon(style(), QStyle::SP_MediaVolume, iconSize, iconColor).pixmap(iconSize));
+        tintedStandardIcon(style(), QStyle::SP_MediaVolume, iconSize, iconColor)
+            .pixmap(iconSize, devicePixelRatioF()));
 
     // Window/config controls: render light icons on the always-dark toolbar,
     // instead of the legacy opaque-black PNGs that the dark theme broke.
