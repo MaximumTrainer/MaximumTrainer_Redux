@@ -532,6 +532,19 @@ bool Util::unzipFile(QString zipFilename , QString filename) {
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+QPixmap Util::loadIconForDpr(const QString &resourcePath, int logicalSize, qreal devicePixelRatio)
+{
+    if (devicePixelRatio <= 0.0)
+        devicePixelRatio = 1.0;
+    QPixmap src(resourcePath);
+    if (src.isNull())
+        return src;
+    const int device = qRound(logicalSize * devicePixelRatio);
+    QPixmap scaled = src.scaled(device, device, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    scaled.setDevicePixelRatio(devicePixelRatio);
+    return scaled;
+}
+
 QColor Util::getColor(Color color) {
 
 
