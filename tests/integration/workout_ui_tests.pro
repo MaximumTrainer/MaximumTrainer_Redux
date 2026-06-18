@@ -109,7 +109,6 @@ SOURCES += \
     ../../src/fitness/achievements/achievement.cpp \
     ../../src/persistence/db/environnement.cpp \
     ../../src/persistence/db/extrequest.cpp \
-    ../../src/persistence/db/userdao.cpp \
     ../../src/persistence/db/versiondao.cpp \
     ../../src/persistence/db/intervalsicudao.cpp \
     ../../src/persistence/file/xmlutil.cpp \

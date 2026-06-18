@@ -150,8 +150,9 @@ test.describe('BLE GATT ready callback', () => {
       });
     });
 
-    // Mock maximumtrainer.com backend APIs before navigation.
-    const apiRequestedUrls = await wasmApp.mockBackendApis();
+    // Mock any legacy backend XHRs before navigation (maximumtrainer.com is
+    // gone; this is now just a safety net against stray requests).
+    await wasmApp.mockBackendApis();
 
     // Install OAuth popup mock so the login dialog completes automatically.
     await wasmApp.setupOAuthMock();
@@ -214,12 +215,6 @@ test.describe('BLE GATT ready callback', () => {
       radioFetchFailedLines,
       `WASM overlay shows "Radio list fetch failed" — radio API request failed:\n${radioFetchFailedLines.join('\n')}`,
     ).toHaveLength(0);
-
-    // Verify a Qt backend API call was actually made
-    expect(
-      apiRequestedUrls.some((u) => u.includes('achievement_rest')),
-      `Qt app did not call the achievement API — app may not have reached init phase.\nSeen URLs: ${apiRequestedUrls.join(', ')}`,
-    ).toBe(true);
 
     const retrySuffix = testInfo.retry > 0 ? `-retry${testInfo.retry}` : '';
     await page.screenshot({ path: `test-results/wasm-screenshots/ble-gatt-ready-no-errors${retrySuffix}.png` });
