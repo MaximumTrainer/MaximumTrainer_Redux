@@ -2403,9 +2403,18 @@ void WorkoutDialog::setupZwiftClick()
 }
 
 void WorkoutDialog::shiftGear(int delta) {
-    // Ignore shifts unless gears are actually driving resistance — during an
-    // ERG-owned interval (or with virtual shifting off / workout over) the gear
-    // is not in control, so changing the number would just be misleading.
+    // During an ERG-owned interval a virtual gear has no effect, so the gear-up/
+    // gear-down controls (Zwift Click buttons, the toolbar ▲/▼, or the Up/Down
+    // keys) instead nudge the whole-workout difficulty - the same action as the
+    // +/- graph buttons. In slope/free-ride they keep changing the virtual gear.
+    if (ergOwnsThisInterval()) {
+        if (delta > 0)      emit increaseDifficulty();
+        else if (delta < 0) emit decreaseDifficulty();
+        return;
+    }
+    // Ignore shifts unless gears are actually driving resistance — with virtual
+    // shifting off / workout over the gear is not in control, so changing the
+    // number would just be misleading.
     if (!gearsDriveNow())
         return;
     const int g = qBound(1, m_virtualGear + delta, kVirtualGearCount);
