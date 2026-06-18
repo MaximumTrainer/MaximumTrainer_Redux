@@ -1289,7 +1289,9 @@ void MainWindow::on_actionWorkout_triggered()
 //-----------------------------------------------
 void MainWindow::on_actionHistory_triggered()
 {
-    ftb->setCurrentIndex(4); // History
+    // "Folder → Open History Folder": open the history folder in the file
+    // manager (it previously just switched to the History tab by mistake).
+    Util::openHistoryFolder();
 }
 
 
