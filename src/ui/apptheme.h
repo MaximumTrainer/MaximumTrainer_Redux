@@ -222,9 +222,12 @@ public:
 "QComboBox QAbstractItemView {"
 "  background-color: #3a3a3a; color: #e0e0e0; selection-background-color: #4a7ab5;"
 "}"
-"QSpinBox {"
-"  background-color: #3a3a3a; color: #e0e0e0; border: 1px solid #555; border-radius: 3px;"
-"}"
+// No QSpinBox rule on purpose. Styling the base switches the spin box to CSS
+// box rendering, and on the Windows style that collapses the down-button to ~0
+// height (you can step up but not down). With the explicit dark palette set in
+// apply(), Qt's native style already draws a correct dark spin box - with native,
+// properly sized, clickable up/down arrows on every platform. (Same reasoning as
+// the QCheckBox::indicator note below.)
 "QPushButton {"
 "  background-color: #3d3d3d; color: #e0e0e0; border: 1px solid #555; border-radius: 3px; padding: 4px 10px;"
 "}"

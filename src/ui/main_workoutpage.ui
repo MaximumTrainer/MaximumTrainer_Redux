@@ -115,6 +115,16 @@
         </property>
        </widget>
       </item>
+      <item row="2" column="0" colspan="4">
+       <widget class="QCheckBox" name="checkBox">
+        <property name="text">
+         <string>Show Included Workouts</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
@@ -196,44 +206,6 @@
      <property name="bottomMargin">
       <number>3</number>
      </property>
-     <item>
-      <widget class="QCheckBox" name="checkBox">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>145</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>Show Included Workouts</string>
-       </property>
-       <property name="checked">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="horizontalSpacer_2">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeType">
-        <enum>QSizePolicy::Fixed</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>5</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
      <item>
       <widget class="QPushButton" name="pushButton_refresh">
        <property name="sizePolicy">
