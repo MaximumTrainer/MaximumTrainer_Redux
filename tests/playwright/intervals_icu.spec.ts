@@ -144,7 +144,7 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
 
     const wasmApp = new WasmAppPage(page);
     await wasmApp.stubBluetooth();
-    await wasmApp.mockBackendApis();
+    await wasmApp.disableIcuProxyInterceptor();
     const captured = await setupIntervalsIcuMocking(page);
 
     // Install OAuth mock after catch-all so /oauth/token takes precedence.
@@ -190,7 +190,7 @@ test.describe('Intervals.icu credential integration (Layer B)', () => {
 
     const wasmApp = new WasmAppPage(page);
     await wasmApp.stubBluetooth();
-    await wasmApp.mockBackendApis();
+    await wasmApp.disableIcuProxyInterceptor();
     const captured = await setupIntervalsIcuMocking(
       page,
       JSON.stringify([

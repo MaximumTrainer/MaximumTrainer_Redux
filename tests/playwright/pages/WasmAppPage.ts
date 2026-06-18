@@ -233,55 +233,6 @@ export class WasmAppPage {
   // ── Network mock helpers ──────────────────────────────────────────────────
 
   /**
-   * Register Playwright route intercepts for all `maximumtrainer.com` backend
-   * API endpoints.  Both `radio_rest` and `achievement_rest` return an empty
-   * JSON array `[]`; all other paths return `{}`.
-   *
-   * Returns a live array of intercepted `"METHOD URL"` strings that is
-   * populated as requests arrive.
-   *
-   * **Must be called before `goto()`.**
-   */
-  async mockBackendApis(): Promise<string[]> {
-    // Disable the Cloudflare CORS proxy interceptor so that our network-level
-    // mocks for https://intervals.icu/** are matched directly.
-    await this.disableIcuProxyInterceptor();
-
-    const requestedUrls: string[] = [];
-
-    await this.page.route('https://maximumtrainer.com/**', async (route) => {
-      const url    = route.request().url();
-      const method = route.request().method();
-      requestedUrls.push(`${method} ${url}`);
-
-      if (method === 'OPTIONS') {
-        await route.fulfill({
-          status: 204,
-          headers: {
-            'Access-Control-Allow-Origin':  '*',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': '*',
-          },
-        });
-      } else if (url.includes('radio_rest') || url.includes('achievement_rest')) {
-        await route.fulfill({
-          status: 200,
-          headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-          body: '[]',
-        });
-      } else {
-        await route.fulfill({
-          status: 200,
-          headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-          body: '{}',
-        });
-      }
-    });
-
-    return requestedUrls;
-  }
-
-  /**
    * Register Playwright route intercepts for `intervals.icu` API endpoints,
    * including CORS preflight (`OPTIONS`) support.
    *

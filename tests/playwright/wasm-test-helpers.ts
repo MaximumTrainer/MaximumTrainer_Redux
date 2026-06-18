@@ -11,7 +11,7 @@
  * import { WasmAppPage } from './pages/WasmAppPage';
  * import { LandingPage } from './pages/LandingPage';
  * ```
- * and call their methods (`wasmApp.stubBluetooth()`, `wasmApp.mockBackendApis()`,
+ * and call their methods (`wasmApp.stubBluetooth()`,
  * `wasmApp.logOverlay.getFatalErrorLines()`, etc.).
  */
 
@@ -89,13 +89,4 @@ export async function getOverlayLinesContaining(
       .map((d) => d.textContent ?? '')
       .filter((t) => t.includes(searchText));
   }, text);
-}
-
-/**
- * Mock `maximumtrainer.com` backend APIs.
- *
- * @deprecated Prefer `new WasmAppPage(page).mockBackendApis()`.
- */
-export async function mockBackendApis(page: Page): Promise<string[]> {
-  return new WasmAppPage(page).mockBackendApis();
 }

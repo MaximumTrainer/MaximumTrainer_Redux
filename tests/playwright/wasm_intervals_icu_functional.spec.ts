@@ -44,7 +44,7 @@ test.describe('Intervals.icu WASM functional', () => {
       wasmApp = new WasmAppPage(await ctx.newPage());
 
       await wasmApp.stubBluetooth();
-      await wasmApp.mockBackendApis();
+      await wasmApp.disableIcuProxyInterceptor();
       intervalsRequests = await wasmApp.mockIntervalsIcuApi();
 
       await wasmApp.goto();
@@ -89,7 +89,7 @@ test.describe('Intervals.icu WASM functional', () => {
       wasmApp = new WasmAppPage(await ctx.newPage());
 
       await wasmApp.stubBluetooth();
-      await wasmApp.mockBackendApis();
+      await wasmApp.disableIcuProxyInterceptor();
       intervalsRequests = await wasmApp.mockIntervalsIcuApi();
 
       // Install OAuth mock after catch-all so /oauth/token takes precedence.

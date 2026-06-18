@@ -57,15 +57,13 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
 
     await sharedWasmApp.injectRecordingBluetoothMock();
 
-    // Mock any legacy backend XHRs before navigation so stray requests return
-    // 200 instead of failing with CORS / connection-refused errors that would
-    // produce WARN overlay lines. (The maximumtrainer.com backend is gone; this
-    // mock is now just a safety net.)
-    await sharedWasmApp.mockBackendApis();
+    // Let intervals.icu / OAuth route mocks match directly (the WASM build
+    // routes those through the Cloudflare proxy interceptor by default).
+    await sharedWasmApp.disableIcuProxyInterceptor();
 
     // Install OAuth popup mock so the login dialog completes automatically.
-    // Must be called after mockBackendApis() (catch-all) so the specific
-    // /oauth/token route takes precedence (last-registered = first-tried).
+    // Registered after the proxy is disabled so the specific /oauth/token route
+    // takes precedence (last-registered = first-tried).
     await sharedWasmApp.setupOAuthMock();
 
     await sharedWasmApp.goto();

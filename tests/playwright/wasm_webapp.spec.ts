@@ -150,9 +150,9 @@ test.describe('BLE GATT ready callback', () => {
       });
     });
 
-    // Mock any legacy backend XHRs before navigation (maximumtrainer.com is
-    // gone; this is now just a safety net against stray requests).
-    await wasmApp.mockBackendApis();
+    // Let intervals.icu / OAuth route mocks match directly (the WASM build
+    // routes those through the Cloudflare proxy interceptor by default).
+    await wasmApp.disableIcuProxyInterceptor();
 
     // Install OAuth popup mock so the login dialog completes automatically.
     await wasmApp.setupOAuthMock();

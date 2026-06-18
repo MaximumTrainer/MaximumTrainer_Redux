@@ -44,7 +44,7 @@ test.describe('WASM workout view + retro race render in-browser', () => {
     wasmApp = new WasmAppPage(await ctx.newPage());
 
     await wasmApp.stubBluetooth();
-    await wasmApp.mockBackendApis();
+    await wasmApp.disableIcuProxyInterceptor();
     await wasmApp.mockIntervalsIcuApi();
     // setupOAuthMock must follow mockIntervalsIcuApi so its specific /oauth/token
     // and /athlete routes take priority (Playwright tries routes last-first).
