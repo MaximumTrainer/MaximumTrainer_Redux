@@ -235,24 +235,13 @@ void TopMenuWorkout::setGearVisible(bool visible)
         m_gearWidget->setVisible(visible);
 }
 
-void TopMenuWorkout::updateGear(int gear, int count, bool ergMode)
+void TopMenuWorkout::updateGear(int gear, int count)
 {
     if (!m_gearLabel)
         return;
-    if (ergMode) {
-        // Gears don't drive resistance under ERG, so the ▲/▼ buttons re-task to
-        // nudging workout difficulty (same as the +/- graph buttons). Keep them
-        // enabled; dim the label to signal the gear number itself is inactive.
-        m_gearLabel->setText(QStringLiteral("Gear %1/%2 · ERG").arg(gear).arg(count));
-        m_gearLabel->setStyleSheet(QStringLiteral("color: gray;"));   // dimmed in ERG
-        m_gearDownBtn->setToolTip(tr("Lower workout difficulty (Down arrow)"));
-        m_gearUpBtn->setToolTip(tr("Raise workout difficulty (Up arrow)"));
-    } else {
-        m_gearLabel->setText(QStringLiteral("Gear %1/%2").arg(gear).arg(count));
-        m_gearLabel->setStyleSheet(QString());
-        m_gearDownBtn->setToolTip(tr("Easier gear (Down arrow)"));
-        m_gearUpBtn->setToolTip(tr("Harder gear (Up arrow)"));
-    }
+    // Only shown when gears actually drive resistance (the dialog hides the whole
+    // indicator under ERG), so there's no ERG state to render here.
+    m_gearLabel->setText(QStringLiteral("Gear %1/%2").arg(gear).arg(count));
 }
 
 void TopMenuWorkout::flashWidget(QWidget *w)

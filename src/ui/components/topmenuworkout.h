@@ -52,10 +52,10 @@ public:
     void setTargetHeartRate(double percentageLTHR, int range);
 
     // Virtual-shifting gear indicator (#293): ▼ gear N/24 ▲ in the middle of the
-    // top bar. Shown while shifting is available; during ERG intervals it shows
-    // dimmed with "ERG" and inactive arrows.
+    // top bar. Shown only while gears drive resistance; the dialog hides it
+    // during ERG intervals (gears do nothing there).
     void setGearVisible(bool visible);
-    void updateGear(int gear, int count, bool ergMode);
+    void updateGear(int gear, int count);
     /// Briefly highlight a toolbar control (green pulse) so the rider sees an
     /// input registered, whatever the source (keys or on-screen).
     void flashShift(int direction);   // ▲ if > 0 else ▼ gear button

@@ -2426,14 +2426,16 @@ void WorkoutDialog::shiftGear(int delta) {
     ui->widget_topMenu->flashShift(delta);   // confirm the shift on the toolbar
 }
 
-// Refresh the top-bar gear indicator: visible whenever a trainer is controllable
-// (hidden in studio or with no trainer). During an ERG-owned interval it shows
-// dimmed with "ERG"; otherwise the gear is active and shiftable.
+// Refresh the top-bar gear indicator. It's a virtual-gear concept, so it's shown
+// only when gears actually drive resistance: a trainer is controllable (not in
+// studio) AND we're not in an ERG-owned interval. In ERG the gear means nothing,
+// so the whole indicator is hidden (the gear up/down controls re-task to
+// difficulty there - see shiftGear()).
 void WorkoutDialog::updateGearIndicator() {
-    const bool show = virtualShiftingActive();
+    const bool show = virtualShiftingActive() && !ergOwnsThisInterval();
     ui->widget_topMenu->setGearVisible(show);
     if (show)
-        ui->widget_topMenu->updateGear(m_virtualGear, kVirtualGearCount, ergOwnsThisInterval());
+        ui->widget_topMenu->updateGear(m_virtualGear, kVirtualGearCount);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
