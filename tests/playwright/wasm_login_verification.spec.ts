@@ -45,7 +45,7 @@ test.describe('Login verification – Layer A: pre-authentication state', () => 
     wasmApp = new WasmAppPage(await ctx.newPage());
 
     await wasmApp.stubBluetooth();
-    await wasmApp.mockBackendApis();
+    await wasmApp.disableIcuProxyInterceptor();
 
     // Track any intervals.icu requests made before credentials are injected.
     await wasmApp.page.route(
@@ -139,7 +139,6 @@ test.describe('Login verification – Layer B: OAuth popup flow', () => {
 
     await wasmApp.disableIcuProxyInterceptor();
     await wasmApp.stubBluetooth();
-    await wasmApp.mockBackendApis();
 
     // Mock window.open to capture the OAuth URL and immediately post a synthetic
     // authorization code back via window.dispatchEvent('message').  This simulates

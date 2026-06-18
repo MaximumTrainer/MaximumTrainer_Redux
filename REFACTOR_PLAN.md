@@ -17,6 +17,7 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 | 4 — Latent naming hazard | ☑ done | #235 |
 | 5 — Quick correctness fixes | ☑ done (1 of 3; 2 dropped after inspection) | #234 |
 | 6 — Large mechanical modernization | ☐ todo | — |
+| 7 — Dead maximumtrainer.com backend | ☑ done | #308 |
 
 Related work already merged: QWT 6.3 bump, AppImage dark-mode + OpenSSL fixes,
 `QwtSystemClock` → `QElapsedTimer` (#228), `CLAUDE.md` (#229). Adjacent cleanup
@@ -69,6 +70,28 @@ skipped (risk to core data paths for no measurable gain).
 - ☐ Header hygiene: `account.h` is included in 18 headers but most need only `Account*` → forward-declare; move `workoutdialog.h` include out of `dialogconfig.h`.
 - ☐ `parent = 0` → `nullptr` (~60 headers); stringly-typed dispatch (`"power"/"hr"/"cad"`, `"workout"/"course"`) → enums; `typedef enum` → `enum class`.
 - ☐ God-file decomposition: `workoutdialog.cpp` (4,298 lines; 590-line constructor → extract `createPairingOverlay/BatteryOverlay/AchievementOverlay/setupClockThread/setupSoundTimers`), `mainwindow.cpp` (2,629).
+
+## Group 7 — Dead maximumtrainer.com backend removal  ☑  (#308)
+The original ~2014 app talked to a PHP REST backend at `maximumtrainer.com`
+(`api/*_rest/...`). That backend no longer exists, so every call against it was
+dead (silently failing, in the achievement case retry-looping forever).
+- ☑ Removed the dead DAOs: `SensorDAO` (unused), `UserDAO` (impl already
+  commented out; only a stale doc reference remained), `AchievementDAO`.
+- ☑ `ManagerAchievement`: stripped the remote list-fetch / put / retry slots.
+  The class + the in-workout achievement popup are kept but **dormant** (the
+  list is never populated, so the size guards short-circuit). Left in place for
+  a future local-only re-implementation.
+- ☑ `Environnement`: dropped the now-unused `getURLEnvironnement()` /
+  `getURLEnvironnementWS()` and the `current_env` / `dev` / `prod`
+  (= maximumtrainer.com) / `indexPage` constants.
+- ☑ `util.cpp`: removed the dead response parsers tied to those DAOs —
+  `parseJsonObjectAccount`, `parseJsonSensorList`, `parseJsonAchievementList`,
+  `parseJsonAchievementListForUser`.
+- **Kept (NOT maximumtrainer.com):** `VersionDAO` (GitHub Releases update check),
+  `IntervalsIcuDAO` (intervals.icu), `ExtRequest`, and the live Intervals.icu /
+  Strava OAuth code. Left for a later pass: the Firebase plan/workout-creator
+  list fetch in `mainwindow.cpp` (`trainerdb-84bdb.firebaseapp.com`), status of
+  that backend not yet confirmed.
 
 ---
 

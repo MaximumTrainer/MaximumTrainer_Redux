@@ -97,7 +97,6 @@ public:
 
 
     /// Parse JSON
-    static void parseJsonObjectAccount(QString data);
     static QString parseJsonObjectVersion(const QString &data);
     static bool isVersionNewer(const QString &currentVersion, const QString &latestVersion);
     static void parseJsonStravaObject(QString data);
@@ -105,9 +104,7 @@ public:
     static int parseStravaUploadStatus(QString data);
     static qint64 parseStravaActivityId(QString data);
 
-    static QList<Sensor> parseJsonSensorList(QString data);
     static QList<Radio> parseJsonRadioList(QString data);
-    static QList<Achievement> parseJsonAchievementList(QString data);
 
     /// Local radio list — JSON file under the MaximumTrainer document root.
     /// loadLocalRadioList() returns the parsed list; if the file is missing
@@ -117,7 +114,6 @@ public:
     static bool         saveLocalRadioList(const QList<Radio>& lstRadio);
     static QList<Radio> getDefaultRadioList();
     static QString      getLocalRadioListPath();
-    static QSet<int> parseJsonAchievementListForUser(QString data);
 
     /// Intervals.icu — parse the GET /api/v1/athlete/{id} response.
     /// Updates the global Account object with name, weight, FTP, and LTHR.

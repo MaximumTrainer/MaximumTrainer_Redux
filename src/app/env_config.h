@@ -43,7 +43,6 @@ namespace EnvConfig {
  * @c Account::isOffline = @c true immediately after startup, which
  * suppresses:
  *   - Radio list fetch (MainWindow::slotGetRadio)
- *   - Session check / @c UserDAO::putAccount
  *   - Intervals.icu sync, Strava upload, and all other REST calls
  *
  * Leave unset (or set to @c 0) for normal network access.

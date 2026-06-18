@@ -57,14 +57,13 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
 
     await sharedWasmApp.injectRecordingBluetoothMock();
 
-    // Mock maximumtrainer.com backend APIs before navigation so all XHR
-    // requests from the Qt app return 200 instead of failing with CORS /
-    // connection-refused errors that produce WARN overlay lines.
-    const apiRequestedUrls = await sharedWasmApp.mockBackendApis();
+    // Let intervals.icu / OAuth route mocks match directly (the WASM build
+    // routes those through the Cloudflare proxy interceptor by default).
+    await sharedWasmApp.disableIcuProxyInterceptor();
 
     // Install OAuth popup mock so the login dialog completes automatically.
-    // Must be called after mockBackendApis() (catch-all) so the specific
-    // /oauth/token route takes precedence (last-registered = first-tried).
+    // Registered after the proxy is disabled so the specific /oauth/token route
+    // takes precedence (last-registered = first-tried).
     await sharedWasmApp.setupOAuthMock();
 
     await sharedWasmApp.goto();
@@ -138,11 +137,6 @@ test.describe('WASM BLE API — Web Bluetooth call verification', () => {
     expect(radioFetchFailedLines,
       `WASM overlay shows "Radio list fetch failed" — radio API request failed:\n${radioFetchFailedLines.join('\n')}`)
       .toHaveLength(0);
-
-    // Verify a core backend API endpoint was actually called.
-    expect(apiRequestedUrls.some((u) => u.includes('achievement_rest')),
-      `Qt ManagerAchievement did not call the achievement API.\nSeen URLs: ${apiRequestedUrls.join(', ')}`)
-      .toBe(true);
   });
 
   test.afterAll(async () => {

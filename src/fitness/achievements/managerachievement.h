@@ -2,7 +2,6 @@
 #define MANAGERACHIEVEMENT_H
 
 #include <QObject>
-#include <QNetworkReply>
 #include <QTimer>
 
 #include "workout.h"
@@ -31,13 +30,6 @@ public slots:
     void checkMAPAchievement(int lastStepCompleted);
 
 
-
-    void slotGetAchievementListFinished();
-    void slotGetAchievementListForUserFinished();
-
-
-
-
 signals:
     void achievementCompleted(Achievement achievement);
 
@@ -47,8 +39,6 @@ signals:
 private :
 
     Account *account;
-    QNetworkReply *replyGetListAchievement;
-    QNetworkReply *replyGetListAchievementForUser;
 
     // Position in QList is equals to DB ID - 1
     // e.g: lstAchievement.at(0) = first id in database (Endurance Starter, ID:1)

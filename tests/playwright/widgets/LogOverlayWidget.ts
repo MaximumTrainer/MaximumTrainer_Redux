@@ -31,7 +31,7 @@ export class LogOverlayWidget {
   /**
    * Returns all `ERROR:` log lines from the overlay, excluding known
    * network noise from the test environment:
-   *   - `net::ERR_CONNECTION_REFUSED`  — maximumtrainer.com backend unavailable
+   *   - `net::ERR_CONNECTION_REFUSED`  — a backend host is unreachable in CI
    *   - `Refused to set unsafe header` — browser rejects `User-Agent` on XHR
    */
   async getFatalErrorLines(): Promise<string[]> {

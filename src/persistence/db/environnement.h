@@ -4,9 +4,6 @@
 #include <QtCore>
 
 
-//// TO CHANGE DEV TO PROD
-const static QString current_env = "prod";
-//const static QString current_env = "dev";
 const static QString current_version = "v0.0.0";  // overridden at build time via APP_VERSION
 const static QString date_released = "16/03/2019";  //(dd/mm/yyyy)
 
@@ -107,13 +104,6 @@ const static QString urlIntervalsIcuRegister = "https://intervals.icu/register";
 
 
 
-const static QString dev = "http://localhost/index.php/";
-const static QString prod = "https://maximumtrainer.com/";
-const static QString indexPage = "index.php/";
-
-
-
-
 /// Strava OAuth2 (app 7252). The client_secret is deliberately NOT here — it
 /// lives in the Strava token Worker (workers/strava-token-proxy), which the app
 /// calls at URL_TOKEN_STRAVA to exchange the authorization code and to refresh.
@@ -136,8 +126,6 @@ public:
 
 
     /// Public method -----------------------
-    static QString getURLEnvironnement();
-    static QString getURLEnvironnementWS();
     static QString getVersion();
     static QString getDateBuilded();
 
