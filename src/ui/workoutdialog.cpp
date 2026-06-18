@@ -2403,9 +2403,18 @@ void WorkoutDialog::setupZwiftClick()
 }
 
 void WorkoutDialog::shiftGear(int delta) {
-    // Ignore shifts unless gears are actually driving resistance — during an
-    // ERG-owned interval (or with virtual shifting off / workout over) the gear
-    // is not in control, so changing the number would just be misleading.
+    // During an ERG-owned interval a virtual gear has no effect, so the gear-up/
+    // gear-down controls (Zwift Click buttons, the toolbar ▲/▼, or the Up/Down
+    // keys) instead nudge the whole-workout difficulty - the same action as the
+    // +/- graph buttons. In slope/free-ride they keep changing the virtual gear.
+    if (ergOwnsThisInterval()) {
+        if (delta > 0)      emit increaseDifficulty();
+        else if (delta < 0) emit decreaseDifficulty();
+        return;
+    }
+    // Ignore shifts unless gears are actually driving resistance — with virtual
+    // shifting off / workout over the gear is not in control, so changing the
+    // number would just be misleading.
     if (!gearsDriveNow())
         return;
     const int g = qBound(1, m_virtualGear + delta, kVirtualGearCount);
@@ -2417,14 +2426,16 @@ void WorkoutDialog::shiftGear(int delta) {
     ui->widget_topMenu->flashShift(delta);   // confirm the shift on the toolbar
 }
 
-// Refresh the top-bar gear indicator: visible whenever a trainer is controllable
-// (hidden in studio or with no trainer). During an ERG-owned interval it shows
-// dimmed with "ERG"; otherwise the gear is active and shiftable.
+// Refresh the top-bar gear indicator. It's a virtual-gear concept, so it's shown
+// only when gears actually drive resistance: a trainer is controllable (not in
+// studio) AND we're not in an ERG-owned interval. In ERG the gear means nothing,
+// so the whole indicator is hidden (the gear up/down controls re-task to
+// difficulty there - see shiftGear()).
 void WorkoutDialog::updateGearIndicator() {
-    const bool show = virtualShiftingActive();
+    const bool show = virtualShiftingActive() && !ergOwnsThisInterval();
     ui->widget_topMenu->setGearVisible(show);
     if (show)
-        ui->widget_topMenu->updateGear(m_virtualGear, kVirtualGearCount, ergOwnsThisInterval());
+        ui->widget_topMenu->updateGear(m_virtualGear, kVirtualGearCount);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

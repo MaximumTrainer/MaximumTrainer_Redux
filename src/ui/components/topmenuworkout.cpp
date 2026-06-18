@@ -235,19 +235,13 @@ void TopMenuWorkout::setGearVisible(bool visible)
         m_gearWidget->setVisible(visible);
 }
 
-void TopMenuWorkout::updateGear(int gear, int count, bool ergMode)
+void TopMenuWorkout::updateGear(int gear, int count)
 {
     if (!m_gearLabel)
         return;
-    if (ergMode) {
-        m_gearLabel->setText(QStringLiteral("Gear %1/%2 · ERG").arg(gear).arg(count));
-        m_gearLabel->setStyleSheet(QStringLiteral("color: gray;"));   // dimmed in ERG
-    } else {
-        m_gearLabel->setText(QStringLiteral("Gear %1/%2").arg(gear).arg(count));
-        m_gearLabel->setStyleSheet(QString());
-    }
-    if (m_gearDownBtn) m_gearDownBtn->setEnabled(!ergMode);
-    if (m_gearUpBtn)   m_gearUpBtn->setEnabled(!ergMode);
+    // Only shown when gears actually drive resistance (the dialog hides the whole
+    // indicator under ERG), so there's no ERG state to render here.
+    m_gearLabel->setText(QStringLiteral("Gear %1/%2").arg(gear).arg(count));
 }
 
 void TopMenuWorkout::flashWidget(QWidget *w)
