@@ -102,11 +102,22 @@ void StyleHelper::drawIconWithShadow(const QIcon &icon, const QRect &rect,
                                      QPainter *p, QIcon::Mode iconMode, int radius, const QColor &color, const QPoint &offset)
 {
     QPixmap cache;
-    QString pixmapName = QString::fromLatin1("icon %0 %1 %2").arg(icon.cacheKey()).arg(iconMode).arg(rect.height());
+    // The in-parameters (rect, radius, offset) are device-independent (dip)
+    // pixels, but the pixmap/shadow compositing below must happen in real device
+    // pixels or the icon is rasterised at 1x and upscaled by the compositor -
+    // blurry on any HiDPI / fractional-scale (e.g. Windows 150%) display.
+    const qreal devicePixelRatio = p->device()->devicePixelRatioF();
+    const int   deviceRadius = qRound(radius * devicePixelRatio);
+    const QPoint deviceOffset(qRound(offset.x() * devicePixelRatio),
+                              qRound(offset.y() * devicePixelRatio));
+    QString pixmapName = QString::fromLatin1("icon %0 %1 %2 %3")
+                             .arg(icon.cacheKey()).arg(iconMode).arg(rect.height())
+                             .arg(devicePixelRatio);
 
     if (!QPixmapCache::find(pixmapName, &cache)) {
-        QPixmap px = icon.pixmap(rect.size());
-        cache = QPixmap(px.size() + QSize(radius * 2, radius * 2));
+        QPixmap px = icon.pixmap(rect.size(), devicePixelRatio, iconMode);
+        px.setDevicePixelRatio(1.0);   // composite below in raw device pixels
+        cache = QPixmap(px.size() + QSize(deviceRadius * 2, deviceRadius * 2));
         cache.fill(Qt::transparent);
 
         QPainter cachePainter(&cache);
@@ -125,19 +136,19 @@ void StyleHelper::drawIconWithShadow(const QIcon &icon, const QRect &rect,
         }
 
         // Draw shadow
-        QImage tmp(px.size() + QSize(radius * 2, radius * 2 + 1), QImage::Format_ARGB32_Premultiplied);
+        QImage tmp(px.size() + QSize(deviceRadius * 2, deviceRadius * 2 + 1), QImage::Format_ARGB32_Premultiplied);
         tmp.fill(Qt::transparent);
 
         QPainter tmpPainter(&tmp);
         tmpPainter.setCompositionMode(QPainter::CompositionMode_Source);
-        tmpPainter.drawPixmap(QPoint(radius, radius), px);
+        tmpPainter.drawPixmap(QPoint(deviceRadius, deviceRadius), px);
         tmpPainter.end();
 
         // blur the alpha channel
         QImage blurred(tmp.size(), QImage::Format_ARGB32_Premultiplied);
         blurred.fill(Qt::transparent);
         QPainter blurPainter(&blurred);
-        qt_blurImage(&blurPainter, tmp, radius, false, true);
+        qt_blurImage(&blurPainter, tmp, deviceRadius, false, true);
         blurPainter.end();
 
         tmp = blurred;
@@ -157,11 +168,15 @@ void StyleHelper::drawIconWithShadow(const QIcon &icon, const QRect &rect,
         cachePainter.drawImage(QRect(0, 0, cache.rect().width(), cache.rect().height()), tmp);
 
         // Draw the actual pixmap...
-        cachePainter.drawPixmap(QPoint(radius, radius) + offset, px);
+        cachePainter.drawPixmap(QPoint(deviceRadius, deviceRadius) + deviceOffset, px);
+        cache.setDevicePixelRatio(devicePixelRatio);
         QPixmapCache::insert(pixmapName, cache);
     }
 
+    // cache holds device pixels; map back to dip when placing it.
     QRect targetRect = cache.rect();
-    targetRect.moveCenter(rect.center());
-    p->drawPixmap(targetRect.topLeft() - offset, cache);
+    targetRect.setSize(QSize(qRound(cache.width()  / devicePixelRatio),
+                             qRound(cache.height() / devicePixelRatio)));
+    targetRect.moveCenter(rect.center() - offset);
+    p->drawPixmap(targetRect, cache);
 }
