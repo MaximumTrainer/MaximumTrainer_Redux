@@ -2813,6 +2813,12 @@ QQuickWidget *WorkoutDialog::ensureRaceView() {
     }
     if (!raceView) {
         raceView = new QQuickWidget(this);
+        // If this view ever needs a native window, confine it to the view rather
+        // than promoting the dialog's own window (which would tear the dialog down
+        // and rebuild it). The main guard against that, though, is building this
+        // view at show time while hidden (see showEvent) so the realization is a
+        // one-time, invisible event and never happens on a mid-workout switch.
+        raceView->setAttribute(Qt::WA_DontCreateNativeAncestors, true);
         raceView->setResizeMode(QQuickWidget::SizeRootObjectToView);
         raceView->rootContext()->setContextProperty(QStringLiteral("race"), raceController);
         raceView->setSource(QUrl(QStringLiteral("qrc:/game/qml/RetroRace.qml")));
@@ -3302,6 +3308,14 @@ void WorkoutDialog::showEvent(QShowEvent *event) {
         webPlayerLoaded = true;
         QTimer::singleShot(0, this, [this]() {
             ensureWebPlayer()->loadHomePageIfNeeded();
+            // Build the retro-race view now too, for the same reason: its native
+            // OpenGL surface is realized once here while it can stay hidden, so
+            // switching to it mid-workout never tears down and rebuilds the dialog
+            // window (which looked like the workout reopening). Skip where the race
+            // isn't offered (studio / free ride) — there's no single "player".
+            if (!(account->enable_studio_mode
+                  || workout.getWorkoutNameEnum() == Workout::OPEN_RIDE))
+                ensureRaceView();
             // Re-assert the selected content view now that the dialog is mapped.
             // The native QVideoWidget (Standard video) does not paint when first
             // shown pre-map during init, leaving a black pane until the dropdown
