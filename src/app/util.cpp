@@ -328,21 +328,7 @@ QString Util::getMaximumTrainerDocumentPath() {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Util::getSystemPathHistory() {
-
-    QString folderName = "history";
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    /// Return default historyFolder
-    if (settings->historyFolder == "") {
-        return Util::getSystemPathHelperReturnDefaultLoc(folderName);
-    }
-    /// Return custom path, check if still valid
-    else {
-        if (checkFolderPathIsValidForWrite(settings->historyFolder) )
-            return settings->historyFolder;
-        else
-            return Util::getSystemPathHelperReturnDefaultLoc(folderName);
-    }
+    return Util::getSystemPathHelperReturnDefaultLoc("history");
 }
 
 
@@ -350,21 +336,7 @@ QString Util::getSystemPathHistory() {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Util::getSystemPathWorkout() {
-
-    QString folderName = "workout";
-    Settings *settings = qApp->property("User_Settings").value<Settings*>();
-
-    /// Return default workoutFolder
-    if (settings->workoutFolder == "") {
-        return Util::getSystemPathHelperReturnDefaultLoc(folderName);
-    }
-    /// Return custom path, check if still valid
-    else {
-        if (checkFolderPathIsValidForWrite(settings->workoutFolder) )
-            return settings->workoutFolder;
-        else
-            return Util::getSystemPathHelperReturnDefaultLoc(folderName);
-    }
+    return Util::getSystemPathHelperReturnDefaultLoc("workout");
 }
 
 

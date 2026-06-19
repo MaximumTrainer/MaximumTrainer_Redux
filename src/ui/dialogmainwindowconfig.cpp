@@ -10,6 +10,7 @@
 #include <QHBoxLayout>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QFrame>
 #include <QDesktopServices>
 #include <QStandardPaths>
 #include <QShowEvent>
@@ -79,32 +80,38 @@ DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent
     /// List widgets
     ui->listWidget_settings->setIconSize(QSize(24, 24));
 
-    QListWidgetItem *item1 = new QListWidgetItem(QIcon(":/image/icon/general"), tr("General"), ui->listWidget_settings);
-    QListWidgetItem *item3 = new QListWidgetItem(QIcon(":/image/icon/folder"), tr("Folders"), ui->listWidget_settings);
-    QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/strava_logo"), tr("Strava"), ui->listWidget_settings);
-    QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/intervals"), tr("Intervals.icu"), ui->listWidget_settings);
-    // "Profile" reuses the old main-page profile icon; its page (page_profile)
-    // is the last static page in the .ui, so it maps to stacked index 4 and the
-    // runtime-added Logging page lands at index 5 — keep this order in sync.
-    QListWidgetItem *item6 = new QListWidgetItem(QIcon(":/image/icon/user"), tr("Profile"), ui->listWidget_settings);
-    QListWidgetItem *item7 = new QListWidgetItem(QIcon(":/image/icon/gear"), tr("Logging"), ui->listWidget_settings);
-    item1->setSizeHint(QSize(35,35));
-    item3->setSizeHint(QSize(35,35));
-    item4->setSizeHint(QSize(35,35));
-    item5->setSizeHint(QSize(35,35));
-    item6->setSizeHint(QSize(35,35));
-    item7->setSizeHint(QSize(35,35));
-
-    ui->listWidget_settings->addItem(item1);
-    ui->listWidget_settings->addItem(item3);
-    ui->listWidget_settings->addItem(item4);
-    ui->listWidget_settings->addItem(item5);
-    ui->listWidget_settings->addItem(item6);
-    ui->listWidget_settings->addItem(item7);
-
-    // Add the logging page to the stacked widget (lands at index 5, after the
-    // static page_profile at index 4)
+    // Add the logging page to the stacked widget first (lands at index 4, after
+    // the static page_profile at index 3) so the UserRole indices below are valid.
     ui->stackedWidget->addWidget(createLoggingPage());
+
+    // Two groups: app settings on top, third-party integrations under a divider
+    // at the bottom (so it reads as "these are external services"). The nav order
+    // no longer matches the stacked-page order, so each entry carries its target
+    // page index in UserRole — read back in currentListViewSelectionChanged().
+    auto addNav = [this](const QString &iconPath, const QString &label, int pageIndex) {
+        QListWidgetItem *it = new QListWidgetItem(QIcon(iconPath), label);
+        it->setSizeHint(QSize(35, 35));
+        it->setData(Qt::UserRole, pageIndex);
+        ui->listWidget_settings->addItem(it);
+    };
+
+    // App settings
+    addNav(":/image/icon/general", tr("General"), 0);
+    addNav(":/image/icon/user",    tr("Profile"), 3);
+    addNav(":/image/icon/gear",    tr("Logging"), 4);
+
+    // Divider — a non-selectable spacer row mapping to no page.
+    QListWidgetItem *sep = new QListWidgetItem(ui->listWidget_settings);
+    sep->setFlags(Qt::NoItemFlags);
+    sep->setSizeHint(QSize(35, 12));
+    QFrame *sepLine = new QFrame();
+    sepLine->setFrameShape(QFrame::HLine);
+    sepLine->setFrameShadow(QFrame::Sunken);
+    ui->listWidget_settings->setItemWidget(sep, sepLine);
+
+    // Integrations (third-party services)
+    addNav(":/image/icon/strava_logo", tr("Strava"),        1);
+    addNav(":/image/icon/intervals",   tr("Intervals.icu"), 2);
 
 
     connect(ui->listWidget_settings, SIGNAL(currentRowChanged(int)), this, SLOT(currentListViewSelectionChanged(int)) );
@@ -136,10 +143,6 @@ void DialogMainWindowConfig::initUI() {
     }
 
     ui->checkBox_stravaAutoUpload->setChecked(account->strava_auto_upload);
-    ui->lineEdit_historyDir->setText(Util::getSystemPathHistory());
-    ui->lineEdit_workoutDir->setText(Util::getSystemPathWorkout());
-    ui->lineEdit_historyDir->setReadOnly(true);
-    ui->lineEdit_workoutDir->setReadOnly(true);
 
     if (account->distance_in_km)
         ui->comboBox_distance->setCurrentIndex(0);
@@ -261,60 +264,18 @@ void DialogMainWindowConfig::stravaUnlinkFinished() {
 //---------------------------------------------------------------------------------------------
 void DialogMainWindowConfig::currentListViewSelectionChanged(int section) {
 
-    qDebug() << "changed!" << section;
-
-    ui->stackedWidget->setCurrentIndex(section);
-
-    //    if (section == 0) {
-    //        ui->label_headerSettings->setText(tr("Folders"));
-    //    }
-    //    if (section == 1) {
-    //        ui->label_headerSettings->setText(tr("Units"));
-    //    }
-    //    else {
-    //        ui->label_headerSettings->setText(tr("-"));
-    //    }
-
-}
-
-
-//---------------------------------------------------------------------------------------------
-void DialogMainWindowConfig::on_pushButton_browseWorkoutDir_clicked()
-{
-    QString path = QFileDialog::getExistingDirectory(this, tr("Select Workout Folder"), Util::getSystemPathWorkout(), QFileDialog::ShowDirsOnly);
-    if (path == "")
+    // The nav order no longer matches the stacked-page order; each row stores its
+    // target page in UserRole. Skip rows without one (e.g. the group divider).
+    QListWidgetItem *item = ui->listWidget_settings->item(section);
+    if (!item)
         return;
-
-    if (Util::checkFolderPathIsValidForWrite(path)) {
-        ui->lineEdit_workoutDir->setText(path);
-    }
-    else {
-        QMessageBox msgBox(this);
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setText(tr("The specified folder could not be used to write files in"));
-        msgBox.setStandardButtons(QMessageBox::Close);
-        msgBox.exec();
-    }
-
-}
-//----------------------------------------------------------------------------------------
-void DialogMainWindowConfig::on_pushButton_browseHistoryDir_clicked()
-{
-    QString path = QFileDialog::getExistingDirectory(this, tr("Select History Folder"), Util::getSystemPathHistory(), QFileDialog::ShowDirsOnly);
-    if (path == "")
+    const QVariant page = item->data(Qt::UserRole);
+    if (!page.isValid())
         return;
-
-    if (Util::checkFolderPathIsValidForWrite(path)) {
-        ui->lineEdit_historyDir->setText(path);
-    }
-    else {
-        QMessageBox msgBox(this);
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setText(tr("The specified folder could not be used to write files in"));
-        msgBox.setStandardButtons(QMessageBox::Close);
-        msgBox.exec();
-    }
+    ui->stackedWidget->setCurrentIndex(page.toInt());
 }
+
+
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -365,14 +326,6 @@ void DialogMainWindowConfig::accept() {
     qDebug() << "ACCEPT, save settings";
 
     account->strava_auto_upload = ui->checkBox_stravaAutoUpload->isChecked();
-
-    //Folder changed
-    if (settings->workoutFolder != ui->lineEdit_workoutDir->text()) {
-        settings->workoutFolder = ui->lineEdit_workoutDir->text();
-        emit folderWorkoutChanged();
-    }
-
-    settings->historyFolder = ui->lineEdit_historyDir->text();
     account->force_workout_window_on_top = ui->checkBox_forceOnTop->isChecked();
 
     // Athlete profile (FTP / LTHR / weight) — persist locally and notify the

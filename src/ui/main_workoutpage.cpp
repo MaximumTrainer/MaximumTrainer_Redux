@@ -126,7 +126,6 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
     actionSetAsDone = contextMenu->addAction(QIcon(":/image/icon/check"), tr("Set As Done"));
     contextMenu->addSeparator();
     actionOpenFolder = contextMenu->addAction(QIcon(":/image/icon/folder"), tr("Open in folder"));
-    actionExportPDF = contextMenu->addAction(QIcon(":/image/icon/pdf"), tr("Export to PDF"));
     contextMenu->addSeparator();
     actionAddToQueue = contextMenu->addAction(QIcon(":/image/icon/add"), tr("Add to Queue"));
 
@@ -134,7 +133,6 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
     connect(actionDelete, SIGNAL(triggered()), this, SLOT(deleteWorkout()) );
     connect(actionSetAsDone, SIGNAL(triggered()), this, SLOT(setAsDone()) );
     connect(actionOpenFolder, SIGNAL(triggered()), this, SLOT(openFolderWorkout()) );
-    connect(actionExportPDF, SIGNAL(triggered()), this, SLOT(exportToPdf()) );
     connect(actionAddToQueue, SIGNAL(triggered()), this, SLOT(addToQueue()));
     actionEdit->setEnabled(false);
     actionDelete->setEnabled(false);
@@ -352,14 +350,6 @@ void Main_WorkoutPage::openFolderWorkout() {
 }
 
 
-
-//--------------------------------------------------------------------------------------
-void Main_WorkoutPage::exportToPdf() {
-
-    Workout workout = tableModel->getWorkoutAtRow(indexSourceSelected);
-    emit signal_exportWorkoutToPdf(workout);
-
-}
 
 //--------------------------------------------------------------------------------------
 void Main_WorkoutPage::addToQueue() {

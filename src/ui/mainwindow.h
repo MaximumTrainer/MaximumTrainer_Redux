@@ -119,7 +119,6 @@ public slots:
 
     void goToWorkoutPlanFilter(const QString& plan);
     void goToWorkoutNameFilterFromIntervals(const QString &workoutName);
-    void exportWorkoutToPdf(const Workout& workout);
 
 
     void showWorkoutList();

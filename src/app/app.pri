@@ -6,7 +6,6 @@ SOURCES += $$PWD/main.cpp\
     $$PWD/util.cpp \
     $$PWD/globalvars.cpp \
     $$PWD/simplecrypt.cpp \
-    $$PWD/reportutil.cpp \
     $$PWD/networkmonitor.cpp \
 
 # SoundPlayer: QSoundEffect (QtMultimedia) on native, no-op stub on Wasm
@@ -41,7 +40,6 @@ HEADERS += $$PWD/util.h \
     $$PWD/soundplayer.h \
     $$PWD/globalvars.h \
     $$PWD/simplecrypt.h \
-    $$PWD/reportutil.h \
     $$PWD/myconstants.h \
     $$PWD/networkmonitor.h \
     $$PWD/credential_store.h \
