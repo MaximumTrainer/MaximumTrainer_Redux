@@ -25,7 +25,6 @@
 #include "workoutdialog.h"
 #include "workout.h"
 #include "mycreatorplot.h"
-#include "reportutil.h"
 #include "importerworkout.h"
 #include "importerworkoutzwo.h"
 #include "intervalsicudao.h"
@@ -282,7 +281,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 
     connect(ui->tab_create, SIGNAL(showStatusBarMessage(QString, int)), ui->widget_bottomMenu, SLOT(setGeneralMessage(QString,int)));
-    connect(ui->tab_workout1, SIGNAL(signal_exportWorkoutToPdf(Workout)), this, SLOT(exportWorkoutToPdf(Workout)) );
 
 
     /// Update create workout graph on FTP and LTHR change
@@ -403,33 +401,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-//---------------------------------------------------------------------------------
-void MainWindow::exportWorkoutToPdf(const Workout& workout) {
-
-
-    qDebug() << "Export to PDF!";
-
-    myCreatorPlot myPlot(this);
-    myPlot.updateWorkout(workout);
-
-
-    myPlot.setAxisTitle(2, tr("Time"));
-
-
-    QString fileNameToShow = myPlot.getSavePathExport() + QDir::separator() +  workout.getName();
-    QString fileName = QFileDialog::getSaveFileName(this, tr("Export Workout"), fileNameToShow, tr("PDF Documents(*.pdf)"));
-    if (fileName.isEmpty())
-        return;
-
-    //Save path for future uses
-    QFileInfo fileInfo(fileName);
-    myPlot.savePathExport(fileInfo.absolutePath());
-
-
-    ReportUtil::printWorkoutToPdf(workout, &myPlot, fileName);
-    ui->widget_bottomMenu->setGeneralMessage(tr("Saved to: ") + fileName, 7000);
-}
 
 //---------------------------------------------------------------------------------
 void MainWindow::goToWorkoutPlanFilter(const QString& workoutId) {
