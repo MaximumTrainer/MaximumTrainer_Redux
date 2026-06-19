@@ -20,7 +20,7 @@ InfoWidget::InfoWidget(QWidget *parent) : QWidget(parent), ui(new Ui::InfoWidget
     // the light/dark palette keep coming from the theme): hero live value,
     // medium secondary stats, small muted captions.
     setStyleSheet(QStringLiteral(R"(
-        QLabel#label_currentValue { font: 600 30pt 'Inter'; }
+        QLabel#label_currentValue { font: 600 25pt 'Inter'; }
         QLabel#label_targetValue, QLabel#label_range { font: 15pt 'Inter'; }
         QLabel#label_avgInterval, QLabel#label_maxInterval,
         QLabel#label_avgWorkout,  QLabel#label_maxWorkout { font: 600 13pt 'Inter'; }

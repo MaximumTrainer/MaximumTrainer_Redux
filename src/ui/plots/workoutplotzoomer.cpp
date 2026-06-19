@@ -172,9 +172,9 @@ void WorkoutPlotZoomer::init(GRAPH_TYPE graph, bool firstInit) {
         canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(35, 35, 35); }");
         canvas()->setCursor(Qt::CrossCursor);
 
-        // Match the detailed InfoWidget hero value exactly: 600 30pt 'Inter'.
+        // Match the detailed InfoWidget hero value exactly: 600 25pt 'Inter'.
         QFont fontBig("Inter");
-        fontBig.setPointSize(30);
+        fontBig.setPointSize(25);
         fontBig.setWeight(QFont::DemiBold);   // CSS weight 600
 
         valueQwtText = QwtText("0");
