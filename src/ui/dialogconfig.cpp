@@ -826,6 +826,11 @@ void DialogConfig::on_comboBox_startTrigger_activated(int index) {
 void DialogConfig::on_comboBox_displayVideo_activated(int index) {
     parentDialog->showVideoPlayer(index);
 
+    // Persist the choice immediately so the next workout opens on the same pane,
+    // even if the user closes this dialog without pressing OK.
+    account->display_video = index;
+    account->saveDisplayPrefs();
+
     //web browser
     ui->label_homePage->setVisible(index == 1);
     ui->lineEdit_homePage->setVisible(index == 1);
