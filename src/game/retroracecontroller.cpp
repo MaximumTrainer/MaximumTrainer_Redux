@@ -10,7 +10,11 @@ namespace {
 // back relies on drafting; the partner is leashed so it never drops you.
 constexpr double kDraftRangeM     = 12.0;  // slipstream reaches this far back
 constexpr double kDraftMaxCdaCut  = 0.35;  // up to 35% less drag right on the wheel
+constexpr double kDraftMinGapM    = 1.0;   // no draft within this of the wheel, so the
+                                           // slipstream can't fling you straight past
 constexpr double kPartnerLeashM   = 15.0;  // partner never pulls more than this ahead
+constexpr double kPacerDraftMinM  = 5.0;   // once the pacer is dropped this far back it
+                                           // drafts too, clawing back so you can't shake it
 
 // A ghost shorter than this is not a usable opponent: racing it would cross the
 // finish within the first tick and pop the celebration instantly. Reject it so
@@ -259,7 +263,19 @@ void RetroRaceController::tick()
 
     // Opponent: its power source → speed → distance, plus cadence for the legs.
     m_oppPowerW = m_opponent->powerAt(m_elapsedSec);
-    m_oppV      = CyclingPhysics::stepSpeed(m_oppV, m_oppPowerW, m_weightKg, m_cda, dt);
+    // Pacer draft-back: once the bot pacer has been dropped beyond kPacerDraftMinM
+    // it gets its own slipstream cut so it can claw the gap back, keeping the race
+    // engaging — you can pull a small lead but never simply ride away from it. A
+    // recorded ghost (your past self) stays honest and gets no help.
+    double oppCda = m_cda;
+    if (m_oppIsBot) {
+        const double oppBehindM = m_playerDistM - m_oppDistM;   // >0 = pacer behind you
+        if (oppBehindM > kPacerDraftMinM) {
+            const double f = qBound(0.0, (oppBehindM - kPacerDraftMinM) / kDraftRangeM, 1.0);
+            oppCda = m_cda * (1.0 - kDraftMaxCdaCut * f);
+        }
+    }
+    m_oppV      = CyclingPhysics::stepSpeed(m_oppV, m_oppPowerW, m_weightKg, oppCda, dt);
     m_oppDistM += m_oppV * dt;
     m_oppCadence  = m_opponent->cadenceAt(m_elapsedSec);
     m_oppCrankRev += (m_oppCadence / 60.0) * dt;
@@ -284,7 +300,11 @@ void RetroRaceController::tick()
     m_draftFactor = 0.0;
     if (m_ergMode || m_oppIsBot) {
         const double behindM = m_oppDistM - m_playerDistM;   // >0 = player behind
-        if (behindM > 0.0) {
+        // Only engage past a 1 m dead-zone: right on the wheel the slipstream is
+        // strongest, and letting it apply there carries you straight past the
+        // pacer, so you keep overtaking and dropping back. Holding draft to >1 m
+        // lets you tuck in and settle on the wheel instead.
+        if (behindM > kDraftMinGapM) {
             m_draftFactor = qBound(0.0, (kDraftRangeM - behindM) / kDraftRangeM, 1.0);
             playerCda     = m_cda * (1.0 - kDraftMaxCdaCut * m_draftFactor);
             m_drafting    = m_draftFactor > 0.05;
