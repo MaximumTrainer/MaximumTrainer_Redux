@@ -2,6 +2,7 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QStandardPaths>
 #include <QtGlobal>
 
 namespace {
@@ -10,6 +11,25 @@ namespace {
 constexpr double kDraftRangeM     = 12.0;  // slipstream reaches this far back
 constexpr double kDraftMaxCdaCut  = 0.35;  // up to 35% less drag right on the wheel
 constexpr double kPartnerLeashM   = 15.0;  // partner never pulls more than this ahead
+
+// A ghost shorter than this is not a usable opponent: racing it would cross the
+// finish within the first tick and pop the celebration instantly. Reject it so
+// we fall back to the pacer instead. (A real "race your last ride" recording is
+// the full workout length — only aborted / corrupt .fit files fall under these.)
+constexpr double kMinGhostSec  = 20.0;
+constexpr double kMinGhostDistM = 50.0;
+
+// The History folder the app actually writes rides to. On Windows with OneDrive
+// the Documents folder is redirected (e.g. .../OneDrive/Documents/...), so a
+// hardcoded homePath()/Documents path misses every saved ride. QStandardPaths
+// resolves the real (redirected) location — matching Util::getSystemPath* — and
+// we avoid including the heavy util.h here (this module also builds for WASM).
+QString ghostHistoryDir()
+{
+    const QString docs = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    const QString base = !docs.isEmpty() ? docs : (QDir::homePath() + QLatin1String("/Documents"));
+    return base + QLatin1String("/MaximumTrainer/History");
+}
 }
 
 RetroRaceController::RetroRaceController(QObject *parent)
@@ -23,9 +43,7 @@ bool RetroRaceController::loadGhost(const QString &fitPath)
 {
     QString path = fitPath;
     if (path.isEmpty()) {
-        const QString histDir = QDir::homePath()
-            + QLatin1String("/Documents/MaximumTrainer/History");
-        const QFileInfoList fits = QDir(histDir).entryInfoList(
+        const QFileInfoList fits = QDir(ghostHistoryDir()).entryInfoList(
             QStringList() << QStringLiteral("*.fit"), QDir::Files, QDir::Time);
         if (!fits.isEmpty())
             path = fits.first().absoluteFilePath();
@@ -35,6 +53,11 @@ bool RetroRaceController::loadGhost(const QString &fitPath)
 
     GhostReplay replay = GhostReplay::fromFitFile(path);
     if (!replay.isValid())
+        return false;
+    // Guard against a degenerate ride (a couple of near-identical records): it
+    // would "finish" instantly and show the win/celebration the moment the race
+    // begins. Treat it as no-ghost so the caller falls back to the pacer.
+    if (replay.totalTimeSec() < kMinGhostSec || replay.totalDistanceM() < kMinGhostDistM)
         return false;
 
     m_oppName    = QFileInfo(path).completeBaseName();
@@ -47,11 +70,9 @@ bool RetroRaceController::loadGhost(const QString &fitPath)
 
 bool RetroRaceController::loadGhostForWorkout(const QString &workoutName)
 {
-    const QString histDir = QDir::homePath()
-        + QLatin1String("/Documents/MaximumTrainer/History");
     // entryInfoList(QDir::Time) is newest-first, so the first match is the most
     // recent ride of this workout.
-    const QFileInfoList fits = QDir(histDir).entryInfoList(
+    const QFileInfoList fits = QDir(ghostHistoryDir()).entryInfoList(
         QStringList() << QStringLiteral("*.fit"), QDir::Files, QDir::Time);
     for (const QFileInfo &fi : fits) {
         if (workoutName.isEmpty()
@@ -96,9 +117,7 @@ void RetroRaceController::setWorkoutName(const QString &name)
     // Does a past ride of this workout exist? (filename match only — cheap; the
     // actual decode happens if the user picks it.)
     m_hasLastRide = false;
-    const QString histDir = QDir::homePath()
-        + QLatin1String("/Documents/MaximumTrainer/History");
-    const QFileInfoList fits = QDir(histDir).entryInfoList(
+    const QFileInfoList fits = QDir(ghostHistoryDir()).entryInfoList(
         QStringList() << QStringLiteral("*.fit"), QDir::Files, QDir::Time);
     for (const QFileInfo &fi : fits) {
         if (!name.isEmpty() && fi.completeBaseName().contains(name, Qt::CaseInsensitive)) {
@@ -311,6 +330,6 @@ void RetroRaceController::tick()
     emit updated();
 
     const double total = m_opponent->totalTimeSec();
-    if (total > 0.0 && m_elapsedSec >= total)
+    if (total > 1.0 && m_elapsedSec >= total)
         finishRace();   // ghost route completed → celebrate
 }
