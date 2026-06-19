@@ -176,6 +176,12 @@ private:
     QTimer              *m_reconnectTimer    = nullptr;
     QBluetoothDeviceInfo m_reconnectDevice;
     int                  m_reconnectAttempts = 0;
+    // Set by disconnectFromDevice() so an intentional teardown (rescan, Skip,
+    // workout close, device removed) does NOT schedule an auto-reconnect — a
+    // stale hub reconnecting mid-teardown issued reads against a controller
+    // being destroyed ("A method was called at an unexpected time"). Mirrors
+    // BtleHubWasm. Cleared by connectToDevice() (an intentional connect).
+    bool                 m_userDisconnect    = false;
     static constexpr int MAX_RECONNECT_ATTEMPTS = 3;
     static constexpr int RECONNECT_INTERVAL_MS  = 5000;
 
