@@ -104,6 +104,7 @@ void BtleHub::connectToDevice(const QBluetoothDeviceInfo &device)
     m_ftmsLastAckedCmd.clear();
     m_reconnectDevice   = device;
     m_reconnectAttempts = 0;
+    m_userDisconnect    = false;
 
     m_controller = QLowEnergyController::createCentral(device, this);
 
@@ -123,6 +124,11 @@ void BtleHub::connectToDevice(const QBluetoothDeviceInfo &device)
 
 void BtleHub::disconnectFromDevice()
 {
+    // Intentional teardown: cancel any pending reconnect and suppress the one
+    // that onControllerDisconnected() would otherwise schedule.
+    m_userDisconnect = true;
+    if (m_reconnectTimer)
+        m_reconnectTimer->stop();
     if (m_controller) {
         m_controller->disconnectFromDevice();
     }
@@ -272,7 +278,9 @@ void BtleHub::onControllerDisconnected()
     m_hrSeen = false;
     emit deviceDisconnected();
 
-    if (m_reconnectAttempts < MAX_RECONNECT_ATTEMPTS)
+    // Only an unexpected drop should auto-reconnect; an intentional
+    // disconnectFromDevice() must stay disconnected.
+    if (!m_userDisconnect && m_reconnectAttempts < MAX_RECONNECT_ATTEMPTS)
         m_reconnectTimer->start(RECONNECT_INTERVAL_MS);
 }
 
