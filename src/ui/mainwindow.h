@@ -224,6 +224,11 @@ private:
 
     int currentIndexLeftMenu;
     bool isInsideWorkout;
+    // Guards executeWorkout() against re-entry while a launch is still in flight
+    // (connection/sensor dialogs, BLE connect wait) so a second double-click can
+    // never spawn a second WorkoutDialog. isInsideWorkout takes over once the
+    // workout is actually running.
+    bool m_launchingWorkout = false;
 
     QString lastWorkoutNameDownloaded;
 

@@ -58,8 +58,6 @@ private slots:
     void onScanFinished();
     void onScanError(QBluetoothDeviceDiscoveryAgent::Error error);
     void onContinueClicked();
-    void onSkipClicked();
-    void onRescanClicked();
     void onManageClicked();
 
 private:
@@ -74,7 +72,6 @@ private:
     };
 
     void startDiscovery();
-    void resetForRescan();
     void teardownHubs();
     void updateSlotUi(int slotIndex);
     void refreshButtons();
@@ -92,8 +89,6 @@ private:
     bool  m_hubsDetached = false;
 
     QPushButton *m_btnContinue = nullptr;
-    QPushButton *m_btnSkip     = nullptr;
-    QPushButton *m_btnRescan   = nullptr;
     QPushButton *m_btnManage   = nullptr;
 
     QTimer *m_autoContinueTimer = nullptr;
