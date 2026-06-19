@@ -68,23 +68,20 @@ SensorConnectDialog::SensorConnectDialog(
     mainLayout->addStretch();
 
     // ── Buttons ───────────────────────────────────────────────────────────────
+    // Kept deliberately minimal: just Manage Sensors (edit the saved devices) and
+    // Continue (start once something is connected). Discovery and reconnect are
+    // automatic, so Rescan/Skip would only add clutter to the pre-workout screen.
     QHBoxLayout *btnRow = new QHBoxLayout();
     m_btnManage   = new QPushButton(tr("Manage Sensors…"), this);
-    m_btnRescan   = new QPushButton(tr("Rescan"), this);
-    m_btnSkip     = new QPushButton(tr("Skip"), this);
     m_btnContinue = new QPushButton(tr("Continue"), this);
     m_btnContinue->setDefault(true);
 
     btnRow->addWidget(m_btnManage);
     btnRow->addStretch();
-    btnRow->addWidget(m_btnRescan);
-    btnRow->addWidget(m_btnSkip);
     btnRow->addWidget(m_btnContinue);
     mainLayout->addLayout(btnRow);
 
     connect(m_btnContinue, &QPushButton::clicked, this, &SensorConnectDialog::onContinueClicked);
-    connect(m_btnSkip,     &QPushButton::clicked, this, &SensorConnectDialog::onSkipClicked);
-    connect(m_btnRescan,   &QPushButton::clicked, this, &SensorConnectDialog::onRescanClicked);
     connect(m_btnManage,   &QPushButton::clicked, this, &SensorConnectDialog::onManageClicked);
 
     // ── Discovery agent ─────────────────────────────────────────────────────
@@ -144,19 +141,6 @@ void SensorConnectDialog::startDiscovery()
     }
     refreshButtons();
     m_agent->start(QBluetoothDeviceDiscoveryAgent::LowEnergyMethod);
-}
-
-void SensorConnectDialog::resetForRescan()
-{
-    if (m_agent && m_agent->isActive())
-        m_agent->stop();
-    m_autoContinueTimer->stop();
-    teardownHubs();
-    for (int i = 0; i < m_slots.size(); ++i) {
-        m_slots[i].status = SlotStatus::Searching;
-        m_slots[i].hub    = nullptr;
-        updateSlotUi(i);
-    }
 }
 
 void SensorConnectDialog::teardownHubs()
@@ -259,22 +243,6 @@ void SensorConnectDialog::onContinueClicked()
     if (m_agent && m_agent->isActive())
         m_agent->stop();
     accept();
-}
-
-void SensorConnectDialog::onSkipClicked()
-{
-    m_autoContinueTimer->stop();
-    if (m_agent && m_agent->isActive())
-        m_agent->stop();
-    teardownHubs();   // discard any connections – caller falls back to manual scan
-    accept();
-}
-
-void SensorConnectDialog::onRescanClicked()
-{
-    resetForRescan();
-    startDiscovery();
-    refreshButtons();
 }
 
 void SensorConnectDialog::onManageClicked()

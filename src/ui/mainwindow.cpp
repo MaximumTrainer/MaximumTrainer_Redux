@@ -16,6 +16,7 @@
 #include <QTextStream>
 #include <QGuiApplication>
 #include <QStyleHints>
+#include <QScopeGuard>
 
 #include "util.h"
 #include "logger.h"
@@ -1323,6 +1324,16 @@ void MainWindow::on_actionOpen_Ride_triggered()
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::executeWorkout(Workout workout) {
+
+    // Re-entrancy guard: the launch flow below runs nested event loops (the
+    // connection-method / sensor dialogs and the BLE connect wait), during which
+    // a queued double-click on the workout list could otherwise re-enter here and
+    // spawn a second (or third) WorkoutDialog. Block until this launch resolves;
+    // once the workout is actually running isInsideWorkout keeps it blocked.
+    if (m_launchingWorkout || isInsideWorkout)
+        return;
+    m_launchingWorkout = true;
+    auto launchGuard = qScopeGuard([this]() { m_launchingWorkout = false; });
 
     DialogConnectionMethod connDlg(this);
     if (connDlg.exec() != QDialog::Accepted)
