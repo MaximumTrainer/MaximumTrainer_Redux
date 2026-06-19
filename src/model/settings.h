@@ -28,8 +28,6 @@ public:
 
 
 
-    QString workoutFolder;
-    QString historyFolder;
 
 
 

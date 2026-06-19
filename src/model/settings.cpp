@@ -36,11 +36,6 @@ Settings::Settings(QObject *parent) : QObject(parent)  {
 
 
 
-    settings.beginGroup("SettingsFolders");
-    historyFolder = settings.value("historyFolder", "").toString();
-    workoutFolder = settings.value("workoutFolder", "").toString();
-    settings.endGroup();
-
 }
 
 
@@ -66,12 +61,6 @@ void Settings::saveGeneralSettings() {
     }
     settings.setValue("lastLoggedUsername", lastLoggedUsername);
     settings.setValue("lastLoggedKey", lastLoggedKey);
-    settings.endGroup();
-
-
-    settings.beginGroup("SettingsFolders");
-    settings.setValue("historyFolder", historyFolder );
-    settings.setValue("workoutFolder", workoutFolder );
     settings.endGroup();
 
 

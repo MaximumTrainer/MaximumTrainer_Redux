@@ -144,11 +144,6 @@ bool XmlUtil::saveLocalSaveFile(Account *account) {
 
         ///-------------------------------------------------------------------------------------------------------
         //        writer.writeStartElement("ProgramSettings");
-
-
-        //        writer.writeTextElement("workoutFolder", settings->workoutFolder);
-        //        writer.writeTextElement("historyFolder", settings->historyFolder);
-
         //        writer.writeEndElement();  // ProgramSettings
 
 

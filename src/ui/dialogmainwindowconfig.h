@@ -35,7 +35,6 @@ protected:
 
 
 signals:
-    void folderWorkoutChanged();
     /// Emitted when Intervals.icu credentials are saved so the tab can refresh.
     void intervalsIcuCredentialsChanged();
     /// Emitted when the athlete profile (FTP / LTHR / weight) was edited, so the
@@ -53,8 +52,6 @@ public slots:
 
 private slots:
     void currentListViewSelectionChanged(int section);
-    void on_pushButton_browseWorkoutDir_clicked();
-    void on_pushButton_browseHistoryDir_clicked();
 
     void stravaLabelClicked();
     void unlinkStravaClicked();

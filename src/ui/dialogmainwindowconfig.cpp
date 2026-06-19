@@ -80,30 +80,27 @@ DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent
     ui->listWidget_settings->setIconSize(QSize(24, 24));
 
     QListWidgetItem *item1 = new QListWidgetItem(QIcon(":/image/icon/general"), tr("General"), ui->listWidget_settings);
-    QListWidgetItem *item3 = new QListWidgetItem(QIcon(":/image/icon/folder"), tr("Folders"), ui->listWidget_settings);
     QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/strava_logo"), tr("Strava"), ui->listWidget_settings);
     QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/intervals"), tr("Intervals.icu"), ui->listWidget_settings);
     // "Profile" reuses the old main-page profile icon; its page (page_profile)
-    // is the last static page in the .ui, so it maps to stacked index 4 and the
-    // runtime-added Logging page lands at index 5 — keep this order in sync.
+    // is the last static page in the .ui, so it maps to stacked index 3 and the
+    // runtime-added Logging page lands at index 4 — keep this order in sync.
     QListWidgetItem *item6 = new QListWidgetItem(QIcon(":/image/icon/user"), tr("Profile"), ui->listWidget_settings);
     QListWidgetItem *item7 = new QListWidgetItem(QIcon(":/image/icon/gear"), tr("Logging"), ui->listWidget_settings);
     item1->setSizeHint(QSize(35,35));
-    item3->setSizeHint(QSize(35,35));
     item4->setSizeHint(QSize(35,35));
     item5->setSizeHint(QSize(35,35));
     item6->setSizeHint(QSize(35,35));
     item7->setSizeHint(QSize(35,35));
 
     ui->listWidget_settings->addItem(item1);
-    ui->listWidget_settings->addItem(item3);
     ui->listWidget_settings->addItem(item4);
     ui->listWidget_settings->addItem(item5);
     ui->listWidget_settings->addItem(item6);
     ui->listWidget_settings->addItem(item7);
 
-    // Add the logging page to the stacked widget (lands at index 5, after the
-    // static page_profile at index 4)
+    // Add the logging page to the stacked widget (lands at index 4, after the
+    // static page_profile at index 3)
     ui->stackedWidget->addWidget(createLoggingPage());
 
 
@@ -136,10 +133,6 @@ void DialogMainWindowConfig::initUI() {
     }
 
     ui->checkBox_stravaAutoUpload->setChecked(account->strava_auto_upload);
-    ui->lineEdit_historyDir->setText(Util::getSystemPathHistory());
-    ui->lineEdit_workoutDir->setText(Util::getSystemPathWorkout());
-    ui->lineEdit_historyDir->setReadOnly(true);
-    ui->lineEdit_workoutDir->setReadOnly(true);
 
     if (account->distance_in_km)
         ui->comboBox_distance->setCurrentIndex(0);
@@ -278,43 +271,6 @@ void DialogMainWindowConfig::currentListViewSelectionChanged(int section) {
 }
 
 
-//---------------------------------------------------------------------------------------------
-void DialogMainWindowConfig::on_pushButton_browseWorkoutDir_clicked()
-{
-    QString path = QFileDialog::getExistingDirectory(this, tr("Select Workout Folder"), Util::getSystemPathWorkout(), QFileDialog::ShowDirsOnly);
-    if (path == "")
-        return;
-
-    if (Util::checkFolderPathIsValidForWrite(path)) {
-        ui->lineEdit_workoutDir->setText(path);
-    }
-    else {
-        QMessageBox msgBox(this);
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setText(tr("The specified folder could not be used to write files in"));
-        msgBox.setStandardButtons(QMessageBox::Close);
-        msgBox.exec();
-    }
-
-}
-//----------------------------------------------------------------------------------------
-void DialogMainWindowConfig::on_pushButton_browseHistoryDir_clicked()
-{
-    QString path = QFileDialog::getExistingDirectory(this, tr("Select History Folder"), Util::getSystemPathHistory(), QFileDialog::ShowDirsOnly);
-    if (path == "")
-        return;
-
-    if (Util::checkFolderPathIsValidForWrite(path)) {
-        ui->lineEdit_historyDir->setText(path);
-    }
-    else {
-        QMessageBox msgBox(this);
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setText(tr("The specified folder could not be used to write files in"));
-        msgBox.setStandardButtons(QMessageBox::Close);
-        msgBox.exec();
-    }
-}
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -365,14 +321,6 @@ void DialogMainWindowConfig::accept() {
     qDebug() << "ACCEPT, save settings";
 
     account->strava_auto_upload = ui->checkBox_stravaAutoUpload->isChecked();
-
-    //Folder changed
-    if (settings->workoutFolder != ui->lineEdit_workoutDir->text()) {
-        settings->workoutFolder = ui->lineEdit_workoutDir->text();
-        emit folderWorkoutChanged();
-    }
-
-    settings->historyFolder = ui->lineEdit_historyDir->text();
     account->force_workout_window_on_top = ui->checkBox_forceOnTop->isChecked();
 
     // Athlete profile (FTP / LTHR / weight) — persist locally and notify the
