@@ -101,7 +101,7 @@ private:
     MarkerItem *markerLineMiddle;
     ZoneItem *zone1;
     ZoneItem *zone2;
-    IconItem *icon ;
+    IconItem *icon = nullptr;
 
 
     int target;

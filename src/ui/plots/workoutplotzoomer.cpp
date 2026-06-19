@@ -217,6 +217,9 @@ void WorkoutPlotZoomer::init(GRAPH_TYPE graph, bool firstInit) {
 
         icon->attach(this);
         icon->setZ(12);
+        // Let the icon measure the value number so it can sit just left of it.
+        icon->valueFont = fontBig;
+        icon->valueText = "0";
 
 
         zone1 = new ZoneItem( "Zone Start");
@@ -628,11 +631,13 @@ void WorkoutPlotZoomer::updateTextLabelValue(int value) {
     if(value < 0) {
         valueQwtText.setText("-");
         qwtTextLabel->setText( valueQwtText );
+        if (icon) icon->valueText = "-";
         return;
     }
 
     valueQwtText.setText(QString::number(value));
     qwtTextLabel->setText( valueQwtText );
+    if (icon) icon->valueText = valueQwtText.text();
 
 
     /// Ajust graph if we have no target right now
