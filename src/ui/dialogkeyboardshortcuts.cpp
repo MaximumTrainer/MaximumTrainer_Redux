@@ -39,33 +39,28 @@ DialogKeyboardShortcuts::DialogKeyboardShortcuts(QWidget *parent)
 
     // ----- Workout Player tab -----
     const QVector<QPair<QString,QString>> workoutRows = {
-        {tr("Space"),        tr("Start / Pause workout")},
-        {tr("→  (Right)"),   tr("Skip to next interval")},
-        {tr("+  /  ="),      tr("Increase difficulty +5 %")},
-        {tr("-"),            tr("Decrease difficulty −5 %")},
-        {tr("↑  /  ↓"),      tr("Virtual shift up / down (or difficulty if shifting is off)")},
-        {tr("L"),            tr("Manual lap")},
-        {tr("?  /  F1"),     tr("Show keyboard shortcuts")},
-        {tr("Escape"),       tr("Exit workout (with confirmation)")},
+        {tr("Space  /  Enter"),  tr("Start / Pause workout")},
+        {tr("→  (Right)"),       tr("Skip to next interval")},
+        {tr("↑  /  ↓"),          tr("Virtual shift up / down (or difficulty if shifting is off)")},
+        {tr("+  /  ="),          tr("Increase difficulty +5 %")},
+        {tr("-"),                tr("Decrease difficulty -5 %")},
+        {tr("L  /  Backspace"),  tr("Manual lap")},
+        {tr("F1"),               tr("Calibrate trainer / power meter")},
+        {tr("F6 / F7 / F8"),     tr("Radio: previous / play-pause / next")},
+        {tr("F11"),              tr("Toggle fullscreen")},
+        {tr("?"),                tr("Show keyboard shortcuts")},
+        {tr("Escape"),           tr("Exit workout (with confirmation)")},
     };
     tabs->addTab(makeTable(workoutRows), tr("Workout Player"));
 
     // ----- Main Window tab -----
     const QVector<QPair<QString,QString>> mainRows = {
-        {tr("Ctrl+,"),   tr("Open Preferences")},
-        {tr("Ctrl+N"),   tr("Create new workout")},
-        {tr("Ctrl+Q"),   tr("Quit application")},
-        {tr("F1  /  ?"), tr("Show keyboard shortcuts")},
+        {tr("Ctrl+,"), tr("Open Preferences")},
+        {tr("Ctrl+N"), tr("Create new workout")},
+        {tr("Ctrl+Q"), tr("Quit application")},
+        {tr("F1"),     tr("Show keyboard shortcuts")},
     };
     tabs->addTab(makeTable(mainRows), tr("Main Window"));
-
-    // ----- Workout Creator tab -----
-    const QVector<QPair<QString,QString>> creatorRows = {
-        {tr("Ctrl+S"), tr("Save workout")},
-        {tr("Ctrl+Z"), tr("Undo last change")},
-        {tr("Delete"), tr("Delete selected interval")},
-    };
-    tabs->addTab(makeTable(creatorRows), tr("Workout Creator"));
 
     auto *closeBtn = new QPushButton(tr("Close"), this);
     connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);
