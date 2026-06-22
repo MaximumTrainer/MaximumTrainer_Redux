@@ -1497,8 +1497,10 @@ void WorkoutDialog::moveToInterval(int nbInterval, double secWorkout, double sta
     copyLstInterval.replace(currentInterval, intervalToModify);
 
 
-    //Remove interval that we skipped (if clicked more than 1 interval ahead)
-    for (int i=0; i<nbIntervalToDelete; i++) {
+    //Remove interval that we skipped (if clicked more than 1 interval ahead).
+    // Guard the index: an abnormal jump (e.g. negative time-done) can over-count
+    // nbIntervalToDelete; removeAt() past the end is undefined behaviour (crash).
+    for (int i=0; i<nbIntervalToDelete && copyLstInterval.size() > currentInterval+1; i++) {
         copyLstInterval.removeAt(currentInterval+1);
     }
 
@@ -1521,10 +1523,20 @@ void WorkoutDialog::moveToInterval(int nbInterval, double secWorkout, double sta
         changeIntervalsDataWorkout(lastIntervalEndTime_msec, timeElapsed_sec, intervalPausedTime_msec, false, currentIntervalObj.isTestInterval());
     }
 
-    //Go to selected interval
+    //Go to selected interval (clamp the index — getInterval() uses at() with no
+    //bounds check, so an out-of-range index would segfault).
     currentInterval++;
+    if (currentInterval >= workout.getLstInterval().size())
+        currentInterval = workout.getLstInterval().size() - 1;
     currentIntervalObj = workout.getInterval(currentInterval);
     adjustTargets(currentIntervalObj);
+
+    // Keep the game's interval label in step with a manual jump (adjustTargets
+    // already refreshes the power/cadence/HR targets, but not the message).
+    if (raceController) {
+        raceController->markIntervalBoundary();
+        raceController->setIntervalMessage(currentIntervalObj.getDisplayMessage());
+    }
 
     if (currentIntervalObj.getDisplayMessage() != "")
         ui->widget_workoutPlot->setDisplayIntervalMessage(false, currentIntervalObj.getDisplayMessage(), account->nb_sec_show_interval);
@@ -1562,7 +1574,8 @@ void WorkoutDialog::moveToNextInterval() {
     changeIntervalDisplayNextSecond = false;
     ignoreCondition = true;
 
-
+    if (currentInterval + 1 >= workout.getLstInterval().size())
+        return;   // already on the last interval — no next to preview (at() would crash)
     Interval newInterval = workout.getLstInterval().at(currentInterval+1);
     if (newInterval.getDisplayMessage() != "")
         ui->widget_workoutPlot->setDisplayIntervalMessage(false, newInterval.getDisplayMessage(), account->nb_sec_show_interval);
