@@ -121,6 +121,10 @@ private slots:
     void onReconnectTimer();
 
 private:
+    // (Re)create the controller and start a connection to m_reconnectDevice
+    // without touching m_reconnectAttempts, so connect-phase retries keep a
+    // running count against MAX_RECONNECT_ATTEMPTS.
+    void attemptConnection();
     void setupService(QLowEnergyService *service);
     void enableNotification(QLowEnergyService *service,
                             const QLowEnergyCharacteristic &characteristic);

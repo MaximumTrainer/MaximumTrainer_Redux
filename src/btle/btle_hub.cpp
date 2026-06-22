@@ -81,6 +81,17 @@ void BtleHub::setWheelCircumferenceMm(int mm)
 
 void BtleHub::connectToDevice(const QBluetoothDeviceInfo &device)
 {
+    // Fresh, user-initiated connect: remember the target and reset the retry
+    // budget. The actual controller setup (and every retry) goes through
+    // attemptConnection(), which must NOT reset the budget.
+    m_reconnectDevice   = device;
+    m_reconnectAttempts = 0;
+    m_userDisconnect    = false;
+    attemptConnection();
+}
+
+void BtleHub::attemptConnection()
+{
     if (m_controller) {
         m_controller->disconnectFromDevice();
         delete m_controller;
@@ -102,11 +113,8 @@ void BtleHub::connectToDevice(const QBluetoothDeviceInfo &device)
     m_ftmsPendingCmd.clear();
     m_ftmsLastSentCmd.clear();
     m_ftmsLastAckedCmd.clear();
-    m_reconnectDevice   = device;
-    m_reconnectAttempts = 0;
-    m_userDisconnect    = false;
 
-    m_controller = QLowEnergyController::createCentral(device, this);
+    m_controller = QLowEnergyController::createCentral(m_reconnectDevice, this);
 
     connect(m_controller, &QLowEnergyController::connected,
             this, &BtleHub::onControllerConnected);
@@ -268,6 +276,9 @@ void BtleHub::simulateNotification(quint16 characteristicUuid, const QByteArray 
 void BtleHub::onControllerConnected()
 {
     LOG_INFO("BtleHub", QStringLiteral("Device connected — discovering services"));
+    // A successful link refreshes the retry budget so a later drop gets its
+    // own full set of attempts.
+    m_reconnectAttempts = 0;
     m_controller->discoverServices();
 }
 
@@ -286,17 +297,37 @@ void BtleHub::onControllerDisconnected()
 
 void BtleHub::onReconnectTimer()
 {
-    LOG_INFO("BtleHub", QStringLiteral("Reconnect attempt ") + QString::number(m_reconnectAttempts + 1));
     ++m_reconnectAttempts;
-    connectToDevice(m_reconnectDevice);
+    LOG_INFO("BtleHub", QStringLiteral("Reconnect attempt ") + QString::number(m_reconnectAttempts));
+    // Go through attemptConnection() (not connectToDevice) so the running
+    // attempt count is preserved and MAX_RECONNECT_ATTEMPTS actually caps.
+    attemptConnection();
 }
 
 void BtleHub::onControllerError(QLowEnergyController::Error error)
 {
-    const QString errStr = m_controller->errorString();
+    const QString errStr = m_controller ? m_controller->errorString()
+                                        : QStringLiteral("controller error");
     LOG_WARN("BtleHub",
              QStringLiteral("BLE controller error ") + QString::number(static_cast<int>(error))
              + QStringLiteral(": ") + errStr);
+
+    // A connect-phase failure (BlueZ connect timeout / adapter busy) is often
+    // transient. Retry a few times before surfacing the error to the UI rather
+    // than failing the workout on the first miss — onControllerDisconnected only
+    // auto-reconnects drops that happen AFTER a successful connect.
+    const bool connectPhase =
+        !m_controller
+        || (m_controller->state() != QLowEnergyController::DiscoveredState
+            && m_controller->state() != QLowEnergyController::ConnectedState);
+
+    if (connectPhase && !m_userDisconnect
+        && m_reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        if (m_reconnectTimer && !m_reconnectTimer->isActive())
+            m_reconnectTimer->start(RECONNECT_INTERVAL_MS);
+        return;
+    }
+
     emit connectionError(errStr);
 }
 
