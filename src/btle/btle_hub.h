@@ -48,7 +48,7 @@ public:
     // Setting it also restricts setLoad()/setSlope() to commands addressed to
     // this rider, so one rider's ERG target does not drive every trainer. Solo
     // never calls this, so its trainer keeps accepting every command (the
-    // broadcast antID from the legacy sensor list is ignored, as before).
+    // broadcast deviceId from the legacy sensor list is ignored, as before).
     void setUserID(int id) { m_userID = id; m_filterControlByUserID = true; }
 
 signals:
@@ -87,8 +87,8 @@ signals:
 public slots:
     // Slots with same signatures as Hub::setLoad / Hub::setSlope so they can
     // be wired up identically from WorkoutDialog signals.
-    void setLoad(int antID, double watts);
-    void setSlope(int antID, double grade);
+    void setLoad(int deviceId, double watts);
+    void setSlope(int deviceId, double grade);
     /// Whether the connected trainer advertised Set Target Resistance Level
     /// (0x04) support in its FTMS feature char. Valid after discovery.
     bool resistanceLevelSupported() const { return m_resistanceLevelSupported; }
@@ -96,7 +96,7 @@ public slots:
     // resistance level in 0.1 units (the 2AD6 "Supported Resistance Level Range"
     // representation). Unlike ERG, this sets a fixed brake — resistance changes
     // instantly and power follows effort, so virtual gears feel like real gears.
-    void setResistanceLevel(int antID, int levelTenths);
+    void setResistanceLevel(int deviceId, int levelTenths);
     void stopDecodingMsg();
 
     // Test hook: inject raw BLE notification bytes as if received from hardware.
@@ -195,7 +195,7 @@ private:
     // Rider id emitted in every data signal (settable via setUserID()).
     int m_userID = SOLO_USER_ID;
     // When true (Studio mode), setLoad()/setSlope() act only on commands whose
-    // antID matches m_userID. False for solo so behaviour is unchanged.
+    // deviceId matches m_userID. False for solo so behaviour is unchanged.
     bool m_filterControlByUserID = false;
 
     int m_wheelCircMm = DEFAULT_WHEEL_CIRC_MM;

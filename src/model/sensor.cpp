@@ -7,14 +7,14 @@
 
 Sensor::Sensor() {
 
-    this->ant_id = 0;
+    this->device_id = 0;
 }
 
 
 
-Sensor::Sensor(int ant_id, Sensor::SENSOR_TYPE device_type, QString name, QString details) {
+Sensor::Sensor(int device_id, Sensor::SENSOR_TYPE device_type, QString name, QString details) {
 
-    this->ant_id = ant_id;
+    this->device_id = device_id;
     this->device_type = device_type;
     this->name = name;
     this->details = details;
@@ -39,9 +39,6 @@ QString Sensor::getName(Sensor::SENSOR_TYPE s) {
     }
     else if (s == SENSOR_POWER ){
         return QApplication::translate("SensorEnum", "Power", 0);
-    }
-    else if (s == SENSOR_FEC ){
-        return QApplication::translate("SensorEnum", "FE-C", 0);
     }
     else if (s == SENSOR_OXYGEN ){
         return QApplication::translate("SensorEnum", "Muscle Oxygen", 0);

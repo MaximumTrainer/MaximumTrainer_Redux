@@ -98,7 +98,7 @@ void SensorsWidget::buildUi()
 
     // Trainer control toggle. Lives here, next to the Trainer slot, rather than
     // in a separate Preferences page. Drives account->control_trainer_resistance,
-    // which gates ERG setpoints over BLE FTMS (and legacy ANT FE-C) at runtime.
+    // which gates ERG setpoints over BLE FTMS at runtime.
     QGroupBox *trainerGroup = new QGroupBox(tr("Smart Trainer"), this);
     QVBoxLayout *trainerLayout = new QVBoxLayout(trainerGroup);
     trainerLayout->setSpacing(4);

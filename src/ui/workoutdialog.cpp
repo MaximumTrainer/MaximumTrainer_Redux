@@ -43,8 +43,6 @@
 #include <QQuickWidget>
 #include <QQmlContext>
 #include "retroracecontroller.h"
-#include "dialogcalibrate.h"
-#include "dialogcalibratepm.h"
 #include "dialogkeyboardshortcuts.h"
 #include "logger.h"
 #include "strava_service.h"
@@ -135,7 +133,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     usingCadence = false;
     usingSpeed = false;
     usingPower = false;
-    usingFEC = false;
     usingOxygen = false;
 
     hrPairingDone = false;
@@ -149,7 +146,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     trainerControlUserId = -1;
 
     isUsingSlopeMode = false;
-    timerAlertCalibrateCt = new QTimer(this);
 
     //data points
     nbPointHr1sec = QVector<int>(constants::nbMaxUserStudio, 0);
@@ -213,10 +209,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
     sendUserInfoToClock();
     emit startClockSpeed();
-
-    // Calibration
-    connect(ui->widget_topMenu, SIGNAL(startCalibrateFEC()), this, SLOT(startCalibrateFEC()) );
-    connect(ui->widget_topMenu, SIGNAL(startCalibrationPM()), this, SLOT(startCalibrationPM()) );
 
 
     // Ignore click on workout plot while widget is loading
@@ -376,7 +368,7 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
     widgetLoading->setAttribute(Qt::WA_TransparentForMouseEvents,true);
     widgetLoading->setWindowFlags(Qt::WindowStaysOnTopHint);
-    ///----------------------------- End Calibration widgets ------------------------
+    ///----------------------------- End Loading widgets ------------------------
 
 
     ///-------------------------- Battery widgets ----------------------
@@ -576,7 +568,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     currentWorkoutDifficultyPercentage = 0;
 
     isAskingUserQuestion = false;
-    isCalibrating = false;
     isWorkoutStarted = false;
     isWorkoutPaused = true;
     isWorkoutOver = false;
@@ -719,50 +710,28 @@ void WorkoutDialog::toggleTransparent() {
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WorkoutDialog::addToControlList(int antID, int fromHubNumber) {
+void WorkoutDialog::addToControlList(int deviceId, int fromHubNumber) {
 
-    qDebug() << "Asking Workout Dialog for control" << "antID" << antID << "fromHubNumber" << fromHubNumber;
+    qDebug() << "Asking Workout Dialog for control" << "deviceId" << deviceId << "fromHubNumber" << fromHubNumber;
 
-    if (!hashControlList.contains(antID)) {
-        qDebug() << "Ok antID" << antID << "not in my List, you can control it!" << fromHubNumber;
-        hashControlList.insert(antID, fromHubNumber);
+    if (!hashControlList.contains(deviceId)) {
+        qDebug() << "Ok deviceId" << deviceId << "not in my List, you can control it!" << fromHubNumber;
+        hashControlList.insert(deviceId, fromHubNumber);
         //emit signal back to Hub to let him add this ID
-        emit permissionGrantedControl(antID, fromHubNumber);
+        emit permissionGrantedControl(deviceId, fromHubNumber);
     }
     /// DO NOT USE, because sending duplicate cause transfer to fail
     //    else if (hashControlList.size() >= nbTotalFecTrainer) {
     //        qDebug() << "OK we already control all trainer, we can control more for better reception!";
-    //        hashControlList.insert(antID, fromHubNumber);
-    //        emit permissionGrantedControl(antID, fromHubNumber);
+    //        hashControlList.insert(deviceId, fromHubNumber);
+    //        emit permissionGrantedControl(deviceId, fromHubNumber);
     //    }
     else {
-        qDebug() << "Sorry this trainer is already being controlled" <<  antID;
+        qDebug() << "Sorry this trainer is already being controlled" <<  deviceId;
     }
 
 }
 
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WorkoutDialog::startCalibrateFEC() {
-
-    if (isCalibrating || account->enable_studio_mode) {
-        return;
-    }
-
-    return; // No hub available (BTLE-only build)
-}
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WorkoutDialog::startCalibrationPM() {
-
-    if (isCalibrating || account->enable_studio_mode) {
-        return;
-    }
-
-    return; // No hub available (BTLE-only build)
-}
 
 
 
@@ -1999,7 +1968,7 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
 
     }
     ///Resume Workout?
-    if (!account->enable_studio_mode && !isCalibrating && !isAskingUserQuestion && (account->start_trigger == 0) && isWorkoutPaused && !isWorkoutOver && (value > account->value_cadence_start) ) {
+    if (!account->enable_studio_mode && !isAskingUserQuestion && (account->start_trigger == 0) && isWorkoutPaused && !isWorkoutOver && (value > account->value_cadence_start) ) {
         start_or_pause_workout();
     }
     //----------------
@@ -2120,7 +2089,7 @@ void WorkoutDialog::speedDataChosen(int userID, double value) {
         nbPointSpeed1sec.replace(userID-1, nbPointSpeed1sec.at(userID-1) + 1);
     }
     ///Resume Workout?
-    if (!account->enable_studio_mode && !isCalibrating && !isAskingUserQuestion && (account->start_trigger == 2) && isWorkoutPaused && !isWorkoutOver && (valueUnit > account->value_speed_start) ) {
+    if (!account->enable_studio_mode && !isAskingUserQuestion && (account->start_trigger == 2) && isWorkoutPaused && !isWorkoutOver && (valueUnit > account->value_speed_start) ) {
         start_or_pause_workout();
     }
 
@@ -2226,7 +2195,7 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 
     }
     ///Resume Workout?
-    if (!account->enable_studio_mode && !isCalibrating && !isAskingUserQuestion && (account->start_trigger == 1) && isWorkoutPaused && !isWorkoutOver && (value >= account->value_power_start) ) {
+    if (!account->enable_studio_mode && !isAskingUserQuestion && (account->start_trigger == 1) && isWorkoutPaused && !isWorkoutOver && (value >= account->value_power_start) ) {
         start_or_pause_workout();
     }
 
@@ -2519,7 +2488,7 @@ void WorkoutDialog::startErgSmoothing(double fromWatts, double toWatts)
     m_ergSmoothStep  = 0;
     // Use (duration + 1) steps: step 0 is the immediate command, steps 1..N are timer-driven.
     m_ergSmoothSteps = qMax(1, account->erg_smoothing_duration_s);
-    m_ergSmoothAntID = trainerControlUserId;
+    m_ergSmoothDeviceId = trainerControlUserId;
 
     if (!m_ergSmoothTimer) {
         m_ergSmoothTimer = new QTimer(this);
@@ -2530,7 +2499,7 @@ void WorkoutDialog::startErgSmoothing(double fromWatts, double toWatts)
     // Emit step 0 immediately (the "from" value to start the transition).
     const int startWatts = qRound(fromWatts);
     m_ergSmoothLast = startWatts;
-    emit setLoad(m_ergSmoothAntID, startWatts);
+    emit setLoad(m_ergSmoothDeviceId, startWatts);
 
     m_ergSmoothTimer->start();
 }
@@ -2542,12 +2511,12 @@ void WorkoutDialog::stopErgSmoothing()
     m_ergSmoothStep  = 0;
     m_ergSmoothSteps = 0;
     // Do NOT clear m_ergSmoothLast — it is the "current position" for mid-ramp retargeting.
-    m_ergSmoothAntID = -1;
+    m_ergSmoothDeviceId = -1;
 }
 
 void WorkoutDialog::ergSmoothStep()
 {
-    if (m_ergSmoothAntID == -1 || m_ergSmoothSteps <= 0) {
+    if (m_ergSmoothDeviceId == -1 || m_ergSmoothSteps <= 0) {
         stopErgSmoothing();
         return;
     }
@@ -2558,7 +2527,7 @@ void WorkoutDialog::ergSmoothStep()
     const int rounded     = qRound(watts);
 
     m_ergSmoothLast = rounded;
-    emit setLoad(m_ergSmoothAntID, rounded);
+    emit setLoad(m_ergSmoothDeviceId, rounded);
 
     if (m_ergSmoothStep >= m_ergSmoothSteps)
         stopErgSmoothing();
@@ -4243,22 +4212,6 @@ bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
         }
         else if (keyEvent->key() == Qt::Key_Backspace) {
             lapButtonPressed();
-            return true;
-        }
-        // --- Calibration
-        else if (keyEvent->key() == Qt::Key_F1) {
-            qDebug() << "F1";
-            if (usingFEC) {
-                startCalibrateFEC();
-            }
-            else if (usingPower) {
-                startCalibrationPM();
-            }
-            return true;
-        }
-
-        else if (keyEvent->key() == Qt::Key_F2) {
-            qDebug() << "F2";
             return true;
         }
         // --- Fullscreen

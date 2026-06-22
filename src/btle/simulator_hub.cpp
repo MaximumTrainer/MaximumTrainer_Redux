@@ -69,13 +69,13 @@ void SimulatorHub::tick()
 // ──────────────────────────────────────────────────────────────────────────────
 // Slots – accept trainer commands; adjust power target to make simulation react
 // ──────────────────────────────────────────────────────────────────────────────
-void SimulatorHub::setLoad(int /*antID*/, double watts)
+void SimulatorHub::setLoad(int /*deviceId*/, double watts)
 {
     // Nudge simulated power toward the requested load
     m_power = clamp(watts, 100.0, 400.0);
 }
 
-void SimulatorHub::setSlope(int /*antID*/, double grade)
+void SimulatorHub::setSlope(int /*deviceId*/, double grade)
 {
     // Simulate power increase with positive grade
     double targetPower = 200.0 + grade * 15.0;

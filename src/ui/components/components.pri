@@ -22,8 +22,6 @@ SOURCES +=\
     $$PWD/infosworkout.cpp \
     $$PWD/timewidget.cpp \
     $$PWD/oxygenwidget.cpp \
-    $$PWD/dialogcalibrate.cpp \
-    $$PWD/dialogcalibratepm.cpp \
     $$PWD/userstudiowidget.cpp \
     $$PWD/toggleswitch.cpp \
     $$PWD/webbrowserview.cpp
@@ -50,8 +48,6 @@ HEADERS +=\
     $$PWD/infosworkout.h \
     $$PWD/timewidget.h \
     $$PWD/oxygenwidget.h \
-    $$PWD/dialogcalibrate.h \
-    $$PWD/dialogcalibratepm.h \
     $$PWD/userstudiowidget.h \
     $$PWD/toggleswitch.h \
     $$PWD/myqwebenginepage.h \
@@ -67,7 +63,5 @@ FORMS += \
     $$PWD/infosworkout.ui \
     $$PWD/timewidget.ui \
     $$PWD/oxygenwidget.ui \
-    $$PWD/dialogcalibrate.ui \
-    $$PWD/dialogcalibratepm.ui \
     $$PWD/userstudiowidget.ui
 

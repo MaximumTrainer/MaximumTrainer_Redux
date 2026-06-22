@@ -48,8 +48,8 @@ signals:
 
 public slots:
     // No-op stubs matching BtleHub/Hub slot signatures
-    void setLoad(int antID, double watts);
-    void setSlope(int antID, double grade);
+    void setLoad(int deviceId, double watts);
+    void setSlope(int deviceId, double grade);
     void stopDecodingMsg();
 
 private slots:

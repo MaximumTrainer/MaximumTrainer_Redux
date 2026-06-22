@@ -6,8 +6,6 @@
 #include <QLabel>
 #include <QToolButton>
 
-#include "calibration_types.h"
-
 namespace Ui {
 class TopMenuWorkout;
 }
@@ -27,8 +25,6 @@ public:
     void setWorkoutNameLabel(QString label);
 
     void setButtonLapVisible(bool visible);
-    void setButtonCalibratePMVisible(bool visible);
-    void setButtonCalibrationFECVisible(bool visible);
 
 
 
@@ -73,10 +69,7 @@ signals :
     void exit();
 
     void startOrPause();
-    void sendCalibrate(CalibrationType eCalibrationType);
     void lap();
-    void startCalibrateFEC();
-    void startCalibrationPM();
 
     //radio
     void prevRadio();
@@ -113,14 +106,6 @@ private slots:
     void setCurrentTime();
 
     void on_pushButton_lap_clicked();
-
-
-
-    void on_pushButton_calibrateFEC_clicked();
-
-
-
-    void on_pushButton_calibratePM_clicked();
 
     void on_pushButton_prevRadio_clicked();
 

@@ -365,8 +365,6 @@
     <addaction name="actionAbout_Qt"/>
     <addaction name="actionRequest_Help"/>
     <addaction name="actionKeyboard_Shortcuts"/>
-    <addaction name="separator"/>
-    <addaction name="actionCheck_for_Updates"/>
    </widget>
    <widget class="QMenu" name="menuMaximumTrainer">
     <property name="title">
@@ -446,11 +444,6 @@
    </property>
    <property name="shortcut">
     <string>F1</string>
-   </property>
-  </action>
-  <action name="actionCheck_for_Updates">
-   <property name="text">
-    <string>Check for Updates…</string>
    </property>
   </action>
   <action name="actionCreate_New">
