@@ -75,7 +75,7 @@ int WorkoutTableModel::rowCount(const QModelIndex &parent) const {
 int WorkoutTableModel::columnCount(const QModelIndex &parent) const {
 
     Q_UNUSED(parent);
-    return 11;
+    return 12;   // 0-9 metrics, 10 Graph, 11 Done (check)
 }
 
 
@@ -114,16 +114,9 @@ QVariant WorkoutTableModel::data(const QModelIndex &index, int role) const {
     }
 
 
-    ///Background
-    if (role == Qt::BackgroundRole && account->hashWorkoutDone.contains(work.getName())) {
-        //        QColor colorCadenceShapeTarget(150,150,150);
-        QLinearGradient linearGrad(QPointF(0, 0), QPointF(0, 125));
-        linearGrad.setColorAt(1, Qt::white);
-        linearGrad.setColorAt(0, QColor(150,150,150));
-
-        return QBrush(linearGrad);
-    }
-
+    // "Done" workouts used to tint the whole row (a white->grey gradient that
+    // looked bad in dark mode). They're now shown with a check in the Done column
+    // instead — see the DisplayRole for the last column below.
 
     ///Highlight colour for user-created workout names
     if (role == Qt::ForegroundRole && index.column() == 0 && account->enable_studio_mode && work.getWorkoutNameEnum() == Workout::MAP_TEST)
@@ -136,6 +129,14 @@ QVariant WorkoutTableModel::data(const QModelIndex &index, int role) const {
                               static_cast<AppTheme::Mode>(account->app_theme)) == AppTheme::Dark;
         return QVariant::fromValue(dark ? QColor(0x5C, 0x9C, 0xFF)   // #5C9CFF
                                         : QColor(0x15, 0x4F, 0xC2)); // #154FC2
+    }
+
+    /// Done check: centred + green (legible on both themes)
+    if (index.column() == 11) {
+        if (role == Qt::TextAlignmentRole)
+            return QVariant(Qt::AlignCenter);
+        if (role == Qt::ForegroundRole)
+            return QVariant::fromValue(QColor(0x2F, 0xAF, 0x5A)); // #2FAF5A
     }
 
 
@@ -184,6 +185,9 @@ QVariant WorkoutTableModel::data(const QModelIndex &index, int role) const {
             if (work.getWorkoutNameEnum() == Workout::MAP_TEST)
                 return ("-");
             return qRound(work.getTrainingStressScore());
+        }
+        else if(index.column() == 11) {  // Done — a check when the workout is marked done
+            return account->hashWorkoutDone.contains(work.getName()) ? QStringLiteral("✓") : QString();
         }
 
         else if(index.column() == 20) {
@@ -327,6 +331,9 @@ QVariant WorkoutTableModel::headerData(int section, Qt::Orientation  orientation
         else if (section == 10) {
             return tr("Graph");
         }
+        else if (section == 11) {
+            return tr("Completed");
+        }
         else {
             return tr("colum not defined");
         }
@@ -371,6 +378,9 @@ QVariant WorkoutTableModel::headerData(int section, Qt::Orientation  orientation
         }
         else if (section == 10) {
             return tr("Graph");
+        }
+        else if (section == 11) {
+            return QString();   // no visible header for the small Done column
         }
         else {
             return tr("colum not defined");

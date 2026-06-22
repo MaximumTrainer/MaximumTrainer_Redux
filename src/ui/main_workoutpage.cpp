@@ -104,7 +104,10 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
     ui->tableView_workout->setColumnWidth(7, 40);
     ui->tableView_workout->setColumnWidth(8, 40);
     ui->tableView_workout->setColumnWidth(9, 40);
-    ui->tableView_workout->horizontalHeader()->setStretchLastSection(true);
+    ui->tableView_workout->setColumnWidth(11, 34);   // Done (check) — small, no header
+    // Let the Graph column fill the remaining width (it used to be the last
+    // section; the new Done column is last now, so stretch the Graph explicitly).
+    ui->tableView_workout->horizontalHeader()->setSectionResizeMode(10, QHeaderView::Stretch);
     ui->tableView_workout->setSelectionMode(QAbstractItemView::ExtendedSelection);
     ui->tableView_workout->setSelectionBehavior(QAbstractItemView::SelectRows);
 
