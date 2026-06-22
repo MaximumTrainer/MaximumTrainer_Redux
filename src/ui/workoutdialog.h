@@ -309,7 +309,7 @@ private:
     // virtual gear that drives the trainer via the (working) FTMS ERG path,
     // cadence-aware so it feels like a gear rather than a flat ERG clamp.
     static constexpr int kVirtualGearCount = VirtualGear::Count;
-    int  m_virtualGear = (VirtualGear::Count + 1) / 2;   // start mid-gear
+    int  m_virtualGear = VirtualGear::DefaultStartGear;   // start in an easy gear
     bool m_trainerSupportsResistanceLevel = false;       // FTMS 0x04 available?
     bool virtualShiftingActive() const;           // a trainer is under our control
     bool ergOwnsThisInterval() const;             // ERG enabled + active power target

@@ -1558,7 +1558,9 @@ void WorkoutDialog::moveToNextInterval() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::startWorkout() {
 
-    m_virtualGear = (VirtualGear::Count + 1) / 2;   // every workout starts mid-gear
+    // Open each workout in an easy gear; the rider's shifts then persist across
+    // intervals (only reset here, at workout start).
+    m_virtualGear = VirtualGear::DefaultStartGear;
     updateGearIndicator();
 
     emit startClock();
