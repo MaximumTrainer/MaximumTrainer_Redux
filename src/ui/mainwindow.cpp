@@ -34,8 +34,6 @@
 #include "simulator_hub.h"
 #include "dialog_connection_method.h"
 #include "networkmonitor.h"
-#include "updatedialog.h"
-#include "versiondao.h"
 #include "dialogkeyboardshortcuts.h"
 #include "workoutcountdowndialog.h"
 #include "apptheme.h"
@@ -1206,54 +1204,6 @@ void MainWindow::on_actionKeyboard_Shortcuts_triggered()
 {
     DialogKeyboardShortcuts dlg(this);
     dlg.exec();
-}
-//-----------------------------------------------
-void MainWindow::on_actionCheck_for_Updates_triggered()
-{
-    // Abort any in-flight check before starting a new one to prevent races.
-    if (replyVersionCheck) {
-        replyVersionCheck->abort();
-        replyVersionCheck->deleteLater();
-        replyVersionCheck = nullptr;
-    }
-
-    replyVersionCheck = VersionDAO::getVersion();
-    if (!replyVersionCheck) return;
-
-    connect(replyVersionCheck, &QNetworkReply::finished,
-            this, &MainWindow::slotVersionCheckFinished);
-}
-//-----------------------------------------------
-void MainWindow::slotVersionCheckFinished()
-{
-    auto *reply = qobject_cast<QNetworkReply*>(sender());
-    if (!reply) return;
-    reply->deleteLater();
-
-    // Ignore stale replies from an aborted request.
-    if (reply != replyVersionCheck) return;
-    replyVersionCheck = nullptr;
-
-    if (reply->error() != QNetworkReply::NoError) {
-        QMessageBox::warning(this, tr("Update Check"),
-            tr("Unable to check for updates:\n%1").arg(reply->errorString()));
-        return;
-    }
-
-    const QString latestTag = Util::parseJsonObjectVersion(QString::fromUtf8(reply->readAll()));
-    if (latestTag.isEmpty()) {
-        QMessageBox::warning(this, tr("Update Check"),
-            tr("Could not determine latest version. Please try again later."));
-        return;
-    }
-
-    if (Util::isVersionNewer(Environnement::getVersion(), latestTag)) {
-        UpdateDialog dlg(latestTag, this);
-        dlg.exec();
-    } else {
-        QMessageBox::information(this, tr("Check for Updates"),
-            tr("You are up to date (%1).").arg(Environnement::getVersion()));
-    }
 }
 //-----------------------------------------------
 void MainWindow::on_actionPreferences_triggered()
