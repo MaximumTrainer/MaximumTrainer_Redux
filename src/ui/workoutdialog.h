@@ -172,9 +172,6 @@ public slots:
 
     void batteryStatusReceived(QString sensorType, int percentage);
 
-    void startCalibrateFEC();
-    void startCalibrationPM();
-
 
     void HrDataReceived(int userID, int value);
     void CadenceDataReceived(int userID, int value);
@@ -306,7 +303,6 @@ private:
     //-----------------------------------------
 private:
     bool isUsingSlopeMode;
-    QTimer *timerAlertCalibrateCt;
 
     // Virtual shifting (#293): on single-cog trainers, slope/test intervals
     // otherwise send resistance 0 and the rider spins out. Up/Down shift a
@@ -379,7 +375,6 @@ private:
     FaderLabel *labelBatteryStatus;
 
     bool isAskingUserQuestion;
-    bool isCalibrating;
 
 
 

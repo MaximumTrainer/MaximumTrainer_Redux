@@ -7,7 +7,6 @@
 #include "settings.h"
 #include "soundplayer.h"
 #include "sensor.h"
-#include "calibration_types.h"
 #include "trackpoint.h"
 #include "userstudio.h"
 #include "networkmonitor.h"
@@ -61,11 +60,7 @@ GlobalVars::GlobalVars(QObject *parent) :
     qRegisterMetaType<Sensor>("Sensor");
     qRegisterMetaType<QList<Sensor> >( "QList<Sensor>" );
     qRegisterMetaType<QList<int> >( "QList<int>" );
-    qRegisterMetaType<CalibrationType>("CalibrationType");
     qRegisterMetaType<QVector<UserStudio> >( "QVector<UserStudio>" );
-    qRegisterMetaType<FEC_Controller::CALIBRATION_TYPE>("FEC_Controller::CALIBRATION_TYPE");
-    qRegisterMetaType<FEC_Controller::TEMPERATURE_CONDITION>("FEC_Controller::TEMPERATURE_CONDITION");
-    qRegisterMetaType<FEC_Controller::SPEED_CONDITION>("FEC_Controller::SPEED_CONDITION");
     qRegisterMetaType<QList<Trackpoint> >( "QList<Trackpoint>" );
 
 

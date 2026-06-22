@@ -148,8 +148,6 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     ui->pushButton_start->setIconSize(startIconSize);
 
 
-    ui->pushButton_calibrateFEC->setFocusPolicy(Qt::NoFocus);
-    ui->pushButton_calibratePM->setFocusPolicy(Qt::NoFocus);
     ui->pushButton_config->setFocusPolicy(Qt::NoFocus);
     ui->pushButton_expand->setFocusPolicy(Qt::NoFocus);
     ui->pushButton_start->setFocusPolicy(Qt::NoFocus);
@@ -174,12 +172,6 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
 
     //ui->pushButton_start->setIcon(QIcon());
 #endif
-
-
-
-    ui->pushButton_calibratePM->setHidden(true);
-    ui->pushButton_calibrateFEC->setHidden(true);
-
 
 
 
@@ -459,32 +451,11 @@ void TopMenuWorkout::setButtonLapVisible(bool visible) {
     ui->pushButton_lap->setHidden(!visible);
 }
 
-//-------------------------------------------------------------------------
-void TopMenuWorkout::setButtonCalibratePMVisible(bool visible) {
-    ui->pushButton_calibratePM->setHidden(!visible);
-}
-void TopMenuWorkout::setButtonCalibrationFECVisible(bool visible) {
-    ui->pushButton_calibrateFEC->setHidden(!visible);
-}
-
-
-
-
 
 //-------------------------------------------------------------------------
 void TopMenuWorkout::on_pushButton_lap_clicked()
 {
     emit lap();
-}
-//-------------------------------------------------------------------------
-void TopMenuWorkout::on_pushButton_calibrateFEC_clicked()
-{
-    emit startCalibrateFEC();
-}
-
-void TopMenuWorkout::on_pushButton_calibratePM_clicked()
-{
-    emit startCalibrationPM();
 }
 
 

@@ -43,8 +43,6 @@
 #include <QQuickWidget>
 #include <QQmlContext>
 #include "retroracecontroller.h"
-#include "dialogcalibrate.h"
-#include "dialogcalibratepm.h"
 #include "dialogkeyboardshortcuts.h"
 #include "logger.h"
 #include "strava_service.h"
@@ -149,7 +147,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     trainerControlUserId = -1;
 
     isUsingSlopeMode = false;
-    timerAlertCalibrateCt = new QTimer(this);
 
     //data points
     nbPointHr1sec = QVector<int>(constants::nbMaxUserStudio, 0);
@@ -213,10 +210,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
     sendUserInfoToClock();
     emit startClockSpeed();
-
-    // Calibration
-    connect(ui->widget_topMenu, SIGNAL(startCalibrateFEC()), this, SLOT(startCalibrateFEC()) );
-    connect(ui->widget_topMenu, SIGNAL(startCalibrationPM()), this, SLOT(startCalibrationPM()) );
 
 
     // Ignore click on workout plot while widget is loading
@@ -576,7 +569,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     currentWorkoutDifficultyPercentage = 0;
 
     isAskingUserQuestion = false;
-    isCalibrating = false;
     isWorkoutStarted = false;
     isWorkoutPaused = true;
     isWorkoutOver = false;
@@ -741,28 +733,6 @@ void WorkoutDialog::addToControlList(int antID, int fromHubNumber) {
 
 }
 
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WorkoutDialog::startCalibrateFEC() {
-
-    if (isCalibrating || account->enable_studio_mode) {
-        return;
-    }
-
-    return; // No hub available (BTLE-only build)
-}
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WorkoutDialog::startCalibrationPM() {
-
-    if (isCalibrating || account->enable_studio_mode) {
-        return;
-    }
-
-    return; // No hub available (BTLE-only build)
-}
 
 
 
@@ -1986,7 +1956,7 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
 
     }
     ///Resume Workout?
-    if (!account->enable_studio_mode && !isCalibrating && !isAskingUserQuestion && (account->start_trigger == 0) && isWorkoutPaused && !isWorkoutOver && (value > account->value_cadence_start) ) {
+    if (!account->enable_studio_mode && !isAskingUserQuestion && (account->start_trigger == 0) && isWorkoutPaused && !isWorkoutOver && (value > account->value_cadence_start) ) {
         start_or_pause_workout();
     }
     //----------------
@@ -2107,7 +2077,7 @@ void WorkoutDialog::speedDataChosen(int userID, double value) {
         nbPointSpeed1sec.replace(userID-1, nbPointSpeed1sec.at(userID-1) + 1);
     }
     ///Resume Workout?
-    if (!account->enable_studio_mode && !isCalibrating && !isAskingUserQuestion && (account->start_trigger == 2) && isWorkoutPaused && !isWorkoutOver && (valueUnit > account->value_speed_start) ) {
+    if (!account->enable_studio_mode && !isAskingUserQuestion && (account->start_trigger == 2) && isWorkoutPaused && !isWorkoutOver && (valueUnit > account->value_speed_start) ) {
         start_or_pause_workout();
     }
 
@@ -2213,7 +2183,7 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 
     }
     ///Resume Workout?
-    if (!account->enable_studio_mode && !isCalibrating && !isAskingUserQuestion && (account->start_trigger == 1) && isWorkoutPaused && !isWorkoutOver && (value >= account->value_power_start) ) {
+    if (!account->enable_studio_mode && !isAskingUserQuestion && (account->start_trigger == 1) && isWorkoutPaused && !isWorkoutOver && (value >= account->value_power_start) ) {
         start_or_pause_workout();
     }
 
@@ -4230,22 +4200,6 @@ bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
         }
         else if (keyEvent->key() == Qt::Key_Backspace) {
             lapButtonPressed();
-            return true;
-        }
-        // --- Calibration
-        else if (keyEvent->key() == Qt::Key_F1) {
-            qDebug() << "F1";
-            if (usingFEC) {
-                startCalibrateFEC();
-            }
-            else if (usingPower) {
-                startCalibrationPM();
-            }
-            return true;
-        }
-
-        else if (keyEvent->key() == Qt::Key_F2) {
-            qDebug() << "F2";
             return true;
         }
         // --- Fullscreen
