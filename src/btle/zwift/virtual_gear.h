@@ -16,10 +16,11 @@
  */
 namespace VirtualGear {
 
-constexpr int    Count        = 24;     // virtual gears (matches Zwift)
+constexpr int    Count            = 30;  // virtual gears
+constexpr int    DefaultStartGear = 6;   // easy gear the first slope interval opens in
 constexpr double RefCadence   = 85.0;   // cadence at which the base watts apply
-constexpr double EasiestCoeff = 0.5;    // gear 1 multiplier
-constexpr double HardestCoeff = 2.0;    // gear Count multiplier
+constexpr double EasiestCoeff = 0.25;   // gear 1 multiplier (true granny gear ≈ 0.12×FTP)
+constexpr double HardestCoeff = 2.2;    // gear Count multiplier
 constexpr double BaseFtpFrac  = 0.48;   // mid gear @ RefCadence ≈ 0.6×FTP
 constexpr double DefaultFtp   = 200.0;  // used when the rider FTP is unknown
 
@@ -50,7 +51,7 @@ inline int targetWatts(int gear, double cadence, double ftp)
 // value is in the trainer's 0.1-unit resistance representation (2AD6 range).
 // Mapped linearly across a usable middle band of a 0..100 range so the extremes
 // aren't unrideable; clamped to the trainer's actual [min,max].
-constexpr int EasiestResistance = 15;   // gear 1   (1.5)
+constexpr int EasiestResistance = 8;    // gear 1   (0.8) - easy spin
 constexpr int HardestResistance = 85;   // gear Count (8.5)
 
 inline int resistanceLevel(int gear, int minLevel = 0, int maxLevel = 100)
