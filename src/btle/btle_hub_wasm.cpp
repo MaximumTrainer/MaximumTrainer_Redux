@@ -77,17 +77,17 @@ bool BtleHubWasm::isConnected() const { return m_connected; }
 
 void BtleHubWasm::setWheelCircumferenceMm(int mm) { m_wheelCircMm = mm; }
 
-void BtleHubWasm::setLoad(int /*antID*/, double watts)
+void BtleHubWasm::setLoad(int /*deviceId*/, double watts)
 {
     WebBluetoothBridge::sendFtmsSetTargetPower(static_cast<int>(watts));
 }
 
-void BtleHubWasm::setSlope(int /*antID*/, double grade)
+void BtleHubWasm::setSlope(int /*deviceId*/, double grade)
 {
     WebBluetoothBridge::sendFtmsSetIndoorBikeSimulation(static_cast<int>(grade * 100.0));
 }
 
-void BtleHubWasm::setResistanceLevel(int /*antID*/, int levelTenths)
+void BtleHubWasm::setResistanceLevel(int /*deviceId*/, int levelTenths)
 {
     WebBluetoothBridge::sendFtmsSetResistanceLevel(levelTenths);
 }

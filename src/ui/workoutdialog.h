@@ -58,7 +58,7 @@ public:
 
     /// Mark a controllable trainer (FTMS / simulator) as wired for this solo
     /// workout so sendLoads()/sendSlopes() emit ERG targets.  Historically
-    /// the FE-C id came from the removed maximumtrainer.com sensor list,
+    /// the trainer id came from the removed maximumtrainer.com sensor list,
     /// which left trainerControlUserId at -1 and silently disabled trainer control
     /// for every BLE workout.  Solo hubs ignore the id (1 = solo rider).
     void enableTrainerControl();   // sets the solo id and reveals the gear indicator
@@ -109,16 +109,16 @@ signals:
 
     void stopDecodingMsgHub();
 
-    // Commands to FE-C
-    void setLoad(int antID, double load);
-    void setSlope(int antID, double slope);
+    // Commands to the trainer (BLE FTMS)
+    void setLoad(int deviceId, double load);
+    void setSlope(int deviceId, double slope);
     // Virtual-shifting resistance level (FTMS 0x04, 0.1 units) — instant gear feel.
-    void setResistance(int antID, int levelTenths);
+    void setResistance(int deviceId, int levelTenths);
 
     void increaseDifficulty();
     void decreaseDifficulty();
 
-    void permissionGrantedControl(int antID, int hubID);
+    void permissionGrantedControl(int deviceId, int hubID);
 
 
     //    void targetPowerChanged(double percentageTarget, int target, int range);
@@ -155,7 +155,7 @@ signals:
 
 public slots:
     // control list master of QThreads hub
-    void addToControlList(int antID, int fromHubNumber);
+    void addToControlList(int deviceId, int fromHubNumber);
 
     /// Whether the connected trainer supports FTMS Set Target Resistance Level
     /// (0x04). When true, virtual shifting uses resistance level (instant, gear-
@@ -369,7 +369,7 @@ private:
     FaderLabel *labelPower;
     FaderLabel *labelCtPower;
 
-    /// Calibrate window + battery status
+    /// Battery status
     QWidget *widgetBattery;
     FaderLabel *labelBattery;
     FaderLabel *labelBatteryStatus;
@@ -430,7 +430,6 @@ private:
     bool usingPower;
     bool usingPowerSensorForCadence;
     bool usingPowerSensorForSpeed;
-    bool usingFEC;
     bool usingOxygen;
 
     int trainerControlUserId;
@@ -586,7 +585,7 @@ private:
     double     m_ergSmoothLast    = 0.0;    ///< Most-recently emitted watts (for mid-ramp retargeting)
     int        m_ergSmoothStep    = 0;      ///< Steps elapsed so far
     int        m_ergSmoothSteps   = 0;      ///< Total steps in current ramp
-    int        m_ergSmoothAntID   = -1;     ///< ANT ID to target
+    int        m_ergSmoothDeviceId   = -1;     ///< device id to target
 
     void startErgSmoothing(double fromWatts, double toWatts);
     void stopErgSmoothing();

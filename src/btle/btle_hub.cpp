@@ -143,10 +143,10 @@ bool BtleHub::isConnected() const
 // ─────────────────────────────────────────────────────────────────────────────
 // Public slots – Trainer control (FTMS)
 // ─────────────────────────────────────────────────────────────────────────────
-void BtleHub::setLoad(int antID, double watts)
+void BtleHub::setLoad(int deviceId, double watts)
 {
     // In Studio mode each rider's trainer only honours its own target.
-    if (m_filterControlByUserID && antID != m_userID)
+    if (m_filterControlByUserID && deviceId != m_userID)
         return;
 
     if (!m_ftmsService)
@@ -161,9 +161,9 @@ void BtleHub::setLoad(int antID, double watts)
     sendFtmsCommand(cmd);
 }
 
-void BtleHub::setSlope(int antID, double grade)
+void BtleHub::setSlope(int deviceId, double grade)
 {
-    if (m_filterControlByUserID && antID != m_userID)
+    if (m_filterControlByUserID && deviceId != m_userID)
         return;
 
     if (!m_ftmsService)
@@ -184,9 +184,9 @@ void BtleHub::setSlope(int antID, double grade)
     sendFtmsCommand(cmd);
 }
 
-void BtleHub::setResistanceLevel(int antID, int levelTenths)
+void BtleHub::setResistanceLevel(int deviceId, int levelTenths)
 {
-    if (m_filterControlByUserID && antID != m_userID)
+    if (m_filterControlByUserID && deviceId != m_userID)
         return;
 
     if (!m_ftmsService)

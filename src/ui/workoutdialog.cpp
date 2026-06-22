@@ -133,7 +133,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     usingCadence = false;
     usingSpeed = false;
     usingPower = false;
-    usingFEC = false;
     usingOxygen = false;
 
     hrPairingDone = false;
@@ -369,7 +368,7 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
     widgetLoading->setAttribute(Qt::WA_TransparentForMouseEvents,true);
     widgetLoading->setWindowFlags(Qt::WindowStaysOnTopHint);
-    ///----------------------------- End Calibration widgets ------------------------
+    ///----------------------------- End Loading widgets ------------------------
 
 
     ///-------------------------- Battery widgets ----------------------
@@ -711,24 +710,24 @@ void WorkoutDialog::toggleTransparent() {
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WorkoutDialog::addToControlList(int antID, int fromHubNumber) {
+void WorkoutDialog::addToControlList(int deviceId, int fromHubNumber) {
 
-    qDebug() << "Asking Workout Dialog for control" << "antID" << antID << "fromHubNumber" << fromHubNumber;
+    qDebug() << "Asking Workout Dialog for control" << "deviceId" << deviceId << "fromHubNumber" << fromHubNumber;
 
-    if (!hashControlList.contains(antID)) {
-        qDebug() << "Ok antID" << antID << "not in my List, you can control it!" << fromHubNumber;
-        hashControlList.insert(antID, fromHubNumber);
+    if (!hashControlList.contains(deviceId)) {
+        qDebug() << "Ok deviceId" << deviceId << "not in my List, you can control it!" << fromHubNumber;
+        hashControlList.insert(deviceId, fromHubNumber);
         //emit signal back to Hub to let him add this ID
-        emit permissionGrantedControl(antID, fromHubNumber);
+        emit permissionGrantedControl(deviceId, fromHubNumber);
     }
     /// DO NOT USE, because sending duplicate cause transfer to fail
     //    else if (hashControlList.size() >= nbTotalFecTrainer) {
     //        qDebug() << "OK we already control all trainer, we can control more for better reception!";
-    //        hashControlList.insert(antID, fromHubNumber);
-    //        emit permissionGrantedControl(antID, fromHubNumber);
+    //        hashControlList.insert(deviceId, fromHubNumber);
+    //        emit permissionGrantedControl(deviceId, fromHubNumber);
     //    }
     else {
-        qDebug() << "Sorry this trainer is already being controlled" <<  antID;
+        qDebug() << "Sorry this trainer is already being controlled" <<  deviceId;
     }
 
 }
@@ -2476,7 +2475,7 @@ void WorkoutDialog::startErgSmoothing(double fromWatts, double toWatts)
     m_ergSmoothStep  = 0;
     // Use (duration + 1) steps: step 0 is the immediate command, steps 1..N are timer-driven.
     m_ergSmoothSteps = qMax(1, account->erg_smoothing_duration_s);
-    m_ergSmoothAntID = trainerControlUserId;
+    m_ergSmoothDeviceId = trainerControlUserId;
 
     if (!m_ergSmoothTimer) {
         m_ergSmoothTimer = new QTimer(this);
@@ -2487,7 +2486,7 @@ void WorkoutDialog::startErgSmoothing(double fromWatts, double toWatts)
     // Emit step 0 immediately (the "from" value to start the transition).
     const int startWatts = qRound(fromWatts);
     m_ergSmoothLast = startWatts;
-    emit setLoad(m_ergSmoothAntID, startWatts);
+    emit setLoad(m_ergSmoothDeviceId, startWatts);
 
     m_ergSmoothTimer->start();
 }
@@ -2499,12 +2498,12 @@ void WorkoutDialog::stopErgSmoothing()
     m_ergSmoothStep  = 0;
     m_ergSmoothSteps = 0;
     // Do NOT clear m_ergSmoothLast — it is the "current position" for mid-ramp retargeting.
-    m_ergSmoothAntID = -1;
+    m_ergSmoothDeviceId = -1;
 }
 
 void WorkoutDialog::ergSmoothStep()
 {
-    if (m_ergSmoothAntID == -1 || m_ergSmoothSteps <= 0) {
+    if (m_ergSmoothDeviceId == -1 || m_ergSmoothSteps <= 0) {
         stopErgSmoothing();
         return;
     }
@@ -2515,7 +2514,7 @@ void WorkoutDialog::ergSmoothStep()
     const int rounded     = qRound(watts);
 
     m_ergSmoothLast = rounded;
-    emit setLoad(m_ergSmoothAntID, rounded);
+    emit setLoad(m_ergSmoothDeviceId, rounded);
 
     if (m_ergSmoothStep >= m_ergSmoothSteps)
         stopErgSmoothing();

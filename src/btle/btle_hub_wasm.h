@@ -63,11 +63,11 @@ public:
     bool resistanceLevelSupported() const { return true; }
 
 public slots:
-    void setLoad(int antID, double watts);
-    void setSlope(int antID, double grade);
+    void setLoad(int deviceId, double watts);
+    void setSlope(int deviceId, double grade);
     /// FTMS Set Target Resistance Level (0x04), 0.1 units. Same signature as
     /// BtleHub so WorkoutDialog wiring compiles on Wasm.
-    void setResistanceLevel(int antID, int levelTenths);
+    void setResistanceLevel(int deviceId, int levelTenths);
     void stopDecodingMsg();
 
     // Test hook – same as BtleHub::simulateNotification
