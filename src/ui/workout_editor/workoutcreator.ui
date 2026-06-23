@@ -76,13 +76,13 @@ QPushButton#pushButton_add, #pushButton_repeat, #pushButton_copy, #pushButton_de
      <property name="minimumSize">
       <size>
        <width>0</width>
-       <height>200</height>
+       <height>92</height>
       </size>
      </property>
      <property name="maximumSize">
       <size>
        <width>16777215</width>
-       <height>200</height>
+       <height>92</height>
       </size>
      </property>
      <property name="frameShape">
@@ -96,13 +96,16 @@ QPushButton#pushButton_add, #pushButton_repeat, #pushButton_copy, #pushButton_de
        <number>9</number>
       </property>
       <property name="topMargin">
-       <number>9</number>
+       <number>6</number>
       </property>
       <property name="rightMargin">
        <number>9</number>
       </property>
       <property name="bottomMargin">
-       <number>9</number>
+       <number>6</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>4</number>
       </property>
       <item row="0" column="0">
        <widget class="QLabel" name="label_name_workout">
@@ -112,7 +115,14 @@ QPushButton#pushButton_add, #pushButton_repeat, #pushButton_copy, #pushButton_de
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QLineEdit" name="lineEdit_name_workout"/>
+       <widget class="QLineEdit" name="lineEdit_name_workout">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>24</height>
+         </size>
+        </property>
+       </widget>
       </item>
       <item row="0" column="2">
        <widget class="QLabel" name="label_plan_workout">
@@ -122,7 +132,14 @@ QPushButton#pushButton_add, #pushButton_repeat, #pushButton_copy, #pushButton_de
        </widget>
       </item>
       <item row="0" column="3">
-       <widget class="QLineEdit" name="lineEdit_plan_workout"/>
+       <widget class="QLineEdit" name="lineEdit_plan_workout">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>24</height>
+         </size>
+        </property>
+       </widget>
       </item>
       <item row="1" column="0">
        <widget class="QLabel" name="label_creator_workout">
@@ -132,7 +149,14 @@ QPushButton#pushButton_add, #pushButton_repeat, #pushButton_copy, #pushButton_de
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QLineEdit" name="lineEdit_creator_workout"/>
+       <widget class="QLineEdit" name="lineEdit_creator_workout">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>24</height>
+         </size>
+        </property>
+       </widget>
       </item>
       <item row="1" column="2">
        <widget class="QLabel" name="label_type_workout">
@@ -142,7 +166,14 @@ QPushButton#pushButton_add, #pushButton_repeat, #pushButton_copy, #pushButton_de
        </widget>
       </item>
       <item row="1" column="3">
-       <widget class="QComboBox" name="comboBox_type_workout"/>
+       <widget class="QComboBox" name="comboBox_type_workout">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>24</height>
+         </size>
+        </property>
+       </widget>
       </item>
       <item row="2" column="0">
        <widget class="QLabel" name="label_description_workout">
@@ -154,10 +185,16 @@ QPushButton#pushButton_add, #pushButton_repeat, #pushButton_copy, #pushButton_de
       <item row="2" column="1" colspan="3">
        <widget class="QPlainTextEdit" name="plainTextEdit_description_workout">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>24</height>
+         </size>
         </property>
        </widget>
       </item>
