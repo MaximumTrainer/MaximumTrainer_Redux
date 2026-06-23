@@ -45,6 +45,9 @@ jobs:
       uses: jurplel/install-qt-action@v3
       with:
         version: ${{ env.QT_VERSION }}
+        # Pin a newer aqtinstall: the action's default can't resolve Qt 6.11.1's
+        # Windows repo metadata ("Failed to locate XML data"). 3.3.0 handles it.
+        aqtversion: '==3.3.0'
         arch: win64_msvc2019_64
         modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
         dir: ${{ env.QT_HOME }}
@@ -517,6 +520,9 @@ jobs:
       uses: jurplel/install-qt-action@v3
       with:
         version: ${{ env.QT_VERSION }}
+        # Pin a newer aqtinstall: the action's default can't resolve Qt 6.11.1's
+        # Windows repo metadata ("Failed to locate XML data"). 3.3.0 handles it.
+        aqtversion: '==3.3.0'
         arch: win64_msvc2019_64
         dir: 'C:\Qt'
         cache: true
