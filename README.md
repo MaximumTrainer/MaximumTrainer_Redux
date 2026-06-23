@@ -85,14 +85,14 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 
 ### Windows
 
-**Required tools:** Qt 6.x (msvc2019_64, with the `qtwebengine`, `qtconnectivity`,
+**Required tools:** Qt 6.x (msvc2022_64, with the `qtwebengine`, `qtconnectivity`,
 `qtmultimedia`, `qtwebchannel`, `qtpositioning` modules), Visual Studio 2019+ (MSVC).
 
 **Environment variables** — set before running `qmake`:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `QTDIR` | Qt installation root for the target arch | `C:\Qt\6.11.1\msvc2019_64` |
+| `QTDIR` | Qt installation root for the target arch | `C:\Qt\6.11.1\msvc2022_64` |
 | `QWT_INSTALL` | QWT installation root (built against Qt 6) | `C:/qwt` |
 
 **qmake invocation:**
