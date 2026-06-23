@@ -60,14 +60,6 @@ For everything about **using** the app — pairing sensors, finding / importing 
 |---------------------------------------|
 | ![Studio mode configuration — per-rider name, FTP/LTHR, sensors, and ERG control for up to 8 riders](docs/assets/screenshots/screenshot_studio_mode.png) |
 
-| Retro Race — ghost-race game mode |
-|-----------------------------------|
-| ![Retro Race — a pseudo-3D ghost race in the workout player; your live power drives your rider against a ghost replay](docs/assets/screenshots/screenshot_retro_race.png) |
-
-> **Refreshing these images:** run `scripts/update-screenshots.sh`. It captures
-> the app in headless dark-theme mode and overwrites the docs screenshots in
-> place (build the app first — see [Building](#building)).
-
 ## Building
 
 All three platforms are built and tested automatically via GitHub Actions CI (see `.github/workflows/build.yml`). Use `MaximumTrainer.pro` with `qmake` and a standard C++ compiler.

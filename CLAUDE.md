@@ -162,6 +162,8 @@ Validation checklist:
 - Screenshots live in `docs/assets/screenshots/`; regenerate with
   `--screenshots /tmp/shots` (set `app_theme=1` in the QSettings conf for dark mode)
   when the UI changes. The README/guide reference them via `docs/assets/...`.
+  Shortcut: run `scripts/update-screenshots.sh` — it captures the app in headless
+  dark-theme mode and overwrites the docs screenshots in place (build the app first).
 
 ---
 
