@@ -171,18 +171,8 @@ jobs:
         modules: 'qtwebchannel'
         cache: true
         cache-key-prefix: qt-wasm
-
-    - name: Install Qt (linux host tools)
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '6.11.1'
-        aqtversion: '==3.3.0'
-        host: 'linux'
-        target: 'desktop'
-        arch: 'gcc_64'
-        set-env: false
-        cache: true
-        cache-key-prefix: qt-wasm-host
+        # --autodesktop (v4) auto-installs the matching linux gcc_64 desktop Qt
+        # and sets QT_HOST_PATH, so no separate host-tools install step is needed.
 
     - name: Restore QWT cache (Wasm)
       id: qwt-wasm-cache
