@@ -1167,19 +1167,31 @@ void MainWindow::closeEvent(QCloseEvent *event) {
         return;
     }
 
+    releaseWebEngineViews();
+
+    // quitOnLastWindowClosed is disabled (see main.cpp), so quit explicitly
+    // once the main window has finished closing.
+    qApp->quit();
+}
+
+void MainWindow::releaseWebEngineViews()
+{
     // This MainWindow is heap-allocated in main.cpp and never deleted on quit,
     // so its QWebEngineView children (and their pages) would otherwise outlive
     // the default QWebEngineProfile, which Qt releases at process exit:
     // "Release of profile requested but WebEnginePage still not deleted."
     // Delete the views now — synchronously, before the event loop ends — so
     // every page is gone before the profile is. Recurses into nested views
-    // (e.g. the workout/creator web pages inside child widgets).
+    // (e.g. the workout/creator web pages inside child widgets). Safe to call
+    // more than once: a second pass simply finds no views.
     for (auto *webView : findChildren<QWebEngineView*>())
         delete webView;
+}
 
-    // quitOnLastWindowClosed is disabled (see main.cpp), so quit explicitly
-    // once the main window has finished closing.
-    qApp->quit();
+void MainWindow::scheduleScreenshotQuit()
+{
+    releaseWebEngineViews();
+    QTimer::singleShot(300, qApp, SLOT(quit()));
 }
 
 //QMENUBAR
@@ -2368,11 +2380,11 @@ void MainWindow::screenshotNextStep()
         account->enable_studio_mode = m_ssSavedStudioEnabled;
         account->nb_user_studio     = m_ssSavedRiderCount;
         account->saveDisplayPrefs();
-        QTimer::singleShot(300, qApp, SLOT(quit()));
+        scheduleScreenshotQuit();
         return; // No further steps — quit is already scheduled.
 
     default:
-        QTimer::singleShot(300, qApp, SLOT(quit()));
+        scheduleScreenshotQuit();
         return;
     }
 
@@ -2381,5 +2393,5 @@ void MainWindow::screenshotNextStep()
     if (step < numDelays)
         QTimer::singleShot(ssDelays[step], this, SLOT(screenshotNextStep()));
     else
-        QTimer::singleShot(300, qApp, SLOT(quit()));
+        scheduleScreenshotQuit();
 }
