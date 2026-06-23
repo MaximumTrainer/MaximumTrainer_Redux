@@ -1184,8 +1184,14 @@ void MainWindow::releaseWebEngineViews()
     // every page is gone before the profile is. Recurses into nested views
     // (e.g. the workout/creator web pages inside child widgets). Safe to call
     // more than once: a second pass simply finds no views.
+    //
+    // WASM has no real QtWebEngine (QWebEngineView is a stub without Q_OBJECT),
+    // so there is no profile to release and findChildren<QWebEngineView*> would
+    // not even compile there.
+#ifndef GC_WASM_BUILD
     for (auto *webView : findChildren<QWebEngineView*>())
         delete webView;
+#endif
 }
 
 void MainWindow::scheduleScreenshotQuit()
