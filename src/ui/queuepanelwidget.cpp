@@ -13,12 +13,16 @@ QueuePanelWidget::QueuePanelWidget(WorkoutQueue *queue, QWidget *parent)
     layout->setContentsMargins(6, 6, 6, 6);
     layout->setSpacing(4);
 
-    auto *titleLbl = new QLabel(tr("<b>Workout Queue</b>"), this);
-    layout->addWidget(titleLbl);
+    // No title label here: the enclosing QDockWidget already shows "Workout Queue".
 
     m_list = new QListWidget(this);
     m_list->setDragDropMode(QAbstractItemView::NoDragDrop);
     layout->addWidget(m_list, 1);
+
+    // Start the queue from item #1.
+    m_startBtn = new QPushButton(tr("▶ Start Queue"), this);
+    m_startBtn->setToolTip(tr("Start the first workout in the queue"));
+    layout->addWidget(m_startBtn);
 
     // Button row
     auto *btnRow = new QHBoxLayout();
@@ -43,6 +47,7 @@ QueuePanelWidget::QueuePanelWidget(WorkoutQueue *queue, QWidget *parent)
     m_statusLbl->setStyleSheet("color: #888; font-style: italic;");
     layout->addWidget(m_statusLbl);
 
+    connect(m_startBtn,  &QPushButton::clicked, this, &QueuePanelWidget::startQueueRequested);
     connect(m_removeBtn, &QPushButton::clicked, this, &QueuePanelWidget::onRemove);
     connect(m_upBtn,     &QPushButton::clicked, this, &QueuePanelWidget::onMoveUp);
     connect(m_downBtn,   &QPushButton::clicked, this, &QueuePanelWidget::onMoveDown);
@@ -59,6 +64,7 @@ void QueuePanelWidget::refresh()
         m_list->addItem(QString("%1. %2").arg(i + 1).arg(m_queue->name(i)));
 
     const bool hasItems = !m_queue->isEmpty();
+    m_startBtn->setEnabled(hasItems);
     m_removeBtn->setEnabled(hasItems);
     m_upBtn->setEnabled(hasItems);
     m_downBtn->setEnabled(hasItems);

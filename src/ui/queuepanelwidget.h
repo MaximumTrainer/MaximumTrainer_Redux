@@ -16,6 +16,10 @@ class QueuePanelWidget : public QWidget
 public:
     explicit QueuePanelWidget(WorkoutQueue *queue, QWidget *parent = nullptr);
 
+signals:
+    /// Emitted when the user clicks Start; MainWindow launches queue item #1.
+    void startQueueRequested();
+
 private slots:
     void refresh();
     void onRemove();
@@ -27,6 +31,7 @@ private:
     WorkoutQueue  *m_queue      = nullptr;
     QListWidget   *m_list       = nullptr;
     QLabel        *m_statusLbl  = nullptr;
+    QPushButton   *m_startBtn   = nullptr;
     QPushButton   *m_removeBtn  = nullptr;
     QPushButton   *m_upBtn      = nullptr;
     QPushButton   *m_downBtn    = nullptr;

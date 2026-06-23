@@ -189,6 +189,7 @@ private:
     void saveAndNavigateToWorkout(const Workout &workout, const QString &subFolder);
 
     void tryAdvanceWorkoutQueue();
+    void startWorkoutQueue();
 
     // Screenshot mode helpers
     Workout makeDemoWorkout() const;

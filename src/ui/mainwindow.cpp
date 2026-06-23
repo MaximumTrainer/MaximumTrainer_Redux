@@ -388,6 +388,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     connect(ui->tab_workout1, &Main_WorkoutPage::addWorkoutToQueue,
             this, &MainWindow::addWorkoutToQueue);
+    connect(m_queuePanel, &QueuePanelWidget::startQueueRequested,
+            this, &MainWindow::startWorkoutQueue);
 
 #ifdef GC_WASM_BUILD
     // Expose the demo-workout test hook so Playwright can drive the app into
@@ -693,13 +695,57 @@ void MainWindow::saveAndNavigateToWorkout(const Workout &workout, const QString 
 }
 
 /////////////////////////////////////////////////////////////////////////////////
-void MainWindow::tryAdvanceWorkoutQueue()
+// Launch the queue from item #1 (triggered by the Start button). Dequeues the
+// first workout itself and runs it directly; the normal finished()→advance chain
+// then handles the rest. Dequeuing here is what prevents the double-run the issue
+// describes (where double-clicking a list row also re-ran it as queue item #1).
+void MainWindow::startWorkoutQueue()
 {
-    if (m_workoutQueue->isEmpty())
+    if (m_launchingWorkout || isInsideWorkout)
         return;
 
-    const QString nextName = m_workoutQueue->name(0);
-    const QString nextPath = m_workoutQueue->filePath(0);
+    // Take the next non-blank item atomically (see tryAdvanceWorkoutQueue).
+    QString name;
+    QString path;
+    while (!m_workoutQueue->isEmpty()) {
+        name = m_workoutQueue->name(0);
+        path = m_workoutQueue->dequeueFilePath();
+        if (!path.isEmpty())
+            break;
+    }
+    if (path.isEmpty())
+        return;
+
+    XmlUtil xml;
+    Workout first = xml.parseSingleWorkoutXml(path);
+    if (!first.getName().isEmpty()) {
+        executeWorkout(first);
+    } else {
+        QMessageBox::warning(this,
+                             tr("Queue Error"),
+                             tr("Could not load the queued workout:\n%1\n(%2)").arg(name, path));
+        tryAdvanceWorkoutQueue();
+    }
+}
+
+void MainWindow::tryAdvanceWorkoutQueue()
+{
+    // Take the next item NOW (atomically), skipping any blank entries. The
+    // countdown below spins a nested event loop, so if we only read here and
+    // deferred the dequeue, a re-entrant advance could read the same item again
+    // or observe a half-updated queue — that produced the empty-path "Could not
+    // load the next queued workout" error.
+    QString nextName;
+    QString nextPath;
+    while (!m_workoutQueue->isEmpty()) {
+        nextName = m_workoutQueue->name(0);
+        nextPath = m_workoutQueue->dequeueFilePath();
+        if (!nextPath.isEmpty())
+            break;
+    }
+    if (nextPath.isEmpty())
+        return;
+
     WorkoutCountdownDialog countdown(nextName, 60, this);
     if (countdown.exec() != QDialog::Accepted) {
         // User chose "Cancel Queue" — clear the remaining queue so it doesn't
@@ -711,16 +757,18 @@ void MainWindow::tryAdvanceWorkoutQueue()
 
     // Defer via singleShot so this stack frame fully unwinds before
     // the next workout begins — avoids unbounded recursion with long queues.
-    QTimer::singleShot(0, this, [this, nextPath]() {
+    QTimer::singleShot(0, this, [this, nextName, nextPath]() {
         XmlUtil xmlNext;
         Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
-        m_workoutQueue->dequeueFilePath();
         if (!next.getName().isEmpty()) {
             executeWorkout(next);
         } else {
             QMessageBox::warning(this,
                                  tr("Queue Error"),
-                                 tr("Could not load the next queued workout:\n%1").arg(nextPath));
+                                 tr("Could not load the next queued workout:\n%1\n(%2)")
+                                     .arg(nextName, nextPath));
+            // The bad entry is already removed; keep the queue moving.
+            tryAdvanceWorkoutQueue();
         }
     });
 }
