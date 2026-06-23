@@ -301,6 +301,9 @@ jobs:
         path: /tmp/wasm-artifact
 
     - name: Copy fresh WASM files into docs/app
+      # NOTE: when bumping Qt, the loader entry name changes with it — docs/app/
+      # index.html's qtLoad `entryFunction` must match (window.<TARGET>_entry in
+      # Qt 6.8+, window.createQtAppInstance in <=6.7), or the app never starts.
       if: steps.download-wasm.outcome == 'success'
       run: |
         echo "Downloaded artifact contents:"
