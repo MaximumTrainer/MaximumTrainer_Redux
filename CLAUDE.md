@@ -38,7 +38,7 @@ make -j$(nproc)
 LD_LIBRARY_PATH=/tmp/qwt6/lib ./build/release/MaximumTrainer
 ```
 
-- **qmake binary is `qmake6`** here (Qt 6.10 system install on Linux). CI pins Qt **6.7.3 LTS** — local Qt may be newer.
+- **qmake binary is `qmake6`** here (Qt 6.10 system install on Linux). CI pins Qt **6.11.1** (interim - 6.11 is not LTS; moving to 6.12 LTS when released, see #332) - local Qt may differ.
 - **The `.pro` file:** **`MaximumTrainer.pro`** (renamed from `PowerVelo.pro` in PR #227). The binary `TARGET` is always `MaximumTrainer`.
 - **Incremental builds:** after `qmake6`, just `make -j$(nproc)`. **A clean build needs `make clean` first** — stale `.obj` files can make `make` a silent no-op (`Nothing to be done for 'first'`) when only config changed.
 
