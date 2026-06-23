@@ -157,7 +157,9 @@ jobs:
         version: '4.0.7'
 
     - name: Install Qt (Wasm singlethread)
-      uses: jurplel/install-qt-action@v3
+      # v4 required: host=all_os / target=wasm (Qt 6.11's WASM repo path) is
+      # rejected by v3, which only allows windows/mac/linux hosts.
+      uses: jurplel/install-qt-action@v4
       with:
         version: '6.11.1'
         # Released aqt 3.1.x can't resolve Qt 6.11's reorganised repo; 3.3.0 does.
