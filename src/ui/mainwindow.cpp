@@ -2167,10 +2167,15 @@ void MainWindow::startScreenshotMode(const QString &outputDir)
     // webView_createWorkout (WorkoutCreator) in addition to the direct children
     // of MainWindow's UI — all would otherwise try to run jQuery code against
     // a page that never loaded jQuery.
+    // (No real QtWebEngine on WASM — QWebEngineView is a stub without Q_OBJECT,
+    // so findChildren<QWebEngineView*> would not compile, and there are no web
+    // pages to blank anyway.)
+#ifndef GC_WASM_BUILD
     static const QString kBlankHtml =
         QStringLiteral("<html><body></body></html>");
     for (auto *wv : findChildren<QWebEngineView*>())
         wv->setHtml(kBlankHtml);
+#endif
 
     resize(1280, 720);
     move(100, 50);
