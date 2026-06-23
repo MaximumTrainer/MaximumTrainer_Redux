@@ -21,9 +21,14 @@ public:
                          const WorkoutHistoryDetail &detail,
                          QWidget *parent = nullptr);
 
+protected:
+    void done(int result) override;
+    void closeEvent(QCloseEvent *event) override;
+
 private:
     void buildGraph(const WorkoutHistoryDetail &detail);
     void buildLapTable(const WorkoutHistoryDetail &detail);
+    void saveDialogGeometry();
 
     QwtPlot      *m_plot     = nullptr;
     QTableWidget *m_lapTable = nullptr;

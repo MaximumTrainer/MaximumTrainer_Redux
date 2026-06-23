@@ -13,6 +13,9 @@ class QLineEdit;
 class QDateEdit;
 class QTabWidget;
 class QModelIndex;
+class QMenu;
+class QAction;
+class QPoint;
 class WorkoutHistoryModel;
 class HistoryFilterProxyModel;
 class PlanAdherenceStore;
@@ -41,12 +44,16 @@ private slots:
     void clearFilters();
     void deleteSelected();
     void openDetail(const QModelIndex &proxyIndex);
+    void showHistoryContextMenu(const QPoint &pos);
 
 private:
     void setupUi();
 
     /// Map a proxy-model index to its WorkoutHistorySummary; returns nullptr if invalid.
     const WorkoutHistorySummary *summaryForProxyRow(const QModelIndex &proxyIndex) const;
+
+    /// Refresh the status label with the visible-vs-total activity count.
+    void updateStatus();
 
     QTabWidget              *m_tabs          = nullptr;
 
@@ -55,13 +62,13 @@ private:
     WorkoutHistoryModel     *m_model         = nullptr;
     HistoryFilterProxyModel *m_proxy         = nullptr;
     QLabel                  *m_statusLabel   = nullptr;
-    QPushButton             *m_refreshBtn    = nullptr;
     QPushButton             *m_cpBtn         = nullptr;
     QPushButton             *m_pmcBtn        = nullptr;
-    QPushButton             *m_deleteBtn     = nullptr;
     QLineEdit               *m_searchEdit    = nullptr;
     QDateEdit               *m_fromDate      = nullptr;
     QDateEdit               *m_toDate        = nullptr;
+    QMenu                   *m_contextMenu   = nullptr;
+    QAction                 *m_deleteAction  = nullptr;
 
     // Plan adherence tab (added when store is injected)
     PlanAdherenceWidget  *m_adherenceWidget = nullptr;

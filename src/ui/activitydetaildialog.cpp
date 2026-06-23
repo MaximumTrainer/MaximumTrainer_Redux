@@ -8,13 +8,19 @@
 #include <QDialogButtonBox>
 #include <QPen>
 #include <QColor>
+#include <QSettings>
+#include <QCloseEvent>
 
 #include "qwt_plot.h"
 #include "qwt_plot_curve.h"
 #include "qwt_plot_grid.h"
 #include "qwt_legend.h"
 
+#include "util.h"
+
 namespace {
+
+const char *kGeometryKey = "activityDetailDialog/geometry";
 
 QString fmtDuration(int sec)
 {
@@ -60,8 +66,14 @@ ActivityDetailDialog::ActivityDetailDialog(const WorkoutHistorySummary &summary,
                                            QWidget *parent)
     : QDialog(parent)
 {
-    setWindowTitle(tr("Activity — %1").arg(summary.workoutName));
+    setWindowTitle(tr("Activity - %1").arg(summary.workoutName));
     setMinimumSize(860, 600);
+    // Use the plain top-level window type rather than the default Qt::Dialog
+    // type: window managers treat dialogs as fixed helper windows and won't give
+    // them a working maximise/restore toggle. This keeps the app-modal behaviour
+    // (set by the caller) while exposing the normal window controls.
+    setWindowFlags(Qt::Window | Qt::WindowMinimizeButtonHint |
+                   Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint);
 
     auto *header = new QLabel(this);
     header->setTextFormat(Qt::RichText);
@@ -88,6 +100,33 @@ ActivityDetailDialog::ActivityDetailDialog(const WorkoutHistorySummary &summary,
     if (m_lapTable)
         layout->addWidget(m_lapTable, 2);
     layout->addWidget(buttons);
+
+    // Reopen in the same state the user last left (maximised or a given size).
+    // First ever open defaults to maximised.
+    const QByteArray geom = QSettings().value(kGeometryKey).toByteArray();
+    if (geom.isEmpty())
+        setWindowState(windowState() | Qt::WindowMaximized);
+    else
+        restoreGeometry(geom);
+}
+
+void ActivityDetailDialog::saveDialogGeometry()
+{
+    // saveGeometry() captures both the window state (maximised/normal) and the
+    // restored size, so restoreGeometry() round-trips the user's last choice.
+    QSettings().setValue(kGeometryKey, saveGeometry());
+}
+
+void ActivityDetailDialog::done(int result)
+{
+    saveDialogGeometry();
+    QDialog::done(result);
+}
+
+void ActivityDetailDialog::closeEvent(QCloseEvent *event)
+{
+    saveDialogGeometry();
+    QDialog::closeEvent(event);
 }
 
 void ActivityDetailDialog::buildGraph(const WorkoutHistoryDetail &detail)
@@ -101,9 +140,10 @@ void ActivityDetailDialog::buildGraph(const WorkoutHistoryDetail &detail)
     grid->setMajorPen(QPen(Qt::gray, 0, Qt::DashLine));
     grid->attach(m_plot);
 
-    attachChannel(m_plot, detail.records, &ActivityRecordPoint::power,     tr("Power"),   QColor(0xe0, 0x50, 0x50));
-    attachChannel(m_plot, detail.records, &ActivityRecordPoint::heartRate, tr("Heart Rate"), QColor(0x4a, 0x90, 0xd9));
-    attachChannel(m_plot, detail.records, &ActivityRecordPoint::cadence,   tr("Cadence"), QColor(0x2e, 0xa0, 0x55));
+    // Match the in-workout graph colours: power = yellow, HR = red, cadence = blue.
+    attachChannel(m_plot, detail.records, &ActivityRecordPoint::power,     tr("Power"),      Util::getColor(Util::LINE_POWER));
+    attachChannel(m_plot, detail.records, &ActivityRecordPoint::heartRate, tr("Heart Rate"), Util::getColor(Util::LINE_HEARTRATE));
+    attachChannel(m_plot, detail.records, &ActivityRecordPoint::cadence,   tr("Cadence"),    Util::getColor(Util::LINE_CADENCE));
 
     m_plot->replot();
 }

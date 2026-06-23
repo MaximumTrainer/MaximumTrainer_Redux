@@ -86,8 +86,6 @@ private slots:
 
     void on_checkBox_clicked(bool checked);
 
-    void on_pushButton_refresh_clicked();
-
 
 
 
@@ -114,6 +112,7 @@ private:
     QAction *actionSetAsDone;
     QAction *actionOpenFolder;
     QAction *actionAddToQueue;
+    QAction *actionRefresh;
     QModelIndex indexSourceSelected;
 };
 

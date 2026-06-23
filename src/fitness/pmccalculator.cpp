@@ -10,15 +10,23 @@ QList<PmcPoint> PmcCalculator::compute(const QList<WorkoutHistorySummary> &histo
     if (history.isEmpty())
         return {};
 
-    // Build a date → TSS map (sum multiple activities on the same day)
+    // Build a date → TSS map (sum multiple activities on the same day).
+    // Skip entries with an invalid start time (e.g. activities whose FIT file
+    // had no session data) — a null QDate would otherwise poison `earliest` and
+    // make the day-by-day loop below never terminate.
     QHash<QDate, double> tssByDate;
-    QDate earliest = history.first().startTime.date();
+    QDate earliest;
     for (const WorkoutHistorySummary &s : history) {
         const QDate d = s.startTime.date();
+        if (!d.isValid())
+            continue;
         tssByDate[d] += s.tss;
-        if (d < earliest)
+        if (!earliest.isValid() || d < earliest)
             earliest = d;
     }
+
+    if (!earliest.isValid())
+        return {};
 
     // Start the computation leadInDays before the first activity so the EMAs
     // have time to warm up from zero.

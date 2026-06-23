@@ -179,6 +179,31 @@ private slots:
         QVERIFY(!pts.isEmpty());
         QCOMPARE(qRound(pts.last().tss), 100);  // 60 + 40 aggregated on the same day
     }
+
+    // Activities whose FIT file had no session data have an invalid startTime.
+    // These must be skipped, not crash/hang the day-by-day EMA loop.
+    void pmcSkipsInvalidDates()
+    {
+        const QDate day(2024, 3, 10);
+        WorkoutHistorySummary good;
+        good.startTime = QDateTime(day, QTime(8, 0), Qt::LocalTime);
+        good.tss = 100.0;
+        good.valid = true;
+        WorkoutHistorySummary junk;          // invalid startTime, no data
+        junk.workoutName = "broken";
+
+        const QList<PmcPoint> pts = PmcCalculator::compute({junk, good, junk}, day);
+        QVERIFY(!pts.isEmpty());
+        QCOMPARE(pts.last().date, day);
+        QCOMPARE(qRound(pts.last().tss), 100);
+    }
+
+    void pmcAllInvalidReturnsEmpty()
+    {
+        WorkoutHistorySummary junk;          // invalid startTime
+        junk.workoutName = "broken";
+        QVERIFY(PmcCalculator::compute({junk}).isEmpty());
+    }
 };
 
 QTEST_MAIN(TestHistory)
