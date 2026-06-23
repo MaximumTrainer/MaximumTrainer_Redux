@@ -16,7 +16,7 @@ on:
         default: ''
 
 env:
-  QT_VERSION: '6.7.3'
+  QT_VERSION: '6.11.1'
 
 jobs:
 
@@ -27,7 +27,7 @@ jobs:
     env:
       # Qt installation root - install-qt-action places Qt under $QT_HOME\Qt\$version\$arch.
       # For local Windows builds, set QT_HOME to the parent of your Qt installation
-      # (e.g. C:\ if Qt is at C:\Qt\6.7.3\msvc2019_64).
+      # (e.g. C:\ if Qt is at C:\Qt\6.11.1\msvc2019_64).
       QT_HOME: C:\Qt
       # Stable QWT install directory used by the cache action and PowerShell build steps.
       QWT_INSTALL_DIR: C:\qwt
