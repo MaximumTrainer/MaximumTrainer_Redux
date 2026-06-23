@@ -31,8 +31,6 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
-        # NOTE: 6.11 is not an LTS - move to 6.12 LTS when it ships (~Sept 2026)
-        # and drop the macOS runner/Xcode workaround. Tracking: issue #332.
         version: '6.11.1'
         host: 'mac'
         target: 'desktop'

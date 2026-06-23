@@ -14,8 +14,6 @@ on:
         required: true
 
 env:
-  # NOTE: 6.11 is not an LTS. Move to 6.12 LTS once it ships (~Sept 2026) and
-  # drop the macOS runner/Xcode workaround at the same time. Tracking: issue #332.
   QT_VERSION: '6.11.1'
   QWT_DIR: /tmp/qwt6
 

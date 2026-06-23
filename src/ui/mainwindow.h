@@ -174,14 +174,9 @@ private slots:
     // Screenshot mode — captures a sequence of PNG files then quits the app.
     void screenshotNextStep();
 
-    // Delete the embedded QWebEngineView children before the app quits, so no
-    // WebEnginePage outlives the default profile (Qt 6.11's QtWebEngine
-    // segfaults on teardown otherwise — macOS). Shared by closeEvent and the
-    // screenshot-mode quit, which does not go through closeEvent.
+    // Delete embedded QWebEngineViews before quit (see definition for why).
+    // Shared by closeEvent and the screenshot-mode quit, which bypasses it.
     void releaseWebEngineViews();
-
-    // Screenshot-mode quit: release the web views (see above) then quit, after a
-    // short delay to let the final frame settle.
     void scheduleScreenshotQuit();
 
     // BLE sensor-check mode — one async step per sensor type (see runSensorCheck).

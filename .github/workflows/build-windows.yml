@@ -16,8 +16,6 @@ on:
         default: ''
 
 env:
-  # NOTE: 6.11 is not an LTS. Move to 6.12 LTS once it ships (~Sept 2026) and
-  # drop the macOS runner/Xcode workaround at the same time. Tracking: issue #332.
   QT_VERSION: '6.11.1'
 
 jobs:
@@ -47,11 +45,8 @@ jobs:
       uses: jurplel/install-qt-action@v3
       with:
         version: ${{ env.QT_VERSION }}
-        # Released aqtinstall (<=3.3.0) can't install Qt 6.11.x on Windows: Qt
-        # changed its repo folder layout at 6.11, which breaks aqt's checksum
-        # lookup ("Failed to locate XML data for 6.11.1"). Fixed by aqtinstall
-        # PR #1000 (closing #959) but not yet on PyPI, so install aqt from git
-        # master via a PEP 508 direct reference until a release ships.
+        # Released aqt can't resolve Qt 6.11's new Windows repo layout (aqtinstall
+        # #959); use git master until a fixed release ships.
         aqtversion: ' @ git+https://github.com/miurahr/aqtinstall.git@master'
         arch: win64_msvc2022_64
         modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
@@ -525,11 +520,8 @@ jobs:
       uses: jurplel/install-qt-action@v3
       with:
         version: ${{ env.QT_VERSION }}
-        # Released aqtinstall (<=3.3.0) can't install Qt 6.11.x on Windows: Qt
-        # changed its repo folder layout at 6.11, which breaks aqt's checksum
-        # lookup ("Failed to locate XML data for 6.11.1"). Fixed by aqtinstall
-        # PR #1000 (closing #959) but not yet on PyPI, so install aqt from git
-        # master via a PEP 508 direct reference until a release ships.
+        # Released aqt can't resolve Qt 6.11's new Windows repo layout (aqtinstall
+        # #959); use git master until a fixed release ships.
         aqtversion: ' @ git+https://github.com/miurahr/aqtinstall.git@master'
         arch: win64_msvc2022_64
         dir: 'C:\Qt'
