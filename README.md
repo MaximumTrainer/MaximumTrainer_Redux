@@ -64,6 +64,10 @@ For everything about **using** the app — pairing sensors, finding / importing 
 |-----------------------------------|
 | ![Retro Race — a pseudo-3D ghost race in the workout player; your live power drives your rider against a ghost replay](docs/assets/screenshots/screenshot_retro_race.png) |
 
+> **Refreshing these images:** run `scripts/update-screenshots.sh`. It captures
+> the app in headless dark-theme mode and overwrites the docs screenshots in
+> place (build the app first — see [Building](#building)).
+
 ## Building
 
 All three platforms are built and tested automatically via GitHub Actions CI (see `.github/workflows/build.yml`). Use `MaximumTrainer.pro` with `qmake` and a standard C++ compiler.
@@ -78,7 +82,7 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 > **Audio & media playback:** both sound-effect feedback (interval beeps, etc.,
 > via `QSoundEffect`) and the embedded video + internet-radio player
 > (`QMediaPlayer` / `QVideoWidget` / `QAudioOutput`) use Qt's own
-> **QtMultimedia**. There are no SFML or VLC dependencies.
+> **QtMultimedia**.
 
 ## Windows — Requirements
 
