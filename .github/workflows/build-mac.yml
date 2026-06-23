@@ -18,7 +18,7 @@ on:
 jobs:
 
   build_mac:
-    runs-on: macos-15
+    runs-on: macos-latest
     permissions:
       contents: read
 
@@ -31,7 +31,7 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.3'
+        version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
@@ -54,7 +54,7 @@ jobs:
           /usr/local/qwt-6.3.0/include
           /usr/local/qwt-6.3.0/features
           /usr/local/qwt-6.3.0/mkspecs
-        key: qwt-6.3.0-qt-6.7.3-macos-nodoc
+        key: qwt-6.3.0-qt-6.11.1-macos-nodoc
 
     - name: Build and install QWT
       if: steps.qwt-cache.outputs.cache-hit != 'true'
@@ -261,7 +261,7 @@ jobs:
   #   • A labelled 1280×720 screenshot is captured as visual build evidence
   # ──────────────────────────────────────────────────────────────────────────
   test_runtime_validation:
-    runs-on: macos-15
+    runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
@@ -270,7 +270,7 @@ jobs:
     - name: Install Qt (with Bluetooth)
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.3'
+        version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
@@ -305,7 +305,7 @@ jobs:
   # gracefully.  No display required (headless Qt Test binary).
   # ──────────────────────────────────────────────────────────────────────────
   test_btle_api:
-    runs-on: macos-15
+    runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
@@ -314,7 +314,7 @@ jobs:
     - name: Install Qt (with Bluetooth)
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.3'
+        version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
@@ -348,7 +348,7 @@ jobs:
   #     confirming offline data persistence.
   # ──────────────────────────────────────────────────────────────────────────
   test_offline_mode:
-    runs-on: macos-15
+    runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
@@ -357,7 +357,7 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.3'
+        version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
@@ -397,7 +397,7 @@ jobs:
   # development without credentials).
   # ──────────────────────────────────────────────────────────────────────────
   test_intervals_icu_integration:
-    runs-on: macos-15
+    runs-on: macos-latest
     permissions:
       contents: read
     env:
@@ -413,7 +413,7 @@ jobs:
     - name: Install Qt (qtbase only)
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.3'
+        version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
@@ -470,7 +470,7 @@ jobs:
   # local development without credentials).
   # ──────────────────────────────────────────────────────────────────────────
   test_online_mode:
-    runs-on: macos-15
+    runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
@@ -482,7 +482,7 @@ jobs:
     - name: Install Qt (core + network + widgets for test binary)
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.3'
+        version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
@@ -527,7 +527,7 @@ jobs:
   #   • A labelled 1280×720 screenshot is captured as visual build evidence.
   # ──────────────────────────────────────────────────────────────────────────
   test_login_screen:
-    runs-on: macos-15
+    runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
@@ -539,7 +539,7 @@ jobs:
     - name: Install Qt (core + network + widgets + bluetooth for test binary)
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.3'
+        version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
@@ -589,7 +589,7 @@ jobs:
   #     as visual build evidence
   # ──────────────────────────────────────────────────────────────────────────
   test_workout_ui:
-    runs-on: macos-15
+    runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
@@ -601,7 +601,7 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.3'
+        version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
@@ -634,7 +634,7 @@ jobs:
   # Workout Parsing Tests – macOS
   # ──────────────────────────────────────────────────────────────────────────
   test_workout_parsing:
-    runs-on: macos-15
+    runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
@@ -646,7 +646,7 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.3'
+        version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
@@ -669,7 +669,7 @@ jobs:
   # UI Navigation Tests – macOS
   # ──────────────────────────────────────────────────────────────────────────
   test_ui_navigation:
-    runs-on: macos-15
+    runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
@@ -678,7 +678,7 @@ jobs:
     - name: Install Qt (core + widgets + bluetooth + webengine for app binary)
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.3'
+        version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
@@ -718,7 +718,7 @@ jobs:
   # UI Screens Tests – macOS
   # ──────────────────────────────────────────────────────────────────────────
   test_ui_screens:
-    runs-on: macos-15
+    runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
@@ -727,7 +727,7 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.3'
+        version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
@@ -757,7 +757,7 @@ jobs:
   # Workout I/O Tests – macOS
   # ──────────────────────────────────────────────────────────────────────────
   test_workout_io:
-    runs-on: macos-15
+    runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
@@ -766,7 +766,7 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.3'
+        version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
@@ -789,7 +789,7 @@ jobs:
   # Workout Creator Tests – macOS
   # ──────────────────────────────────────────────────────────────────────────
   test_workout_creator:
-    runs-on: macos-15
+    runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
@@ -798,7 +798,7 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
-        version: '6.7.3'
+        version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'

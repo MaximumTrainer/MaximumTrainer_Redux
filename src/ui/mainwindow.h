@@ -174,6 +174,11 @@ private slots:
     // Screenshot mode — captures a sequence of PNG files then quits the app.
     void screenshotNextStep();
 
+    // Delete embedded QWebEngineViews before quit (see definition for why).
+    // Shared by closeEvent and the screenshot-mode quit, which bypasses it.
+    void releaseWebEngineViews();
+    void scheduleScreenshotQuit();
+
     // BLE sensor-check mode — one async step per sensor type (see runSensorCheck).
     void sensorCheckNextStep();
 

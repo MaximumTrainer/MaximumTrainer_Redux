@@ -85,14 +85,14 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 
 ### Windows
 
-**Required tools:** Qt 6.x (msvc2019_64, with the `qtwebengine`, `qtconnectivity`,
+**Required tools:** Qt 6.x (msvc2022_64, with the `qtwebengine`, `qtconnectivity`,
 `qtmultimedia`, `qtwebchannel`, `qtpositioning` modules), Visual Studio 2019+ (MSVC).
 
 **Environment variables** — set before running `qmake`:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `QTDIR` | Qt installation root for the target arch | `C:\Qt\6.7.3\msvc2019_64` |
+| `QTDIR` | Qt installation root for the target arch | `C:\Qt\6.11.1\msvc2022_64` |
 | `QWT_INSTALL` | QWT installation root (built against Qt 6) | `C:/qwt` |
 
 **qmake invocation:**
@@ -140,12 +140,12 @@ LD_LIBRARY_PATH=/tmp/qwt6/lib ./build/release/MaximumTrainer
 
 ### macOS
 
-Uses Qt 6.7.3 with Clang. QWT is built from source (non-framework) against Qt 6.
+Uses Qt 6.11.1 with Clang. QWT is built from source (non-framework) against Qt 6.
 
 > **macOS Bluetooth permission:** The app's `mac/Info.plist` includes the `NSBluetoothAlwaysUsageDescription` key, which is required by macOS 10.15+ for any app that accesses BLE devices. The first time the app attempts to connect a sensor, macOS will prompt for Bluetooth permission. This permission can be reviewed or revoked in **System Settings → Privacy & Security → Bluetooth**.
 
 ```bash
-# Install Qt 6.7.3 via install-qt-action or the Qt Installer, then:
+# Install Qt 6.11.1 via install-qt-action or the Qt Installer, then:
 
 # Build QWT 6.3.0 from source (non-framework, required for Qt 6)
 curl -L -o /tmp/qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.3.0/qwt-6.3.0.tar.bz2/download"

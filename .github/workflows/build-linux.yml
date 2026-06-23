@@ -16,7 +16,7 @@ on:
         default: ''
 
 env:
-  QT_VERSION: '6.7.3'
+  QT_VERSION: '6.11.1'
   QWT_DIR: /tmp/qwt6
 
 jobs:

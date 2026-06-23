@@ -16,7 +16,7 @@ on:
         default: ''
 
 env:
-  QT_VERSION: '6.7.3'
+  QT_VERSION: '6.11.1'
 
 jobs:
 
@@ -27,7 +27,7 @@ jobs:
     env:
       # Qt installation root - install-qt-action places Qt under $QT_HOME\Qt\$version\$arch.
       # For local Windows builds, set QT_HOME to the parent of your Qt installation
-      # (e.g. C:\ if Qt is at C:\Qt\6.7.3\msvc2019_64).
+      # (e.g. C:\ if Qt is at C:\Qt\6.11.1\msvc2022_64).
       QT_HOME: C:\Qt
       # Stable QWT install directory used by the cache action and PowerShell build steps.
       QWT_INSTALL_DIR: C:\qwt
@@ -45,14 +45,17 @@ jobs:
       uses: jurplel/install-qt-action@v3
       with:
         version: ${{ env.QT_VERSION }}
-        arch: win64_msvc2019_64
+        # Released aqt can't resolve Qt 6.11's new Windows repo layout (aqtinstall
+        # #959); use git master until a fixed release ships.
+        aqtversion: ' @ git+https://github.com/miurahr/aqtinstall.git@master'
+        arch: win64_msvc2022_64
         modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
         dir: ${{ env.QT_HOME }}
         cache: true
         cache-key-prefix: qt-win
 
     - name: Set QTDIR
-      run: echo "QTDIR=${{ env.QT_HOME }}\Qt\${{ env.QT_VERSION }}\msvc2019_64" >> $env:GITHUB_ENV
+      run: echo "QTDIR=${{ env.QT_HOME }}\Qt\${{ env.QT_VERSION }}\msvc2022_64" >> $env:GITHUB_ENV
       shell: powershell
 
     - name: Install jom
@@ -107,7 +110,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ env.QWT_INSTALL_DIR }}
-        key: qwt-6.3.0-qt-${{ env.QT_VERSION }}-msvc2019-win64
+        key: qwt-6.3.0-qt-${{ env.QT_VERSION }}-msvc2022-win64
 
     - name: Build QWT
       # No QWT apt/Qt6 binary package exists, so build 6.3.0 from source against
@@ -517,13 +520,16 @@ jobs:
       uses: jurplel/install-qt-action@v3
       with:
         version: ${{ env.QT_VERSION }}
-        arch: win64_msvc2019_64
+        # Released aqt can't resolve Qt 6.11's new Windows repo layout (aqtinstall
+        # #959); use git master until a fixed release ships.
+        aqtversion: ' @ git+https://github.com/miurahr/aqtinstall.git@master'
+        arch: win64_msvc2022_64
         dir: 'C:\Qt'
         cache: true
         cache-key-prefix: qt-win
 
     - name: Set QTDIR
-      run: echo "QTDIR=C:\Qt\Qt\${{ env.QT_VERSION }}\msvc2019_64" >> $env:GITHUB_ENV
+      run: echo "QTDIR=C:\Qt\Qt\${{ env.QT_VERSION }}\msvc2022_64" >> $env:GITHUB_ENV
       shell: powershell
 
     - name: Install jom
