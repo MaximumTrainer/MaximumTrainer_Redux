@@ -48,13 +48,3 @@ SOURCES += \
 HEADERS += \
     tst_intervals_icu_integration.h \
     ../../src/persistence/db/intervals_icu_api.h
-
-# Qt 6.7.3's <QtCore> qyieldcpu.h calls the ARM intrinsic __yield() without
-# including <arm_acle.h>; newer Xcode (macos-latest runner image) promotes
-# -Wimplicit-function-declaration to a hard error. This is a core-only test
-# (QT = core network testlib), so unlike the gui/widgets test targets nothing
-# transitively pulls in <arm_acle.h> first. __yield is a clang builtin and
-# still lowers correctly, so keep it a warning rather than a hard error.
-macx {
-    QMAKE_CXXFLAGS += -Wno-error=implicit-function-declaration
-}

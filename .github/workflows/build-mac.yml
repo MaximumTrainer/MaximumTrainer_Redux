@@ -18,7 +18,7 @@ on:
 jobs:
 
   build_mac:
-    runs-on: macos-latest
+    runs-on: macos-15
     permissions:
       contents: read
 
@@ -261,7 +261,7 @@ jobs:
   #   • A labelled 1280×720 screenshot is captured as visual build evidence
   # ──────────────────────────────────────────────────────────────────────────
   test_runtime_validation:
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: build_mac
     permissions:
       contents: read
@@ -305,7 +305,7 @@ jobs:
   # gracefully.  No display required (headless Qt Test binary).
   # ──────────────────────────────────────────────────────────────────────────
   test_btle_api:
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: build_mac
     permissions:
       contents: read
@@ -348,7 +348,7 @@ jobs:
   #     confirming offline data persistence.
   # ──────────────────────────────────────────────────────────────────────────
   test_offline_mode:
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: build_mac
     permissions:
       contents: read
@@ -397,7 +397,7 @@ jobs:
   # development without credentials).
   # ──────────────────────────────────────────────────────────────────────────
   test_intervals_icu_integration:
-    runs-on: macos-latest
+    runs-on: macos-15
     permissions:
       contents: read
     env:
@@ -470,7 +470,7 @@ jobs:
   # local development without credentials).
   # ──────────────────────────────────────────────────────────────────────────
   test_online_mode:
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: build_mac
     permissions:
       contents: read
@@ -527,7 +527,7 @@ jobs:
   #   • A labelled 1280×720 screenshot is captured as visual build evidence.
   # ──────────────────────────────────────────────────────────────────────────
   test_login_screen:
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: build_mac
     permissions:
       contents: read
@@ -589,7 +589,7 @@ jobs:
   #     as visual build evidence
   # ──────────────────────────────────────────────────────────────────────────
   test_workout_ui:
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: build_mac
     permissions:
       contents: read
@@ -634,7 +634,7 @@ jobs:
   # Workout Parsing Tests – macOS
   # ──────────────────────────────────────────────────────────────────────────
   test_workout_parsing:
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: build_mac
     permissions:
       contents: read
@@ -669,7 +669,7 @@ jobs:
   # UI Navigation Tests – macOS
   # ──────────────────────────────────────────────────────────────────────────
   test_ui_navigation:
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: build_mac
     permissions:
       contents: read
@@ -718,7 +718,7 @@ jobs:
   # UI Screens Tests – macOS
   # ──────────────────────────────────────────────────────────────────────────
   test_ui_screens:
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: build_mac
     permissions:
       contents: read
@@ -757,7 +757,7 @@ jobs:
   # Workout I/O Tests – macOS
   # ──────────────────────────────────────────────────────────────────────────
   test_workout_io:
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: build_mac
     permissions:
       contents: read
@@ -789,7 +789,7 @@ jobs:
   # Workout Creator Tests – macOS
   # ──────────────────────────────────────────────────────────────────────────
   test_workout_creator:
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: build_mac
     permissions:
       contents: read
