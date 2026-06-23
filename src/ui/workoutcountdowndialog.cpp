@@ -19,6 +19,7 @@ WorkoutCountdownDialog::WorkoutCountdownDialog(const QString &nextWorkoutName,
     layout->setContentsMargins(20, 20, 20, 20);
 
     m_label = new QLabel(this);
+    m_label->setTextFormat(Qt::RichText);
     m_label->setAlignment(Qt::AlignCenter);
     m_label->setWordWrap(true);
     QFont f = m_label->font();
@@ -48,8 +49,8 @@ WorkoutCountdownDialog::WorkoutCountdownDialog(const QString &nextWorkoutName,
 
 void WorkoutCountdownDialog::updateLabel()
 {
-    m_label->setText(tr("Next workout:\n<b>%1</b>\n\nStarting in <b>%2</b> second(s)…")
-                     .arg(m_workoutName)
+    m_label->setText(tr("Next workout:<br><b>%1</b><br><br>Starting in <b>%2</b> second(s)…")
+                     .arg(m_workoutName.toHtmlEscaped())
                      .arg(m_remaining));
 }
 
