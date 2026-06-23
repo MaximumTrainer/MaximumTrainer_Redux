@@ -46,3 +46,6 @@ tests/integration/ui_repeatwidget.h
 
 # Qt Creator clangd index cache
 .qtc_clangd/
+
+# aqt download log (created when running aqtinstall locally)
+aqtinstall.log
