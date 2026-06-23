@@ -18,6 +18,8 @@ $$PWD/workoutdialog.cpp \
     $$PWD/tab_intervals_icu.cpp \
     $$PWD/workouthistorymodel.cpp \
     $$PWD/historywidget.cpp \
+    $$PWD/historyfilterproxymodel.cpp \
+    $$PWD/activitydetaildialog.cpp \
     $$PWD/dialogkeyboardshortcuts.cpp \
     $$PWD/planadherencewidget.cpp \
     $$PWD/criticalpowerdialog.cpp \
@@ -38,6 +40,8 @@ $$PWD/workoutdialog.h \
     $$PWD/tab_intervals_icu.h \
     $$PWD/workouthistorymodel.h \
     $$PWD/historywidget.h \
+    $$PWD/historyfilterproxymodel.h \
+    $$PWD/activitydetaildialog.h \
     $$PWD/dialogkeyboardshortcuts.h \
     $$PWD/criticalpowerdialog.h \
     $$PWD/pmcdialog.h \

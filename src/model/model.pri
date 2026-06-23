@@ -38,6 +38,7 @@ HEADERS += src/model/interval.h\
     $$PWD/trackpoint.h \
     $$PWD/userstudio.h \
     $$PWD/workouthistorysummary.h \
+    $$PWD/workouthistorydetail.h \
     $$PWD/planadherence.h \
     $$PWD/planadherencestore.h \
     $$PWD/workoutqueue.h

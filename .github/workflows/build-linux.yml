@@ -1225,3 +1225,34 @@ jobs:
 
     - name: Run PlanAdherence tests
       run: ./build/tests/plan_adherence_tests -v2
+
+  test_history:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'linux_gcc_64'
+        cache: true
+        cache-key-prefix: qt-linux
+
+    - name: Build History tests
+      run: |
+        mkdir -p build/tests
+        cd tests/history
+        qmake history_tests.pro
+        make -j$(nproc)
+
+    - name: Run History tests
+      run: ./build/tests/history_tests -v2

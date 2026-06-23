@@ -131,12 +131,15 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
     actionOpenFolder = contextMenu->addAction(QIcon(":/image/icon/folder"), tr("Open in folder"));
     contextMenu->addSeparator();
     actionAddToQueue = contextMenu->addAction(QIcon(":/image/icon/add"), tr("Add to Queue"));
+    contextMenu->addSeparator();
+    actionRefresh = contextMenu->addAction(QIcon(":/image/icon/refresh"), tr("Refresh"));
 
     connect(actionEdit, SIGNAL(triggered()), this, SLOT(editWorkout()) );
     connect(actionDelete, SIGNAL(triggered()), this, SLOT(deleteWorkout()) );
     connect(actionSetAsDone, SIGNAL(triggered()), this, SLOT(setAsDone()) );
     connect(actionOpenFolder, SIGNAL(triggered()), this, SLOT(openFolderWorkout()) );
     connect(actionAddToQueue, SIGNAL(triggered()), this, SLOT(addToQueue()));
+    connect(actionRefresh, SIGNAL(triggered()), this, SLOT(refreshUserWorkout()) );
     actionEdit->setEnabled(false);
     actionDelete->setEnabled(false);
     actionOpenFolder->setEnabled(false);
@@ -263,15 +266,19 @@ void Main_WorkoutPage::tableViewSelectionChanged(QItemSelection, QItemSelection)
     actionSetAsDone->setEnabled(true);
 
     if (workout.getWorkoutNameEnum() != Workout::USER_MADE) {
-        actionDelete->setEnabled(false);
-        actionOpenFolder->setEnabled(false);
+        // Included workouts live in the bundle, not the user folder, and can't be
+        // deleted — hide both actions entirely rather than showing them greyed out.
+        actionDelete->setVisible(false);
+        actionOpenFolder->setVisible(false);
         actionEdit->setEnabled(true); //let user edit, no copyright on a workout..
         //        if (workout.getWorkoutNameEnum() == Workout::MAP_TEST)
         //            actionEdit->setEnabled(false);
     }
     else {
         actionEdit->setEnabled(true);
+        actionDelete->setVisible(true);
         actionDelete->setEnabled(true);
+        actionOpenFolder->setVisible(true);
         actionOpenFolder->setEnabled(true);
     }
 
@@ -609,11 +616,6 @@ void Main_WorkoutPage::on_checkBox_clicked(bool checked)
 
 
 
-//-------------------------------------------------------------------------
-void Main_WorkoutPage::on_pushButton_refresh_clicked()
-{
-    refreshUserWorkout();
-}
 //-------------------------------------------------------------------------
 void Main_WorkoutPage::refreshUserWorkout() {
 
