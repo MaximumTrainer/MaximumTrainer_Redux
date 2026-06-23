@@ -45,12 +45,12 @@ jobs:
       uses: jurplel/install-qt-action@v3
       with:
         version: ${{ env.QT_VERSION }}
-        # Qt 6.11.1 Windows install was failing with "Failed to download checksum
-        # ... unofficial mirror" -> "Failed to locate XML data": aqt was redirected
-        # to a mirror lacking the checksum. Pin a modern aqt and force the official
-        # download server so both the metadata XML and its checksum resolve.
-        aqtversion: '==3.3.0'
-        extra: '--base https://download.qt.io/'
+        # Released aqtinstall (<=3.3.0) can't install Qt 6.11.x on Windows: Qt
+        # changed its repo folder layout at 6.11, which breaks aqt's checksum
+        # lookup ("Failed to locate XML data for 6.11.1"). Fixed by aqtinstall
+        # PR #1000 (closing #959) but not yet on PyPI, so install aqt from git
+        # master via a PEP 508 direct reference until a release ships.
+        aqtversion: ' @ git+https://github.com/miurahr/aqtinstall.git@master'
         arch: win64_msvc2019_64
         modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
         dir: ${{ env.QT_HOME }}
@@ -523,12 +523,12 @@ jobs:
       uses: jurplel/install-qt-action@v3
       with:
         version: ${{ env.QT_VERSION }}
-        # Qt 6.11.1 Windows install was failing with "Failed to download checksum
-        # ... unofficial mirror" -> "Failed to locate XML data": aqt was redirected
-        # to a mirror lacking the checksum. Pin a modern aqt and force the official
-        # download server so both the metadata XML and its checksum resolve.
-        aqtversion: '==3.3.0'
-        extra: '--base https://download.qt.io/'
+        # Released aqtinstall (<=3.3.0) can't install Qt 6.11.x on Windows: Qt
+        # changed its repo folder layout at 6.11, which breaks aqt's checksum
+        # lookup ("Failed to locate XML data for 6.11.1"). Fixed by aqtinstall
+        # PR #1000 (closing #959) but not yet on PyPI, so install aqt from git
+        # master via a PEP 508 direct reference until a release ships.
+        aqtversion: ' @ git+https://github.com/miurahr/aqtinstall.git@master'
         arch: win64_msvc2019_64
         dir: 'C:\Qt'
         cache: true
