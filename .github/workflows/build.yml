@@ -210,7 +210,7 @@ jobs:
           src/qwt_plot_spectrogram.cpp
         echo "--- patched includes in concurrent-using files ---"
         grep -rn "QWT_NO_CONCURRENT\|qfuture\|qtconcurrentrun" src/*.cpp | grep -v "^Binary"
-        qmake qwt.pro
+        qmake qwt.pro "QMAKE_CXXFLAGS_RELEASE+=-Oz"
         emmake make -j$(nproc)
         make install
 
@@ -233,8 +233,13 @@ jobs:
         source "$EMSDK/emsdk_env.sh"
         export QMAKEFEATURES="$HOME/qwt-wasm/features"
         mkdir -p build-wasm && cd build-wasm
+        # Optimise for size (-Oz): the default -O2 produces a ~28 MiB .wasm, over
+        # the Cloudflare Pages ~25 MiB cap. -Oz wins over the earlier -O2 (last -O
+        # flag applies) and runs wasm-opt -Oz on the final binary at link.
         qmake ../MaximumTrainer.pro \
-          "QWT_INSTALL=$HOME/qwt-wasm"
+          "QWT_INSTALL=$HOME/qwt-wasm" \
+          "QMAKE_CXXFLAGS_RELEASE+=-Oz" \
+          "QMAKE_LFLAGS_RELEASE+=-Oz"
         emmake make -j$(nproc)
 
     - name: Upload Wasm artifact
