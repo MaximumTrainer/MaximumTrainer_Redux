@@ -22,7 +22,7 @@ Prefer to compile it yourself? See [Building](#building) below.
 | Item | Details |
 |------|---------|
 | **Language** | C++17 (≈ 95 % C++) |
-| **Framework** | Qt 6 (6.7+) on all platforms |
+| **Framework** | Qt 6 (6.11+) on all platforms |
 | **Build file** | `MaximumTrainer.pro` (qmake) |
 | **Qt modules** | core · gui · widgets · network · bluetooth · webenginewidgets · printsupport · concurrent |
 | **Trainer protocol** | Bluetooth LE Fitness Machine Service (FTMS / 0x1826) for ERG resistance control |
@@ -68,7 +68,7 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 
 | Dependency | Version | Platform | Notes |
 |------------|---------|----------|-------|
-| Qt | 6.x (6.7+) | all | Core framework (incl. QtMultimedia, QtWebEngine, QtBluetooth) |
+| Qt | 6.x (6.11+) | all | Core framework (incl. QtMultimedia, QtWebEngine, QtBluetooth) |
 | QWT | 6.3.0 | all | Plotting widgets (built from source against Qt 6) |
 
 > **Audio & media playback:** both sound-effect feedback (interval beeps, etc.,

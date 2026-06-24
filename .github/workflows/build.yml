@@ -151,40 +151,35 @@ jobs:
     - name: Set up Emscripten
       uses: mymindstorm/setup-emsdk@v14
       with:
-        # Qt 6.6.3 was built with Emscripten 3.1.37. The emval ABI changed at
-        # 3.1.44 (_emval_new etc. moved from compiled WASM to JS-only), which
-        # breaks linking against Qt 6.6.3's libqwasm.a. Use 3.1.43 — the last
-        # version with the original emval WASM ABI. 3.1.37 was removed from GCS.
-        version: '3.1.43'
+        # Qt's WASM build is ABI-locked to the Emscripten it was compiled with;
+        # Qt 6.11.x targets Emscripten 4.0.7. It must match or linking against
+        # Qt's libqwasm.a fails (Emscripten gives no cross-version ABI guarantee).
+        version: '4.0.7'
 
     - name: Install Qt (Wasm singlethread)
-      uses: jurplel/install-qt-action@v3
+      # v4 required: host=all_os / target=wasm (Qt 6.11's WASM repo path) is
+      # rejected by v3, which only allows windows/mac/linux hosts.
+      uses: jurplel/install-qt-action@v4
       with:
-        version: '6.6.3'
-        host: 'linux'
-        target: 'desktop'
+        version: '6.11.1'
+        # Released aqt 3.1.x can't resolve Qt 6.11's reorganised repo; 3.3.0 does.
+        aqtversion: '==3.3.0'
+        # Qt 6.11 moved WASM out of linux/desktop into the all_os/wasm repo path.
+        host: 'all_os'
+        target: 'wasm'
         arch: 'wasm_singlethread'
         modules: 'qtwebchannel'
         cache: true
         cache-key-prefix: qt-wasm
-
-    - name: Install Qt (linux host tools)
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '6.6.3'
-        host: 'linux'
-        target: 'desktop'
-        arch: 'gcc_64'
-        set-env: false
-        cache: true
-        cache-key-prefix: qt-wasm-host
+        # --autodesktop (v4) auto-installs the matching linux gcc_64 desktop Qt
+        # and sets QT_HOST_PATH, so no separate host-tools install step is needed.
 
     - name: Restore QWT cache (Wasm)
       id: qwt-wasm-cache
       uses: actions/cache@v4
       with:
         path: ~/qwt-wasm
-        key: qwt-6.3.0-qt-6.6.3-wasm-em3.1.43
+        key: qwt-6.3.0-qt-6.11.1-wasm-em4.0.7
 
     - name: Build QWT (Wasm)
       if: steps.qwt-wasm-cache.outputs.cache-hit != 'true'
@@ -306,6 +301,9 @@ jobs:
         path: /tmp/wasm-artifact
 
     - name: Copy fresh WASM files into docs/app
+      # NOTE: when bumping Qt, the loader entry name changes with it — docs/app/
+      # index.html's qtLoad `entryFunction` must match (window.<TARGET>_entry in
+      # Qt 6.8+, window.createQtAppInstance in <=6.7), or the app never starts.
       if: steps.download-wasm.outcome == 'success'
       run: |
         echo "Downloaded artifact contents:"

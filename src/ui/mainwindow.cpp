@@ -1184,8 +1184,14 @@ void MainWindow::releaseWebEngineViews()
     // every page is gone before the profile is. Recurses into nested views
     // (e.g. the workout/creator web pages inside child widgets). Safe to call
     // more than once: a second pass simply finds no views.
+    //
+    // WASM has no real QtWebEngine (QWebEngineView is a stub without Q_OBJECT),
+    // so there is no profile to release and findChildren<QWebEngineView*> would
+    // not even compile there.
+#ifndef GC_WASM_BUILD
     for (auto *webView : findChildren<QWebEngineView*>())
         delete webView;
+#endif
 }
 
 void MainWindow::scheduleScreenshotQuit()
@@ -2161,10 +2167,15 @@ void MainWindow::startScreenshotMode(const QString &outputDir)
     // webView_createWorkout (WorkoutCreator) in addition to the direct children
     // of MainWindow's UI — all would otherwise try to run jQuery code against
     // a page that never loaded jQuery.
+    // (No real QtWebEngine on WASM — QWebEngineView is a stub without Q_OBJECT,
+    // so findChildren<QWebEngineView*> would not compile, and there are no web
+    // pages to blank anyway.)
+#ifndef GC_WASM_BUILD
     static const QString kBlankHtml =
         QStringLiteral("<html><body></body></html>");
     for (auto *wv : findChildren<QWebEngineView*>())
         wv->setHtml(kBlankHtml);
+#endif
 
     resize(1280, 720);
     move(100, 50);

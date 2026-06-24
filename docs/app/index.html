@@ -352,7 +352,9 @@
       loaderScript.onload = () => {
         log('qtloader.js ready');
 
-        // Step 2: load MaximumTrainer.js (Qt 6.6 — defines window.createQtAppInstance)
+        // Step 2: load MaximumTrainer.js (the Emscripten glue). Qt 6.8+ renamed
+        // the module entry to window.<TARGET>_entry (MaximumTrainer_entry); older
+        // Qt (<=6.7) used window.createQtAppInstance.
         log('Loading MaximumTrainer.js…');
         const appScript = document.createElement('script');
         appScript.src = 'MaximumTrainer.js';
@@ -365,7 +367,7 @@
           // object, not a Promise, so .then() would throw.)
           qtLoad({
             qt: {
-              entryFunction: window.createQtAppInstance,
+              entryFunction: window.MaximumTrainer_entry || window.createQtAppInstance,
               containerElements: [document.getElementById('qt-canvas')],
               // Provide an explicit logical DPI so Qt's platform plugin does not
               // receive undefined from Module.qtFontDpi, which could propagate as
