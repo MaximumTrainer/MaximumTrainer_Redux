@@ -3,9 +3,25 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QStandardPaths>
+#include <QVariantMap>
 #include <QtGlobal>
 
+#include <algorithm>
+
 namespace {
+// Floor for the leader's speed when converting a distance gap into a time gap,
+// so a near-stopped leader doesn't blow the "time behind" up to nonsense.
+constexpr double kStandingsMinMS = 1.5;
+
+// "+12s" under a minute, "+1:05" beyond.
+QString fmtGapSec(double sec) {
+    if (sec < 60.0)
+        return QStringLiteral("+%1s").arg(qRound(sec));
+    const int m = int(sec) / 60;
+    const int s = int(sec) % 60;
+    return QStringLiteral("+%1:%2").arg(m).arg(s, 2, 10, QLatin1Char('0'));
+}
+
 // ERG team-race tuning. In ERG the rider can't out-power the target, so catching
 // back relies on drafting; the partner is leashed so it never drops you.
 constexpr double kDraftRangeM     = 12.0;  // slipstream reaches this far back
@@ -352,4 +368,38 @@ void RetroRaceController::tick()
     const double total = m_opponent->totalTimeSec();
     if (total > 1.0 && m_elapsedSec >= total)
         finishRace();   // ghost route completed → celebrate
+}
+
+// Leaderboard rows (leader-first) for the shared race panel. Solo = the live
+// rider plus the chosen opponent; the same shape will carry N Studio riders.
+QVariantList RetroRaceController::standings() const
+{
+    struct Row { QString name; double dist; double speedMS; bool isPlayer; };
+    QVector<Row> rows;
+    rows.append({ m_playerName, m_playerDistM, m_playerV, true });
+    if (m_opponent)
+        rows.append({ m_oppName.isEmpty() ? QStringLiteral("Ghost") : m_oppName,
+                      m_oppDistM, m_oppV, false });
+
+    std::sort(rows.begin(), rows.end(),
+              [](const Row &a, const Row &b) { return a.dist > b.dist; });
+
+    const double leaderDist = rows.isEmpty() ? 0.0 : rows.first().dist;
+    const double leaderMS   = rows.isEmpty() ? 0.0 : qMax(rows.first().speedMS, 0.0);
+
+    QVariantList out;
+    for (int i = 0; i < rows.size(); ++i) {
+        const Row &r = rows.at(i);
+        const double gapM   = qMax(0.0, leaderDist - r.dist);
+        const double gapSec = (i == 0) ? 0.0 : gapM / qMax(leaderMS, kStandingsMinMS);
+        QVariantMap m;
+        m.insert(QStringLiteral("name"),     r.name);
+        m.insert(QStringLiteral("rank"),     i + 1);
+        m.insert(QStringLiteral("isPlayer"), r.isPlayer);
+        m.insert(QStringLiteral("gapSec"),   gapSec);
+        m.insert(QStringLiteral("gapText"),  (i == 0) ? QStringLiteral("Leader")
+                                                      : fmtGapSec(gapSec));
+        out.append(m);
+    }
+    return out;
 }
