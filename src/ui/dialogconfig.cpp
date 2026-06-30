@@ -477,14 +477,6 @@ void DialogConfig::initUi() {
     ///Speed widget
     ui->checkBox_enableSpeed->setChecked(account->show_speed_widget);
 
-    ///virtual speed
-    if (account->use_virtual_speed) {
-        ui->comboBox_virtualSpeed->setCurrentIndex(0);
-    }
-    else {
-        ui->comboBox_virtualSpeed->setCurrentIndex(1);
-    }
-
     ///Speed widget
     ui->checkBox_showTrainerSpeed->setChecked(account->show_trainer_speed);
 
@@ -661,25 +653,6 @@ void DialogConfig::on_comboBox_displayHR_currentIndexChanged(int index) {
     if (ui->checkBox_enableHR->isChecked())
         parentDialog->showHeartRateDisplayWidget(index + 1);
 }
-//----------------
-void DialogConfig::on_comboBox_virtualSpeed_currentIndexChanged(int index)
-{
-    qDebug() << "OK CLICKED!" << index;
-
-
-    if (index == 0) { //Virtual Speed
-        account->use_virtual_speed = true;
-        parentDialog->useVirtualSpeedData(true);
-        ui->checkBox_showTrainerSpeed->setVisible(true);
-    }
-    else {
-        account->use_virtual_speed = false;
-        parentDialog->useVirtualSpeedData(false);     // Trainer Speed
-        ui->checkBox_showTrainerSpeed->setVisible(false);
-    }
-
-}
-
 
 //-----------------------------------------------------------------------------------
 void DialogConfig::on_checkBox_showTrainerSpeed_clicked(bool checked)

@@ -166,7 +166,6 @@ public:
     bool show_speed_widget;
     bool show_calories_widget;
     bool show_oxygen_widget;
-    bool use_virtual_speed;
     bool show_trainer_speed;
 
     int display_hr;

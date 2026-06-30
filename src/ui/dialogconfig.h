@@ -84,7 +84,6 @@ private slots:
     void on_checkBox_enablePowerBalance_clicked(bool checked);
 
     void on_comboBox_displayHR_currentIndexChanged(int index);
-    void on_comboBox_virtualSpeed_currentIndexChanged(int index);
 
     void on_comboBox_displayCadence_currentIndexChanged(int index);
     void on_comboBox_displayPower_currentIndexChanged(int index);

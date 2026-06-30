@@ -844,7 +844,8 @@ void WorkoutDialog::initUI() {
     showCadenceDisplayWidget(account->display_cadence);
     showSpeedDisplayWidget();
     showTrainerSpeed(account->show_trainer_speed);
-    useVirtualSpeedData(account->use_virtual_speed);
+    // Speed is always virtual (derived from power), for solo and Studio riders.
+    useVirtualSpeedData(true);
     showOxygenDisplayWidget();
     showCaloriesDisplayWidget();
     showPowerBalanceWidget(account->display_power_balance);
@@ -2007,12 +2008,9 @@ void WorkoutDialog::TrainerSpeedDataReceived(int userID, double value) {
         checkPairingCompleted();
     }
 
+    // The displayed speed is always virtual (see VirtualSpeedDataReceived);
+    // a paired sensor's reading is only shown as the optional "trainer speed".
     ui->wid_4_infoBoxSpeed->setTrainerSpeed(value);
-
-    // if user want trainer data to represent his speed
-    if ( !account->use_virtual_speed || account->enable_studio_mode) {
-        speedDataChosen(userID, value);
-    }
 
 }
 
@@ -2036,14 +2034,11 @@ void WorkoutDialog::VirtualSpeedDataReceived(int userID, double valueMS, double 
 
 
 
-    if ( account->use_virtual_speed && !account->enable_studio_mode ) {
-        speedDataChosen(userID, valueKMH);
+    speedDataChosen(userID, valueKMH);
 
-        //Update Distance Counter
-        if (!isWorkoutPaused && !isWorkoutOver) {
-//            qDebug() << "valueMS" << valueMS << "valueKMH" << valueKMH << "timeAtThisSpeedSec" << timeAtThisSpeedSec;
-            arrDataWorkout[userID-1]->updateDistance(valueMS*timeAtThisSpeedSec);
-        }
+    //Update Distance Counter
+    if (!isWorkoutPaused && !isWorkoutOver) {
+        arrDataWorkout[userID-1]->updateDistance(valueMS*timeAtThisSpeedSec);
     }
 
 }

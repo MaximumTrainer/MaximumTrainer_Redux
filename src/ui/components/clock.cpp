@@ -174,30 +174,14 @@ void Clock::timerSpeedTimeout() {
 
         double fractionSecond = diffTime / 1000.0;
 
-        //        for (int i=0; i<nbUser; i++) {
-        for (int i=0; i<1; i++) {
-
-            //            qDebug() << "Calculating speed for user:" << i;
-
-            // Flat-road power→speed via the shared CyclingPhysics model (the same
-            // one the retro race integrates), so virtual speed and the race agree.
-            // Uses rider+bike mass (weightKG) and the rider's CdA.
+        // One pass per rider (1 solo, up to nbMaxUserStudio in Studio): integrate
+        // each rider's flat-road power→speed via the shared CyclingPhysics model
+        // (the same one the retro race uses, so virtual speed and the race agree),
+        // then emit it. Uses rider+bike mass (weightKG) and the rider's CdA.
+        for (int i=0; i<nbUser; i++) {
             currentSpeedMS[i] = CyclingPhysics::stepSpeed(
                 currentSpeedMS[i], currentPowerWatts[i], weightKG[i], cda[i], fractionSecond);
 
-
-            //        qDebug() << "fractionSecond:" << fractionSecond << "diffTime" << diffTime;
-
-            //        qDebug() << "Virtual Speed Debug::" << "currentPowerWatts" << currentPowerWatts <<
-            //                    "powerRequiredRolling" << powerRequiredRolling << "powerRequiredWind" << powerRequiredWind << "powerRequiredGravity" <<
-            //                    powerRequiredGravity << "accelerationMs" << accelerationMs << "currentSpeedMS" <<  currentSpeedMS << "diffTime" << diffTime;
-
-
-        }
-
-        //        for (int i=0; i<nbUser; i++) {
-        for (int i=0; i<1; i++) {
-            //            qDebug() << "emiting speed for user:" << i+1 << "is" << currentSpeedMS[i];
             emit virtualSpeed(i+1, currentSpeedMS[i], fractionSecond);
         }
 
