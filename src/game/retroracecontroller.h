@@ -6,6 +6,8 @@
 #include <QTimer>
 #include <QElapsedTimer>
 #include <QVariantList>
+#include <QVector>
+#include <QPointF>
 
 #include <memory>
 
@@ -35,6 +37,10 @@ class RetroRaceController : public QObject
     Q_PROPERTY(double  displayDistanceM READ displayDistanceM NOTIFY updated)
     Q_PROPERTY(double  oppDistanceM    READ oppDistanceM    NOTIFY updated)
     Q_PROPERTY(double  gapMeters       READ gapMeters       NOTIFY updated)
+    // Leaderboard rows, leader-first. Each is a map: name, rank, gapSec, gapText
+    // ("Leader" / "+12s" / "+1:05"), isPlayer. Built from the player + opponent;
+    // the same shape will carry N Studio riders later (one scene, one panel).
+    Q_PROPERTY(QVariantList standings  READ standings       NOTIFY updated)
     Q_PROPERTY(double  playerSpeedKmh  READ playerSpeedKmh  NOTIFY updated)
     Q_PROPERTY(double  oppSpeedKmh     READ oppSpeedKmh     NOTIFY updated)
     Q_PROPERTY(double  playerPowerW    READ playerPowerW    NOTIFY updated)
@@ -133,6 +139,9 @@ public:
     void    setDisplayDistanceM(double m) { m_displayDistM = m; }
     double  oppDistanceM() const    { return m_oppDistM; }
     double  gapMeters() const       { return m_playerDistM - m_oppDistM; }
+    QVariantList standings() const;
+    /// Name shown for the live rider in the leaderboard (defaults to "You").
+    void    setPlayerName(const QString &n) { m_playerName = n.isEmpty() ? QStringLiteral("You") : n; }
     double  playerSpeedKmh() const  { return m_playerV * 3.6; }
     double  oppSpeedKmh() const     { return m_oppV * 3.6; }
     double  playerPowerW() const    { return m_playerPowerW; }
@@ -248,6 +257,7 @@ private:
     std::unique_ptr<PowerSource> m_opponent;
     LivePowerSource *m_pacerLive = nullptr;   // non-owning; valid only for the workout pacer
     QString m_oppName;
+    QString m_playerName = QStringLiteral("You");
     QString m_workoutName;
     bool    m_oppIsBot     = false;
     bool    m_oppChosen    = false;
@@ -270,6 +280,14 @@ private:
     // player a touch stronger than the opponent. Both go away with live power.
     double m_timeScale  = 10.0;
     double m_playerForm = 1.08;
+
+    // Position-over-time traces (x = distance m, y = elapsed sec), one per rider,
+    // for the Zwift-style "time behind": the gap is how many seconds ago the
+    // rider ahead passed the point the trailing rider is at now. Monotonic in x.
+    QVector<QPointF> m_playerTrace;
+    QVector<QPointF> m_oppTrace;
+    void recordTrace(QVector<QPointF> &trace, double distanceM, double timeSec);
+    static double timeAtDistance(const QVector<QPointF> &trace, double distanceM);
 
     double m_elapsedSec  = 0.0;
     double m_playerV     = 0.0;   // m/s

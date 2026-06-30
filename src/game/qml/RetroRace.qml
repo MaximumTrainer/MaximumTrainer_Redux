@@ -915,6 +915,52 @@ Item {
 
     // (No top-right gap cluster: position and gap live in the avatar bubble.)
 
+    // ---------------------------------------------------------------- LEADERBOARD
+    // Shared standings panel (right edge). Solo = you vs the ghost; the same
+    // panel will list every Studio rider once multi-rider is wired in. Each row:
+    // rank · name · time behind the leader ("Leader" / "+12s" / "+1:05").
+    Rectangle {
+        id: leaderboard
+        visible: race.started && lbRepeater.count > 1
+        anchors.right: parent.right; anchors.rightMargin: 14
+        anchors.verticalCenter: parent.verticalCenter
+        width: 176
+        height: lbCol.implicitHeight + 16
+        radius: 8
+        color: "#000000"; opacity: 0.52
+        border.color: "#ffffff"; border.width: 1
+
+        Column {
+            id: lbCol
+            anchors.fill: parent; anchors.margins: 8
+            spacing: 5
+            Text { anchors.horizontalCenter: parent.horizontalCenter
+                   text: "STANDINGS"; color: "#bcd"
+                   font.family: "monospace"; font.pixelSize: 11; font.bold: true }
+            Repeater {
+                id: lbRepeater
+                model: race.standings
+                Item {
+                    width: lbCol.width; height: 18
+                    readonly property bool me: modelData.isPlayer
+                    Text { id: rk; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                           text: modelData.rank + "."; color: me ? "#ffe24a" : "#dfe7ef"
+                           font.family: "monospace"; font.pixelSize: 13; font.bold: true }
+                    Text { anchors.left: rk.right; anchors.leftMargin: 5
+                           anchors.right: gp.left; anchors.rightMargin: 6
+                           anchors.verticalCenter: parent.verticalCenter
+                           text: root.shortName(modelData.name, 12); elide: Text.ElideRight
+                           color: me ? "#ffe24a" : "#ffffff"
+                           font.family: "monospace"; font.pixelSize: 13; font.bold: me }
+                    Text { id: gp; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                           text: modelData.gapText
+                           color: modelData.rank === 1 ? "#5dff5d" : "#ff9d6b"
+                           font.family: "monospace"; font.pixelSize: 13; font.bold: true }
+                }
+            }
+        }
+    }
+
     // NEXT-interval target card (right side).
     Rectangle {
         visible: race.started && !race.finished && race.nextTargetW > 0 && race.nextSecs >= 0

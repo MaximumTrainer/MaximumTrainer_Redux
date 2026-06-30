@@ -3,9 +3,29 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QStandardPaths>
+#include <QVariantMap>
 #include <QtGlobal>
 
+#include <algorithm>
+
 namespace {
+// Floor for the leader's speed when converting a distance gap into a time gap,
+// so a near-stopped leader doesn't blow the "time behind" up to nonsense.
+constexpr double kStandingsMinMS = 1.5;
+
+// Only store a new trace sample once the rider has moved this far, to keep the
+// history compact over a long ride (the gap interpolates between samples).
+constexpr double kTraceStepM = 3.0;
+
+// "+12s" under a minute, "+1:05" beyond.
+QString fmtGapSec(double sec) {
+    if (sec < 60.0)
+        return QStringLiteral("+%1s").arg(qRound(sec));
+    const int m = int(sec) / 60;
+    const int s = int(sec) % 60;
+    return QStringLiteral("+%1:%2").arg(m).arg(s, 2, 10, QLatin1Char('0'));
+}
+
 // ERG team-race tuning. In ERG the rider can't out-power the target, so catching
 // back relies on drafting; the partner is leashed so it never drops you.
 constexpr double kDraftRangeM     = 12.0;  // slipstream reaches this far back
@@ -167,6 +187,8 @@ void RetroRaceController::start()
     m_finishSecs     = -1.0;
     m_started  = false;
     m_finished = false;
+    m_playerTrace.clear();
+    m_oppTrace.clear();
     m_intervalMarks.clear();
     emit intervalMarksChanged();
     m_clock.restart();
@@ -347,9 +369,90 @@ void RetroRaceController::tick()
         m_playerCadence = m_oppCadence;
     m_playerCrankRev += (m_playerCadence / 60.0) * dt;
 
+    // Record each rider's position-over-time for the time-gap lookup.
+    recordTrace(m_playerTrace, m_playerDistM, m_elapsedSec);
+    recordTrace(m_oppTrace,    m_oppDistM,    m_elapsedSec);
+
     emit updated();
 
     const double total = m_opponent->totalTimeSec();
     if (total > 1.0 && m_elapsedSec >= total)
         finishRace();   // ghost route completed → celebrate
+}
+
+// Append a (distance, time) sample once the rider has advanced kTraceStepM, so
+// the trace stays compact. Distance is monotonic, so the trace is sorted by x.
+void RetroRaceController::recordTrace(QVector<QPointF> &trace, double distanceM, double timeSec)
+{
+    if (trace.isEmpty() || distanceM - trace.last().x() >= kTraceStepM)
+        trace.append(QPointF(distanceM, timeSec));
+}
+
+// The elapsed time at which this rider passed `distanceM` (linear-interpolated
+// between samples). Returns -1 if the trace doesn't reach back that far.
+double RetroRaceController::timeAtDistance(const QVector<QPointF> &trace, double distanceM)
+{
+    if (trace.isEmpty())
+        return -1.0;
+    if (distanceM <= trace.first().x())
+        return trace.first().y();
+    if (distanceM >= trace.last().x())
+        return trace.last().y();
+    // Binary search for the first sample at/after distanceM, then interpolate.
+    int lo = 0, hi = trace.size() - 1;
+    while (lo < hi) {
+        const int mid = (lo + hi) / 2;
+        if (trace.at(mid).x() < distanceM) lo = mid + 1;
+        else                               hi = mid;
+    }
+    const QPointF &b = trace.at(lo);
+    const QPointF &a = trace.at(lo - 1);
+    const double span = b.x() - a.x();
+    const double f = span > 1e-6 ? (distanceM - a.x()) / span : 0.0;
+    return a.y() + f * (b.y() - a.y());
+}
+
+// Leaderboard rows (leader-first) for the shared race panel. Solo = the live
+// rider plus the chosen opponent; the same shape will carry N Studio riders.
+QVariantList RetroRaceController::standings() const
+{
+    struct Row { QString name; double dist; double speedMS; bool isPlayer; };
+    QVector<Row> rows;
+    rows.append({ m_playerName, m_playerDistM, m_playerV, true });
+    if (m_opponent)
+        rows.append({ m_oppName.isEmpty() ? QStringLiteral("Ghost") : m_oppName,
+                      m_oppDistM, m_oppV, false });
+
+    std::sort(rows.begin(), rows.end(),
+              [](const Row &a, const Row &b) { return a.dist > b.dist; });
+
+    const double leaderDist = rows.isEmpty() ? 0.0 : rows.first().dist;
+    const double leaderMS   = rows.isEmpty() ? 0.0 : qMax(rows.first().speedMS, 0.0);
+    // The leader's position trace — used to find when the leader passed each
+    // trailing rider's current spot (Zwift-style true time gap).
+    const QVector<QPointF> &leaderTrace =
+        (!rows.isEmpty() && rows.first().isPlayer) ? m_playerTrace : m_oppTrace;
+
+    QVariantList out;
+    for (int i = 0; i < rows.size(); ++i) {
+        const Row &r = rows.at(i);
+        double gapSec = 0.0;
+        if (i > 0) {
+            // True time gap: how long ago was the leader at this rider's distance?
+            const double tLeaderHere = timeAtDistance(leaderTrace, r.dist);
+            if (tLeaderHere >= 0.0)
+                gapSec = qMax(0.0, m_elapsedSec - tLeaderHere);
+            else  // no history yet — fall back to gap distance / leader speed
+                gapSec = qMax(0.0, leaderDist - r.dist) / qMax(leaderMS, kStandingsMinMS);
+        }
+        QVariantMap m;
+        m.insert(QStringLiteral("name"),     r.name);
+        m.insert(QStringLiteral("rank"),     i + 1);
+        m.insert(QStringLiteral("isPlayer"), r.isPlayer);
+        m.insert(QStringLiteral("gapSec"),   gapSec);
+        m.insert(QStringLiteral("gapText"),  (i == 0) ? QStringLiteral("Leader")
+                                                      : fmtGapSec(gapSec));
+        out.append(m);
+    }
+    return out;
 }
