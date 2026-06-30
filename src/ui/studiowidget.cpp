@@ -256,7 +256,7 @@ void StudioWidget::reload()
     m_riders = UserStudio::loadStudioConfig();
     // Guarantee enough entries to back every card.
     while (m_riders.size() < kMaxRiders)
-        m_riders.append(UserStudio("", -1, -1, -1, -1, -1, -1, -1, 2100, false, 0, 0));
+        m_riders.append(UserStudio("", -1, -1, -1, -1, -1, -1, -1, 2100, 0, 0));
 
     if (m_enableSwitch) {
         QSignalBlocker b(m_enableSwitch);

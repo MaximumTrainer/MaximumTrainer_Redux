@@ -21,9 +21,6 @@ public:
 
 public slots:
 
-    /// Check for Level achievement
-    void updateMinuteRode(int minutes);
-
     /// Check for 1h Workout, 2h Workout, 3h Workout, Target Maniac
     void workoutCompleted(Workout workout);
 

@@ -970,8 +970,6 @@ void MainWindow::updateFieldForUser(int riderID, int fieldNumber, QVariant value
 
     qDebug() << "updateDisplayNameForUser" << riderID << "fieldNumber" << fieldNumber << "value" << value;
 
-
-    qDebug() << "disablePowerCurveForUser" << riderID;
     if (riderID >= vecUserStudio.size())
         return;
     UserStudio myUserStudio = vecUserStudio.at(riderID-1);

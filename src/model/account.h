@@ -59,14 +59,11 @@ public:
 
     int FTP;
     int LTHR;
-    int minutes_rode;
     double weight_kg;
     bool weight_in_kg;
-    int height_cm;
 
     int wheel_circ;
     double bike_weight_kg;
-    int bike_type;
 
 
     //-------------------------- not in DB ----------------------

@@ -647,17 +647,13 @@ from the code alone.
 
 ### 7.1 Deferred Tasks
 
-**Remove the PowerCurve feature entirely.** PowerCurve was removed from the
-product but still exists throughout the code (~20 files, 100+ references).
-Scrape it out as its own dedicated PR (large; touches plotting, studio users,
-and persistence):
-
-- `src/model/powercurve.{cpp,h}` (delete)
-- References across `account.{cpp,h}`, `userstudio.{cpp,h}`,
-  `workoutplot.{cpp,h}`, `mainwindow.{cpp,h}`, `dialogconfig.{cpp,h}`,
-  `workoutdialog.{cpp,h}`, `util.cpp`, `globalvars.cpp`, `zoneobject.cpp`,
-  `xmlutil.cpp`, `userdao.cpp`, `settings.h`
-- While at it, remove the orphaned profile-physio fields listed in §7.2.
+**PowerCurve removal — DONE.** The mean-maximal-power-curve feature has been
+fully stripped: `powercurve.{cpp,h}` and the bulk of references went in #242,
+and the last remnants (the `UserStudio::usingPowerCurve` field/accessors and the
+dead `Account` physio fields from §7.2) were removed afterwards. Note the
+*live* `show_power_curve` / `checkBox_PowerCurve` / `showHideCurvePower` /
+`workoutplot`'s `powerCurve` are unrelated — they toggle the power line on the
+workout graph (alongside the cadence/HR/speed curves) and must be kept.
 
 **Offline achievement tracking.** Achievements were a sub-tab of the
 (now-removed) main-page Profile tab, rendered by a server-hosted
@@ -676,12 +672,12 @@ the `displayPrefs` QSettings group via `Account::save/loadDisplayPrefs()` (with
 encrypted credential stores for third-party tokens). **When adding a new user
 setting, persist it there — do not rely on the server.**
 
-**Profile physio fields are intentionally NOT persisted.** These `Account`
-fields only ever came from the server JSON and have no remaining UI, so
-persisting them would just store hardcoded defaults. They are left unpersisted
-and should be **removed with the PowerCurve cleanup** (§7.1):
-`height_cm`, `bike_weight_kg`, `wheel_circ`, `bike_type`, `minutes_rode`,
-`powerCurve`.
+**Profile physio fields.** The truly-dead `Account` fields that only ever came
+from the defunct server JSON with no remaining reader — `height_cm`,
+`bike_type`, `minutes_rode`, and the `powerCurve` data field — have been
+**removed**. Two fields from the old list were kept because they are now live:
+`wheel_circ` feeds the BLE speed-sensor circumference (`BtleHub`), and
+`bike_weight_kg` is added to rider weight for the race-physics rider params.
 
 (`FTP`, `LTHR`, and `weight_kg` *are* persisted — still user-editable via
 **Preferences → Profile**.)

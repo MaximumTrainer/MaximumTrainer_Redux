@@ -26,14 +26,11 @@ Account::Account(QObject *parent) : QObject(parent)  {
 
     FTP = 150;
     LTHR = 150;
-    minutes_rode = 0;
     weight_kg = 70;
     weight_in_kg = true;
-    height_cm = 170;
 
     wheel_circ = 2100;
     bike_weight_kg = 9;
-    bike_type = 2;
 
 
     userCda = 0.35;

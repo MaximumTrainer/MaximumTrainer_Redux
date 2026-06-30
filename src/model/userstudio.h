@@ -11,7 +11,7 @@ class UserStudio
 public:
     UserStudio() {}
     UserStudio(QString displayName, int FTP, int LTHR, int hrID, int powerID, int cadenceID, int speedID, int fecID,
-               int wheelCircMM, bool usingPowerCurve, int companyID, int brandID);
+               int wheelCircMM, int companyID, int brandID);
 
     /// Studio rider identity (name / FTP / LTHR) persistence in QSettings, group
     /// "studioRiders/riderN". Returns a fixed-size vector (constants::nbMaxUserStudio),
@@ -52,9 +52,6 @@ public:
 
     int getWheelCircMM() const {
         return this->wheelCircMM;
-    }
-    bool getUsingPowerCurve() const {
-        return this->usingPowerCurve;
     }
     int getCompanyID() const {
         return this->companyID;
@@ -103,9 +100,6 @@ public:
         this->wheelCircMM = wheelCircMM;
     }
 
-    void setUsingPowerCurve(bool val) {
-        this->usingPowerCurve = val;
-    }
     void setCompanyID(int id) {
         this->companyID = id;
     }
@@ -128,7 +122,6 @@ private :
 
     int wheelCircMM;
 
-    bool usingPowerCurve;
     int companyID;
     int brandID;
 

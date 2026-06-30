@@ -52,12 +52,6 @@ void ManagerAchievement::checkMAPAchievement(int lastStepCompleted) {
 
 
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void ManagerAchievement::updateMinuteRode(int minutes) {
-
-    account->minutes_rode += minutes;
-}
-
 
 
 

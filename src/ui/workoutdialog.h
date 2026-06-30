@@ -509,7 +509,6 @@ private:
     static constexpr double kMiniGraphRefreshMs = 50.0; // ~20 fps
     double lastMiniGraphReplot_msec = -kMiniGraphRefreshMs;
 
-    int nbUpdate1Sec;
     QTime timeWorkoutRemaining;
     QTime timeElapsedTotal;
     QTime timeInterval;

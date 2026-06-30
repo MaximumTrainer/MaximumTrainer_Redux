@@ -19,7 +19,7 @@ QVector<UserStudio> UserStudio::loadStudioConfig()
         const QString name = settings.value(g + QStringLiteral("/name")).toString();
         const int ftp      = settings.value(g + QStringLiteral("/ftp"),  -1).toInt();
         const int lthr     = settings.value(g + QStringLiteral("/lthr"), -1).toInt();
-        riders.append(UserStudio(name, ftp, lthr, -1, -1, -1, -1, -1, 2100, false, 0, 0));
+        riders.append(UserStudio(name, ftp, lthr, -1, -1, -1, -1, -1, 2100, 0, 0));
     }
     return riders;
 }
@@ -47,7 +47,7 @@ void UserStudio::saveStudioConfig(const QVector<UserStudio> &riders)
 
 
 UserStudio::UserStudio(QString displayName, int FTP, int LTHR, int hrID, int powerID, int cadenceID, int speedID, int fecID,
-                       int wheelCircMM, bool usingPowerCurve, int companyID, int brandID) {
+                       int wheelCircMM, int companyID, int brandID) {
 
     this->displayName = displayName;
     this->FTP = FTP;
@@ -61,32 +61,6 @@ UserStudio::UserStudio(QString displayName, int FTP, int LTHR, int hrID, int pow
 
     this->wheelCircMM = wheelCircMM;
 
-    this->usingPowerCurve = usingPowerCurve;
     this->companyID = companyID;
     this->brandID = brandID;
 }
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-//UserStudio::UserStudio( const UserStudio& other ) {
-
-//    this->displayName = other.displayName;
-//    this->FTP = other.FTP;
-//    this->LTHR = other.LTHR;
-
-//    this->hrID = other.hrID;
-//    this->powerID = other.powerID;
-//    this->cadenceID = other.cadenceID;
-//    this->speedID = other.speedID;
-//    this->fecID = other.fecID;
-
-//    this->wheelCircMM = other.wheelCircMM;
-
-//    this->usingPowerCurve = other.usingPowerCurve;
-//    this->companyID = other.companyID;
-//    this->brandID = other.brandID;
-
-//    this->powerCurve = other.powerCurve;
-
-
-//}
-
