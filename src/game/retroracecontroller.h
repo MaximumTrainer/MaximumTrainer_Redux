@@ -6,6 +6,8 @@
 #include <QTimer>
 #include <QElapsedTimer>
 #include <QVariantList>
+#include <QVector>
+#include <QPointF>
 
 #include <memory>
 
@@ -278,6 +280,14 @@ private:
     // player a touch stronger than the opponent. Both go away with live power.
     double m_timeScale  = 10.0;
     double m_playerForm = 1.08;
+
+    // Position-over-time traces (x = distance m, y = elapsed sec), one per rider,
+    // for the Zwift-style "time behind": the gap is how many seconds ago the
+    // rider ahead passed the point the trailing rider is at now. Monotonic in x.
+    QVector<QPointF> m_playerTrace;
+    QVector<QPointF> m_oppTrace;
+    void recordTrace(QVector<QPointF> &trace, double distanceM, double timeSec);
+    static double timeAtDistance(const QVector<QPointF> &trace, double distanceM);
 
     double m_elapsedSec  = 0.0;
     double m_playerV     = 0.0;   // m/s
