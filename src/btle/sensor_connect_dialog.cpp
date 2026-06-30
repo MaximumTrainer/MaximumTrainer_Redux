@@ -22,10 +22,8 @@ QString deviceKey(const BtleSavedSensor &s)
 
 SensorConnectDialog::SensorConnectDialog(
         const QMap<BtleSensorRole, BtleSavedSensor> &savedSensors,
-        int wheelCircMm,
         QWidget *parent)
     : QDialog(parent)
-    , m_wheelCircMm(wheelCircMm)
 {
     setWindowTitle(tr("Connecting Sensors"));
 
@@ -175,8 +173,6 @@ void SensorConnectDialog::onDeviceDiscovered(const QBluetoothDeviceInfo &info)
         BtleHub *hub = m_hubByDevice.value(key, nullptr);
         if (!hub) {
             hub = new BtleHub(this);
-            if (m_wheelCircMm > 0)
-                hub->setWheelCircumferenceMm(m_wheelCircMm);
             connect(hub, &BtleHub::deviceConnected, this, [this, hub]() {
                 markSlotConnected(hub);
             });

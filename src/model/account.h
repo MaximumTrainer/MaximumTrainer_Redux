@@ -59,14 +59,10 @@ public:
 
     int FTP;
     int LTHR;
-    int minutes_rode;
     double weight_kg;
     bool weight_in_kg;
-    int height_cm;
 
-    int wheel_circ;
     double bike_weight_kg;
-    int bike_type;
 
 
     //-------------------------- not in DB ----------------------
@@ -170,7 +166,6 @@ public:
     bool show_speed_widget;
     bool show_calories_widget;
     bool show_oxygen_widget;
-    bool use_virtual_speed;
     bool show_trainer_speed;
 
     int display_hr;

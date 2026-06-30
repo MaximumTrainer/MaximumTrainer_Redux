@@ -170,10 +170,11 @@ Validation checklist:
 ## Known dormant features (don't extend; slated for removal)
 
 Per `agents.md §7`:
-- **PowerCurve** — removed from the product. The dead UI/page was deleted in
-  #242, but ~9 files still carry remnant references (`settings.h`,
-  `userstudio.{h,cpp}`, `dialogconfig.{h,cpp,ui}`, `mainwindow.cpp`,
-  `workoutplot.{h,cpp}`) — safe to strip when you're nearby.
+- **PowerCurve** — fully removed (UI/page in #242; last remnants — the
+  `UserStudio::usingPowerCurve` field and dead `Account` physio fields — stripped
+  afterwards). **Do not confuse** with the live `show_power_curve` /
+  `checkBox_PowerCurve` / `workoutplot::powerCurve`: those toggle the power line
+  on the workout graph (alongside cadence/HR/speed) and are not dormant.
 - **Course** — feature fully removed end to end (Group 1 / #230: `course.*`,
   `main_coursepage.*`, `googlemapwidget.*`, etc.). Only the **FIT-SDK** course
   message headers (`src/fitness/fit/fit_course_*.hpp`) and the `.workout`

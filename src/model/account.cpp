@@ -26,14 +26,10 @@ Account::Account(QObject *parent) : QObject(parent)  {
 
     FTP = 150;
     LTHR = 150;
-    minutes_rode = 0;
     weight_kg = 70;
     weight_in_kg = true;
-    height_cm = 170;
 
-    wheel_circ = 2100;
     bike_weight_kg = 9;
-    bike_type = 2;
 
 
     userCda = 0.35;
@@ -133,7 +129,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     show_speed_widget = true;
     show_calories_widget = true;
     show_oxygen_widget = true;
-    use_virtual_speed = true;
     show_trainer_speed = true;
 
     display_hr = 1;
@@ -321,7 +316,6 @@ void Account::loadDisplayPrefs() {
     nb_user_studio        = settings.value("nb_user_studio",        nb_user_studio).toInt();
     use_pm_for_cadence    = settings.value("use_pm_for_cadence",    use_pm_for_cadence).toBool();
     use_pm_for_speed      = settings.value("use_pm_for_speed",      use_pm_for_speed).toBool();
-    use_virtual_speed     = settings.value("use_virtual_speed",     use_virtual_speed).toBool();
     show_included_workout = settings.value("show_included_workout", show_included_workout).toBool();
 
     // Timer display
@@ -407,7 +401,6 @@ void Account::saveDisplayPrefs() {
     settings.setValue("nb_user_studio",        nb_user_studio);
     settings.setValue("use_pm_for_cadence",    use_pm_for_cadence);
     settings.setValue("use_pm_for_speed",      use_pm_for_speed);
-    settings.setValue("use_virtual_speed",     use_virtual_speed);
     settings.setValue("show_included_workout", show_included_workout);
 
     settings.setValue("show_timer_on_top",       show_timer_on_top);
