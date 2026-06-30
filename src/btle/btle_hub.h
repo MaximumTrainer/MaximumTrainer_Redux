@@ -38,10 +38,6 @@ public:
 
     bool isConnected() const;
 
-    // Wheel circumference in mm – used to convert wheel revolutions to speed.
-    // Should be set from account->wheel_circ before connecting.
-    void setWheelCircumferenceMm(int mm);
-
     // 1-based rider id emitted in every data signal. Defaults to 1 (solo); in
     // Studio mode each rider's hub is given a distinct id so WorkoutDialog
     // routes the data to the correct rider box. Mirrors SimulatorHub::setUserID.
@@ -189,7 +185,9 @@ private:
     static constexpr int MAX_RECONNECT_ATTEMPTS = 3;
     static constexpr int RECONNECT_INTERVAL_MS  = 5000;
 
-    static constexpr int DEFAULT_WHEEL_CIRC_MM  = 2100; // ~700c / 29" wheel
+    // Fixed wheel circumference (700c / 29") used to convert CSC wheel
+    // revolutions to speed. There is no UI to change it, so it's a constant.
+    static constexpr int DEFAULT_WHEEL_CIRC_MM  = 2100;
 
     // WorkoutDialog indexes its per-user data arrays as arrDataWorkout[userID-1],
     // so a single rider must be userID 1 (matching SimulatorHub). Emitting 0 here

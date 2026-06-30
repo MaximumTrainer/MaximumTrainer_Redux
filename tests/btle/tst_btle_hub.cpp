@@ -214,8 +214,6 @@ void TstBtleHub::testCsc_wheelOnly()
 {
     // 2100 mm wheel (default), 1 rev in 512 ticks (0.5 s) → speed
     // speed_ms = (2.1 m × 1 rev × 1024) / 512 = 4.2 m/s = 15.12 km/h
-    hub->setWheelCircumferenceMm(2100);
-
     QSignalSpy spy(hub, &BtleHub::signal_speed);
 
     hub->simulateNotification(BTLE_UUID_CSC_MEASUREMENT,
@@ -236,8 +234,6 @@ void TstBtleHub::testCsc_combined()
     // 30 km/h speed with 2100 mm wheel:
     //   speed_ms = 30/3.6 = 8.333 m/s
     //   ticks_per_rev = 2100/1000 × 1024 / 8.333 = 258 ticks
-    hub->setWheelCircumferenceMm(2100);
-
     QSignalSpy spyCad(hub, &BtleHub::signal_cadence);
     QSignalSpy spySpd(hub, &BtleHub::signal_speed);
 
@@ -519,7 +515,6 @@ void TstBtleHub::testEliteTrainer_sequence()
  */
 void TstBtleHub::testWahooKickr_powerAndCsc()
 {
-    hub->setWheelCircumferenceMm(2100);
     QSignalSpy spyPwr(hub, &BtleHub::signal_power);
     QSignalSpy spyCad(hub, &BtleHub::signal_cadence);
 
@@ -572,7 +567,6 @@ void TstBtleHub::testWahooKickr_cscRollover()
  */
 void TstBtleHub::testGarminTacx_ftmsPlusCsc()
 {
-    hub->setWheelCircumferenceMm(2100);
     QSignalSpy spySpd(hub, &BtleHub::signal_speed);
     QSignalSpy spyCad(hub, &BtleHub::signal_cadence);
     QSignalSpy spyPwr(hub, &BtleHub::signal_power);

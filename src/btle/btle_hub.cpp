@@ -73,12 +73,6 @@ BtleHub::~BtleHub()
 // ─────────────────────────────────────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────────────────────────────────────
-void BtleHub::setWheelCircumferenceMm(int mm)
-{
-    if (mm > 0)
-        m_wheelCircMm = mm;
-}
-
 void BtleHub::connectToDevice(const QBluetoothDeviceInfo &device)
 {
     // Fresh, user-initiated connect: remember the target and reset the retry

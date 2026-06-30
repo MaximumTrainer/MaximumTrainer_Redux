@@ -62,7 +62,6 @@ public:
     double weight_kg;
     bool weight_in_kg;
 
-    int wheel_circ;
     double bike_weight_kg;
 
 

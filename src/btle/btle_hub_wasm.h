@@ -29,8 +29,6 @@ public:
 
     bool isConnected() const;
 
-    void setWheelCircumferenceMm(int mm);
-
     // Keep API compatible with BtleHub so callers can use either hub
     // via connectToDevice(const QBluetoothDeviceInfo&) on native.
     // On Wasm, device selection is done by the browser; this is a no-op.

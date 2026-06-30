@@ -29,7 +29,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     weight_kg = 70;
     weight_in_kg = true;
 
-    wheel_circ = 2100;
     bike_weight_kg = 9;
 
 

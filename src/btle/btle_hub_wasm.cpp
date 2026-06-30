@@ -75,8 +75,6 @@ void BtleHubWasm::disconnectFromDevice()
 
 bool BtleHubWasm::isConnected() const { return m_connected; }
 
-void BtleHubWasm::setWheelCircumferenceMm(int mm) { m_wheelCircMm = mm; }
-
 void BtleHubWasm::setLoad(int /*deviceId*/, double watts)
 {
     WebBluetoothBridge::sendFtmsSetTargetPower(static_cast<int>(watts));

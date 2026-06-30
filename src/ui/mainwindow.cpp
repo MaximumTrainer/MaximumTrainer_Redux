@@ -1430,7 +1430,7 @@ void MainWindow::executeWorkout(Workout workout) {
             if (saved.isEmpty())
                 continue;   // rider configured no sensors — their box stays empty
 
-            SensorConnectDialog connectDlg(saved, account->wheel_circ, this);
+            SensorConnectDialog connectDlg(saved, this);
             const QString riderName = (rider - 1 < vecUserStudio.size()
                                        && !vecUserStudio.at(rider - 1).getDisplayName().trimmed().isEmpty())
                                           ? vecUserStudio.at(rider - 1).getDisplayName().trimmed()
@@ -1467,7 +1467,7 @@ void MainWindow::executeWorkout(Workout workout) {
     {
         const QMap<BtleSensorRole, BtleSavedSensor> savedSensors = BtleSensorStore::loadAll();
         if (!savedSensors.isEmpty()) {
-            SensorConnectDialog connectDlg(savedSensors, account->wheel_circ, this);
+            SensorConnectDialog connectDlg(savedSensors, this);
             connect(&connectDlg, &SensorConnectDialog::openSensorPreferences,
                     this, [this, &connectDlg]() {
                         // "Manage Sensors" – cancel the connect flow and switch
@@ -1498,8 +1498,6 @@ void MainWindow::executeWorkout(Workout workout) {
 
 
     BtleHub *btleHub = new BtleHub(this);
-    if (account->wheel_circ > 0)
-        btleHub->setWheelCircumferenceMm(account->wheel_circ);
 
     {
         QEventLoop loop;

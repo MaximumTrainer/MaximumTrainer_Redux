@@ -35,7 +35,6 @@ class SensorConnectDialog : public QDialog
 
 public:
     SensorConnectDialog(const QMap<BtleSensorRole, BtleSavedSensor> &savedSensors,
-                        int wheelCircMm,
                         QWidget *parent = nullptr);
     ~SensorConnectDialog() override;
 
@@ -85,7 +84,6 @@ private:
     // One hub per physical device, keyed by its saved identifier (address/UUID).
     QMap<QString, BtleHub*>         m_hubByDevice;
 
-    int   m_wheelCircMm  = 0;
     bool  m_hubsDetached = false;
 
     QPushButton *m_btnContinue = nullptr;
