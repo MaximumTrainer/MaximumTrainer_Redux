@@ -672,12 +672,19 @@ the `displayPrefs` QSettings group via `Account::save/loadDisplayPrefs()` (with
 encrypted credential stores for third-party tokens). **When adding a new user
 setting, persist it there — do not rely on the server.**
 
-**Profile physio fields.** The truly-dead `Account` fields that only ever came
-from the defunct server JSON with no remaining reader — `height_cm`,
-`bike_type`, `minutes_rode`, and the `powerCurve` data field — have been
-**removed**. Two fields from the old list were kept because they are now live:
-`wheel_circ` feeds the BLE speed-sensor circumference (`BtleHub`), and
-`bike_weight_kg` is added to rider weight for the race-physics rider params.
+**Profile physio fields.** The dead `Account` fields that only ever came from
+the defunct server JSON with no remaining reader — `height_cm`, `bike_type`,
+`minutes_rode`, the `powerCurve` data field, and `wheel_circ` — have been
+**removed**. `wheel_circ` was always the constructor default (no UI to change
+it), so the wheel circumference is now a fixed constant (`BtleHub::DEFAULT_WHEEL_CIRC_MM`,
+700c) feeding the CSC speed calc. `bike_weight_kg` was kept — it's added to
+rider weight for the race-physics / virtual-speed rider params.
+
+**Speed is always virtual.** Indoor speed is derived from power via
+`CyclingPhysics` for both solo and Studio riders (`Clock` emits per-rider
+`virtualSpeed`). The old "Speed Source" (Virtual/Trainer) setting and
+`Account::use_virtual_speed` were removed; a paired sensor's speed only shows
+as the optional "Show Trainer Speed" readout.
 
 (`FTP`, `LTHR`, and `weight_kg` *are* persisted — still user-editable via
 **Preferences → Profile**.)
