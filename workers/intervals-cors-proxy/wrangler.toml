@@ -8,3 +8,11 @@ compatibility_date = "2024-01-01"
 # After deploying, copy that URL and set it as the INTERVALS_PROXY_URL
 # repository variable in GitHub Actions (Settings → Variables → Actions).
 # The pages.yml workflow will inject it into docs/app/index.html.
+
+# Public, non-secret.  The Intervals.icu OAuth application client ID (client 259).
+[vars]
+INTERVALS_CLIENT_ID = "259"
+
+# INTERVALS_CLIENT_SECRET is a SECRET — never put it here or commit it.
+# Set it with:
+#   npx wrangler secret put INTERVALS_CLIENT_SECRET
