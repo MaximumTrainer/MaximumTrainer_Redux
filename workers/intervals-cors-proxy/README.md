@@ -5,6 +5,11 @@ Forwards requests from the Maximum Trainer WASM app
 headers, because intervals.icu does not natively support cross-origin browser
 requests (confirmed: `OPTIONS /oauth/token` → HTTP 405, no CORS headers).
 
+All responses — including OAuth token exchange, general proxy, and error
+paths — carry `Access-Control-Allow-Origin: *` so that any frontend
+(WASM, VirtualRow, maximum_trainer, local dev) can read both success and
+error bodies.
+
 ---
 
 ## Setup
@@ -56,17 +61,15 @@ The `deploy-intervals-proxy.yml` workflow does this automatically from the
 URL actually proxies), so a `workflow_dispatch` run of that workflow is the
 easiest way to deploy correctly.
 
-> ⚠️ Verify what is actually deployed:
+> ⚠️ Verify what is actually deployed (JSON body, no auth required):
 > ```bash
 > curl -s -X POST https://<worker-url>/proxy/api/oauth/token \
->   -H 'X-MT-Client: desktop' \
->   -d 'grant_type=authorization_code&client_id=259&code=x&redirect_uri=http://localhost:1/'
+>   -H 'Content-Type: application/json' \
+>   -d '{"code":"x","redirect_uri":"http://localhost:1/"}'
 > ```
 > should return an intervals.icu JSON error (e.g. *invalid code*), **not** an
-> empty 404.  As of 2026-06-12, `mt-intervals-proxy.intervals-login.workers.dev`
-> serves the GitHub Pages landing page instead of this worker — the proxy must
-> be (re)deployed for WASM login and the no-local-secret desktop fallback to
-> work.
+> empty 404.  Legacy form-encoded input is also accepted for backwards
+> compatibility.
 
 ### 5 — Note the worker URL
 
@@ -94,15 +97,46 @@ Push any change to `docs/` or `master`, or manually trigger the
 into `docs/app/index.html` before deploying, enabling the WASM app to
 proxy all `intervals.icu` requests through the Worker.
 
+## OAuth token exchange
+
+The dedicated token endpoint (`POST /proxy/api/oauth/token`) is open to any
+caller — no `Origin` or `X-MT-Client` header required.  The worker constructs
+the outbound `application/x-www-form-urlencoded` payload from env variables so
+callers only need to supply `code` and `redirect_uri`:
+
+**JSON input (preferred):**
+```json
+{ "code": "<authorization_code>", "redirect_uri": "<redirect_uri>" }
+```
+
+**Form-encoded input (legacy / desktop client):**
+```
+grant_type=authorization_code&code=<code>&redirect_uri=<redirect_uri>
+```
+
+**Refresh token (JSON or form-encoded):**
+```json
+{ "grant_type": "refresh_token", "refresh_token": "<token>" }
+```
+
+The worker appends `grant_type=authorization_code`, `client_id`, and
+`client_secret` from `env` before forwarding to
+`https://intervals.icu/api/oauth/token`.
+
 ---
 
 ## Request routing
 
 ```
-WASM app (browser)
-  → https://mt-intervals-proxy.<subdomain>.workers.dev/proxy/oauth/token
+Any frontend (WASM, VirtualRow, maximum_trainer, …)
+  → https://mt-intervals-proxy.<subdomain>.workers.dev/proxy/api/oauth/token
+  → Cloudflare Worker (builds form body, injects credentials, adds CORS *)
+  → https://intervals.icu/api/oauth/token
+
+WASM app (browser, general API calls)
+  → https://mt-intervals-proxy.<subdomain>.workers.dev/proxy/<path>
   → Cloudflare Worker (adds CORS headers)
-  → https://intervals.icu/oauth/token
+  → https://intervals.icu/<path>
 ```
 
 The `index.html` fetch/XHR interceptor rewrites every request whose URL
@@ -113,17 +147,15 @@ is made.
 
 ## Security
 
-- Only `https://maximumtrainer.github.io` (and localhost for development)
-  can read proxied responses via the browser's CORS policy.
-- The native desktop client is not a browser and does not send an `Origin`
-  header.  Instead it identifies itself with `X-MT-Client: desktop` (see
-  `INTERVALS_PROXY_CLIENT_HEADER` / `INTERVALS_PROXY_DESKTOP_CLIENT_VALUE`
-  in `src/persistence/db/environnement.h`).  The worker accepts a request
-  if it has either a known `Origin` (browser) **or** a known `X-MT-Client`
-  value (desktop), and rejects everything else with `HTTP 403`.
-  This is **not** a security boundary — anyone can forge an `X-MT-Client`
-  header from a non-browser HTTP client — it just keeps the worker from
-  acting as a fully open relay.
+- **OAuth token endpoint (`/proxy/api/oauth/token`)**: open to any caller —
+  `Access-Control-Allow-Origin: *` ensures every frontend can read both
+  success and error bodies.  The `client_id` and `client_secret` are never
+  echoed back to callers.
+- **General proxy (`/proxy/*`)**: restricted to known browser origins
+  (`https://maximumtrainer.github.io` and localhost) and the desktop
+  `X-MT-Client: desktop` header to prevent this worker from acting as a
+  fully open relay.  This is **not** a hard security boundary — it is
+  anti-abuse rate-limiting.
 - Only the headers the API actually needs (`Authorization`, `Content-Type`,
   `Accept`) are forwarded upstream.  `X-MT-Client` is consumed by the
   worker and not forwarded to intervals.icu.
