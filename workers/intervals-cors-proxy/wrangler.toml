@@ -9,10 +9,7 @@ compatibility_date = "2024-01-01"
 # repository variable in GitHub Actions (Settings → Variables → Actions).
 # The pages.yml workflow will inject it into docs/app/index.html.
 
-# Public, non-secret.  The Intervals.icu OAuth application client ID (client 259).
-[vars]
-INTERVALS_CLIENT_ID = "259"
+[[kv_namespaces]]
+binding = "CLIENT_SECRETS"
+id = "32c1af7a534a4e1c939e97f9b93359e3"
 
-# INTERVALS_CLIENT_SECRET is a SECRET — never put it here or commit it.
-# Set it with:
-#   npx wrangler secret put INTERVALS_CLIENT_SECRET
