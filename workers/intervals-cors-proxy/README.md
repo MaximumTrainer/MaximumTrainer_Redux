@@ -43,13 +43,13 @@ desktop) to share a single worker while each uses its own registered client.
 cd workers/intervals-cors-proxy
 
 # Create the production KV namespace
-wrangler kv:namespace create "CLIENT_SECRETS"
+wrangler kv namespace create "CLIENT_SECRETS"
 # Output:  [[kv_namespaces]]
 #          binding = "CLIENT_SECRETS"
 #          id = "<generated-id>"
 
 # (Optional) Create a preview namespace for local development
-wrangler kv:namespace create "CLIENT_SECRETS" --preview
+wrangler kv namespace create "CLIENT_SECRETS" --preview
 ```
 
 Paste each namespace ID into `wrangler.toml` (replace the commented template):
@@ -65,7 +65,7 @@ Then populate the credentials for each OAuth client:
 
 ```bash
 # Store the secret for each OAuth client (repeat for every client_id you register)
-wrangler kv:key put --binding=CLIENT_SECRETS --config wrangler.toml "<client_id>" "<client_secret>"
+wrangler kv key put "<client_id>" "<client_secret>" --binding=CLIENT_SECRETS --config wrangler.toml
 ```
 
 ### 4b — Legacy single-tenant fallback (optional)
@@ -83,7 +83,7 @@ npx wrangler secret put INTERVALS_CLIENT_SECRET
 
 The `deploy-intervals-proxy.yml` workflow handles both paths automatically
 from the `INTERVALS_OAUTH_CLIENT_SECRET` repository secret:
-- If the KV namespace is configured in `wrangler.toml` → writes `kv:key put`
+- If the KV namespace is configured in `wrangler.toml` → writes `kv key put`
 - Always writes the legacy `INTERVALS_CLIENT_SECRET` Worker secret as fallback
 
 > ⚠️ Verify what is actually deployed (JSON body with client_id):

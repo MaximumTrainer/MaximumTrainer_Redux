@@ -44,9 +44,9 @@
  *
  * Deployment:
  *   cd workers/intervals-cors-proxy
- *   wrangler kv:namespace create "CLIENT_SECRETS"   # once; paste ID into wrangler.toml
+ *   wrangler kv namespace create "CLIENT_SECRETS"   # once; paste ID into wrangler.toml
  *   npx wrangler deploy
- *   wrangler kv:key put --binding=CLIENT_SECRETS "<client_id>" "<client_secret>"
+ *   wrangler kv key put "<client_id>" "<client_secret>" --binding=CLIENT_SECRETS
  *
  * After deployment the worker URL (https://<name>.<subdomain>.workers.dev)
  * must be set as the INTERVALS_PROXY_URL repository variable in GitHub so
