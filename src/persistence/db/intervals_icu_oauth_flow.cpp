@@ -131,7 +131,8 @@ void IntervalsIcuOAuthFlow::onNewConnection()
 
 void IntervalsIcuOAuthFlow::exchangeCode(const QString &code)
 {
-    m_tokenReply = ExtRequest::intervalsIcuOAuthExchange(code, m_redirectUri);
+    m_tokenReply = ExtRequest::intervalsIcuOAuthExchange(
+        code, m_redirectUri, Environnement::getIntervalsIcuClientId());
     if (!m_tokenReply) {
         settle(&IntervalsIcuOAuthFlow::failed);
         return;
@@ -141,14 +142,25 @@ void IntervalsIcuOAuthFlow::exchangeCode(const QString &code)
             return; // aborted
         auto *reply = m_tokenReply;
         m_tokenReply = nullptr;
+        const QByteArray body = reply->readAll();
+        const QNetworkReply::NetworkError netErr = reply->error();
+        const QString errString = reply->errorString();
         reply->deleteLater();
-        if (reply->error() != QNetworkReply::NoError) {
+        if (netErr != QNetworkReply::NoError) {
+            // Parse the JSON error payload the Cloudflare Worker returns
+            // with CORS headers (e.g. {"error":"unauthorized_client"}).
+            const QString proxyError =
+                Util::parseJsonIntervalsIcuOAuthErrorPayload(QString::fromUtf8(body));
             LOG_WARN("IntervalsIcuOAuthFlow",
-                     QStringLiteral("token exchange failed: ") + reply->errorString());
+                     QStringLiteral("token exchange failed: %1%2")
+                         .arg(errString,
+                              proxyError.isEmpty()
+                                  ? QString()
+                                  : QStringLiteral(" (proxy error: ") + proxyError + QLatin1Char(')')));
             settle(&IntervalsIcuOAuthFlow::failed);
             return;
         }
-        Util::parseJsonIntervalsIcuOAuthToken(QString::fromUtf8(reply->readAll()));
+        Util::parseJsonIntervalsIcuOAuthToken(QString::fromUtf8(body));
         Account *account = qApp->property("Account").value<Account*>();
         if (account && !account->intervals_icu_access_token.isEmpty()) {
             account->saveIntervalsIcuCredentials();

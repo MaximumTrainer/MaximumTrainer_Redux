@@ -24,20 +24,36 @@ public:
 
 
     //-- Intervals.icu OAuth2
-    /// Exchange an authorization code for an access token by POSTing directly
-    /// to the Intervals.icu token endpoint.  This is used as a client-side
-    /// fallback when the MaximumTrainer.com backend proxy is unavailable.
+    /// Exchange an authorization code for an access token by POSTing to the
+    /// Cloudflare Worker proxy (URL_TOKEN_ICV).  The Worker looks up the
+    /// client_secret in its CLIENT_SECRETS KV namespace keyed by client_id,
+    /// so no app binary carries the secret.
+    ///
+    /// The request body is JSON: { "code": ..., "redirect_uri": ...,
+    /// "client_id": ... }.  On error the Worker returns a JSON payload with
+    /// standard CORS headers, e.g. { "error": "unauthorized_client" }; the
+    /// caller can parse it via Util::parseJsonIntervalsIcuOAuthErrorPayload().
+    ///
     /// @param code        The authorization code received from the redirect URI.
     /// @param redirectUri The exact redirect_uri used in the authorization request.
-    static QNetworkReply* intervalsIcuOAuthExchange(const QString &code, const QString &redirectUri);
+    /// @param clientId    The OAuth2 client_id (mandatory — used by the Worker
+    ///                    to look up the matching client_secret in KV).
+    static QNetworkReply* intervalsIcuOAuthExchange(const QString &code,
+                                                    const QString &redirectUri,
+                                                    const QString &clientId);
 
     /// Exchange a refresh token for a new access + refresh token pair.
     /// POST <Cloudflare proxy>/proxy/oauth/token  (grant_type=refresh_token)
+    /// The request body is JSON: { "grant_type": "refresh_token",
+    /// "refresh_token": ..., "client_id": ... }.
     /// On success, the caller should parse the response with
     /// Util::parseJsonIntervalsIcuOAuthToken() and call
     /// account->saveIntervalsIcuCredentials().
     /// @param refreshToken  The stored OAuth2 refresh token.
-    static QNetworkReply* intervalsIcuOAuthRefresh(const QString &refreshToken);
+    /// @param clientId      The OAuth2 client_id (mandatory — the Worker uses
+    ///                      it to look up the matching client_secret in KV).
+    static QNetworkReply* intervalsIcuOAuthRefresh(const QString &refreshToken,
+                                                   const QString &clientId);
 
 };
 

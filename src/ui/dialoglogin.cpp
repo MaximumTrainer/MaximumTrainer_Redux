@@ -480,7 +480,8 @@ void DialogLogin::onSilentAuthFinished()
         // Token expired → try to refresh it
         LOG_INFO("DialogLogin", QStringLiteral("Silent auth 401 – attempting token refresh"));
         m_tokenRefreshReply = ExtRequest::intervalsIcuOAuthRefresh(
-            account->intervals_icu_refresh_token);
+            account->intervals_icu_refresh_token,
+            Environnement::getIntervalsIcuClientId());
         if (m_tokenRefreshReply) {
             connect(m_tokenRefreshReply, &QNetworkReply::finished,
                     this, &DialogLogin::onTokenRefreshFinished);
@@ -949,7 +950,8 @@ void DialogLogin::onWasmOAuthCodeReceived(const QString &code, const QString &st
     ui->stackedWidget_main->setCurrentIndex(2); // loading page
 
     const QString redirectUri = Environnement::getWasmOAuthRedirectUri();
-    m_wasmTokenReply = ExtRequest::intervalsIcuOAuthExchange(code, redirectUri);
+    const QString clientId    = Environnement::getIntervalsIcuClientId();
+    m_wasmTokenReply = ExtRequest::intervalsIcuOAuthExchange(code, redirectUri, clientId);
     if (!m_wasmTokenReply) {
         LOG_WARN("DialogLogin", QStringLiteral("WASM OAuth: failed to create token exchange request"));
         ui->pushButton_loginIntervalsIcu->setEnabled(true);
@@ -963,6 +965,11 @@ void DialogLogin::onWasmOAuthCodeReceived(const QString &code, const QString &st
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Called when the token exchange request finishes.  Parses the Bearer token,
 /// stores credentials, and proceeds to fetch the athlete profile.
+///
+/// On network failure or non-2xx status, the Cloudflare Worker returns a JSON
+/// error payload with standard CORS headers (e.g. {"error":"unauthorized_client"}).
+/// Util::parseJsonIntervalsIcuOAuthErrorPayload() extracts the error code
+/// string for logging.
 void DialogLogin::onWasmOAuthTokenExchangeFinished()
 {
     if (!m_wasmTokenReply) return;
@@ -976,9 +983,14 @@ void DialogLogin::onWasmOAuthTokenExchangeFinished()
     reply->deleteLater();
 
     if (netErr != QNetworkReply::NoError || (httpStatus != 0 && httpStatus != 200)) {
+        const QString proxyError =
+            Util::parseJsonIntervalsIcuOAuthErrorPayload(QString::fromUtf8(body));
         LOG_WARN("DialogLogin",
-                 QStringLiteral("WASM OAuth: token exchange failed (HTTP %1, err %2)")
-                 .arg(httpStatus).arg(netErr));
+                 QStringLiteral("WASM OAuth: token exchange failed (HTTP %1, err %2)%3")
+                 .arg(httpStatus).arg(netErr)
+                 .arg(proxyError.isEmpty()
+                          ? QString()
+                          : QStringLiteral(" — proxy error: ") + proxyError));
         onOAuthFailed();
         return;
     }

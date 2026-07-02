@@ -136,6 +136,17 @@ public:
     /// access_token, refresh_token, and athlete_id into the global Account.
     static void parseJsonIntervalsIcuOAuthToken(const QString &data);
 
+    /// Intervals.icu OAuth2 — parse a JSON error payload returned by the
+    /// Cloudflare Worker on a failed token exchange (see
+    /// workers/intervals-cors-proxy/worker.js).  The payload has the shape
+    /// { "error": "<code>" } where <code> is one of missing_client_id,
+    /// unauthorized_client, kv_unavailable, worker_misconfigured,
+    /// unsupported_grant_type, upstream_error, internal_error, or an
+    /// upstream OAuth2 error code (invalid_grant, invalid_client, ...).
+    /// Returns the error code string, or an empty QString if the payload is
+    /// not JSON, not an object, or does not carry an "error" field.
+    static QString parseJsonIntervalsIcuOAuthErrorPayload(const QString &data);
+
 
 
 
