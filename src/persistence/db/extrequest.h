@@ -43,7 +43,7 @@ public:
                                                     const QString &clientId);
 
     /// Exchange a refresh token for a new access + refresh token pair.
-    /// POST <Cloudflare proxy>/proxy/oauth/token  (grant_type=refresh_token)
+    /// POST <Cloudflare proxy>/proxy/api/oauth/token (grant_type=refresh_token)
     /// The request body is JSON: { "grant_type": "refresh_token",
     /// "refresh_token": ..., "client_id": ... }.
     /// On success, the caller should parse the response with

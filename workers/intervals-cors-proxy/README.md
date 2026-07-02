@@ -72,11 +72,12 @@ wrangler kv:key put --binding=CLIENT_SECRETS --config wrangler.toml "<client_id>
 ### 4b — Legacy single-tenant fallback (optional)
 
 If the CLIENT_SECRETS KV namespace is not configured, the worker falls back
-to a single `INTERVALS_CLIENT_SECRET` Worker secret.  This is kept for
+to `INTERVALS_CLIENT_ID` + `INTERVALS_CLIENT_SECRET` worker env vars.  This is kept for
 backwards compatibility with existing deployments:
 
 ```bash
 cd workers/intervals-cors-proxy
+printf '259' | npx wrangler secret put INTERVALS_CLIENT_ID
 npx wrangler secret put INTERVALS_CLIENT_SECRET
 # paste the client_secret for intervals.icu OAuth client 259
 ```

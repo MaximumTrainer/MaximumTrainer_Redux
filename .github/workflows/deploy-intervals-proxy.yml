@@ -52,13 +52,13 @@ jobs:
             exit 0
           fi
           # KV path: store secret keyed by client_id ("259").
-          # Requires CLIENT_SECRETS KV namespace to be provisioned and bound in wrangler.toml.
-          # Silently skip if the namespace is not configured (wrangler will error on missing id).
-          if grep -q 'binding = "CLIENT_SECRETS"' wrangler.toml 2>/dev/null; then
+          # Requires a non-commented CLIENT_SECRETS binding and id in wrangler.toml.
+          if grep -Eq '^[[:space:]]*binding[[:space:]]*=[[:space:]]*"CLIENT_SECRETS"[[:space:]]*$' wrangler.toml 2>/dev/null \
+            && grep -Eq '^[[:space:]]*id[[:space:]]*=[[:space:]]*"[[:graph:]]+"[[:space:]]*$' wrangler.toml 2>/dev/null; then
             npx wrangler kv:key put --binding=CLIENT_SECRETS "259" "$INTERVALS_OAUTH_CLIENT_SECRET" --config wrangler.toml
             echo "KV entry for client_id=259 written."
           else
-            echo "CLIENT_SECRETS KV namespace not configured in wrangler.toml — skipping KV step."
+            echo "CLIENT_SECRETS KV namespace binding/id not configured in wrangler.toml — skipping KV step."
           fi
           # Legacy wrangler-secret fallback (single-tenant env-var mode).
           printf '%s' "$INTERVALS_OAUTH_CLIENT_SECRET" | npx wrangler secret put INTERVALS_CLIENT_SECRET --config wrangler.toml

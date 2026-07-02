@@ -141,7 +141,7 @@ public:
     /// workers/intervals-cors-proxy/worker.js).  The payload has the shape
     /// { "error": "<code>" } where <code> is one of missing_client_id,
     /// unauthorized_client, kv_unavailable, worker_misconfigured,
-    /// unsupported_grant_type, upstream_error, internal_error, or an
+    /// unsupported_grant_type, internal_error, or an
     /// upstream OAuth2 error code (invalid_grant, invalid_client, ...).
     /// Returns the error code string, or an empty QString if the payload is
     /// not JSON, not an object, or does not carry an "error" field.
