@@ -1,5 +1,4 @@
 #include "extrequest.h"
-#include "util.h"
 #include "logger.h"
 
 #include <QHttpMultiPart>
@@ -71,29 +70,38 @@ QNetworkReply* ExtRequest::stravaDeauthorization(QString access_token) {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// POST URL_TOKEN_ICV  (grant_type=authorization_code)
 /// Exchanges an authorization code for an OAuth2 access + refresh token pair.
-/// All platforms go through the Cloudflare Worker, which injects the
-/// client_secret server-side (single source of truth, like the Strava token
-/// Worker — see URL_TOKEN_ICV in environnement.h).
-QNetworkReply* ExtRequest::intervalsIcuOAuthExchange(const QString &code, const QString &redirectUri)
+/// All platforms go through the Cloudflare Worker, which looks up the
+/// client_secret in its CLIENT_SECRETS KV namespace keyed by the supplied
+/// client_id.  The Worker returns standard OAuth2 JSON on success and a
+/// JSON error payload with CORS headers on failure (see
+/// workers/intervals-cors-proxy/worker.js — e.g. {"error":"unauthorized_client"}).
+///
+/// Body is JSON: { "code": ..., "redirect_uri": ..., "client_id": ... }.
+/// The Worker also accepts application/x-www-form-urlencoded for legacy
+/// callers, but JSON is the canonical multi-tenant shape.
+QNetworkReply* ExtRequest::intervalsIcuOAuthExchange(const QString &code,
+                                                     const QString &redirectUri,
+                                                     const QString &clientId)
 {
     QNetworkAccessManager *managerWS = qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!managerWS) {
         LOG_WARN("ExtRequest", QStringLiteral("intervalsIcuOAuthExchange: NetworkManagerWS not available"));
         return nullptr;
     }
+    if (clientId.isEmpty()) {
+        LOG_WARN("ExtRequest", QStringLiteral("intervalsIcuOAuthExchange: client_id is empty"));
+        return nullptr;
+    }
 
-    QUrlQuery postData;
-    postData.addQueryItem("grant_type",    "authorization_code");
-    postData.addQueryItem("client_id",     Environnement::getIntervalsIcuClientId());
-    postData.addQueryItem("code",          code);
-    postData.addQueryItem("redirect_uri",  redirectUri);
-    const QString secret = Environnement::getIntervalsIcuClientSecret();
-    if (!secret.isEmpty())
-        postData.addQueryItem("client_secret", secret);
+    QJsonObject body;
+    body.insert(QStringLiteral("code"),         code);
+    body.insert(QStringLiteral("redirect_uri"), redirectUri);
+    body.insert(QStringLiteral("client_id"),    clientId);
 
     QNetworkRequest request;
     request.setUrl(QUrl(URL_TOKEN_ICV));
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setRawHeader("Accept", "application/json");
 #ifndef Q_OS_WASM
     // Identify ourselves to the proxy's allow-list.  We deliberately do NOT
     // set Origin: the desktop build is not a browser and is not subject to
@@ -102,40 +110,46 @@ QNetworkReply* ExtRequest::intervalsIcuOAuthExchange(const QString &code, const 
                          INTERVALS_PROXY_DESKTOP_CLIENT_VALUE.toUtf8());
 #endif
 
-    return managerWS->post(request, postData.toString(QUrl::FullyEncoded).toUtf8());
+    return managerWS->post(request, QJsonDocument(body).toJson(QJsonDocument::Compact));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// POST <token endpoint>  (grant_type=refresh_token)
 /// Exchanges a stored refresh token for a new access + refresh token pair.
-/// Same endpoint and client_secret requirement as intervalsIcuOAuthExchange.
-/// The caller must connect finished() and parse the response with
-/// Util::parseJsonIntervalsIcuOAuthToken(), then call
+/// Same endpoint and Worker-side client_secret lookup as
+/// intervalsIcuOAuthExchange.  The caller must connect finished() and parse
+/// the response with Util::parseJsonIntervalsIcuOAuthToken(), then call
 /// account->saveIntervalsIcuCredentials().
-QNetworkReply* ExtRequest::intervalsIcuOAuthRefresh(const QString &refreshToken)
+///
+/// Body is JSON: { "grant_type": "refresh_token",
+///                 "refresh_token": ..., "client_id": ... }.
+QNetworkReply* ExtRequest::intervalsIcuOAuthRefresh(const QString &refreshToken,
+                                                    const QString &clientId)
 {
     QNetworkAccessManager *managerWS = qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
     if (!managerWS) {
         LOG_WARN("ExtRequest", QStringLiteral("intervalsIcuOAuthRefresh: NetworkManagerWS not available"));
         return nullptr;
     }
+    if (clientId.isEmpty()) {
+        LOG_WARN("ExtRequest", QStringLiteral("intervalsIcuOAuthRefresh: client_id is empty"));
+        return nullptr;
+    }
 
-    QUrlQuery postData;
-    postData.addQueryItem("grant_type",    "refresh_token");
-    postData.addQueryItem("client_id",     Environnement::getIntervalsIcuClientId());
-    postData.addQueryItem("refresh_token", refreshToken);
-    const QString secret = Environnement::getIntervalsIcuClientSecret();
-    if (!secret.isEmpty())
-        postData.addQueryItem("client_secret", secret);
+    QJsonObject body;
+    body.insert(QStringLiteral("grant_type"),    QStringLiteral("refresh_token"));
+    body.insert(QStringLiteral("refresh_token"), refreshToken);
+    body.insert(QStringLiteral("client_id"),     clientId);
 
     QNetworkRequest request;
     request.setUrl(QUrl(URL_TOKEN_ICV));
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setRawHeader("Accept", "application/json");
 #ifndef Q_OS_WASM
     request.setRawHeader(INTERVALS_PROXY_CLIENT_HEADER.toUtf8(),
                          INTERVALS_PROXY_DESKTOP_CLIENT_VALUE.toUtf8());
 #endif
 
     LOG_INFO("ExtRequest", QStringLiteral("intervalsIcuOAuthRefresh: refreshing access token"));
-    return managerWS->post(request, postData.toString(QUrl::FullyEncoded).toUtf8());
+    return managerWS->post(request, QJsonDocument(body).toJson(QJsonDocument::Compact));
 }

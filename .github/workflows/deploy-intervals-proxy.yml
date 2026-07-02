@@ -38,8 +38,10 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       # intervals.icu requires the client_secret on /api/oauth/token (HTTP 422
-      # without it).  Install it as a Worker secret so the worker injects it
-      # server-side and no app binary has to carry it (see worker.js).
+      # without it).  The preferred path is KV (multi-tenant): store the secret
+      # keyed by client_id so the worker can serve any registered client.
+      # The legacy wrangler-secret path is kept as a fallback for deployments
+      # that have not yet provisioned the KV namespace.
       - name: Install OAuth client_secret on the worker
         working-directory: workers/intervals-cors-proxy
         run: |
@@ -49,6 +51,32 @@ jobs:
             echo "a baked-in secret (qmake INTERVALS_OAUTH_CLIENT_SECRET)."
             exit 0
           fi
+          # KV path: store secret keyed by client_id ("259").
+          # Requires a non-commented CLIENT_SECRETS binding and id in the same kv_namespaces block.
+          if awk '
+            BEGIN { in_kv=0; has_binding=0; has_id=0; found=0 }
+            /^\[\[kv_namespaces\]\]/ {
+              if (in_kv && has_binding && has_id) found=1;
+              in_kv=1; has_binding=0; has_id=0; next;
+            }
+            {
+              line=$0;
+              sub(/#.*/, "", line);
+              if (!in_kv) next;
+              if (line ~ /^[[:space:]]*binding[[:space:]]*=[[:space:]]*"CLIENT_SECRETS"[[:space:]]*$/) has_binding=1;
+              if (line ~ /^[[:space:]]*id[[:space:]]*=[[:space:]]*"[^"]+"[[:space:]]*$/) has_id=1;
+            }
+            END {
+              if (in_kv && has_binding && has_id) found=1;
+              exit(found ? 0 : 1);
+            }
+          ' wrangler.toml 2>/dev/null; then
+            npx wrangler kv:key put --binding=CLIENT_SECRETS "259" "$INTERVALS_OAUTH_CLIENT_SECRET" --config wrangler.toml
+            echo "KV entry for client_id=259 written."
+          else
+            echo "CLIENT_SECRETS KV namespace binding/id not configured in wrangler.toml — skipping KV step."
+          fi
+          # Legacy wrangler-secret fallback (single-tenant env-var mode).
           printf '%s' "$INTERVALS_OAUTH_CLIENT_SECRET" | npx wrangler secret put INTERVALS_CLIENT_SECRET --config wrangler.toml
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

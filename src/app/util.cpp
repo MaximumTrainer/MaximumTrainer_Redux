@@ -905,6 +905,21 @@ void Util::parseJsonIntervalsIcuOAuthToken(const QString &data)
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Extract the "error" field from a JSON error payload returned by the
+// intervals-cors-proxy Cloudflare Worker.  Returns an empty QString when the
+// body is empty, non-JSON, non-object, or has no "error" key — never throws.
+QString Util::parseJsonIntervalsIcuOAuthErrorPayload(const QString &data)
+{
+    if (data.isEmpty())
+        return QString();
+    QJsonDocument doc = QJsonDocument::fromJson(data.toUtf8());
+    if (doc.isNull() || !doc.isObject())
+        return QString();
+    return doc.object().value(QStringLiteral("error")).toString();
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  Local radio list — stored as JSON under the MaximumTrainer document root.
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
