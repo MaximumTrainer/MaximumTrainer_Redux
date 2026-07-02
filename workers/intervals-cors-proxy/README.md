@@ -64,7 +64,6 @@ preview_id = "<your-generated-preview-namespace-id>"   # from the --preview comm
 Then populate the credentials for each OAuth client:
 
 ```bash
-# Store the secret for Intervals.icu OAuth client 259
 # Store the secret for each OAuth client (repeat for every client_id you register)
 wrangler kv:key put --binding=CLIENT_SECRETS --config wrangler.toml "<client_id>" "<client_secret>"
 ```

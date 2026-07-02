@@ -52,9 +52,25 @@ jobs:
             exit 0
           fi
           # KV path: store secret keyed by client_id ("259").
-          # Requires a non-commented CLIENT_SECRETS binding and id in wrangler.toml.
-          if grep -Eq '^[[:space:]]*binding[[:space:]]*=[[:space:]]*"CLIENT_SECRETS"[[:space:]]*$' wrangler.toml 2>/dev/null \
-            && grep -Eq '^[[:space:]]*id[[:space:]]*=[[:space:]]*"[[:graph:]]+"[[:space:]]*$' wrangler.toml 2>/dev/null; then
+          # Requires a non-commented CLIENT_SECRETS binding and id in the same kv_namespaces block.
+          if awk '
+            BEGIN { in_kv=0; has_binding=0; has_id=0; found=0 }
+            /^\[\[kv_namespaces\]\]/ {
+              if (in_kv && has_binding && has_id) found=1;
+              in_kv=1; has_binding=0; has_id=0; next;
+            }
+            {
+              line=$0;
+              sub(/#.*/, "", line);
+              if (!in_kv) next;
+              if (line ~ /^[[:space:]]*binding[[:space:]]*=[[:space:]]*"CLIENT_SECRETS"[[:space:]]*$/) has_binding=1;
+              if (line ~ /^[[:space:]]*id[[:space:]]*=[[:space:]]*"[^"]+"[[:space:]]*$/) has_id=1;
+            }
+            END {
+              if (in_kv && has_binding && has_id) found=1;
+              exit(found ? 0 : 1);
+            }
+          ' wrangler.toml 2>/dev/null; then
             npx wrangler kv:key put --binding=CLIENT_SECRETS "259" "$INTERVALS_OAUTH_CLIENT_SECRET" --config wrangler.toml
             echo "KV entry for client_id=259 written."
           else
