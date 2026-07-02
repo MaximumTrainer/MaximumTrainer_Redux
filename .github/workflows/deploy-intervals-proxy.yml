@@ -71,7 +71,7 @@ jobs:
               exit(found ? 0 : 1);
             }
           ' wrangler.toml 2>/dev/null; then
-            npx wrangler kv:key put --binding=CLIENT_SECRETS "259" "$INTERVALS_OAUTH_CLIENT_SECRET" --config wrangler.toml
+            npx wrangler kv key put "259" "$INTERVALS_OAUTH_CLIENT_SECRET" --binding=CLIENT_SECRETS --config wrangler.toml
             echo "KV entry for client_id=259 written."
           else
             echo "CLIENT_SECRETS KV namespace binding/id not configured in wrangler.toml — skipping KV step."
