@@ -33,22 +33,47 @@ In your GitHub repo → Settings → Secrets and variables → Actions:
 | Secret | `CLOUDFLARE_API_TOKEN` | your token from step 2 |
 | Secret | `CLOUDFLARE_ACCOUNT_ID` | your account ID from step 2 |
 
-### 4 — Deploy the worker
+### 4 — Provision the CLIENT_SECRETS KV namespace (multi-tenant, recommended)
 
-Either via GitHub Actions (automatic after setting the secrets — `pages.yml`
-will deploy on every push to master) **or** manually:
+The worker looks up each client's OAuth secret from a Cloudflare KV namespace
+keyed by `client_id`.  This allows multiple applications (WASM, VirtualRow,
+desktop) to share a single worker while each uses its own registered client.
 
 ```bash
 cd workers/intervals-cors-proxy
-npx wrangler deploy --account-id <YOUR_ACCOUNT_ID>
+
+# Create the production KV namespace
+wrangler kv:namespace create "CLIENT_SECRETS"
+# Output:  [[kv_namespaces]]
+#          binding = "CLIENT_SECRETS"
+#          id = "<generated-id>"
+
+# (Optional) Create a preview namespace for local development
+wrangler kv:namespace create "CLIENT_SECRETS" --preview
 ```
 
-### 4b — Set the OAuth client_secret (REQUIRED for login)
+Paste each namespace ID into `wrangler.toml` (replace the commented template):
 
-intervals.icu **requires the `client_secret`** on `/api/oauth/token` requests
-(HTTP 422 without it).  Store it as a Worker secret so the worker can inject
-it server-side — neither the WASM nor the desktop binary then needs to carry
-it:
+```toml
+[[kv_namespaces]]
+binding = "CLIENT_SECRETS"
+id = "<your-generated-namespace-id>"
+preview_id = "<your-generated-preview-namespace-id>"   # from the --preview command
+```
+
+Then populate the credentials for each OAuth client:
+
+```bash
+# Store the secret for Intervals.icu OAuth client 259
+# Store the secret for each OAuth client (repeat for every client_id you register)
+wrangler kv:key put --binding=CLIENT_SECRETS --config wrangler.toml "<client_id>" "<client_secret>"
+```
+
+### 4b — Legacy single-tenant fallback (optional)
+
+If the CLIENT_SECRETS KV namespace is not configured, the worker falls back
+to a single `INTERVALS_CLIENT_SECRET` Worker secret.  This is kept for
+backwards compatibility with existing deployments:
 
 ```bash
 cd workers/intervals-cors-proxy
@@ -56,22 +81,32 @@ npx wrangler secret put INTERVALS_CLIENT_SECRET
 # paste the client_secret for intervals.icu OAuth client 259
 ```
 
-The `deploy-intervals-proxy.yml` workflow does this automatically from the
-`INTERVALS_OAUTH_CLIENT_SECRET` repository secret (and verifies the deployed
-URL actually proxies), so a `workflow_dispatch` run of that workflow is the
-easiest way to deploy correctly.
+The `deploy-intervals-proxy.yml` workflow handles both paths automatically
+from the `INTERVALS_OAUTH_CLIENT_SECRET` repository secret:
+- If the KV namespace is configured in `wrangler.toml` → writes `kv:key put`
+- Always writes the legacy `INTERVALS_CLIENT_SECRET` Worker secret as fallback
 
-> ⚠️ Verify what is actually deployed (JSON body, no auth required):
+> ⚠️ Verify what is actually deployed (JSON body with client_id):
 > ```bash
 > curl -s -X POST https://<worker-url>/proxy/api/oauth/token \
 >   -H 'Content-Type: application/json' \
->   -d '{"code":"x","redirect_uri":"http://localhost:1/"}'
+>   -d '{"client_id":"259","code":"x","redirect_uri":"http://localhost:1/"}'
 > ```
 > should return an intervals.icu JSON error (e.g. *invalid code*), **not** an
-> empty 404.  Legacy form-encoded input is also accepted for backwards
-> compatibility.
+> empty 404 or a `{"error":"unauthorized_client"}` 401.
 
-### 5 — Note the worker URL
+### 5 — Deploy the worker
+
+Either via GitHub Actions (automatic after setting the secrets — the
+`deploy-intervals-proxy.yml` workflow deploys on every push to master that
+touches `workers/intervals-cors-proxy/**`) **or** manually:
+
+```bash
+cd workers/intervals-cors-proxy
+npx wrangler deploy --account-id <YOUR_ACCOUNT_ID>
+```
+
+### 6 — Note the worker URL
 
 After deployment, Wrangler prints something like:
 
@@ -82,7 +117,7 @@ Published mt-intervals-proxy (0.12 sec)
 
 Copy that URL.
 
-### 6 — Set `INTERVALS_PROXY_URL` in GitHub
+### 7 — Set `INTERVALS_PROXY_URL` in GitHub
 
 Repo → Settings → Secrets and variables → Actions → Variables tab:
 
@@ -90,7 +125,7 @@ Repo → Settings → Secrets and variables → Actions → Variables tab:
 |------|-------|
 | `INTERVALS_PROXY_URL` | `https://mt-intervals-proxy.<your-subdomain>.workers.dev` |
 
-### 7 — Trigger a pages.yml re-deploy
+### 8 — Trigger a pages.yml re-deploy
 
 Push any change to `docs/` or `master`, or manually trigger the
 "Deploy GitHub Pages" workflow.  The workflow injects `INTERVALS_PROXY_URL`
@@ -100,28 +135,47 @@ proxy all `intervals.icu` requests through the Worker.
 ## OAuth token exchange
 
 The dedicated token endpoint (`POST /proxy/api/oauth/token`) is open to any
-caller — no `Origin` or `X-MT-Client` header required.  The worker constructs
-the outbound `application/x-www-form-urlencoded` payload from env variables so
-callers only need to supply `code` and `redirect_uri`:
+caller — no `Origin` or `X-MT-Client` header required.  Callers must supply
+`client_id` so the worker can look up the corresponding secret from the KV
+store:
 
 **JSON input (preferred):**
 ```json
-{ "code": "<authorization_code>", "redirect_uri": "<redirect_uri>" }
+{ "client_id": "259", "code": "<authorization_code>", "redirect_uri": "<redirect_uri>" }
 ```
 
 **Form-encoded input (legacy / desktop client):**
 ```
-grant_type=authorization_code&code=<code>&redirect_uri=<redirect_uri>
+grant_type=authorization_code&client_id=259&code=<code>&redirect_uri=<redirect_uri>
 ```
 
 **Refresh token (JSON or form-encoded):**
 ```json
-{ "grant_type": "refresh_token", "refresh_token": "<token>" }
+{ "grant_type": "refresh_token", "client_id": "259", "refresh_token": "<token>" }
 ```
 
-The worker appends `grant_type=authorization_code`, `client_id`, and
-`client_secret` from `env` before forwarding to
+The worker looks up the `client_secret` from the `CLIENT_SECRETS` KV namespace
+using the supplied `client_id` as the key, then appends `grant_type`,
+`client_id`, and the retrieved `client_secret` before forwarding to
 `https://intervals.icu/api/oauth/token`.
+
+**Error responses (KV mode — `CLIENT_SECRETS` binding configured):**
+
+| HTTP | `error` field | Cause |
+|------|---------------|-------|
+| 400 | `missing_client_id` | Request body contains no `client_id` |
+| 401 | `unauthorized_client` | `client_id` not registered in KV |
+| 400 | `unsupported_grant_type` | `grant_type` is not `authorization_code` or `refresh_token` |
+| 503 | `kv_unavailable` | KV namespace is unreachable or timed out |
+| 500 | `internal_error` | Unexpected exception |
+
+**Error responses (legacy env-var mode — no KV binding):**
+
+| HTTP | `error` field | Cause |
+|------|---------------|-------|
+| 500 | `worker_misconfigured` | `INTERVALS_CLIENT_ID` or `INTERVALS_CLIENT_SECRET` env var missing |
+| 400 | `unsupported_grant_type` | `grant_type` is not `authorization_code` or `refresh_token` |
+| 500 | `internal_error` | Unexpected exception |
 
 ---
 
@@ -130,7 +184,7 @@ The worker appends `grant_type=authorization_code`, `client_id`, and
 ```
 Any frontend (WASM, VirtualRow, maximum_trainer, …)
   → https://mt-intervals-proxy.<subdomain>.workers.dev/proxy/api/oauth/token
-  → Cloudflare Worker (builds form body, injects credentials, adds CORS *)
+  → Cloudflare Worker (KV secret lookup, builds form body, adds CORS *)
   → https://intervals.icu/api/oauth/token
 
 WASM app (browser, general API calls)
@@ -149,8 +203,8 @@ is made.
 
 - **OAuth token endpoint (`/proxy/api/oauth/token`)**: open to any caller —
   `Access-Control-Allow-Origin: *` ensures every frontend can read both
-  success and error bodies.  The `client_id` and `client_secret` are never
-  echoed back to callers.
+  success and error bodies.  The `client_secret` is looked up from KV and
+  never echoed back to callers.  Unknown `client_id` values receive a 401.
 - **General proxy (`/proxy/*`)**: restricted to known browser origins
   (`https://maximumtrainer.github.io` and localhost) and the desktop
   `X-MT-Client: desktop` header to prevent this worker from acting as a
@@ -169,6 +223,8 @@ is made.
 | Requests/day | 100,000 |
 | CPU time/request | 10 ms |
 | Workers | 100 |
+| KV reads/day | 100,000 |
+| KV writes/day | 1,000 |
 
 A typical session (login + 3–5 API calls) uses well under the daily limit
 for any realistic user volume.

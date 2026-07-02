@@ -9,10 +9,26 @@ compatibility_date = "2024-01-01"
 # repository variable in GitHub Actions (Settings → Variables → Actions).
 # The pages.yml workflow will inject it into docs/app/index.html.
 
-# Public, non-secret.  The Intervals.icu OAuth application client ID (client 259).
+# Public, non-secret.  Used only as the legacy single-tenant fallback when
+# the CLIENT_SECRETS KV namespace is not yet configured.
 [vars]
 INTERVALS_CLIENT_ID = "259"
 
 # INTERVALS_CLIENT_SECRET is a SECRET — never put it here or commit it.
-# Set it with:
+# Used only as the legacy single-tenant fallback.  Set it with:
 #   npx wrangler secret put INTERVALS_CLIENT_SECRET
+#
+# ── Multi-tenant KV store (preferred) ─────────────────────────────────────
+# Provision once:
+#   wrangler kv:namespace create "CLIENT_SECRETS"             # production
+#   wrangler kv:namespace create "CLIENT_SECRETS" --preview   # local dev (optional)
+# Each command outputs a separate namespace ID.
+# Paste both IDs below and uncomment the block:
+#
+# [[kv_namespaces]]
+# binding = "CLIENT_SECRETS"
+# id = "<your-generated-namespace-id>"
+# preview_id = "<your-generated-preview-namespace-id>"   # from the --preview command
+#
+# Then populate client credentials:
+#   wrangler kv:key put --binding=CLIENT_SECRETS --config wrangler.toml "259" "<your_intervals_secret>"

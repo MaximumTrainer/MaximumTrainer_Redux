@@ -38,8 +38,10 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       # intervals.icu requires the client_secret on /api/oauth/token (HTTP 422
-      # without it).  Install it as a Worker secret so the worker injects it
-      # server-side and no app binary has to carry it (see worker.js).
+      # without it).  The preferred path is KV (multi-tenant): store the secret
+      # keyed by client_id so the worker can serve any registered client.
+      # The legacy wrangler-secret path is kept as a fallback for deployments
+      # that have not yet provisioned the KV namespace.
       - name: Install OAuth client_secret on the worker
         working-directory: workers/intervals-cors-proxy
         run: |
@@ -49,6 +51,16 @@ jobs:
             echo "a baked-in secret (qmake INTERVALS_OAUTH_CLIENT_SECRET)."
             exit 0
           fi
+          # KV path: store secret keyed by client_id ("259").
+          # Requires CLIENT_SECRETS KV namespace to be provisioned and bound in wrangler.toml.
+          # Silently skip if the namespace is not configured (wrangler will error on missing id).
+          if grep -q 'binding = "CLIENT_SECRETS"' wrangler.toml 2>/dev/null; then
+            npx wrangler kv:key put --binding=CLIENT_SECRETS "259" "$INTERVALS_OAUTH_CLIENT_SECRET" --config wrangler.toml
+            echo "KV entry for client_id=259 written."
+          else
+            echo "CLIENT_SECRETS KV namespace not configured in wrangler.toml — skipping KV step."
+          fi
+          # Legacy wrangler-secret fallback (single-tenant env-var mode).
           printf '%s' "$INTERVALS_OAUTH_CLIENT_SECRET" | npx wrangler secret put INTERVALS_CLIENT_SECRET --config wrangler.toml
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

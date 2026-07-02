@@ -15,17 +15,23 @@
  *   /proxy/<path>?<query>  →  https://intervals.icu/<path>?<query>
  *
  * OAuth token exchange (POST /proxy/api/oauth/token):
- *   Accepts a JSON body with { code, redirect_uri } from any frontend
- *   (WASM, VirtualRow, maximum_trainer, etc.).  The worker constructs the
- *   outbound application/x-www-form-urlencoded payload, appending
- *   grant_type=authorization_code, client_id, and client_secret from env
- *   so that neither the WASM binary nor the desktop app carry the secret.
+ *   Accepts a JSON body with { code, redirect_uri, client_id } from any
+ *   frontend (WASM, VirtualRow, maximum_trainer, etc.).  The worker looks
+ *   up the client_secret from the CLIENT_SECRETS KV namespace keyed by the
+ *   supplied client_id, then constructs the outbound
+ *   application/x-www-form-urlencoded payload so that no app binary carries
+ *   the secret.  Returns 401 if the client_id is not registered in KV.
  *
- *   Also accepts a JSON body with { refresh_token } for the refresh flow.
+ *   Also accepts a JSON body with { grant_type: "refresh_token",
+ *   refresh_token, client_id } for the refresh flow.
  *
  *   For backwards-compatibility, application/x-www-form-urlencoded input
- *   is also accepted; the worker extracts code/redirect_uri/refresh_token
- *   and rebuilds the full payload from env credentials.
+ *   is also accepted; the worker extracts client_id/code/redirect_uri/
+ *   refresh_token and rebuilds the full payload from KV credentials.
+ *
+ *   Legacy fallback: if the CLIENT_SECRETS KV binding is not configured,
+ *   the worker falls back to the env vars INTERVALS_CLIENT_ID /
+ *   INTERVALS_CLIENT_SECRET (single-tenant mode, pre-KV behaviour).
  *
  * Security:
  *   - CORS is unrestricted (Access-Control-Allow-Origin: *) so every
@@ -38,8 +44,9 @@
  *
  * Deployment:
  *   cd workers/intervals-cors-proxy
+ *   wrangler kv:namespace create "CLIENT_SECRETS"   # once; paste ID into wrangler.toml
  *   npx wrangler deploy
- *   npx wrangler secret put INTERVALS_CLIENT_SECRET
+ *   wrangler kv:key put --binding=CLIENT_SECRETS "<client_id>" "<client_secret>"
  *
  * After deployment the worker URL (https://<name>.<subdomain>.workers.dev)
  * must be set as the INTERVALS_PROXY_URL repository variable in GitHub so
@@ -111,17 +118,13 @@ export default {
     // ── OAuth token exchange ───────────────────────────────────────────────
     // Handled before the origin/client allow-list check so that any frontend
     // can exchange an authorization code or refresh a token.  The client_id
-    // and client_secret are injected here server-side and never sent to or
-    // echoed back to callers.
+    // is supplied by the caller; the client_secret is looked up server-side
+    // from the CLIENT_SECRETS KV namespace and never echoed back to callers.
     if (request.method === 'POST' && url.pathname === '/proxy' + ICU_TOKEN_PATH) {
       try {
-        if (!env.INTERVALS_CLIENT_ID || !env.INTERVALS_CLIENT_SECRET) {
-          return jsonError('worker_misconfigured', 500);
-        }
-
         // Accept both JSON and application/x-www-form-urlencoded input.
         const contentType = (request.headers.get('content-type') || '').toLowerCase();
-        let code, redirectUri, refreshToken, grantType;
+        let code, redirectUri, refreshToken, grantType, clientId;
 
         if (contentType.includes('application/json')) {
           const json = await request.json();
@@ -129,12 +132,14 @@ export default {
           redirectUri  = json.redirect_uri;
           refreshToken = json.refresh_token;
           grantType    = json.grant_type;
+          clientId     = json.client_id;
         } else {
           const form = new URLSearchParams(await request.text());
           code         = form.get('code');
           redirectUri  = form.get('redirect_uri');
           refreshToken = form.get('refresh_token');
           grantType    = form.get('grant_type');
+          clientId     = form.get('client_id');
         }
 
         // Infer grant type from the fields present when the caller omits it.
@@ -142,10 +147,36 @@ export default {
           grantType = refreshToken ? 'refresh_token' : 'authorization_code';
         }
 
+        // Resolve client credentials.
+        // KV path (multi-tenant): CLIENT_SECRETS binding maps client_id → secret.
+        // Env-var fallback (single-tenant, legacy): INTERVALS_CLIENT_ID + INTERVALS_CLIENT_SECRET.
+        let resolvedClientId, clientSecret;
+        if (env.CLIENT_SECRETS) {
+          if (!clientId) {
+            return jsonError('missing_client_id', 400);
+          }
+          try {
+            clientSecret = await env.CLIENT_SECRETS.get(clientId);
+          } catch (_kvErr) {
+            console.error('CLIENT_SECRETS KV lookup failed:', _kvErr);
+            return jsonError('kv_unavailable', 503);
+          }
+          if (clientSecret === null) {
+            return jsonError('unauthorized_client', 401);
+          }
+          resolvedClientId = clientId;
+        } else {
+          if (!env.INTERVALS_CLIENT_ID || !env.INTERVALS_CLIENT_SECRET) {
+            return jsonError('worker_misconfigured', 500);
+          }
+          resolvedClientId = env.INTERVALS_CLIENT_ID;
+          clientSecret     = env.INTERVALS_CLIENT_SECRET;
+        }
+
         const params = new URLSearchParams();
         params.set('grant_type',    grantType);
-        params.set('client_id',     env.INTERVALS_CLIENT_ID);
-        params.set('client_secret', env.INTERVALS_CLIENT_SECRET);
+        params.set('client_id',     resolvedClientId);
+        params.set('client_secret', clientSecret);
 
         if (grantType === 'authorization_code') {
           if (code)        params.set('code',         code);
