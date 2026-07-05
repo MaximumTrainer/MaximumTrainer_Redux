@@ -1,4 +1,5 @@
 #include "studiowidget.h"
+#include "asyncdialogs.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -497,6 +498,7 @@ void StudioWidget::saveErg(int riderIndex, bool control, int ramp)
 
 void StudioWidget::onExportClicked()
 {
+#ifndef GC_WASM_BUILD
     QString path = QFileDialog::getSaveFileName(
         this, tr("Export Studio Configuration"),
         QStringLiteral("studio_config.json"), tr("Studio configuration (*.json)"));
@@ -504,6 +506,7 @@ void StudioWidget::onExportClicked()
         return;
     if (!path.endsWith(QLatin1String(".json"), Qt::CaseInsensitive))
         path += QLatin1String(".json");
+#endif
 
     QJsonObject root;
     root[QStringLiteral("version")]  = 1;
@@ -547,18 +550,36 @@ void StudioWidget::onExportClicked()
     }
     root[QStringLiteral("riders")] = ridersArr;
 
+    const QByteArray json = QJsonDocument(root).toJson(QJsonDocument::Indented);
+#ifdef GC_WASM_BUILD
+    // Browser download: getSaveFileName would spin a fatal nested event loop
+    // on WASM, and the browser exposes no local paths anyway.
+    QFileDialog::saveFileContent(json, QStringLiteral("studio_config.json"));
+#else
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly)) {
-        QMessageBox::warning(this, tr("Export failed"),
-                             tr("Could not write to %1").arg(path));
+        AsyncDialogs::warning(this, tr("Export failed"),
+                              tr("Could not write to %1").arg(path));
         return;
     }
-    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    file.write(json);
     file.close();
+#endif
 }
 
 void StudioWidget::onImportClicked()
 {
+#ifdef GC_WASM_BUILD
+    // Browser file picker with async callback: getOpenFileName would spin a
+    // fatal nested event loop on WASM.
+    QFileDialog::getOpenFileContent(
+        tr("Studio configuration (*.json)"),
+        [this](const QString &fileName, const QByteArray &content) {
+            if (fileName.isEmpty())
+                return;   // picker cancelled
+            applyImportedStudioJson(content);
+        });
+#else
     const QString path = QFileDialog::getOpenFileName(
         this, tr("Import Studio Configuration"),
         QString(), tr("Studio configuration (*.json)"));
@@ -567,16 +588,21 @@ void StudioWidget::onImportClicked()
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
-        QMessageBox::warning(this, tr("Import failed"),
-                             tr("Could not read %1").arg(path));
+        AsyncDialogs::warning(this, tr("Import failed"),
+                              tr("Could not read %1").arg(path));
         return;
     }
+    applyImportedStudioJson(file.readAll());
+#endif
+}
+
+void StudioWidget::applyImportedStudioJson(const QByteArray &json)
+{
     QJsonParseError parseError;
-    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parseError);
-    file.close();
+    const QJsonDocument doc = QJsonDocument::fromJson(json, &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        QMessageBox::warning(this, tr("Import failed"),
-                             tr("This is not a valid studio configuration file."));
+        AsyncDialogs::warning(this, tr("Import failed"),
+                              tr("This is not a valid studio configuration file."));
         return;
     }
 

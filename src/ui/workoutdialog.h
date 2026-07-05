@@ -222,6 +222,8 @@ private slots:
 
     void insertInterval();
     void moveToInterval(int nb, double secWorkout, double startIntervalSec, bool showConfirmation);
+    // Confirmed half of moveToInterval (runs after the async confirmation).
+    void applyMoveToInterval(int nbIntervalToDelete);
     void adjustWorkoutDifficulty(int percentage);
 
     // Post-workout upload slots

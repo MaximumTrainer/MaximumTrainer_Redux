@@ -1,5 +1,6 @@
 #include "dialogmainwindowconfig.h"
 #include "ui_dialogmainwindowconfig.h"
+#include "asyncdialogs.h"
 
 #include <QDebug>
 #include <QFileDialog>
@@ -211,16 +212,16 @@ void DialogMainWindowConfig::stravaLabelClicked() {
         if (linked) {
             stravaLinked(true);
         } else {
-            QMessageBox::warning(this, tr("Strava"),
-                                 tr("Could not connect to Strava. Please try again."));
+            AsyncDialogs::warning(this, tr("Strava"),
+                                  tr("Could not connect to Strava. Please try again."));
         }
     });
 
     if (!flow->start()) {
         flow->deleteLater();
-        QMessageBox::warning(this, tr("Strava"),
-                             tr("Could not start the local login listener. "
-                                "Please try again."));
+        AsyncDialogs::warning(this, tr("Strava"),
+                              tr("Could not start the local login listener. "
+                                 "Please try again."));
     }
 }
 
@@ -374,10 +375,10 @@ void DialogMainWindowConfig::accept() {
     account->intervals_icu_auto_upload = ui->checkBox_intervalsAutoUpload->isChecked();
     account->saveIntervalsIcuCredentials();  // persist to QSettings (fast, no-fail path)
     if (!XmlUtil::saveLocalSaveFile(account)) {
-        QMessageBox::warning(this,
-                             tr("Save Failed"),
-                             tr("Could not save Intervals.icu credentials to the local file.\n"
-                                "Your settings may not be remembered after the next restart."));
+        AsyncDialogs::warning(this,
+                              tr("Save Failed"),
+                              tr("Could not save Intervals.icu credentials to the local file.\n"
+                                 "Your settings may not be remembered after the next restart."));
         // Do not close the dialog — let the user correct the situation (e.g.
         // free disk space) or explicitly dismiss.
         return;
@@ -404,8 +405,10 @@ void DialogMainWindowConfig::accept() {
     QDialog::accept();
 
     if (themeChanged) {
-        QMessageBox::information(
-            this,
+        // Parented to the main window: this dialog just accept()ed (hidden),
+        // and the box outlives it on screen.
+        AsyncDialogs::information(
+            parentWidget(),
             tr("Theme Changed"),
             tr("The new theme will be applied the next time you restart MaximumTrainer."));
     }
@@ -535,6 +538,11 @@ QWidget *DialogMainWindowConfig::createLoggingPage()
     m_editLogFilePath->setPlaceholderText(tr("(default path)"));
     m_btnBrowseLog = new QPushButton(tr("Browse…"), fileGroup);
     m_btnBrowseLog->setFixedWidth(90);
+#ifdef GC_WASM_BUILD
+    // QFileDialog::getSaveFileName spins a fatal nested event loop on WASM,
+    // and a browsable log path is meaningless in the in-memory browser FS.
+    m_btnBrowseLog->setVisible(false);
+#endif
     pathRow->addWidget(m_editLogFilePath);
     pathRow->addWidget(m_btnBrowseLog);
     fileLayout->addLayout(pathRow);
