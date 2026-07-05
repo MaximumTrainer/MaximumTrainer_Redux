@@ -54,6 +54,23 @@ test.describe('WASM Log Out returns to the login screen without crashing', () =>
     await ctx.close();
   });
 
+  test('Preferences opens without killing the runtime', async () => {
+    // dconfig->exec() used to be a fatal nested event loop on WASM — opening
+    // Preferences aborted the app just like Log Out did (#344).
+    await wasmApp.page.evaluate(() => (window as any).mt_openPreferences());
+    await wasmApp.page.waitForTimeout(3_000);
+    await wasmApp.page.screenshot({ path: `${SCREENSHOT_DIR}/preferences-open.png` });
+
+    expect(
+      pageErrors,
+      `Uncaught page errors after opening Preferences:\n${pageErrors.join('\n')}`,
+    ).toHaveLength(0);
+
+    // Close it again (Esc) so the logout test below starts from MainWindow.
+    await wasmApp.page.keyboard.press('Escape');
+    await wasmApp.page.waitForTimeout(1_000);
+  });
+
   test('logout tears down MainWindow and re-shows the login dialog', async () => {
     // Clear the round-1 bridge flags so their reappearance below can only be
     // caused by the login dialog / main window being constructed again.

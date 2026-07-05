@@ -1,4 +1,5 @@
 #include "main_workoutpage.h"
+#include "asyncdialogs.h"
 #include "ui_main_workoutpage.h"
 
 #include <QPainter>
@@ -392,25 +393,22 @@ void Main_WorkoutPage::deleteWorkout() {
 
     Workout workout = tableModel->getWorkoutAtRow(indexSourceSelected);
 
-    /// Ask confirmation
-    QMessageBox msgBox(this);
-    msgBox.setIcon(QMessageBox::Question);
-    QString textToShow = tr("Are you sure you want to delete <b>%1</b>?").arg(workout.getName());
-    msgBox.setText(textToShow);
-    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-    msgBox.setDefaultButton(QMessageBox::No);
-    if (msgBox.exec() == QMessageBox::Yes) {
-        qDebug() << "Yes was clicked";
+    /// Ask confirmation (async — exec() is fatal on WASM)
+    const int rowToDelete = indexSourceSelected.row();
+    AsyncDialogs::question(this, tr("Delete Workout"),
+                           tr("Are you sure you want to delete <b>%1</b>?").arg(workout.getName()),
+                           [this, workout, rowToDelete]() {
         /// Delete from model
-        tableModel->removeRows(indexSourceSelected.row(), 1, QModelIndex());
+        tableModel->removeRows(rowToDelete, 1, QModelIndex());
 
         /// Delete local file xml
         Util::deleteLocalFile(workout.getFilePath());
 
         //  remove from lst done
         account->hashWorkoutDone.remove(workout.getName());
-    }
-    tableViewSelectionChanged(QItemSelection(), QItemSelection());
+
+        tableViewSelectionChanged(QItemSelection(), QItemSelection());
+    });
 
 
 
@@ -442,12 +440,8 @@ void Main_WorkoutPage::on_tableView_workout_doubleClicked(const QModelIndex &ind
     Workout workoutToDo = tableModel->getWorkoutAtRow(sourceIndex);
 
     if(account->enable_studio_mode && workoutToDo.getWorkoutNameEnum() == Workout::MAP_TEST) {
-        QMessageBox msgBox;
-        msgBox.setTextFormat(Qt::RichText);
-        msgBox.setIcon(QMessageBox::Information);
-        msgBox.setText(tr("MAP Test can only be done alone. Please disable studio mode to continue"));
-        msgBox.setStandardButtons(QMessageBox::Close);
-        msgBox.exec();
+        AsyncDialogs::information(this, QString(),
+            tr("MAP Test can only be done alone. Please disable studio mode to continue"));
     }
     else {
         emit executeWorkout(workoutToDo);

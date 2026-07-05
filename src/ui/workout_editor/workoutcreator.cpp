@@ -1,5 +1,6 @@
 
 #include "workoutcreator.h"
+#include "asyncdialogs.h"
 #include "ui_workoutcreator.h"
 
 
@@ -809,37 +810,27 @@ void WorkoutCreator::createWorkout(const QString& name, const QString& plan, con
 
     if (exist)
     {
-        QMessageBox msgBox(this);
-        msgBox.setIcon(QMessageBox::Question);
-        msgBox.setText(tr("A workout already exists with that name."));
-        msgBox.setInformativeText(tr("Overwrite it?"));
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msgBox.setDefaultButton(QMessageBox::No);
-        if (msgBox.exec() == QMessageBox::Yes) {
-            qDebug() << "Yes was clicked";
+        // Confirm asynchronously (exec() is fatal on WASM).
+        AsyncDialogs::question(this, tr("Overwrite Workout"),
+                               tr("A workout already exists with that name."),
+                               [this, workoutToSave = workout]() {
             /// Delete local file xml
-            Util::deleteLocalFile(workout.getFilePath());
+            Util::deleteLocalFile(workoutToSave.getFilePath());
 
-
-            fileCreated = XmlUtil::createWorkoutXml(workout, "");
+            const bool overwritten = XmlUtil::createWorkoutXml(workoutToSave, "");
             qDebug() << "Emit workoutOverwrited";
-            emit workoutOverwrited(workout);
-        }
+            emit workoutOverwrited(workoutToSave);
+            if (overwritten)
+                emit showStatusBarMessage(tr("Workout  \"%1\" overwrited").arg(workoutToSave.getFilePath()), 7000);
+        }, tr("Overwrite it?"));
     }
     else {
         fileCreated = XmlUtil::createWorkoutXml(workout, "");
         qDebug() << "Emit workoutCreated";
         emit workoutCreated(workout);
-    }
 
-    if (fileCreated) {
-
-        QString textToShow;
-        if (!exist)
-            textToShow = tr("Workout  \"%1\" created").arg(workout.getFilePath());
-        else
-            textToShow = tr("Workout  \"%1\" overwrited").arg(workout.getFilePath());
-        emit showStatusBarMessage(textToShow, 7000);
+        if (fileCreated)
+            emit showStatusBarMessage(tr("Workout  \"%1\" created").arg(workout.getFilePath()), 7000);
     }
 }
 

@@ -1,4 +1,5 @@
 #include "workoutdialog.h"
+#include "asyncdialogs.h"
 #include "virtual_gear.h"
 #include "ui_workoutdialog.h"
 
@@ -1396,21 +1397,30 @@ void WorkoutDialog::moveToInterval(int nbInterval, double secWorkout, double sta
 
     QString timeStartInterval = Util::showQTimeAsString(Util::convertMinutesToQTime(startIntervalSec/60.0));
 
-    //ask confirmation
+    //ask confirmation (async: exec() is fatal on WASM)
     if (showConfirmation) {
         isAskingUserQuestion = true;
-        QMessageBox msgBox(this);
-        msgBox.setIcon(QMessageBox::Question);
-        msgBox.setText(tr("Move to the interval starting at: ") + timeStartInterval + "?");
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msgBox.setDefaultButton(QMessageBox::No);
-        if (msgBox.exec() == QMessageBox::No) {
-            isAskingUserQuestion = false;
-            return;
-        }
-        isAskingUserQuestion = false;
+        auto *msgBox = new QMessageBox(QMessageBox::Question, QString(),
+                                       tr("Move to the interval starting at: ") + timeStartInterval + "?",
+                                       QMessageBox::Yes | QMessageBox::No, this);
+        msgBox->setDefaultButton(QMessageBox::No);
+        msgBox->setAttribute(Qt::WA_DeleteOnClose);
+        connect(msgBox, &QDialog::finished, this, [this](int) { isAskingUserQuestion = false; });
+        connect(msgBox, &QMessageBox::buttonClicked, this,
+                [this, msgBox, nbIntervalToDelete](QAbstractButton *button) {
+            if (msgBox->standardButton(button) == QMessageBox::Yes)
+                applyMoveToInterval(nbIntervalToDelete);
+        });
+        msgBox->open();
+        return;
     }
 
+    applyMoveToInterval(nbIntervalToDelete);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void WorkoutDialog::applyMoveToInterval(int nbIntervalToDelete) {
 
     //Calculate timeDone in currentInterval
     double currentIntervalTimeDone =  timeElapsed_sec - lastIntervalEndTime_sec;
@@ -3243,8 +3253,9 @@ void WorkoutDialog::keyPressEvent(QKeyEvent *event)
     case Qt::Key_Question:
     case Qt::Key_F1:
         if (!event->isAutoRepeat()) {
-            DialogKeyboardShortcuts dlg(this);
-            dlg.exec();
+            auto *dlg = new DialogKeyboardShortcuts(this);
+            dlg->setAttribute(Qt::WA_DeleteOnClose);
+            dlg->open();
         }
         return;
     case Qt::Key_Return:
@@ -3324,34 +3335,38 @@ void WorkoutDialog::sureYouWantToQuit() {
     if (isWorkoutStarted && !isWorkoutOver) {
 
         isAskingUserQuestion = true;
-        QMessageBox msgBox(this);
-        msgBox.setIcon(QMessageBox::Question);
-        msgBox.setText(tr("Workout is not completed."));
-        msgBox.setInformativeText(tr("Save your progress?"));
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
-        msgBox.setDefaultButton(QMessageBox::Save);
+        // Async 3-way confirm (exec() is fatal on WASM); accept() runs from
+        // the button callback instead of after a blocking return.
+        auto *msgBox = new QMessageBox(QMessageBox::Question, QString(),
+                                       tr("Workout is not completed."),
+                                       QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel, this);
+        msgBox->setInformativeText(tr("Save your progress?"));
+        msgBox->setAttribute(Qt::WA_DeleteOnClose);
+        connect(msgBox, &QDialog::finished, this, [this](int) { isAskingUserQuestion = false; });
+        connect(msgBox, &QMessageBox::buttonClicked, this,
+                [this, msgBox](QAbstractButton *button) {
+            const QMessageBox::StandardButton reply = msgBox->standardButton(button);
+            if (reply == QMessageBox::Yes) {
 
-        int reply = msgBox.exec();
-        if (reply == QMessageBox::Yes) {
+                // Save FIT FILE
+                if (Util::getSystemPathHistory() != "invalid_writable_path") {
+                    int intervalPausedTime_msec = totalTimePausedWorkout_msec - lastIntervalTotalTimePausedWorkout_msec;
+                    changeIntervalsDataWorkout(lastIntervalEndTime_msec, timeElapsed_sec, intervalPausedTime_msec, true, false);
+                    m_quitAfterSave = true;  // skip post-workout panel — dialog closes immediately after
+                    closeFitFiles(timeElapsed_sec);
+                }
 
-            // Save FIT FILE
-            if (Util::getSystemPathHistory() != "invalid_writable_path") {
-                int intervalPausedTime_msec = totalTimePausedWorkout_msec - lastIntervalTotalTimePausedWorkout_msec;
-                changeIntervalsDataWorkout(lastIntervalEndTime_msec, timeElapsed_sec, intervalPausedTime_msec, true, false);
-                m_quitAfterSave = true;  // skip post-workout panel — dialog closes immediately after
-                closeFitFiles(timeElapsed_sec);
+                QDialog::accept();
             }
-
-            QDialog::accept();
-        }
-        else if (reply == QMessageBox::No) {
-            closeAndDeleteFitFile();
-            QDialog::accept();
-        }
-        else {
-            qDebug() << "Cancel was clicked";
-        }
-        isAskingUserQuestion = false;
+            else if (reply == QMessageBox::No) {
+                closeAndDeleteFitFile();
+                QDialog::accept();
+            }
+            else {
+                qDebug() << "Cancel was clicked";
+            }
+        });
+        msgBox->open();
     }
     /// Not started or workout completed, no warning to show
     else {

@@ -104,6 +104,22 @@ private:
 public slots:
 #endif
 
+private:
+    /// Simulator-fed workout launch (the "Simulation" connection method).
+    /// Shared by the desktop synchronous flow and the WASM async chain.
+    void startSimulatedWorkout(const Workout &workout);
+
+    /// Wire a single already-connected hub to a new WorkoutDialog and show it
+    /// (the legacy single-device tail of executeWorkout, shared by both flows).
+    void startWorkoutWithConnectedHub(const Workout &workout, BtleHub *btleHub);
+
+#ifdef GC_WASM_BUILD
+    /// Browser BLE launch: scanner prompt via open(), then a signal-driven
+    /// wait for the connection (no nested event loop — fatal on WASM).
+    void startWasmBleWorkout(const Workout &workout);
+#endif
+public slots:
+
     //Coming from Studio QWebView ----------
     void enableStudioMode(bool enable);
     void setNumberUserStudio(int numberUser);

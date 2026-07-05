@@ -63,6 +63,7 @@
 #endif
 #include "sensorswidget.h"
 #include "studiowidget.h"
+#include "asyncdialogs.h"
 
 #ifdef GC_WASM_BUILD
 #include <emscripten.h>
@@ -110,6 +111,17 @@ void mt_trigger_logout_impl()
                               Qt::QueuedConnection);
 }
 
+// Open the Preferences dialog. Exposed as window.mt_openPreferences() so
+// Playwright can assert it opens without killing the runtime (it used to run
+// dconfig->exec(), a fatal nested event loop on WASM — #344 follow-up).
+EMSCRIPTEN_KEEPALIVE
+void mt_open_preferences_impl()
+{
+    if (!g_mainWindow) return;
+    QMetaObject::invokeMethod(g_mainWindow.data(), "on_actionPreferences_triggered",
+                              Qt::QueuedConnection);
+}
+
 } // extern "C"
 
 EM_JS(void, js_exposeWasmDemoWorkout, (), {
@@ -121,6 +133,9 @@ EM_JS(void, js_exposeWasmDemoWorkout, (), {
     };
     window.mt_triggerLogout = function() {
         Module._mt_trigger_logout_impl();
+    };
+    window.mt_openPreferences = function() {
+        Module._mt_open_preferences_impl();
     };
 });
 #endif // GC_WASM_BUILD
@@ -380,7 +395,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             });
     connect(ui->tab_intervals_icu, &TabIntervalsIcu::syncFailed,
             this, [this](const QString &err) {
-                QMessageBox::warning(this, tr("Intervals.icu Sync Failed"), err);
+                AsyncDialogs::warning(this, tr("Intervals.icu Sync Failed"), err);
             });
 
     // ── Plan Adherence (#157) ─────────────────────────────────────────────────
@@ -410,6 +425,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // the metric-dashboard view and verify QML rendering in the browser.
     g_mainWindow = this;
     js_exposeWasmDemoWorkout();
+
+    // No local file system in the browser: the Import actions run
+    // QFileDialog::getOpenFileName/getExistingDirectory (a fatal nested event
+    // loop on WASM) and the Folder menu opens local paths that don't exist.
+    ui->menuImport->menuAction()->setVisible(false);
+    ui->menuFolder->menuAction()->setVisible(false);
 #endif
 }
 
@@ -544,8 +565,9 @@ void MainWindow::showPlanContextMenu(const QPoint &pos) {
 
     QMenu *menu = new QMenu(ui->webView_plan);
     menu->addAction(tr("Refresh"), this, SLOT(reloadPlanWebView()));
-    menu->exec(ui->webView_plan->mapToGlobal(pos));
-    menu->deleteLater();
+    // popup() instead of exec(): a nested event loop is fatal on WASM.
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+    menu->popup(ui->webView_plan->mapToGlobal(pos));
 }
 
 // trigger after a .zwo file downloaded from Intervals.icu is saved
@@ -735,9 +757,9 @@ void MainWindow::startWorkoutQueue()
     if (!first.getName().isEmpty()) {
         executeWorkout(first);
     } else {
-        QMessageBox::warning(this,
-                             tr("Queue Error"),
-                             tr("Could not load the queued workout:\n%1\n(%2)").arg(name, path));
+        AsyncDialogs::warning(this,
+                              tr("Queue Error"),
+                              tr("Could not load the queued workout:\n%1\n(%2)").arg(name, path));
         tryAdvanceWorkoutQueue();
     }
 }
@@ -745,10 +767,10 @@ void MainWindow::startWorkoutQueue()
 void MainWindow::tryAdvanceWorkoutQueue()
 {
     // Take the next item NOW (atomically), skipping any blank entries. The
-    // countdown below spins a nested event loop, so if we only read here and
-    // deferred the dequeue, a re-entrant advance could read the same item again
-    // or observe a half-updated queue — that produced the empty-path "Could not
-    // load the next queued workout" error.
+    // event loop keeps running while the countdown below is open, so if we only
+    // read here and deferred the dequeue, a re-entrant advance could read the
+    // same item again or observe a half-updated queue — that produced the
+    // empty-path "Could not load the next queued workout" error.
     QString nextName;
     QString nextPath;
     while (!m_workoutQueue->isEmpty()) {
@@ -760,31 +782,37 @@ void MainWindow::tryAdvanceWorkoutQueue()
     if (nextPath.isEmpty())
         return;
 
-    WorkoutCountdownDialog countdown(nextName, 60, this);
-    if (countdown.exec() != QDialog::Accepted) {
-        // User chose "Cancel Queue" — clear the remaining queue so it doesn't
-        // auto-advance after subsequent workouts.
-        if (countdown.dialogResult() == WorkoutCountdownDialog::Result::Cancelled)
-            m_workoutQueue->clear();
-        return;
-    }
-
-    // Defer via singleShot so this stack frame fully unwinds before
-    // the next workout begins — avoids unbounded recursion with long queues.
-    QTimer::singleShot(0, this, [this, nextName, nextPath]() {
-        XmlUtil xmlNext;
-        Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
-        if (!next.getName().isEmpty()) {
-            executeWorkout(next);
-        } else {
-            QMessageBox::warning(this,
-                                 tr("Queue Error"),
-                                 tr("Could not load the next queued workout:\n%1\n(%2)")
-                                     .arg(nextName, nextPath));
-            // The bad entry is already removed; keep the queue moving.
-            tryAdvanceWorkoutQueue();
+    // Countdown runs via open() + finished — exec() is fatal on WASM.
+    auto *countdown = new WorkoutCountdownDialog(nextName, 60, this);
+    countdown->setAttribute(Qt::WA_DeleteOnClose);
+    connect(countdown, &QDialog::finished, this,
+            [this, countdown, nextName, nextPath](int result) {
+        if (result != QDialog::Accepted) {
+            // User chose "Cancel Queue" — clear the remaining queue so it
+            // doesn't auto-advance after subsequent workouts.
+            if (countdown->dialogResult() == WorkoutCountdownDialog::Result::Cancelled)
+                m_workoutQueue->clear();
+            return;
         }
+
+        // Defer via singleShot so the dialog teardown fully unwinds before
+        // the next workout begins — avoids unbounded recursion with long queues.
+        QTimer::singleShot(0, this, [this, nextName, nextPath]() {
+            XmlUtil xmlNext;
+            Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
+            if (!next.getName().isEmpty()) {
+                executeWorkout(next);
+            } else {
+                AsyncDialogs::warning(this,
+                                      tr("Queue Error"),
+                                      tr("Could not load the next queued workout:\n%1\n(%2)")
+                                          .arg(nextName, nextPath));
+                // The bad entry is already removed; keep the queue moving.
+                tryAdvanceWorkoutQueue();
+            }
+        });
     });
+    countdown->open();
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -1225,20 +1253,13 @@ void MainWindow::on_actionExit_triggered()
 /////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::on_actionLogout_triggered()
 {
-    // Confirm asynchronously via open(): QMessageBox::question() spins a
-    // nested event loop (QDialog::exec), which is a qFatal on Qt WASM
-    // without asyncify — the whole runtime aborted on Log Out (#344).
-    auto *confirm = new QMessageBox(
-        QMessageBox::Question, tr("Log Out"),
+    // Confirm asynchronously: QMessageBox::question() spins a nested event
+    // loop (QDialog::exec), which is a qFatal on Qt WASM without asyncify —
+    // the whole runtime aborted on Log Out (#344).
+    AsyncDialogs::question(
+        this, tr("Log Out"),
         tr("Log out of Intervals.icu and return to the login screen?"),
-        QMessageBox::Yes | QMessageBox::No, this);
-    confirm->setAttribute(Qt::WA_DeleteOnClose);
-    connect(confirm, &QMessageBox::buttonClicked, this,
-            [this, confirm](QAbstractButton *button) {
-        if (confirm->standardButton(button) == QMessageBox::Yes)
-            performLogout();
-    });
-    confirm->open();
+        [this]() { performLogout(); });
 }
 
 void MainWindow::performLogout()
@@ -1295,15 +1316,15 @@ void MainWindow::on_actionRequest_Help_triggered()
 //-----------------------------------------------
 void MainWindow::on_actionKeyboard_Shortcuts_triggered()
 {
-    DialogKeyboardShortcuts dlg(this);
-    dlg.exec();
+    // open(), not exec(): a nested event loop is fatal on WASM.
+    auto *dlg = new DialogKeyboardShortcuts(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->open();
 }
 //-----------------------------------------------
 void MainWindow::on_actionPreferences_triggered()
 {
-
-    dconfig->exec();
-
+    dconfig->open();
 }
 //-----------------------------------------------
 void MainWindow::on_actionWorkout_triggered()
@@ -1376,6 +1397,26 @@ void MainWindow::executeWorkout(Workout workout) {
     if (m_launchingWorkout || isInsideWorkout)
         return;
     m_launchingWorkout = true;
+
+#ifdef GC_WASM_BUILD
+    // WASM: fully async chain — any nested event loop (QDialog::exec /
+    // QEventLoop::exec) is a qFatal on Qt WASM without asyncify. The
+    // m_launchingWorkout guard is released by each terminal continuation.
+    auto *connDlg = new DialogConnectionMethod(this);
+    connDlg->setAttribute(Qt::WA_DeleteOnClose);
+    connect(connDlg, &QDialog::finished, this, [this, workout, connDlg](int result) {
+        if (result != QDialog::Accepted) {
+            m_launchingWorkout = false;
+            return;
+        }
+        if (connDlg->selectedMethod() == DialogConnectionMethod::Simulation)
+            startSimulatedWorkout(workout);
+        else
+            startWasmBleWorkout(workout);
+    });
+    connDlg->open();
+    return;
+#else
     auto launchGuard = qScopeGuard([this]() { m_launchingWorkout = false; });
 
     DialogConnectionMethod connDlg(this);
@@ -1385,69 +1426,11 @@ void MainWindow::executeWorkout(Workout workout) {
 
     // ── Simulation path ───────────────────────────────────────────────────
     if (connDlg.selectedMethod() == DialogConnectionMethod::Simulation) {
-        // In Studio mode simulate every selected rider; otherwise a single rider.
-        const bool studio = account->enable_studio_mode;
-        const int nbRiders = studio ? qBound(1, account->nb_user_studio, constants::nbMaxUserStudio) : 1;
-        const QVector<UserStudio> riders = studio ? prepareStudioRiders(true) : vecUserStudio;
-
-        // Show WorkoutDialog NON-MODALLY (window-modal via setWindowModality,
-        // run on the main event loop instead of QDialog::exec()). The embedded
-        // QWebEngine video player reparents widgets when it initialises, which
-        // destroys and recreates the dialog's native window; inside a nested
-        // exec() loop that window-destroy calls QEventLoop::exit() and tears the
-        // dialog down. Running on the main loop removes that hazard. Post-workout
-        // cleanup moves to the finished() handler below.
-        WorkoutDialog *w = new WorkoutDialog(workout, lstRadio, riders);
-        w->setAttribute(Qt::WA_DeleteOnClose);
-        w->setWindowModality(Qt::ApplicationModal);
-
-        // One simulator hub per rider, each emitting its own 1-based userID so
-        // WorkoutDialog routes the data to the matching rider box.
-        QList<SimulatorHub*> simHubs;
-        for (int i = 0; i < nbRiders; ++i) {
-            SimulatorHub *simHub = new SimulatorHub(this);
-            simHub->setUserID(i + 1);
-
-            connect(simHub, SIGNAL(signal_hr(int,int)),               w, SLOT(HrDataReceived(int,int)));
-            connect(simHub, SIGNAL(signal_cadence(int,int)),          w, SLOT(CadenceDataReceived(int,int)));
-            connect(simHub, SIGNAL(signal_speed(int,double)),         w, SLOT(TrainerSpeedDataReceived(int,double)));
-            connect(simHub, SIGNAL(signal_power(int,int)),            w, SLOT(PowerDataReceived(int,int)));
-            connect(simHub, SIGNAL(signal_balance(int,int)),          w, SLOT(PowerBalanceDataReceived(int,int)));
-            connect(simHub, SIGNAL(signal_pedal(int,double,double,double,double,double)), w, SLOT(pedalMetricReceived(int,double,double,double,double,double)));
-            connect(simHub, SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
-
-            connect(w, SIGNAL(setLoad(int,double)),  simHub, SLOT(setLoad(int,double)));
-            connect(w, SIGNAL(setSlope(int,double)), simHub, SLOT(setSlope(int,double)));
-            connect(w, SIGNAL(stopDecodingMsgHub()), simHub, SLOT(stopDecodingMsg()));
-
-            simHubs.append(simHub);
-        }
-        w->enableTrainerControl();
-
-        connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
-        connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
-        connect(w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
-
-        connect(w, &QDialog::finished, this, [this, simHubs]() {
-            workoutOver();
-            for (SimulatorHub *simHub : simHubs) {
-                simHub->stopDecodingMsg();
-                delete simHub;
-            }
-            // Auto-advance to next queued workout if one exists
-            tryAdvanceWorkoutQueue();
-        });
-
-        for (SimulatorHub *simHub : simHubs)
-            simHub->start();
-        workoutExecuting();
-        QApplication::restoreOverrideCursor();
-        w->show();
+        startSimulatedWorkout(workout);
         return;
     }
 
     // ── BTLE Device path ─────────────────────────────────────────────────
-#ifndef GC_WASM_BUILD
     // Studio mode: connect each rider's own saved sensor package in turn, tag
     // every hub with that rider's id, then run the workout with all of them.
     if (account->enable_studio_mode) {
@@ -1517,7 +1500,6 @@ void MainWindow::executeWorkout(Workout workout) {
             // Empty result = "Skip": drop through to the legacy manual scanner.
         }
     }
-#endif
 
     BtleScannerDialog scanner(this);
     if (scanner.exec() != QDialog::Accepted || !scanner.hasSelection())
@@ -1541,14 +1523,131 @@ void MainWindow::executeWorkout(Workout workout) {
     }
 
     if (!btleHub->isConnected()) {
-        QMessageBox::warning(this,
-                             tr("Connection Failed"),
-                             tr("Could not connect to the selected Bluetooth device.\n"
-                                "Please check the device is powered on and try again."));
+        AsyncDialogs::warning(this,
+                              tr("Connection Failed"),
+                              tr("Could not connect to the selected Bluetooth device.\n"
+                                 "Please check the device is powered on and try again."));
         delete btleHub;
         return;
     }
 
+    startWorkoutWithConnectedHub(workout, btleHub);
+#endif // GC_WASM_BUILD
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void MainWindow::startSimulatedWorkout(const Workout &workout)
+{
+    // In Studio mode simulate every selected rider; otherwise a single rider.
+    const bool studio = account->enable_studio_mode;
+    const int nbRiders = studio ? qBound(1, account->nb_user_studio, constants::nbMaxUserStudio) : 1;
+    const QVector<UserStudio> riders = studio ? prepareStudioRiders(true) : vecUserStudio;
+
+    // Show WorkoutDialog NON-MODALLY (window-modal via setWindowModality,
+    // run on the main event loop instead of QDialog::exec()). The embedded
+    // QWebEngine video player reparents widgets when it initialises, which
+    // destroys and recreates the dialog's native window; inside a nested
+    // exec() loop that window-destroy calls QEventLoop::exit() and tears the
+    // dialog down. Running on the main loop removes that hazard. Post-workout
+    // cleanup moves to the finished() handler below.
+    WorkoutDialog *w = new WorkoutDialog(workout, lstRadio, riders);
+    w->setAttribute(Qt::WA_DeleteOnClose);
+    w->setWindowModality(Qt::ApplicationModal);
+
+    // One simulator hub per rider, each emitting its own 1-based userID so
+    // WorkoutDialog routes the data to the matching rider box.
+    QList<SimulatorHub*> simHubs;
+    for (int i = 0; i < nbRiders; ++i) {
+        SimulatorHub *simHub = new SimulatorHub(this);
+        simHub->setUserID(i + 1);
+
+        connect(simHub, SIGNAL(signal_hr(int,int)),               w, SLOT(HrDataReceived(int,int)));
+        connect(simHub, SIGNAL(signal_cadence(int,int)),          w, SLOT(CadenceDataReceived(int,int)));
+        connect(simHub, SIGNAL(signal_speed(int,double)),         w, SLOT(TrainerSpeedDataReceived(int,double)));
+        connect(simHub, SIGNAL(signal_power(int,int)),            w, SLOT(PowerDataReceived(int,int)));
+        connect(simHub, SIGNAL(signal_balance(int,int)),          w, SLOT(PowerBalanceDataReceived(int,int)));
+        connect(simHub, SIGNAL(signal_pedal(int,double,double,double,double,double)), w, SLOT(pedalMetricReceived(int,double,double,double,double,double)));
+        connect(simHub, SIGNAL(signal_oxygen(int,double,double)), w, SLOT(OxygenValueChanged(int,double,double)));
+
+        connect(w, SIGNAL(setLoad(int,double)),  simHub, SLOT(setLoad(int,double)));
+        connect(w, SIGNAL(setSlope(int,double)), simHub, SLOT(setSlope(int,double)));
+        connect(w, SIGNAL(stopDecodingMsgHub()), simHub, SLOT(stopDecodingMsg()));
+
+        simHubs.append(simHub);
+    }
+    w->enableTrainerControl();
+
+    connect(w, SIGNAL(fitFileReady(QString, QString, QString)), this, SLOT(checkToUploadFile(QString,QString,QString)));
+    connect(w, SIGNAL(ftp_lthr_changed()), ui->tab_workout1, SLOT(updateTableViewMetrics()));
+    connect(w, SIGNAL(ftpUserStudioChanged(QVector<UserStudio>)), this, SLOT(updateVecStudio(QVector<UserStudio>)));
+
+    connect(w, &QDialog::finished, this, [this, simHubs]() {
+        workoutOver();
+        for (SimulatorHub *simHub : simHubs) {
+            simHub->stopDecodingMsg();
+            delete simHub;
+        }
+        // Auto-advance to next queued workout if one exists
+        tryAdvanceWorkoutQueue();
+    });
+
+    for (SimulatorHub *simHub : simHubs)
+        simHub->start();
+    workoutExecuting();
+    QApplication::restoreOverrideCursor();
+    w->show();
+    m_launchingWorkout = false;
+}
+
+
+#ifdef GC_WASM_BUILD
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void MainWindow::startWasmBleWorkout(const Workout &workout)
+{
+    // Browser BLE picker via open(); the connect wait is signal-driven (the
+    // desktop QEventLoop wait would be a fatal nested loop here).
+    auto *scanner = new BtleScannerDialog(this);
+    scanner->setAttribute(Qt::WA_DeleteOnClose);
+    connect(scanner, &QDialog::finished, this, [this, workout, scanner](int result) {
+        if (result != QDialog::Accepted || !scanner->hasSelection()) {
+            m_launchingWorkout = false;
+            return;
+        }
+
+        BtleHub *btleHub = new BtleHub(this);
+
+        // Context object: deleting it disconnects all three outcome handlers,
+        // so exactly one continuation runs per connection attempt.
+        QObject *attempt = new QObject(this);
+        connect(btleHub, &BtleHub::deviceConnected, attempt,
+                [this, workout, btleHub, attempt]() {
+            attempt->deleteLater();
+            startWorkoutWithConnectedHub(workout, btleHub);
+        });
+        const auto onFailed = [this, btleHub, attempt]() {
+            attempt->deleteLater();
+            AsyncDialogs::warning(this,
+                                  tr("Connection Failed"),
+                                  tr("Could not connect to the selected Bluetooth device.\n"
+                                     "Please check the device is powered on and try again."));
+            btleHub->deleteLater();
+            m_launchingWorkout = false;
+        };
+        connect(btleHub, &BtleHub::deviceDisconnected, attempt, onFailed);
+        connect(btleHub, &BtleHub::connectionError, attempt,
+                [onFailed](const QString &) { onFailed(); });
+
+        btleHub->connectToDevice(scanner->selectedDevice());
+    });
+    scanner->open();
+}
+#endif // GC_WASM_BUILD
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void MainWindow::startWorkoutWithConnectedHub(const Workout &workout, BtleHub *btleHub)
+{
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
     // Show WorkoutDialog NON-MODALLY (window-modal, run on the main event loop
@@ -1609,6 +1708,7 @@ void MainWindow::executeWorkout(Workout workout) {
     workoutExecuting();
     QApplication::restoreOverrideCursor();
     w->show();
+    m_launchingWorkout = false;
 }
 
 

@@ -1,4 +1,5 @@
 #include "historywidget.h"
+#include "asyncdialogs.h"
 #include "workouthistorymodel.h"
 #include "historyfilterproxymodel.h"
 #include "activitydetaildialog.h"
@@ -199,8 +200,10 @@ void HistoryWidget::openCriticalPowerDialog()
         loadHistory();
 
     const QList<WorkoutHistorySummary> &history = m_model->history();
-    CriticalPowerDialog dlg(history, this);
-    dlg.exec();
+    // Shown non-modally via open() — exec() is fatal on WASM.
+    auto *dlg = new CriticalPowerDialog(history, this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->open();
 }
 
 void HistoryWidget::openPmcDialog()
@@ -211,7 +214,7 @@ void HistoryWidget::openPmcDialog()
     const QList<PmcPoint> points = PmcCalculator::compute(m_model->history());
     auto *dlg = new PmcDialog(points, this);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
-    dlg->exec();
+    dlg->open();
 }
 
 void HistoryWidget::applyFilters()
@@ -254,8 +257,8 @@ void HistoryWidget::openDetail(const QModelIndex &proxyIndex)
     QApplication::restoreOverrideCursor();
 
     if (!detail.valid) {
-        QMessageBox::information(this, tr("Activity Detail"),
-                                 tr("No detailed record data could be read from this activity."));
+        AsyncDialogs::information(this, tr("Activity Detail"),
+                                  tr("No detailed record data could be read from this activity."));
         return;
     }
 
@@ -290,20 +293,17 @@ void HistoryWidget::deleteSelected()
     const QString filePath = summary->filePath;
     const QString name = summary->workoutName;
 
-    const auto answer = QMessageBox::question(
+    AsyncDialogs::question(
         this, tr("Delete Activity"),
         tr("Permanently delete this activity from disk?\n\n%1\n%2")
             .arg(name, QFileInfo(filePath).fileName()),
-        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        [this, filePath]() {
+        if (!QFile::remove(filePath)) {
+            AsyncDialogs::warning(this, tr("Delete Activity"),
+                                  tr("Could not delete the file:\n%1").arg(filePath));
+            return;
+        }
 
-    if (answer != QMessageBox::Yes)
-        return;
-
-    if (!QFile::remove(filePath)) {
-        QMessageBox::warning(this, tr("Delete Activity"),
-                             tr("Could not delete the file:\n%1").arg(filePath));
-        return;
-    }
-
-    loadHistory();
+        loadHistory();
+    });
 }

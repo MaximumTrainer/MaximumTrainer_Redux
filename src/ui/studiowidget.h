@@ -63,6 +63,9 @@ private slots:
     void onRiderCountChanged(int index);
     void onExportClicked();
     void onImportClicked();
+    // Parse + apply an imported studio-config JSON payload (shared by the
+    // desktop path dialog and the WASM getOpenFileContent callback).
+    void applyImportedStudioJson(const QByteArray &json);
 
 private:
     static constexpr int kMaxRiders = 8;

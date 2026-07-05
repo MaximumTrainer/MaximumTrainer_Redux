@@ -1136,24 +1136,29 @@ void DialogConfig::saveIntervalSummary()
 #include <QLineEdit>
 #include <QSpinBox>
 #include "util.h"
+#include "asyncdialogs.h"
+#include <functional>
 
 namespace {
-/// Tiny modal that edits a single Radio. Returns the edited copy on accept.
+/// Tiny editor for a single Radio, shown via open() (exec() is fatal on WASM).
+/// onAccepted receives the edited copy once the input passed validation.
 /// Lives here (not in its own .h/.cpp pair) because it is only used by the
 /// three Add/Edit/Delete handlers below.
-bool runRadioEditDialog(QWidget *parent, Radio& inOut) {
-    QDialog dlg(parent);
-    dlg.setWindowTitle(QObject::tr("Radio Station"));
+void runRadioEditDialog(QWidget *parent, const Radio &initial,
+                        std::function<void(const Radio &)> onAccepted) {
+    auto *dlg = new QDialog(parent);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->setWindowTitle(QObject::tr("Radio Station"));
 
-    auto *nameEdit    = new QLineEdit(inOut.getName());
-    auto *genreEdit   = new QLineEdit(inOut.getGenre());
-    auto *langEdit    = new QLineEdit(inOut.getLanguage());
-    auto *urlEdit     = new QLineEdit(inOut.getUrl());
+    auto *nameEdit    = new QLineEdit(initial.getName());
+    auto *genreEdit   = new QLineEdit(initial.getGenre());
+    auto *langEdit    = new QLineEdit(initial.getLanguage());
+    auto *urlEdit     = new QLineEdit(initial.getUrl());
     urlEdit->setPlaceholderText(QStringLiteral("https://stream.example.com/stream.mp3"));
     auto *bitrateSpin = new QSpinBox();
     bitrateSpin->setRange(0, 1000);
     bitrateSpin->setSuffix(QStringLiteral(" kbps"));
-    bitrateSpin->setValue(inOut.getBitrate());
+    bitrateSpin->setValue(initial.getBitrate());
 
     auto *form = new QFormLayout();
     form->addRow(QObject::tr("Name"),     nameEdit);
@@ -1163,33 +1168,34 @@ bool runRadioEditDialog(QWidget *parent, Radio& inOut) {
     form->addRow(QObject::tr("URL"),      urlEdit);
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-    QObject::connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-    QObject::connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    /// Minimal validation, checked before accepting so the dialog stays open
+    /// on bad input: name and url are required. We don't try to validate the
+    /// URL itself — the player will reject anything unparseable on Play.
+    QObject::connect(buttons, &QDialogButtonBox::accepted, dlg, [dlg, nameEdit, urlEdit]() {
+        if (nameEdit->text().trimmed().isEmpty() || urlEdit->text().trimmed().isEmpty()) {
+            AsyncDialogs::warning(dlg, QObject::tr("Radio Station"),
+                QObject::tr("Name and URL are required."));
+            return;
+        }
+        dlg->accept();
+    });
+    QObject::connect(buttons, &QDialogButtonBox::rejected, dlg, &QDialog::reject);
+    QObject::connect(dlg, &QDialog::accepted, dlg,
+                     [nameEdit, genreEdit, langEdit, urlEdit, bitrateSpin,
+                      onAccepted = std::move(onAccepted)]() {
+        onAccepted(Radio(nameEdit->text().trimmed(),
+                         genreEdit->text().trimmed(),
+                         /*gotAds=*/false,
+                         bitrateSpin->value(),
+                         langEdit->text().trimmed(),
+                         urlEdit->text().trimmed()));
+    });
 
-    auto *layout = new QVBoxLayout(&dlg);
+    auto *layout = new QVBoxLayout(dlg);
     layout->addLayout(form);
     layout->addWidget(buttons);
-    dlg.resize(420, dlg.sizeHint().height());
-
-    if (dlg.exec() != QDialog::Accepted)
-        return false;
-
-    /// Minimal validation: name and url are required. We don't try to validate
-    /// the URL itself — libvlc will reject anything unparseable when the user
-    /// hits Play.
-    if (nameEdit->text().trimmed().isEmpty() || urlEdit->text().trimmed().isEmpty()) {
-        QMessageBox::warning(parent, QObject::tr("Radio Station"),
-            QObject::tr("Name and URL are required."));
-        return false;
-    }
-
-    inOut = Radio(nameEdit->text().trimmed(),
-                  genreEdit->text().trimmed(),
-                  /*gotAds=*/false,
-                  bitrateSpin->value(),
-                  langEdit->text().trimmed(),
-                  urlEdit->text().trimmed());
-    return true;
+    dlg->resize(420, dlg->sizeHint().height());
+    dlg->open();
 }
 }
 
@@ -1198,11 +1204,10 @@ bool runRadioEditDialog(QWidget *parent, Radio& inOut) {
 void DialogConfig::on_pushButton_addRadio_clicked() {
 
     Radio newRadio(QString(), QString(), false, 128, QString(), QString());
-    if (!runRadioEditDialog(this, newRadio))
-        return;
-
-    tableModel->addRadio(newRadio);
-    Util::saveLocalRadioList(tableModel->getAllRadios());
+    runRadioEditDialog(this, newRadio, [this](const Radio &edited) {
+        tableModel->addRadio(edited);
+        Util::saveLocalRadioList(tableModel->getAllRadios());
+    });
 }
 
 
@@ -1213,18 +1218,17 @@ void DialogConfig::on_pushButton_editRadio_clicked() {
     if (!idx.isValid())
         idx = currentRadioIndex;
     if (!idx.isValid()) {
-        QMessageBox::information(this, tr("Edit Radio"),
+        AsyncDialogs::information(this, tr("Edit Radio"),
             tr("Select a radio station to edit."));
         return;
     }
 
     const int row = idx.row();
-    Radio existing = tableModel->getRadioAtRow(idx);
-    if (!runRadioEditDialog(this, existing))
-        return;
-
-    tableModel->replaceRadioAtRow(row, existing);
-    Util::saveLocalRadioList(tableModel->getAllRadios());
+    const Radio existing = tableModel->getRadioAtRow(idx);
+    runRadioEditDialog(this, existing, [this, row](const Radio &edited) {
+        tableModel->replaceRadioAtRow(row, edited);
+        Util::saveLocalRadioList(tableModel->getAllRadios());
+    });
 }
 
 
@@ -1235,7 +1239,7 @@ void DialogConfig::on_pushButton_deleteRadio_clicked() {
     if (!idx.isValid())
         idx = currentRadioIndex;
     if (!idx.isValid()) {
-        QMessageBox::information(this, tr("Delete Radio"),
+        AsyncDialogs::information(this, tr("Delete Radio"),
             tr("Select a radio station to delete."));
         return;
     }
@@ -1243,15 +1247,12 @@ void DialogConfig::on_pushButton_deleteRadio_clicked() {
     const int row = idx.row();
     const Radio radio = tableModel->getRadioAtRow(idx);
 
-    if (QMessageBox::question(this, tr("Delete Radio"),
-            tr("Delete \"%1\"?").arg(radio.getName()),
-            QMessageBox::Yes | QMessageBox::No,
-            QMessageBox::No) != QMessageBox::Yes) {
-        return;
-    }
-
-    tableModel->removeRadioAtRow(row);
-    if (currentRadioIndex.row() == row)
-        currentRadioIndex = QModelIndex();
-    Util::saveLocalRadioList(tableModel->getAllRadios());
+    AsyncDialogs::question(this, tr("Delete Radio"),
+                           tr("Delete \"%1\"?").arg(radio.getName()),
+                           [this, row]() {
+        tableModel->removeRadioAtRow(row);
+        if (currentRadioIndex.row() == row)
+            currentRadioIndex = QModelIndex();
+        Util::saveLocalRadioList(tableModel->getAllRadios());
+    });
 }

@@ -21,6 +21,7 @@
 #include "extrequest.h"
 #include "credential_store.h"
 #include "intervals_icu_oauth_flow.h"
+#include "asyncdialogs.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WASM: Emscripten bridge for the OAuth popup flow.
@@ -354,14 +355,18 @@ void DialogLogin::slotFinishedGetVersion() {
         } else if (!latestVersion.isEmpty() && Util::isVersionNewer(Environnement::getVersion(), latestVersion)) {
             LOG_INFO("DialogLogin", QStringLiteral("Update available – showing dialog"));
             m_updateDialogOpen = true;
-            UpdateDialog up(latestVersion, this);
-            const int updateChoice = up.exec();   // nested event loop
-            m_updateDialogOpen = false;
-            if (updateChoice == QDialog::Accepted) {
-                gotUpdateDialog = true;
-            } else {
-                LOG_INFO("DialogLogin", QStringLiteral("User declined update – proceeding to login"));
-            }
+            // open(), not exec(): a nested event loop is fatal on WASM.
+            auto *up = new UpdateDialog(latestVersion, this);
+            up->setAttribute(Qt::WA_DeleteOnClose);
+            connect(up, &QDialog::finished, this, [this](int updateChoice) {
+                m_updateDialogOpen = false;
+                if (updateChoice == QDialog::Accepted) {
+                    gotUpdateDialog = true;
+                } else {
+                    LOG_INFO("DialogLogin", QStringLiteral("User declined update – proceeding to login"));
+                }
+            });
+            up->open();
         }
     } else {
         LOG_WARN("DialogLogin", QStringLiteral("Version check failed – ") + replyVersion->errorString());
@@ -561,7 +566,7 @@ void DialogLogin::onLoginWithIntervalsIcuClicked()
     if (!m_oauthFlow->start()) {
         m_oauthFlow->deleteLater();
         m_oauthFlow = nullptr;
-        QMessageBox::warning(
+        AsyncDialogs::warning(
             this,
             tr("Intervals.icu Login Failed"),
             tr("Could not start the local sign-in listener. Please try again."));

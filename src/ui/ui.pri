@@ -28,6 +28,7 @@ $$PWD/workoutdialog.cpp \
     $$PWD/queuepanelwidget.cpp
 
 HEADERS += $$PWD/mainwindow.h\
+    $$PWD/asyncdialogs.h \
 $$PWD/workoutdialog.h \
     $$PWD/main_workoutpage.h \
     $$PWD/dialogconfig.h \
