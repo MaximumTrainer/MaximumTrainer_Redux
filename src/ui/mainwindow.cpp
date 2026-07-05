@@ -99,6 +99,17 @@ void mt_show_demo_race_impl()
                               Qt::QueuedConnection);
 }
 
+// Run the confirmed Log Out path (skipping the confirmation box). Exposed as
+// window.mt_triggerLogout() so Playwright can assert the full logout →
+// login-screen cycle survives on WASM (#344).
+EMSCRIPTEN_KEEPALIVE
+void mt_trigger_logout_impl()
+{
+    if (!g_mainWindow) return;
+    QMetaObject::invokeMethod(g_mainWindow.data(), "performLogout",
+                              Qt::QueuedConnection);
+}
+
 } // extern "C"
 
 EM_JS(void, js_exposeWasmDemoWorkout, (), {
@@ -107,6 +118,9 @@ EM_JS(void, js_exposeWasmDemoWorkout, (), {
     };
     window.mt_showRace = function() {
         Module._mt_show_demo_race_impl();
+    };
+    window.mt_triggerLogout = function() {
+        Module._mt_trigger_logout_impl();
     };
 });
 #endif // GC_WASM_BUILD
@@ -1123,14 +1137,17 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 
 
     if (isInsideWorkout) {
-        QMessageBox msgBox;
-        msgBox.setWindowFlags(msgBox.windowFlags() | Qt::WindowStaysOnTopHint);
-        msgBox.setIcon(QMessageBox::Question);
-        msgBox.setText(tr("A workout is still active."));
-        msgBox.setInformativeText(tr("Please close any active workout before leaving MaximumTrainer."));
-        msgBox.setStandardButtons(QMessageBox::Ok);
-        msgBox.setDefaultButton(QMessageBox::Ok);
-        msgBox.exec();
+        // Shown non-blocking: exec() is a qFatal on Qt WASM without asyncify,
+        // and the close is refused regardless of when the box is dismissed.
+        auto *msgBox = new QMessageBox(this);
+        msgBox->setAttribute(Qt::WA_DeleteOnClose);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->setIcon(QMessageBox::Question);
+        msgBox->setText(tr("A workout is still active."));
+        msgBox->setInformativeText(tr("Please close any active workout before leaving MaximumTrainer."));
+        msgBox->setStandardButtons(QMessageBox::Ok);
+        msgBox->setDefaultButton(QMessageBox::Ok);
+        msgBox->open();
         event->ignore();
         return;
     }
@@ -1208,12 +1225,24 @@ void MainWindow::on_actionExit_triggered()
 /////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::on_actionLogout_triggered()
 {
-    if (QMessageBox::question(
-            this, tr("Log Out"),
-            tr("Log out of Intervals.icu and return to the login screen?"))
-        != QMessageBox::Yes)
-        return;
+    // Confirm asynchronously via open(): QMessageBox::question() spins a
+    // nested event loop (QDialog::exec), which is a qFatal on Qt WASM
+    // without asyncify — the whole runtime aborted on Log Out (#344).
+    auto *confirm = new QMessageBox(
+        QMessageBox::Question, tr("Log Out"),
+        tr("Log out of Intervals.icu and return to the login screen?"),
+        QMessageBox::Yes | QMessageBox::No, this);
+    confirm->setAttribute(Qt::WA_DeleteOnClose);
+    connect(confirm, &QMessageBox::buttonClicked, this,
+            [this, confirm](QAbstractButton *button) {
+        if (confirm->standardButton(button) == QMessageBox::Yes)
+            performLogout();
+    });
+    confirm->open();
+}
 
+void MainWindow::performLogout()
+{
     if (account)
         account->logout();
 

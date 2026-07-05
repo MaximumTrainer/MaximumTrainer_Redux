@@ -154,6 +154,9 @@ private slots:
     void on_actionOpen_Ride_triggered();
     void on_actionExit_triggered();
     void on_actionLogout_triggered();
+    // The confirmed half of Log Out (clear credentials + close). Split out of
+    // on_actionLogout_triggered so the WASM test hook can drive it directly.
+    void performLogout();
 
 
     void on_actionSingle_Workout_triggered();
