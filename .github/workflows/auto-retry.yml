@@ -29,10 +29,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Re-run failed jobs (attempt 2)
+        # Event fields are passed via env, never interpolated into the script:
+        # head_branch is attacker-controlled on fork-PR runs, and this job
+        # holds an actions:write token (CodeQL: actions/code-injection).
         env:
           GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
         run: |
-          echo "Retrying failed jobs of run ${{ github.event.workflow_run.id }}" \
-               "(${{ github.event.workflow_run.head_branch }} @ ${{ github.event.workflow_run.head_sha }})"
-          gh run rerun ${{ github.event.workflow_run.id }} --failed \
-            --repo ${{ github.repository }}
+          echo "Retrying failed jobs of run ${RUN_ID} (${HEAD_BRANCH} @ ${HEAD_SHA})"
+          gh run rerun "${RUN_ID}" --failed --repo "${REPO}"
