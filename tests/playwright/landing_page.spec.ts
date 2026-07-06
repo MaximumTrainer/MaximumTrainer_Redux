@@ -74,6 +74,19 @@ test.describe('Landing page content', () => {
   });
 
   test('no critical console errors on page load', async ({ page }) => {
+    // The download-card script fetches the latest release from api.github.com,
+    // which rate-limits unauthenticated calls per IP (60/h) — on shared CI
+    // runner IPs that is a routine 403, and the browser logs it as a console
+    // error even though the page degrades gracefully. Stub the API so this
+    // test only fails on errors the page itself is responsible for.
+    await page.route('https://api.github.com/repos/**/releases/latest', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ tag_name: 'v0.0.0', assets: [] }),
+      }),
+    );
+
     const criticalErrors: string[] = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') {
