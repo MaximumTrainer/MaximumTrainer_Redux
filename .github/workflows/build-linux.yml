@@ -18,6 +18,9 @@ on:
 env:
   QT_VERSION: '6.11.1'
   QWT_DIR: /tmp/qwt6
+  # Retry/timeout tuning for aqtinstall (Qt CDN flakes). No-op in jobs that
+  # install Qt without a checkout — aqt ignores a missing config file.
+  AQT_CONFIG: ${{ github.workspace }}/.github/aqt-settings.ini
 
 jobs:
 
