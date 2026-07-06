@@ -1,0 +1,43 @@
+name: Auto-retry transient CI failures
+
+# Re-runs the FAILED jobs of a Build Workflow run once, automatically.
+#
+# CI here fails far more often from infrastructure than from code: Qt CDN
+# outages, corrupted archive downloads (aqtinstall Bad7zFile), GitHub
+# cache-service 400s. A single automatic retry of only the failed jobs clears
+# those without anyone noticing; genuinely broken code fails again on attempt
+# 2 and the run stays red. The run_attempt guard means this can never loop —
+# it only ever fires for a run's first attempt.
+#
+# workflow_run only triggers from the workflow file on the default branch,
+# but the *runs* it reacts to come from every branch, so PR branches get the
+# retry too once this is merged.
+
+on:
+  workflow_run:
+    workflows: ["Build Workflow"]
+    types: [completed]
+
+permissions:
+  actions: write
+
+jobs:
+  rerun_failed_jobs:
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.run_attempt == 1
+    runs-on: ubuntu-latest
+    steps:
+      - name: Re-run failed jobs (attempt 2)
+        # Event fields are passed via env, never interpolated into the script:
+        # head_branch is attacker-controlled on fork-PR runs, and this job
+        # holds an actions:write token (CodeQL: actions/code-injection).
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Retrying failed jobs of run ${RUN_ID} (${HEAD_BRANCH} @ ${HEAD_SHA})"
+          gh run rerun "${RUN_ID}" --failed --repo "${REPO}"

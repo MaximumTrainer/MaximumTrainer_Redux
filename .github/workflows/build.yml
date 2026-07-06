@@ -27,6 +27,12 @@ concurrency:
   group: build-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
+env:
+  # Retry/timeout tuning for aqtinstall (Qt CDN flakes), used by the wasm job;
+  # the platform jobs live in the called build-*.yml workflows, which set this
+  # themselves (env does not propagate into reusable workflows).
+  AQT_CONFIG: ${{ github.workspace }}/.github/aqt-settings.ini
+
 jobs:
 
   # ──────────────────────────────────────────────────────────────────────────

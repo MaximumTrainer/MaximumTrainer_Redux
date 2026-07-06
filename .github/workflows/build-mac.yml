@@ -15,6 +15,11 @@ on:
         required: false
         default: ''
 
+env:
+  # Retry/timeout tuning for aqtinstall (Qt CDN flakes). No-op in jobs that
+  # install Qt without a checkout — aqt ignores a missing config file.
+  AQT_CONFIG: ${{ github.workspace }}/.github/aqt-settings.ini
+
 jobs:
 
   build_mac:
