@@ -47,8 +47,8 @@ jobs:
         run: |
           if [ -z "$INTERVALS_OAUTH_CLIENT_SECRET" ]; then
             echo "INTERVALS_OAUTH_CLIENT_SECRET secret not configured — the worker"
-            echo "cannot inject it; token exchange then only works for builds with"
-            echo "a baked-in secret (qmake INTERVALS_OAUTH_CLIENT_SECRET)."
+            echo "cannot inject it and token exchange will fail (the app never"
+            echo "carries the secret)."
             exit 0
           fi
           # KV path: store secret keyed by client_id ("259").

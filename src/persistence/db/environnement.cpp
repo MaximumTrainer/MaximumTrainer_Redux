@@ -100,12 +100,6 @@ QString Environnement::getIntervalsIcuClientId() {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-QString Environnement::getIntervalsIcuClientSecret() {
-    const QString stored = CredentialStore::load("intervals_icu_app", "client_secret");
-    return stored.isEmpty() ? CLIENT_SECRET_ICV : stored;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 QString Environnement::getUrlIntervalsIcuRegister() {
     return urlIntervalsIcuRegister;
 }

@@ -45,19 +45,15 @@ const static QString urlIntervalsIcuOAuthAuthorize =
 const static QString intervalsIcuOAuthScope =
     QStringLiteral("ACTIVITY:WRITE,WELLNESS:READ,SETTINGS:WRITE,CALENDAR:WRITE,LIBRARY:READ");
 
-/// Intervals.icu OAuth2 client credentials.
-/// client_id and client_secret are injected at build time via environment variables
-/// INTERVALS_OAUTH_CLIENT_ID and INTERVALS_OAUTH_CLIENT_SECRET (see MaximumTrainer.pro).
-/// The macros default to "259" (existing public client) and "" (no secret) when
-/// the environment variables are not set.
+/// Intervals.icu OAuth2 client_id, injected at build time via the
+/// INTERVALS_OAUTH_CLIENT_ID environment variable (see MaximumTrainer.pro);
+/// defaults to "259" (existing public client).  The client_secret is
+/// deliberately NOT in the app: the token Worker injects it server-side
+/// (see URL_TOKEN_ICV).
 #ifndef INTERVALS_OAUTH_CLIENT_ID
 #define INTERVALS_OAUTH_CLIENT_ID "259"
 #endif
-#ifndef INTERVALS_OAUTH_CLIENT_SECRET
-#define INTERVALS_OAUTH_CLIENT_SECRET ""
-#endif
-const static QString CLIENT_ID_ICV     = QStringLiteral(INTERVALS_OAUTH_CLIENT_ID);
-const static QString CLIENT_SECRET_ICV = QStringLiteral(INTERVALS_OAUTH_CLIENT_SECRET);
+const static QString CLIENT_ID_ICV = QStringLiteral(INTERVALS_OAUTH_CLIENT_ID);
 
 /// Cloudflare CORS proxy that fronts intervals.icu for both desktop and WASM
 /// builds.  All OAuth token exchange / refresh POSTs (and, in WASM, all API
@@ -89,10 +85,8 @@ const static QString INTERVALS_PROXY_DESKTOP_CLIENT_VALUE =
 ///
 /// intervals.icu REQUIRES the client_secret on token requests (422 without
 /// it); client 259 is confidential.  The Worker injects the secret
-/// server-side (wrangler secret INTERVALS_CLIENT_SECRET), so no app binary
-/// has to carry it.  If a secret IS configured locally (self-registered
-/// OAuth client, see getIntervalsIcuClientSecret()) it is sent along and the
-/// Worker forwards it untouched.
+/// server-side (CLIENT_SECRETS KV keyed by client_id), so no app binary
+/// carries it.
 const static QString URL_TOKEN_ICV = INTERVALS_PROXY_BASE + "/proxy/api/oauth/token";
 
 /// Sentinel athlete ID meaning "the currently authenticated OAuth2 user".
@@ -150,12 +144,6 @@ public:
     /// Checks CredentialStore("intervals_icu_app","client_id") first; falls back
     /// to the build-time constant (INTERVALS_OAUTH_CLIENT_ID / "259").
     static QString getIntervalsIcuClientId();
-    /// Return the Intervals.icu OAuth2 client_secret.
-    /// Checks CredentialStore("intervals_icu_app","client_secret") first; falls back
-    /// to the build-time constant (INTERVALS_OAUTH_CLIENT_SECRET / "").
-    /// Normally empty: the token Worker injects the secret server-side (see
-    /// URL_TOKEN_ICV).  Only set for self-registered OAuth clients.
-    static QString getIntervalsIcuClientSecret();
 
 };
 

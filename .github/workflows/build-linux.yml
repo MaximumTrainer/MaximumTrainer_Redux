@@ -92,8 +92,7 @@ jobs:
       run: |
         qmake MaximumTrainer.pro "QWT_INSTALL=$QWT_DIR"
       env:
-        INTERVALS_OAUTH_CLIENT_ID:     ${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}
-        INTERVALS_OAUTH_CLIENT_SECRET: ${{ secrets.INTERVALS_OAUTH_CLIENT_SECRET }}
+        INTERVALS_OAUTH_CLIENT_ID: ${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}
 
     - name: Build
       run: make -j$(nproc)
