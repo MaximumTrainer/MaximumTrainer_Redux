@@ -36,8 +36,6 @@ public:
 
         FTP_TEST,
         FTP8min_TEST,
-        CP5min_TEST,
-        CP20min_TEST,
         MAP_TEST,
 
         INCLUDED_WORKOUT,

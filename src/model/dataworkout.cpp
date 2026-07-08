@@ -653,19 +653,6 @@ void DataWorkout::updateWorkoutMetrics(int secReceived, double value) {
 
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int DataWorkout::getCP() {
-
-    if (meanPowerTest.isEmpty()) {
-        return 0;
-    }
-
-    int criticalPower = 0;
-    double moyenne = meanPowerTest.first();
-    qDebug() << "meanPowerTest" << meanPowerTest.first();
-    criticalPower = ((int)(moyenne + 0.5));
-    return criticalPower;
-}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -716,11 +703,6 @@ int DataWorkout::getLTHR() {
     if (meanHrTest.isEmpty()) {
         return 0;
     }
-    //dont return for this test yet
-    if (workout.getWorkoutNameEnum() ==  Workout::CP5min_TEST || workout.getWorkoutNameEnum() ==  Workout::CP20min_TEST) {
-        return 0;
-    }
-
     double moyenne = 0;
     double nbElement = meanHrTest.size();
     for (int i=0; i<nbElement; i++) {

@@ -248,8 +248,6 @@ QList<Workout> XmlUtil::parseWorkoutLstPath(QStringList lstPath, Workout::WORKOU
             workout.setWorkout_name_enum(Workout::INCLUDED_WORKOUT);
         else if(workoutType == Workout::USER_MADE)
             workout.setWorkout_name_enum(Workout::USER_MADE);
-        //        else if(workoutType == Workout::CP_TEST)
-        //            workout.setWorkout_name_enum(Workout::CP_TEST);
 
         lstWorkout.append(workout);
 
@@ -260,13 +258,6 @@ QList<Workout> XmlUtil::parseWorkoutLstPath(QStringList lstPath, Workout::WORKOU
 
 
 
-//---------------------------------------------------------------------------------------------
-//QList<Workout> XmlUtil::getLstWorkoutTest() {
-//    QStringList lstWorkoutPat;
-//    lstWorkoutPat.append(":/included_workout/test/included_workout/Test/CP5 Test.workout");
-//    lstWorkoutPat.append(":/included_workout/test/included_workout/Test/CP20 Test.workout");
-//    return parseWorkoutLstPath(lstWorkoutPat, Workout::CP_TEST);
-//}
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////

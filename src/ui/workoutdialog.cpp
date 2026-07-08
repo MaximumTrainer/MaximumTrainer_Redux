@@ -657,7 +657,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
     //Disable button in Test mode
     if (workout.getWorkoutNameEnum() == Workout::FTP_TEST || workout.getWorkoutNameEnum() == Workout::FTP8min_TEST ||
-            workout.getWorkoutNameEnum() == Workout::CP5min_TEST || workout.getWorkoutNameEnum() == Workout::CP20min_TEST ||
             workout.getWorkoutNameEnum() == Workout::MAP_TEST ) {
         isTestWorkout = true;
     }
@@ -1194,12 +1193,11 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
         timerCheckToActivateSound->start();
         currentInterval++;
 
-        // Show the FTP/CP test result as soon as the last test interval
+        // Show the FTP test result as soon as the last test interval
         // completes, so riders who skip the cooldown still get it.
         const Workout::WORKOUT_NAME workoutType = workout.getWorkoutNameEnum();
         if (currentIntervalObj.isTestInterval()
-                && (workoutType == Workout::FTP_TEST || workoutType == Workout::FTP8min_TEST
-                    || workoutType == Workout::CP5min_TEST || workoutType == Workout::CP20min_TEST)) {
+                && (workoutType == Workout::FTP_TEST || workoutType == Workout::FTP8min_TEST)) {
             bool testIntervalRemaining = false;
             for (int i = currentInterval; i < workout.getNbInterval(); i++) {
                 if (workout.getInterval(i).isTestInterval()) {
@@ -4077,25 +4075,6 @@ void WorkoutDialog::showTestResult() {
         }
     }
 
-    // ------------- CP TEST -----------------
-    else if (workout.getWorkoutNameEnum() ==  Workout::CP5min_TEST || workout.getWorkoutNameEnum() ==  Workout::CP20min_TEST) {
-
-        // GROUP
-        if (account->enable_studio_mode) {
-
-            for (int i=0; i<account->nb_user_studio; i++) {
-                QString testResult = workout.getName() + tr(" Result:");
-                arrUserStudioWidget[i]->setResultTest(testResult + QString::number(arrDataWorkout[i]->getCP()));
-            }
-        }
-        // SOLO
-        else {
-            int criticalPower = arrDataWorkout[0]->getCP();
-            mainPlot->setAlertMessage(true, false, workout.getName() + tr(" Result")
-                                      + "<div style='color:white;height:7px;'>------------------</div><br/> "
-                                      + QString::number(criticalPower) + tr(" watts"), 500);
-        }
-    }
     else {
         mainPlot->setAlertMessage(true, false, workout.getName() + tr(" completed!")
                                   + "<div style='color:white;height:7px;'>------------------------------------</div><br/> "
