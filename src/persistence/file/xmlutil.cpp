@@ -269,28 +269,6 @@ QList<Workout> XmlUtil::parseWorkoutLstPath(QStringList lstPath, Workout::WORKOU
 //}
 
 
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-QList<Workout> XmlUtil::getLstWorkoutRachel() {
-
-    QStringList lstWorkoutPat;
-    lstWorkoutPat.append(":/included_workout/rachel/resources/included_workout/Rachel/Intervals-01.workout");
-    lstWorkoutPat.append(":/included_workout/rachel/resources/included_workout/Rachel/Intervals-02.workout");
-    lstWorkoutPat.append(":/included_workout/rachel/resources/included_workout/Rachel/Intervals-03.workout");
-    lstWorkoutPat.append(":/included_workout/rachel/resources/included_workout/Rachel/Intervals-04.workout");
-    lstWorkoutPat.append(":/included_workout/rachel/resources/included_workout/Rachel/Intervals-05.workout");
-    lstWorkoutPat.append(":/included_workout/rachel/resources/included_workout/Rachel/Intervals-06.workout");
-    lstWorkoutPat.append(":/included_workout/rachel/resources/included_workout/Rachel/Intervals-07.workout");
-    lstWorkoutPat.append(":/included_workout/rachel/resources/included_workout/Rachel/Intervals-08.workout");
-    lstWorkoutPat.append(":/included_workout/rachel/resources/included_workout/Rachel/Intervals-09.workout");
-    lstWorkoutPat.append(":/included_workout/rachel/resources/included_workout/Rachel/Intervals-10.workout");
-    lstWorkoutPat.append(":/included_workout/rachel/resources/included_workout/Rachel/Intervals-11.workout");
-    lstWorkoutPat.append(":/included_workout/rachel/resources/included_workout/Rachel/Intervals-12.workout");
-    return parseWorkoutLstPath(lstWorkoutPat, Workout::INCLUDED_WORKOUT);
-
-}
-
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 QList<Workout> XmlUtil::getLstWorkoutFtpKickstart() {
 
@@ -329,97 +307,6 @@ QList<Workout> XmlUtil::getLstWorkoutVo2ShockBlock() {
     lstWorkoutPat.append(":/included_workout/shock/resources/included_workout/VO2 Shock Block/Shock 2-1 4x4 Classic.workout");
     lstWorkoutPat.append(":/included_workout/shock/resources/included_workout/VO2 Shock Block/Shock 2-2 Easy Spin.workout");
     lstWorkoutPat.append(":/included_workout/shock/resources/included_workout/VO2 Shock Block/Shock 2-3 30-30s Max.workout");
-    return parseWorkoutLstPath(lstWorkoutPat, Workout::INCLUDED_WORKOUT);
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-QList<Workout>  XmlUtil::getLstWorkoutBt16WeeksPlan() {
-
-    QStringList lstWorkoutPat;
-    //    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Opt-Phase-Prep-5min-CP-test.workout");
-    //    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Opt-Phase-Prep-20min-CP-test.workout");
-
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Opt-Phase-Prep-wkA-wo1.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Opt-Phase-Prep-wkA-wo2.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Opt-Phase-Prep-wkA-wo3.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Opt-Phase-Prep-wkA-wo4.workout");
-
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Opt-Phase-Prep-wkB-wo1.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Opt-Phase-Prep-wkB-wo2.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Opt-Phase-Prep-wkB-wo3.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Opt-Phase-Prep-wkB-wo4.workout");
-
-    //    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk1-wo1-5min-CP-test.workout");
-    //    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk1-wo2-20min-CP-Test.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk1-wo3.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk1-wo4.workout");
-
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk2-wo1.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk2-wo2.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk2-wo3.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk2-wo4.workout");
-
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk3-wo1.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk3-wo2.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk3-wo3.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk3-wo4.workout");
-
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk4-wo1.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk4-wo2.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk4-wo3.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase1-wk4-wo4.workout");
-
-    //    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk5-wo1-5min-CP-Test.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk5-wo2.workout");
-    //    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk5-wo3-20min-CP-Test.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk5-wo4.workout");
-
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk6-wo1.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk6-wo2.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk6-wo3.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk6-wo4.workout");
-
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk7-wo1.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk7-wo2.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk7-wo3.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk7-wo4.workout");
-
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk8-wo1.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk8-wo2.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk8-wo3.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk8-wo4.workout");
-
-    //    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk9-wo1-5min-CP-Test.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk9-wo2.workout");
-    //    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk9-wo3-20min-CP-Test.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase2-wk9-wo4.workout");
-
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk10-wo1.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk10-wo2.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk10-wo3.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk10-wo4.workout");
-
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk11-wo1.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk11-wo2.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk11-wo3.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk11-wo4.workout");
-
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk12-wo1.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk12-wo2.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk12-wo3.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk12-wo4.workout");
-
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk13-wo1.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk13-wo2.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk13-wo3.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk13-wo4.workout");
-
-    //    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk14-wo1-5min-CP-Test.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk14-wo2.workout");
-    //    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk14-wo3-20min-CP-Test.workout");
-    lstWorkoutPat.append(":/included_workout/bt_16_wk_plan/resources/included_workout/BT 16wk Power Based/Phase3-wk14-wo4.workout");
-
     return parseWorkoutLstPath(lstWorkoutPat, Workout::INCLUDED_WORKOUT);
 }
 

@@ -32,8 +32,6 @@ public:
 
 
     // Workouts from ressource
-    QList<Workout> getLstWorkoutRachel();
-    QList<Workout> getLstWorkoutBt16WeeksPlan();
     QList<Workout> getLstWorkoutFtpKickstart();
     QList<Workout> getLstWorkoutPolarized3x();
     QList<Workout> getLstWorkoutVo2ShockBlock();
