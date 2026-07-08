@@ -131,12 +131,19 @@ QVariant WorkoutTableModel::data(const QModelIndex &index, int role) const {
                                         : QColor(0x15, 0x4F, 0xC2)); // #154FC2
     }
 
-    /// Done check: centred + green (legible on both themes)
+    /// Done check: centred + green (legible on both themes), oversized so it
+    /// reads at a glance
     if (index.column() == 11) {
         if (role == Qt::TextAlignmentRole)
             return QVariant(Qt::AlignCenter);
         if (role == Qt::ForegroundRole)
             return QVariant::fromValue(QColor(0x2F, 0xAF, 0x5A)); // #2FAF5A
+        if (role == Qt::FontRole) {
+            QFont checkFont;
+            checkFont.setPointSize(14);
+            checkFont.setBold(true);
+            return checkFont;
+        }
     }
 
 
@@ -187,7 +194,7 @@ QVariant WorkoutTableModel::data(const QModelIndex &index, int role) const {
             return qRound(work.getTrainingStressScore());
         }
         else if(index.column() == 11) {  // Done — a check when the workout is marked done
-            return account->hashWorkoutDone.contains(work.getName()) ? QStringLiteral("✓") : QString();
+            return account->hashWorkoutDone.contains(work.getName()) ? QStringLiteral("✔") : QString();
         }
 
         else if(index.column() == 20) {
