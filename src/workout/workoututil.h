@@ -17,11 +17,6 @@ public:
     static Workout getWorkoutMap(int userFTP);
 
 
-
-    //return the start of the video in msec (where to start workout)
-    static int startVideoSufferfest(QString sufferfestWorkoutName);
-
-
 private:
 
     static Workout CP5();

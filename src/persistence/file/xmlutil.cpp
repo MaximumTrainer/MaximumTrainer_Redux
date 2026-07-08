@@ -246,8 +246,6 @@ QList<Workout> XmlUtil::parseWorkoutLstPath(QStringList lstPath, Workout::WORKOU
 
         if (workoutType == Workout::INCLUDED_WORKOUT)
             workout.setWorkout_name_enum(Workout::INCLUDED_WORKOUT);
-        else if(workoutType == Workout::SUFFERFEST_WORKOUT)
-            workout.setWorkout_name_enum(Workout::SUFFERFEST_WORKOUT);
         else if(workoutType == Workout::USER_MADE)
             workout.setWorkout_name_enum(Workout::USER_MADE);
         //        else if(workoutType == Workout::CP_TEST)
@@ -290,14 +288,6 @@ QList<Workout> XmlUtil::getLstWorkoutRachel() {
     lstWorkoutPat.append(":/included_workout/rachel/resources/included_workout/Rachel/Intervals-12.workout");
     return parseWorkoutLstPath(lstWorkoutPat, Workout::INCLUDED_WORKOUT);
 
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-QList<Workout> XmlUtil::getLstWorkoutSufferfest() {
-    QStringList lstWorkoutPat;
-    lstWorkoutPat.append(":/included_workout/sufferfest/resources/included_workout/Sufferfest/ISLAGIATT.workout");
-    return parseWorkoutLstPath(lstWorkoutPat, Workout::SUFFERFEST_WORKOUT);
 }
 
 

@@ -131,11 +131,6 @@ bool QtMediaPlayer::eventFilter(QObject *watched, QEvent *event)
 
 QtMediaPlayer::~QtMediaPlayer() = default;
 
-void QtMediaPlayer::setMovieTime(int msec)
-{
-    m_player->setPosition(msec);
-}
-
 void QtMediaPlayer::videoRightClick()
 {
     m_menu->popup(QCursor::pos());

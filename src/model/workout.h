@@ -41,7 +41,6 @@ public:
         MAP_TEST,
 
         INCLUDED_WORKOUT,
-        SUFFERFEST_WORKOUT,
         OPEN_RIDE,
     };
 

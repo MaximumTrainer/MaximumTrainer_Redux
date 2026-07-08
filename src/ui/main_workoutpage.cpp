@@ -156,12 +156,10 @@ void Main_WorkoutPage::parseIncludedWorkouts() {
     QList<Workout> lstWorkout;
 
     QList<Workout> lstWorkoutBase = WorkoutUtil::getListWorkoutBase();
-    QList<Workout> sufferfest = xmlUtil->getLstWorkoutSufferfest();
     QList<Workout> planBT = xmlUtil->getLstWorkoutBt16WeeksPlan();
     QList<Workout> rachel = xmlUtil->getLstWorkoutRachel();
 
     lstWorkout.append(lstWorkoutBase);
-    lstWorkout.append(sufferfest);
     lstWorkout.append(planBT);
     lstWorkout.append(rachel);
     tableModel->addListWorkout(lstWorkout);
