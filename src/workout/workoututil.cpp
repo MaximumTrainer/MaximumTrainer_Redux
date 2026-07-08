@@ -36,18 +36,6 @@ Workout WorkoutUtil::getWorkoutMap(int userFTP) {
 
 
 
-//------------------------------------------------------------------------------------------
-int WorkoutUtil::startVideoSufferfest(QString sufferfestWorkoutName) {
-
-    if (sufferfestWorkoutName == "ISLAGIATT")
-        return 70000; //1:10
-    else
-        return -1;
-}
-
-
-
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Workout WorkoutUtil::CP5() {
 

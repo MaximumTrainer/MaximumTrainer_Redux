@@ -29,7 +29,6 @@ public:
     explicit QtMediaPlayer(QWidget *parent = nullptr);
     ~QtMediaPlayer();
 
-    void setMovieTime(int msec);
     void setRadio(bool isRadio) { this->isRadio = isRadio; }
 
 protected:
@@ -98,7 +97,6 @@ class QtMediaPlayer : public QWidget
 public:
     explicit QtMediaPlayer(QWidget *parent = nullptr) : QWidget(parent) {}
     ~QtMediaPlayer() {}
-    void setMovieTime(int) {}
     void setRadio(bool) {}
 signals:
     void playing();

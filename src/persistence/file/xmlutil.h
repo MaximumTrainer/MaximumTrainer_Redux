@@ -33,7 +33,6 @@ public:
 
     // Workouts from ressource
     QList<Workout> getLstWorkoutRachel();
-    QList<Workout> getLstWorkoutSufferfest();
     QList<Workout> getLstWorkoutBt16WeeksPlan();
 
 

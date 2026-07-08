@@ -127,9 +127,6 @@
         <file>resources/included_workout/BT 16wk Power Based/Phase3-wk14-wo2.workout</file>
         <file>resources/included_workout/BT 16wk Power Based/Phase3-wk14-wo4.workout</file>
     </qresource>
-    <qresource prefix="/included_workout/sufferfest">
-        <file>resources/included_workout/Sufferfest/ISLAGIATT.workout</file>
-    </qresource>
     <qresource prefix="/data">
         <file>resources/data/default_radios.json</file>
     </qresource>

@@ -1190,14 +1190,6 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
         changeIntervalsDataWorkout(lastIntervalEndTime_msec, totalTimeElapsed_sec, intervalPausedTime_msec, false, currentIntervalObj.isTestInterval());
 
 
-        ///---- Check if it's a SufferFestworkout, to sync video with workout on second interval
-        if (workout.getWorkoutNameEnum() == Workout::SUFFERFEST_WORKOUT && currentInterval == 0) {
-            qDebug() << "SufferFest workout - Adjust to start!";
-            int startVideoMs = WorkoutUtil::startVideoSufferfest(workout.getName());
-            if (startVideoMs != -1)
-                ui->widgetVideo->setMovieTime(startVideoMs);
-        }
-
         timerCheckToActivateSound->start();
         currentInterval++;
 

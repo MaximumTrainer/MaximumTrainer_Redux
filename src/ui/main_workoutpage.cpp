@@ -105,7 +105,7 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
     ui->tableView_workout->setColumnWidth(7, 40);
     ui->tableView_workout->setColumnWidth(8, 40);
     ui->tableView_workout->setColumnWidth(9, 40);
-    ui->tableView_workout->setColumnWidth(11, 34);   // Done (check) — small, no header
+    ui->tableView_workout->setColumnWidth(11, 40);   // Done (check) — small, no header
     // Let the Graph column fill the remaining width (it used to be the last
     // section; the new Done column is last now, so stretch the Graph explicitly).
     ui->tableView_workout->horizontalHeader()->setSectionResizeMode(10, QHeaderView::Stretch);
@@ -156,12 +156,10 @@ void Main_WorkoutPage::parseIncludedWorkouts() {
     QList<Workout> lstWorkout;
 
     QList<Workout> lstWorkoutBase = WorkoutUtil::getListWorkoutBase();
-    QList<Workout> sufferfest = xmlUtil->getLstWorkoutSufferfest();
     QList<Workout> planBT = xmlUtil->getLstWorkoutBt16WeeksPlan();
     QList<Workout> rachel = xmlUtil->getLstWorkoutRachel();
 
     lstWorkout.append(lstWorkoutBase);
-    lstWorkout.append(sufferfest);
     lstWorkout.append(planBT);
     lstWorkout.append(rachel);
     tableModel->addListWorkout(lstWorkout);
