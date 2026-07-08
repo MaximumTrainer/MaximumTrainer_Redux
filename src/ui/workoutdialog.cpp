@@ -572,6 +572,7 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     isWorkoutStarted = false;
     isWorkoutPaused = true;
     isWorkoutOver = false;
+    testResultShown = false;
     changeIntervalDisplayNextSecond = false;
     ignoreCondition = false;
     if (workout.getWorkoutNameEnum() == Workout::OPEN_RIDE) {
@@ -1192,6 +1193,23 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
 
         timerCheckToActivateSound->start();
         currentInterval++;
+
+        // Show the FTP/CP test result as soon as the last test interval
+        // completes, so riders who skip the cooldown still get it.
+        const Workout::WORKOUT_NAME workoutType = workout.getWorkoutNameEnum();
+        if (currentIntervalObj.isTestInterval()
+                && (workoutType == Workout::FTP_TEST || workoutType == Workout::FTP8min_TEST
+                    || workoutType == Workout::CP5min_TEST || workoutType == Workout::CP20min_TEST)) {
+            bool testIntervalRemaining = false;
+            for (int i = currentInterval; i < workout.getNbInterval(); i++) {
+                if (workout.getInterval(i).isTestInterval()) {
+                    testIntervalRemaining = true;
+                    break;
+                }
+            }
+            if (!testIntervalRemaining)
+                showTestResult();
+        }
 
         if (workout.getWorkoutNameEnum() == Workout::MAP_TEST && currentIntervalObj.isTestInterval()) {
             achievementManager->checkMAPAchievement(currMAPInterval);
@@ -4015,8 +4033,10 @@ void WorkoutDialog::createUserStudioWidget() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::showTestResult() {
 
-
-
+    // May already have been shown when the last test interval finished.
+    if (testResultShown)
+        return;
+    testResultShown = true;
 
     // ------------- FTP TEST -----------------
     if (workout.getWorkoutNameEnum() == Workout::FTP_TEST || workout.getWorkoutNameEnum() == Workout::FTP8min_TEST) {

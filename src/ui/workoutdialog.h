@@ -520,6 +520,7 @@ private:
     bool isWorkoutStarted;
     bool isWorkoutOver;
     bool isWorkoutPaused;
+    bool testResultShown;
 
 
     /// disable screen saver
