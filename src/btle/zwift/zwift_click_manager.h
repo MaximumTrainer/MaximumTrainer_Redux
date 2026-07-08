@@ -24,12 +24,12 @@ class ZwiftClickHub;
  * shifters it discovers (connectDevice) or it can scan itself (start), and the
  * workout owns it and frees it on close.
  *
- * Fixed button map (Zwift Click v2, captured on hardware):
- *   right paddle (12) → shiftUp        left paddle (8)  → shiftDown
- *   Y (6)            → difficultyUp     B (5)           → difficultyDown
- *   A (4)            → startPauseWorkout  Z (7)         → lap
- *   d-pad L (0)      → radioPrev        d-pad R (2)     → radioNext
- *   d-pad U (1)      → radioVolumeUp    d-pad D (3)     → radioVolumeDown
+ * Fixed button map (Zwift Click v2, right controller only — see
+ * onButtonPressed for the authoritative dispatch):
+ *   Y (6)             → shiftUp           B (5)  → shiftDown
+ *   A (4)             → radioNext         Z (7)  → radioPrev
+ *   right paddle (12) → startPauseWorkout
+ *   Left-side inputs (d-pad, navigation, left paddle) are ignored.
  */
 class ZwiftClickManager : public QObject
 {

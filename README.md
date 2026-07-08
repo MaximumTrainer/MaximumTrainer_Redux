@@ -199,9 +199,9 @@ in **Preferences → Logging**.
 
 | Platform | Default log file path |
 |----------|-----------------------|
-| **Windows** | `%APPDATA%\MaximumTrainer\MaximumTrainer.log`<br/>(e.g. `C:\Users\YourName\AppData\Roaming\MaximumTrainer\MaximumTrainer.log`) |
-| **macOS** | `~/Library/Application Support/MaximumTrainer/MaximumTrainer.log` |
-| **Linux** | `~/.local/share/MaximumTrainer/MaximumTrainer.log` (XDG data dir; override with `$XDG_DATA_HOME`) |
+| **Windows** | `%APPDATA%\MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log`<br/>(e.g. `C:\Users\YourName\AppData\Roaming\MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log`) |
+| **macOS** | `~/Library/Application Support/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log` |
+| **Linux** | `~/.local/share/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log` (XDG data dir; override with `$XDG_DATA_HOME`) |
 
 Set the log level to **Debug** before reproducing an issue, then attach the log file to your bug report.
 The **Open log file** button in the Logging settings page opens the file directly in your default text editor.
