@@ -702,6 +702,86 @@ private slots:
 
         QFile::remove(path);
     }
+
+    // =========================================================================
+    // BUNDLED TRAINING PLANS (resources/included_workout/)
+    // =========================================================================
+
+    // -----------------------------------------------------------------------
+    // 21. Every bundled .workout file parses into a valid workout: at least
+    //     one interval after repeat expansion, positive durations, and power
+    //     targets in a sane 0.2–1.5 FTP band.
+    // -----------------------------------------------------------------------
+    void testBundledWorkouts_allParseValid()
+    {
+        const QDir root(QStringLiteral(BUNDLED_WORKOUTS_DIR));
+        QVERIFY2(root.exists(), "resources/included_workout not found");
+
+        XmlUtil util;
+        int filesChecked = 0;
+
+        const QStringList planDirs = root.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const QString &planDir : planDirs) {
+            QDir dir(root.absoluteFilePath(planDir));
+            const QStringList files = dir.entryList({QStringLiteral("*.workout")}, QDir::Files);
+            for (const QString &file : files) {
+                const QString path = dir.absoluteFilePath(file);
+                const Workout workout = util.parseSingleWorkoutXml(path);
+
+                QVERIFY2(workout.getNbInterval() > 0,
+                         qPrintable(file + QStringLiteral(": no intervals after expansion")));
+
+                const QList<Interval> intervals = workout.getLstInterval();
+                for (const Interval &interval : intervals) {
+                    QVERIFY2(QTime(0, 0, 0) < interval.getDurationQTime(),
+                             qPrintable(file + QStringLiteral(": interval with zero duration")));
+                    if (interval.getPowerStepType() != Interval::StepType::NONE) {
+                        QVERIFY2(interval.getFTP_start() >= 0.2 && interval.getFTP_start() <= 1.5,
+                                 qPrintable(file + QStringLiteral(": power start out of range")));
+                        QVERIFY2(interval.getFTP_end() >= 0.2 && interval.getFTP_end() <= 1.5,
+                                 qPrintable(file + QStringLiteral(": power end out of range")));
+                    }
+                }
+                filesChecked++;
+            }
+        }
+
+        QVERIFY2(filesChecked > 0, "no bundled .workout files found");
+        qDebug().noquote() << "[BundledPlans]" << filesChecked
+                           << "bundled workout files parsed and validated — PASS";
+    }
+
+    // -----------------------------------------------------------------------
+    // 22. The three bundled training plans have the expected workout counts
+    //     and carry their plan name in the Plan field.
+    // -----------------------------------------------------------------------
+    void testBundledPlans_expectedCounts()
+    {
+        const struct { const char *dir; const char *plan; int count; } plans[] = {
+            { "FTP Kickstart",   "FTP Kickstart",   9 },
+            { "Polarized 3x",    "Polarized 3x",    3 },
+            { "VO2 Shock Block", "VO2 Shock Block", 6 },
+        };
+
+        const QDir root(QStringLiteral(BUNDLED_WORKOUTS_DIR));
+        XmlUtil util;
+
+        for (const auto &plan : plans) {
+            QDir dir(root.absoluteFilePath(QLatin1String(plan.dir)));
+            QVERIFY2(dir.exists(), qPrintable(QLatin1String(plan.dir) + QStringLiteral(" missing")));
+
+            const QStringList files = dir.entryList({QStringLiteral("*.workout")}, QDir::Files);
+            QCOMPARE(files.size(), plan.count);
+
+            for (const QString &file : files) {
+                const Workout workout = util.parseSingleWorkoutXml(dir.absoluteFilePath(file));
+                QCOMPARE(workout.getPlan(), QLatin1String(plan.plan));
+            }
+        }
+
+        qDebug().noquote()
+            << "[BundledPlans] plan folders, counts and Plan fields all match — PASS";
+    }
 };
 
 QTEST_MAIN(TstWorkoutIo)

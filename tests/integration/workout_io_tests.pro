@@ -36,6 +36,10 @@ DESTDIR     = ../../build/tests
 OBJECTS_DIR = .obj_workout_io
 MOC_DIR     = .moc_workout_io
 
+# ── Path to the bundled training-plan workout files ───────────────────────────
+BUNDLED_WORKOUTS_DIR = $$PWD/../../resources/included_workout
+DEFINES += BUNDLED_WORKOUTS_DIR=\\\"$$BUNDLED_WORKOUTS_DIR\\\"
+
 # ── QWT: platform-specific include / link ────────────────────────────────────
 linux {
     # Qt6 has no qwt apt package: build QWT from source and pass QWT_INSTALL=...

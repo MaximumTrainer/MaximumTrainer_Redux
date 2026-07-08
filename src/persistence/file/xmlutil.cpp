@@ -292,6 +292,48 @@ QList<Workout> XmlUtil::getLstWorkoutRachel() {
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
+QList<Workout> XmlUtil::getLstWorkoutFtpKickstart() {
+
+    QStringList lstWorkoutPat;
+    lstWorkoutPat.append(":/included_workout/kickstart/resources/included_workout/FTP Kickstart/Kickstart 1-1 Sweet Spot 2x12.workout");
+    lstWorkoutPat.append(":/included_workout/kickstart/resources/included_workout/FTP Kickstart/Kickstart 1-2 Endurance Spin.workout");
+    lstWorkoutPat.append(":/included_workout/kickstart/resources/included_workout/FTP Kickstart/Kickstart 1-3 Over-Unders Intro.workout");
+    lstWorkoutPat.append(":/included_workout/kickstart/resources/included_workout/FTP Kickstart/Kickstart 2-1 Sweet Spot 2x15.workout");
+    lstWorkoutPat.append(":/included_workout/kickstart/resources/included_workout/FTP Kickstart/Kickstart 2-2 Tempo Steps.workout");
+    lstWorkoutPat.append(":/included_workout/kickstart/resources/included_workout/FTP Kickstart/Kickstart 2-3 Over-Unders.workout");
+    lstWorkoutPat.append(":/included_workout/kickstart/resources/included_workout/FTP Kickstart/Kickstart 3-1 Sweet Spot 3x12.workout");
+    lstWorkoutPat.append(":/included_workout/kickstart/resources/included_workout/FTP Kickstart/Kickstart 3-2 Openers.workout");
+    lstWorkoutPat.append(":/included_workout/kickstart/resources/included_workout/FTP Kickstart/Kickstart 3-3 Test Primer.workout");
+    return parseWorkoutLstPath(lstWorkoutPat, Workout::INCLUDED_WORKOUT);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+QList<Workout> XmlUtil::getLstWorkoutPolarized3x() {
+
+    QStringList lstWorkoutPat;
+    lstWorkoutPat.append(":/included_workout/polarized/resources/included_workout/Polarized 3x/Polarized Zone 2.workout");
+    lstWorkoutPat.append(":/included_workout/polarized/resources/included_workout/Polarized 3x/Polarized Over-Unders.workout");
+    lstWorkoutPat.append(":/included_workout/polarized/resources/included_workout/Polarized 3x/Polarized 30-30s.workout");
+    return parseWorkoutLstPath(lstWorkoutPat, Workout::INCLUDED_WORKOUT);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+QList<Workout> XmlUtil::getLstWorkoutVo2ShockBlock() {
+
+    QStringList lstWorkoutPat;
+    lstWorkoutPat.append(":/included_workout/shock/resources/included_workout/VO2 Shock Block/Shock 1-1 30-30s.workout");
+    lstWorkoutPat.append(":/included_workout/shock/resources/included_workout/VO2 Shock Block/Shock 1-2 Recovery Spin.workout");
+    lstWorkoutPat.append(":/included_workout/shock/resources/included_workout/VO2 Shock Block/Shock 1-3 40-20s.workout");
+    lstWorkoutPat.append(":/included_workout/shock/resources/included_workout/VO2 Shock Block/Shock 2-1 4x4 Classic.workout");
+    lstWorkoutPat.append(":/included_workout/shock/resources/included_workout/VO2 Shock Block/Shock 2-2 Easy Spin.workout");
+    lstWorkoutPat.append(":/included_workout/shock/resources/included_workout/VO2 Shock Block/Shock 2-3 30-30s Max.workout");
+    return parseWorkoutLstPath(lstWorkoutPat, Workout::INCLUDED_WORKOUT);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
 QList<Workout>  XmlUtil::getLstWorkoutBt16WeeksPlan() {
 
     QStringList lstWorkoutPat;

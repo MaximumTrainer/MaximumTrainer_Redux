@@ -210,6 +210,12 @@ For full troubleshooting guidance see the
 [User Guide — Log Files & Troubleshooting](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html#log-files)
 section.
 
+## Credits
+
+The bundled **Polarized 3x** training plan is adapted from
+[Robin Ingelbrecht's zwift-workouts](https://github.com/robiningelbrecht/zwift-workouts)
+(MIT license).
+
 ## TODO
 
 Project now going through new revisions, with plans to enhance as an open-source interval trainer for indoor cycling & indoor rowing.
