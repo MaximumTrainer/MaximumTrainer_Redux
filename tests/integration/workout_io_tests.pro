@@ -36,9 +36,10 @@ DESTDIR     = ../../build/tests
 OBJECTS_DIR = .obj_workout_io
 MOC_DIR     = .moc_workout_io
 
-# ── Path to the bundled training-plan workout files ───────────────────────────
-BUNDLED_WORKOUTS_DIR = $$PWD/../../resources/included_workout
-DEFINES += BUNDLED_WORKOUTS_DIR=\\\"$$BUNDLED_WORKOUTS_DIR\\\"
+# ── App resources: the bundled-plan tests read the .workout files from the
+#    compiled-in qrc (":/included_workout/...") so they validate exactly what
+#    the app ships and stay hermetic on artifact-only CI test runners. ─────────
+RESOURCES += ../../MyResources.qrc
 
 # ── QWT: platform-specific include / link ────────────────────────────────────
 linux {

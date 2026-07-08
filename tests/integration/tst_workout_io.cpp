@@ -67,6 +67,7 @@
 #include <QJsonObject>
 #include <QTemporaryFile>
 #include <QDir>
+#include <QDirIterator>
 
 #include "../../src/persistence/file/importerworkoutzwo.h"
 #include "../../src/persistence/file/xmlutil.h"
@@ -704,96 +705,91 @@ private slots:
     }
 
     // =========================================================================
-    // BUNDLED TRAINING PLANS (resources/included_workout/)
+    // BUNDLED TRAINING PLANS (":/included_workout/..." from the compiled qrc,
+    // so the tests validate exactly what the app ships and run on CI test
+    // shards that only download the build artifact, with no source checkout)
     // =========================================================================
 
     // -----------------------------------------------------------------------
-    // 21. Every bundled .workout file parses into a valid workout: at least
-    //     one interval after repeat expansion, positive durations, and power
-    //     targets in a sane 0.2–1.5 FTP band.
+    // 21. Every bundled .workout resource parses into a valid workout: at
+    //     least one interval after repeat expansion, positive durations, and
+    //     power targets in a sane 0.2–1.5 FTP band (intervals without a power
+    //     target must carry an HR target instead).
     // -----------------------------------------------------------------------
     void testBundledWorkouts_allParseValid()
     {
-        const QDir root(QStringLiteral(BUNDLED_WORKOUTS_DIR));
-        QVERIFY2(root.exists(), "resources/included_workout not found");
-
         XmlUtil util;
         int filesChecked = 0;
 
-        const QStringList planDirs = root.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-        for (const QString &planDir : planDirs) {
-            QDir dir(root.absoluteFilePath(planDir));
-            const QStringList files = dir.entryList({QStringLiteral("*.workout")}, QDir::Files);
-            for (const QString &file : files) {
-                const QString path = dir.absoluteFilePath(file);
-                const Workout workout = util.parseSingleWorkoutXml(path);
+        QDirIterator it(QStringLiteral(":/included_workout"),
+                        {QStringLiteral("*.workout")}, QDir::Files,
+                        QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            const QString path = it.next();
+            const QString file = it.fileName();
+            const Workout workout = util.parseSingleWorkoutXml(path);
 
-                QVERIFY2(workout.getNbInterval() > 0,
-                         qPrintable(file + QStringLiteral(": no intervals after expansion")));
+            QVERIFY2(workout.getNbInterval() > 0,
+                     qPrintable(file + QStringLiteral(": no intervals after expansion")));
 
-                const QList<Interval> intervals = workout.getLstInterval();
-                for (const Interval &interval : intervals) {
-                    QVERIFY2(QTime(0, 0, 0) < interval.getDurationQTime(),
-                             qPrintable(file + QStringLiteral(": interval with zero duration")));
-                    if (interval.getPowerStepType() != Interval::StepType::NONE) {
-                        QVERIFY2(interval.getFTP_start() >= 0.2 && interval.getFTP_start() <= 1.5,
-                                 qPrintable(file + QStringLiteral(": power start out of range")));
-                        QVERIFY2(interval.getFTP_end() >= 0.2 && interval.getFTP_end() <= 1.5,
-                                 qPrintable(file + QStringLiteral(": power end out of range")));
-                    }
-                    else {
-                        // No power target: the interval must carry an HR target
-                        // (fraction of LTHR) so it still guides the rider.
-                        QVERIFY2(interval.getHRStepType() != Interval::StepType::NONE,
-                                 qPrintable(file + QStringLiteral(": interval with neither power nor HR target")));
-                        QVERIFY2(interval.getHR_start() >= 0.5 && interval.getHR_start() <= 1.1,
-                                 qPrintable(file + QStringLiteral(": HR start out of range")));
-                        QVERIFY2(interval.getHR_end() >= 0.5 && interval.getHR_end() <= 1.1,
-                                 qPrintable(file + QStringLiteral(": HR end out of range")));
-                    }
+            const QList<Interval> intervals = workout.getLstInterval();
+            for (const Interval &interval : intervals) {
+                QVERIFY2(QTime(0, 0, 0) < interval.getDurationQTime(),
+                         qPrintable(file + QStringLiteral(": interval with zero duration")));
+                if (interval.getPowerStepType() != Interval::StepType::NONE) {
+                    QVERIFY2(interval.getFTP_start() >= 0.2 && interval.getFTP_start() <= 1.5,
+                             qPrintable(file + QStringLiteral(": power start out of range")));
+                    QVERIFY2(interval.getFTP_end() >= 0.2 && interval.getFTP_end() <= 1.5,
+                             qPrintable(file + QStringLiteral(": power end out of range")));
                 }
-                filesChecked++;
+                else {
+                    // No power target: the interval must carry an HR target
+                    // (fraction of LTHR) so it still guides the rider.
+                    QVERIFY2(interval.getHRStepType() != Interval::StepType::NONE,
+                             qPrintable(file + QStringLiteral(": interval with neither power nor HR target")));
+                    QVERIFY2(interval.getHR_start() >= 0.5 && interval.getHR_start() <= 1.1,
+                             qPrintable(file + QStringLiteral(": HR start out of range")));
+                    QVERIFY2(interval.getHR_end() >= 0.5 && interval.getHR_end() <= 1.1,
+                             qPrintable(file + QStringLiteral(": HR end out of range")));
+                }
             }
+            filesChecked++;
         }
 
-        QVERIFY2(filesChecked > 0, "no bundled .workout files found");
+        QVERIFY2(filesChecked > 0, "no bundled .workout resources found");
         qDebug().noquote() << "[BundledPlans]" << filesChecked
-                           << "bundled workout files parsed and validated — PASS";
+                           << "bundled workout resources parsed and validated — PASS";
     }
 
     // -----------------------------------------------------------------------
-    // 22. The three bundled training plans have the expected workout counts
-    //     and carry their plan name in the Plan field.
+    // 22. The bundled training plans ship the expected number of workouts,
+    //     grouped by their Plan field.
     // -----------------------------------------------------------------------
     void testBundledPlans_expectedCounts()
     {
-        const struct { const char *dir; const char *plan; int count; } plans[] = {
-            { "Base Camp",       "Base Camp",       12 },
-            { "FTP Kickstart",   "FTP Kickstart",   9 },
-            { "Polarized 3x",    "Polarized 3x",    3 },
-            { "VO2 Shock Block", "VO2 Shock Block", 6 },
-            { "Lunch Crunch",    "Lunch Crunch",    9 },
-            { "Heart Rate Base", "Heart Rate Base", 9 },
-        };
-
-        const QDir root(QStringLiteral(BUNDLED_WORKOUTS_DIR));
         XmlUtil util;
+        QMap<QString, int> planCounts;
 
-        for (const auto &plan : plans) {
-            QDir dir(root.absoluteFilePath(QLatin1String(plan.dir)));
-            QVERIFY2(dir.exists(), qPrintable(QLatin1String(plan.dir) + QStringLiteral(" missing")));
-
-            const QStringList files = dir.entryList({QStringLiteral("*.workout")}, QDir::Files);
-            QCOMPARE(files.size(), plan.count);
-
-            for (const QString &file : files) {
-                const Workout workout = util.parseSingleWorkoutXml(dir.absoluteFilePath(file));
-                QCOMPARE(workout.getPlan(), QLatin1String(plan.plan));
-            }
+        QDirIterator it(QStringLiteral(":/included_workout"),
+                        {QStringLiteral("*.workout")}, QDir::Files,
+                        QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            const Workout workout = util.parseSingleWorkoutXml(it.next());
+            planCounts[workout.getPlan()]++;
         }
 
+        const QMap<QString, int> expected = {
+            { QStringLiteral("Base Camp"),       12 },
+            { QStringLiteral("FTP Kickstart"),    9 },
+            { QStringLiteral("Polarized 3x"),     3 },
+            { QStringLiteral("VO2 Shock Block"),  6 },
+            { QStringLiteral("Lunch Crunch"),     9 },
+            { QStringLiteral("Heart Rate Base"),  9 },
+        };
+        QCOMPARE(planCounts, expected);
+
         qDebug().noquote()
-            << "[BundledPlans] plan folders, counts and Plan fields all match — PASS";
+            << "[BundledPlans] plan counts and Plan fields all match — PASS";
     }
 };
 
