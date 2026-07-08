@@ -38,8 +38,11 @@ MOC_DIR     = .moc_workout_io
 
 # ── App resources: the bundled-plan tests read the .workout files from the
 #    compiled-in qrc (":/included_workout/...") so they validate exactly what
-#    the app ships and stay hermetic on artifact-only CI test runners. ─────────
+#    the app ships and stay hermetic on artifact-only CI test runners.
+#    Format-version 1 (uncompressed) keeps the generated code free of the
+#    qt_resourceFeatureZstd reference, which fails to link on the macOS CI Qt. ─
 RESOURCES += ../../MyResources.qrc
+QMAKE_RESOURCE_FLAGS += -no-compress -format-version 1
 
 # ── QWT: platform-specific include / link ────────────────────────────────────
 linux {
