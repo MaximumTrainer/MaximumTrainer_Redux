@@ -413,7 +413,7 @@
       <section class="guide-section" id="overview">
         <h2>🚴 Overview</h2>
         <p>
-          Maximum Trainer is a free, open-source indoor cycling and rowing training application. It
+          Maximum Trainer is a free, open-source indoor cycling training application. It
           connects to smart trainers, power meters, heart rate monitors, and cadence sensors over
           <strong>Bluetooth LE (BLE)</strong>, runs structured interval workouts in automatic
           <strong>ERG mode</strong>, and exports completed activities to the Garmin FIT format for
@@ -434,7 +434,7 @@
           <div class="guide-card">
             <div class="card-icon">📋</div>
             <h4>Workout Library</h4>
-            <p>Sync structured workouts from <a href="https://intervals.icu" target="_blank" rel="noopener">Intervals.icu</a>, plus import your own .erg / .mrc / .zwo files.</p>
+            <p>Sync structured workouts (.zwo) from <a href="https://intervals.icu" target="_blank" rel="noopener">Intervals.icu</a>, plus import your own .erg / .mrc files.</p>
           </div>
           <div class="guide-card">
             <div class="card-icon">☁️</div>
@@ -687,8 +687,8 @@
         </ol>
 
         <div class="callout">
-          <strong>Auto-upload:</strong> Enable <strong>Auto-upload to Intervals.icu</strong> in
-          <strong>Preferences → Intervals.icu</strong> to have completed activities posted automatically when you
+          <strong>Auto-upload:</strong> Enable <strong>Auto-upload completed activities to Intervals.icu</strong> in
+          <strong>Preferences → Intervals.icu</strong> to have them posted automatically when you
           save a workout. An internet connection is required for sync and upload.
           The WASM (browser) version operates in offline mode only and does not support Intervals.icu
           sync.
@@ -850,8 +850,9 @@
         <p>
           If your trainer uses a <strong>single cog</strong> (e.g. a Zwift Cog) instead of a normal
           cassette, free rides and FTP tests would otherwise leave you with no usable resistance.
-          Enable <strong>Virtual shifting</strong> on the <em>Bluetooth / Smart Trainer</em> settings
-          page (it is <strong>off by default</strong>, so normal-cassette setups are unaffected) and
+          Enable <strong>Virtual shifting (Zwift Cog / single-gear setups)</strong> in the
+          <em>Smart Trainer</em> section of the <strong>Devices</strong> tab (it is
+          <strong>off by default</strong>, so normal-cassette setups are unaffected) and
           the app gives you on-screen gears.
         </p>
         <ul>
@@ -859,16 +860,17 @@
           <li>Shift with the <strong>Up / Down arrow keys</strong> or by clicking the on-screen
               <strong>▲ / ▼</strong> arrows — a harder gear instantly raises resistance, like a real
               drivetrain.</li>
-          <li>During an ERG power interval the indicator dims to <strong>ERG</strong> (the target power
-              is in control); it becomes active again on free / test intervals.</li>
+          <li>During an ERG power interval the indicator is hidden (the target power is in
+              control); it reappears on free rides and test intervals, where the gears drive
+              the resistance.</li>
         </ul>
 
         <h3>Zwift Click v2 controller (beta)</h3>
         <p>
           You can shift and control the workout with a <strong>Zwift Click v2</strong> controller. It
           connects over its own Bluetooth link (separate from the trainer), so ERG/FTMS is unaffected.
-          Enable <strong>Use Zwift Click v2 controller</strong> on the <em>Bluetooth / Smart Trainer</em>
-          settings page (off by default).
+          Enable <strong>Use Zwift Click v2 controller (right side only) - Beta</strong> in the
+          <em>Smart Trainer</em> section of the <strong>Devices</strong> tab (off by default).
         </p>
         <ul>
           <li><strong>Wake both controllers</strong> before the workout - press a button on each. The
@@ -918,7 +920,7 @@
               <tr><td><strong>Interval countdown</strong></td><td>Time remaining in the current interval, displayed prominently at the top.</td></tr>
               <tr><td><strong>Workout time</strong></td><td>Total elapsed time and total remaining time for the full session.</td></tr>
               <tr><td><strong>Power</strong></td><td>Live power output in watts from your trainer or power meter.</td></tr>
-              <tr><td><strong>Heart rate</strong></td><td>Live beats per minute from your HR strap, colour-coded by zone.</td></tr>
+              <tr><td><strong>Heart rate</strong></td><td>Live beats per minute from your HR strap. Metric boxes colour against the interval target: on target, too low, or too high.</td></tr>
               <tr><td><strong>Cadence</strong></td><td>Live pedalling cadence in rpm.</td></tr>
               <tr><td><strong>Speed</strong></td><td>Live speed in km/h.</td></tr>
               <tr><td><strong>L/R Balance</strong></td><td>Left/right power split (%) — only shown when a dual-sided power meter is connected.</td></tr>
@@ -977,7 +979,7 @@
         <p>
           Press the <strong>Settings</strong> gear in the workout player to adjust options without
           interrupting the session: which metric widgets are shown and their style
-          (<strong>Minimalist</strong> / <strong>Detailed</strong> / <strong>Graph</strong>), which
+          (<strong>Detailed</strong> / <strong>Graph</strong> / <strong>Graph &amp; Detailed</strong>), which
           timer elements appear, the start trigger, the Multimedia panel, and your Radios.
         </p>
 
@@ -1177,8 +1179,8 @@
         </ol>
 
         <div class="callout">
-          <strong>Note:</strong> In Studio Mode, each rider's power data is recorded separately in
-          the session <code>.fit</code> file. Workout targets are scaled per-rider based on
+          <strong>Note:</strong> In Studio Mode, each rider's ride is recorded to their own
+          <code>.fit</code> file. Workout targets are scaled per-rider based on
           individual FTP values.
         </div>
       </section>
@@ -1413,7 +1415,7 @@
               </tr>
               <tr>
                 <td><strong>macOS</strong></td>
-                <td>macOS 10.15 (Catalina) or later</td>
+                <td>macOS 13 (Ventura) or later</td>
                 <td>
                   On first connection, macOS will prompt for Bluetooth permission
                   (<em>NSBluetoothAlwaysUsageDescription</em>). Click <strong>Allow</strong> to
