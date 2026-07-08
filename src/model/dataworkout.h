@@ -48,7 +48,6 @@ public:
 
     // Retrive Test results
     int getFTP();
-    int getCP();
     int getLTHR();
     //-----------------
 

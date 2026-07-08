@@ -67,6 +67,7 @@
 #include <QJsonObject>
 #include <QTemporaryFile>
 #include <QDir>
+#include <QDirIterator>
 
 #include "../../src/persistence/file/importerworkoutzwo.h"
 #include "../../src/persistence/file/xmlutil.h"
@@ -701,6 +702,103 @@ private slots:
             << "[XmlRoundTrip] Plan field 'Base' survived round-trip — PASS";
 
         QFile::remove(path);
+    }
+
+    // =========================================================================
+    // BUNDLED TRAINING PLANS — read from the included_workout/ directory the
+    // .pro copies next to the test binary, so the tests also run on CI test
+    // shards that only download the build artifact (no source checkout).
+    // =========================================================================
+
+    static QString bundledPlansRoot()
+    {
+        return QCoreApplication::applicationDirPath()
+               + QStringLiteral("/included_workout");
+    }
+
+    // -----------------------------------------------------------------------
+    // 21. Every bundled .workout file parses into a valid workout: at least
+    //     one interval after repeat expansion, positive durations, and power
+    //     targets in a sane 0.2–1.5 FTP band (intervals without a power
+    //     target must carry an HR target instead).
+    // -----------------------------------------------------------------------
+    void testBundledWorkouts_allParseValid()
+    {
+        QVERIFY2(QDir(bundledPlansRoot()).exists(),
+                 "included_workout/ not found next to the test binary");
+
+        XmlUtil util;
+        int filesChecked = 0;
+
+        QDirIterator it(bundledPlansRoot(),
+                        {QStringLiteral("*.workout")}, QDir::Files,
+                        QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            const QString path = it.next();
+            const QString file = it.fileName();
+            const Workout workout = util.parseSingleWorkoutXml(path);
+
+            QVERIFY2(workout.getNbInterval() > 0,
+                     qPrintable(file + QStringLiteral(": no intervals after expansion")));
+
+            const QList<Interval> intervals = workout.getLstInterval();
+            for (const Interval &interval : intervals) {
+                QVERIFY2(QTime(0, 0, 0) < interval.getDurationQTime(),
+                         qPrintable(file + QStringLiteral(": interval with zero duration")));
+                if (interval.getPowerStepType() != Interval::StepType::NONE) {
+                    QVERIFY2(interval.getFTP_start() >= 0.2 && interval.getFTP_start() <= 1.5,
+                             qPrintable(file + QStringLiteral(": power start out of range")));
+                    QVERIFY2(interval.getFTP_end() >= 0.2 && interval.getFTP_end() <= 1.5,
+                             qPrintable(file + QStringLiteral(": power end out of range")));
+                }
+                else {
+                    // No power target: the interval must carry an HR target
+                    // (fraction of LTHR) so it still guides the rider.
+                    QVERIFY2(interval.getHRStepType() != Interval::StepType::NONE,
+                             qPrintable(file + QStringLiteral(": interval with neither power nor HR target")));
+                    QVERIFY2(interval.getHR_start() >= 0.5 && interval.getHR_start() <= 1.1,
+                             qPrintable(file + QStringLiteral(": HR start out of range")));
+                    QVERIFY2(interval.getHR_end() >= 0.5 && interval.getHR_end() <= 1.1,
+                             qPrintable(file + QStringLiteral(": HR end out of range")));
+                }
+            }
+            filesChecked++;
+        }
+
+        QVERIFY2(filesChecked > 0, "no bundled .workout resources found");
+        qDebug().noquote() << "[BundledPlans]" << filesChecked
+                           << "bundled workout resources parsed and validated — PASS";
+    }
+
+    // -----------------------------------------------------------------------
+    // 22. The bundled training plans ship the expected number of workouts,
+    //     grouped by their Plan field.
+    // -----------------------------------------------------------------------
+    void testBundledPlans_expectedCounts()
+    {
+        XmlUtil util;
+        QMap<QString, int> planCounts;
+
+        QDirIterator it(bundledPlansRoot(),
+                        {QStringLiteral("*.workout")}, QDir::Files,
+                        QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            const Workout workout = util.parseSingleWorkoutXml(it.next());
+            planCounts[workout.getPlan()]++;
+        }
+
+        const QMap<QString, int> expected = {
+            { QStringLiteral("Base Camp"),       12 },
+            { QStringLiteral("FTP Kickstart"),    9 },
+            { QStringLiteral("Polarized 3x"),     3 },
+            { QStringLiteral("VO2 Shock Block"),  6 },
+            { QStringLiteral("Lunch Crunch"),     9 },
+            { QStringLiteral("Heart Rate Base"),  9 },
+        };
+        QCOMPARE(planCounts, expected);
+
+        qDebug().noquote()
+            << "[BundledPlans] plan counts and Plan fields all match — PASS";
     }
 };
 

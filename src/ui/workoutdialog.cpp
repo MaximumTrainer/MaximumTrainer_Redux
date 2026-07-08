@@ -572,6 +572,7 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     isWorkoutStarted = false;
     isWorkoutPaused = true;
     isWorkoutOver = false;
+    testResultShown = false;
     changeIntervalDisplayNextSecond = false;
     ignoreCondition = false;
     if (workout.getWorkoutNameEnum() == Workout::OPEN_RIDE) {
@@ -656,7 +657,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
     //Disable button in Test mode
     if (workout.getWorkoutNameEnum() == Workout::FTP_TEST || workout.getWorkoutNameEnum() == Workout::FTP8min_TEST ||
-            workout.getWorkoutNameEnum() == Workout::CP5min_TEST || workout.getWorkoutNameEnum() == Workout::CP20min_TEST ||
             workout.getWorkoutNameEnum() == Workout::MAP_TEST ) {
         isTestWorkout = true;
     }
@@ -1052,8 +1052,17 @@ void WorkoutDialog::checkMAPTestOver() {
 
         int secCompletedInInterval = 180 - Util::convertQTimeToSecD(timeInterval);
         double mapResult = (currentTargetPower - 30) + (secCompletedInInterval/180.0 * currentTargetPower/10.0);
+        const int estimatedFTP = qRound(mapResult * 0.75);
         mainPlot->setAlertMessage(true, false, workout.getName() + tr(" Result")
-                                  + "<div style='color:white;height:7px;'>-------------------</div><br/> "  + QString::number(mapResult, 'f', 1)  + " watts", 500);
+                                  + "<div style='color:white;height:7px;'>-------------------</div><br/> "  + QString::number(mapResult, 'f', 1)  + " watts" + "<br/>"
+                                  + tr("FTP: ") + QString::number(estimatedFTP) + tr(" watts")
+                                  + tr(" (75% of MAP; previous: ") + QString::number(account->FTP) + tr(" watts)"), 500);
+        // Persist the estimated FTP into the athlete profile, like the FTP
+        // tests do (LTHR and weight unchanged).
+        if (estimatedFTP > 0) {
+            account->saveProfileFields(estimatedFTP, account->LTHR, account->weight_kg);
+            emit ftp_lthr_changed();
+        }
         //Go to cooldown interval (last interval)
         moveToInterval(workout.getNbInterval()-1, -1, -1, false);
     }
@@ -1192,6 +1201,22 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
 
         timerCheckToActivateSound->start();
         currentInterval++;
+
+        // Show the FTP test result as soon as the last test interval
+        // completes, so riders who skip the cooldown still get it.
+        const Workout::WORKOUT_NAME workoutType = workout.getWorkoutNameEnum();
+        if (currentIntervalObj.isTestInterval()
+                && (workoutType == Workout::FTP_TEST || workoutType == Workout::FTP8min_TEST)) {
+            bool testIntervalRemaining = false;
+            for (int i = currentInterval; i < workout.getNbInterval(); i++) {
+                if (workout.getInterval(i).isTestInterval()) {
+                    testIntervalRemaining = true;
+                    break;
+                }
+            }
+            if (!testIntervalRemaining)
+                showTestResult();
+        }
 
         if (workout.getWorkoutNameEnum() == Workout::MAP_TEST && currentIntervalObj.isTestInterval()) {
             achievementManager->checkMAPAchievement(currMAPInterval);
@@ -4015,8 +4040,10 @@ void WorkoutDialog::createUserStudioWidget() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 void WorkoutDialog::showTestResult() {
 
-
-
+    // May already have been shown when the last test interval finished.
+    if (testResultShown)
+        return;
+    testResultShown = true;
 
     // ------------- FTP TEST -----------------
     if (workout.getWorkoutNameEnum() == Workout::FTP_TEST || workout.getWorkoutNameEnum() == Workout::FTP8min_TEST) {
@@ -4057,25 +4084,6 @@ void WorkoutDialog::showTestResult() {
         }
     }
 
-    // ------------- CP TEST -----------------
-    else if (workout.getWorkoutNameEnum() ==  Workout::CP5min_TEST || workout.getWorkoutNameEnum() ==  Workout::CP20min_TEST) {
-
-        // GROUP
-        if (account->enable_studio_mode) {
-
-            for (int i=0; i<account->nb_user_studio; i++) {
-                QString testResult = workout.getName() + tr(" Result:");
-                arrUserStudioWidget[i]->setResultTest(testResult + QString::number(arrDataWorkout[i]->getCP()));
-            }
-        }
-        // SOLO
-        else {
-            int criticalPower = arrDataWorkout[0]->getCP();
-            mainPlot->setAlertMessage(true, false, workout.getName() + tr(" Result")
-                                      + "<div style='color:white;height:7px;'>------------------</div><br/> "
-                                      + QString::number(criticalPower) + tr(" watts"), 500);
-        }
-    }
     else {
         mainPlot->setAlertMessage(true, false, workout.getName() + tr(" completed!")
                                   + "<div style='color:white;height:7px;'>------------------------------------</div><br/> "

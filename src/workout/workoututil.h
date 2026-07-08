@@ -19,9 +19,6 @@ public:
 
 private:
 
-    static Workout CP5();
-    static Workout CP20();
-
     static Workout FTP();
     static Workout FTP_8min();
 

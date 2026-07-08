@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workout>
+    <Version>2.02</Version>
+    <Plan>Heart Rate Base</Plan>
+    <Author>MaximumTrainer</Author>
+    <Description>Week 1, Ride 3 - one hour of steady zone 2 by heart rate.</Description>
+    <Type>0</Type>
+    <Intervals>
+        <Interval>
+            <Duration>00:08:00</Duration>
+            <DisplayMessage>Warm up</DisplayMessage>
+            <TestInterval>0</TestInterval>
+            <RepeatIncreaseFTP>0</RepeatIncreaseFTP>
+            <RepeatIncreaseCadence>0</RepeatIncreaseCadence>
+            <RepeatIncreaseLTHR>0</RepeatIncreaseLTHR>
+            <Power>
+                <StepType>0</StepType>
+                <Start>0</Start>
+                <End>0</End>
+                <Range>20</Range>
+                <RightBalance>-1</RightBalance>
+            </Power>
+            <Cadence>
+                <StepType>1</StepType>
+                <Start>85</Start>
+                <End>85</End>
+                <Range>10</Range>
+            </Cadence>
+            <HeartRate>
+                <StepType>2</StepType>
+                <Start>0.7</Start>
+                <End>0.82</End>
+                <Range>8</Range>
+            </HeartRate>
+        </Interval>
+        <Interval>
+            <Duration>00:47:00</Duration>
+            <DisplayMessage>Zone 2 - steady heart</DisplayMessage>
+            <TestInterval>0</TestInterval>
+            <RepeatIncreaseFTP>0</RepeatIncreaseFTP>
+            <RepeatIncreaseCadence>0</RepeatIncreaseCadence>
+            <RepeatIncreaseLTHR>0</RepeatIncreaseLTHR>
+            <Power>
+                <StepType>0</StepType>
+                <Start>0</Start>
+                <End>0</End>
+                <Range>20</Range>
+                <RightBalance>-1</RightBalance>
+            </Power>
+            <Cadence>
+                <StepType>1</StepType>
+                <Start>90</Start>
+                <End>90</End>
+                <Range>10</Range>
+            </Cadence>
+            <HeartRate>
+                <StepType>1</StepType>
+                <Start>0.86</Start>
+                <End>0.86</End>
+                <Range>5</Range>
+            </HeartRate>
+        </Interval>
+        <Interval>
+            <Duration>00:05:00</Duration>
+            <DisplayMessage>Cool down</DisplayMessage>
+            <TestInterval>0</TestInterval>
+            <RepeatIncreaseFTP>0</RepeatIncreaseFTP>
+            <RepeatIncreaseCadence>0</RepeatIncreaseCadence>
+            <RepeatIncreaseLTHR>0</RepeatIncreaseLTHR>
+            <Power>
+                <StepType>0</StepType>
+                <Start>0</Start>
+                <End>0</End>
+                <Range>20</Range>
+                <RightBalance>-1</RightBalance>
+            </Power>
+            <Cadence>
+                <StepType>1</StepType>
+                <Start>85</Start>
+                <End>85</End>
+                <Range>10</Range>
+            </Cadence>
+            <HeartRate>
+                <StepType>1</StepType>
+                <Start>0.72</Start>
+                <End>0.72</End>
+                <Range>8</Range>
+            </HeartRate>
+        </Interval>
+    </Intervals>
+</Workout>
