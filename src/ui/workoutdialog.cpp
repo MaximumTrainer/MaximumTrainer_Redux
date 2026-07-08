@@ -1052,8 +1052,17 @@ void WorkoutDialog::checkMAPTestOver() {
 
         int secCompletedInInterval = 180 - Util::convertQTimeToSecD(timeInterval);
         double mapResult = (currentTargetPower - 30) + (secCompletedInInterval/180.0 * currentTargetPower/10.0);
+        const int estimatedFTP = qRound(mapResult * 0.75);
         mainPlot->setAlertMessage(true, false, workout.getName() + tr(" Result")
-                                  + "<div style='color:white;height:7px;'>-------------------</div><br/> "  + QString::number(mapResult, 'f', 1)  + " watts", 500);
+                                  + "<div style='color:white;height:7px;'>-------------------</div><br/> "  + QString::number(mapResult, 'f', 1)  + " watts" + "<br/>"
+                                  + tr("FTP: ") + QString::number(estimatedFTP) + tr(" watts")
+                                  + tr(" (75% of MAP; previous: ") + QString::number(account->FTP) + tr(" watts)"), 500);
+        // Persist the estimated FTP into the athlete profile, like the FTP
+        // tests do (LTHR and weight unchanged).
+        if (estimatedFTP > 0) {
+            account->saveProfileFields(estimatedFTP, account->LTHR, account->weight_kg);
+            emit ftp_lthr_changed();
+        }
         //Go to cooldown interval (last interval)
         moveToInterval(workout.getNbInterval()-1, -1, -1, false);
     }

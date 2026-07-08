@@ -55,7 +55,7 @@ Workout WorkoutUtil::MAP(int userFTP) {
     // Affiche des messages après 5secondes total en bas de la cible (à 5sec: 10sec restant en dehors de la zone avant la fin du test!)
 
     QString name = QApplication::translate("WorkoutUtil", "MAP Test", 0);
-    QString description = QApplication::translate("WorkoutUtil", "Test that let you find your MAP (Maximal Aerobic Power). Main Protocol: 30W increase each 3' until you can keep up. End of Test happens after 20'' total or 10'' consecutive below the target zone, you will go to the cooldown directly (last interval). Test Intervals will be added automatically after you complete one. The duration of the test depends on your performance!", 0);
+    QString description = QApplication::translate("WorkoutUtil", "Test that let you find your MAP (Maximal Aerobic Power). Main Protocol: 30W increase each 3' until you can keep up. End of Test happens after 20'' total or 10'' consecutive below the target zone, you will go to the cooldown directly (last interval). Test Intervals will be added automatically after you complete one. The duration of the test depends on your performance! Your FTP is calculated from the result (75% of MAP) and saved to your profile.", 0);
     QList<Interval> lstInterval;
     QList<RepeatData> lstRepeat;
 
