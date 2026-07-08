@@ -35,6 +35,8 @@ public:
     QList<Workout> getLstWorkoutFtpKickstart();
     QList<Workout> getLstWorkoutPolarized3x();
     QList<Workout> getLstWorkoutVo2ShockBlock();
+    QList<Workout> getLstWorkoutBaseCamp();
+    QList<Workout> getLstWorkoutLunchCrunch();
 
 
     QList<Workout> getLstUserWorkout();

@@ -93,6 +93,31 @@
         <file>resources/included_workout/VO2 Shock Block/Shock 2-2 Easy Spin.workout</file>
         <file>resources/included_workout/VO2 Shock Block/Shock 2-3 30-30s Max.workout</file>
     </qresource>
+    <qresource prefix="/included_workout/basecamp">
+        <file>resources/included_workout/Base Camp/Camp 1-1 Easy Start.workout</file>
+        <file>resources/included_workout/Base Camp/Camp 1-2 Cadence Play.workout</file>
+        <file>resources/included_workout/Base Camp/Camp 1-3 Long Spin.workout</file>
+        <file>resources/included_workout/Base Camp/Camp 2-1 Steady Builder.workout</file>
+        <file>resources/included_workout/Base Camp/Camp 2-2 High-Cadence Steps.workout</file>
+        <file>resources/included_workout/Base Camp/Camp 2-3 Long Spin Plus.workout</file>
+        <file>resources/included_workout/Base Camp/Camp 3-1 Tempo Taste.workout</file>
+        <file>resources/included_workout/Base Camp/Camp 3-2 Cadence Pyramid.workout</file>
+        <file>resources/included_workout/Base Camp/Camp 3-3 Long Spin Max.workout</file>
+        <file>resources/included_workout/Base Camp/Camp 4-1 Tempo Blocks.workout</file>
+        <file>resources/included_workout/Base Camp/Camp 4-2 Leg Opener.workout</file>
+        <file>resources/included_workout/Base Camp/Camp 4-3 Graduation Spin.workout</file>
+    </qresource>
+    <qresource prefix="/included_workout/crunch">
+        <file>resources/included_workout/Lunch Crunch/Crunch 1-1 Espresso Sweet Spot.workout</file>
+        <file>resources/included_workout/Lunch Crunch/Crunch 1-2 Micro 30-30s.workout</file>
+        <file>resources/included_workout/Lunch Crunch/Crunch 1-3 Tempo Rush.workout</file>
+        <file>resources/included_workout/Lunch Crunch/Crunch 2-1 Threshold Thirds.workout</file>
+        <file>resources/included_workout/Lunch Crunch/Crunch 2-2 Attack Snacks.workout</file>
+        <file>resources/included_workout/Lunch Crunch/Crunch 2-3 Steady State.workout</file>
+        <file>resources/included_workout/Lunch Crunch/Crunch 3-1 Sweet Spot Squeeze.workout</file>
+        <file>resources/included_workout/Lunch Crunch/Crunch 3-2 Micro 40-20s.workout</file>
+        <file>resources/included_workout/Lunch Crunch/Crunch 3-3 Friday Flush.workout</file>
+    </qresource>
     <qresource prefix="/data">
         <file>resources/data/default_radios.json</file>
     </qresource>

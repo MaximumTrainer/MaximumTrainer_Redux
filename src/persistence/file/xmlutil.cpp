@@ -311,6 +311,43 @@ QList<Workout> XmlUtil::getLstWorkoutVo2ShockBlock() {
 }
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+QList<Workout> XmlUtil::getLstWorkoutBaseCamp() {
+
+    QStringList lstWorkoutPat;
+    lstWorkoutPat.append(":/included_workout/basecamp/resources/included_workout/Base Camp/Camp 1-1 Easy Start.workout");
+    lstWorkoutPat.append(":/included_workout/basecamp/resources/included_workout/Base Camp/Camp 1-2 Cadence Play.workout");
+    lstWorkoutPat.append(":/included_workout/basecamp/resources/included_workout/Base Camp/Camp 1-3 Long Spin.workout");
+    lstWorkoutPat.append(":/included_workout/basecamp/resources/included_workout/Base Camp/Camp 2-1 Steady Builder.workout");
+    lstWorkoutPat.append(":/included_workout/basecamp/resources/included_workout/Base Camp/Camp 2-2 High-Cadence Steps.workout");
+    lstWorkoutPat.append(":/included_workout/basecamp/resources/included_workout/Base Camp/Camp 2-3 Long Spin Plus.workout");
+    lstWorkoutPat.append(":/included_workout/basecamp/resources/included_workout/Base Camp/Camp 3-1 Tempo Taste.workout");
+    lstWorkoutPat.append(":/included_workout/basecamp/resources/included_workout/Base Camp/Camp 3-2 Cadence Pyramid.workout");
+    lstWorkoutPat.append(":/included_workout/basecamp/resources/included_workout/Base Camp/Camp 3-3 Long Spin Max.workout");
+    lstWorkoutPat.append(":/included_workout/basecamp/resources/included_workout/Base Camp/Camp 4-1 Tempo Blocks.workout");
+    lstWorkoutPat.append(":/included_workout/basecamp/resources/included_workout/Base Camp/Camp 4-2 Leg Opener.workout");
+    lstWorkoutPat.append(":/included_workout/basecamp/resources/included_workout/Base Camp/Camp 4-3 Graduation Spin.workout");
+    return parseWorkoutLstPath(lstWorkoutPat, Workout::INCLUDED_WORKOUT);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+QList<Workout> XmlUtil::getLstWorkoutLunchCrunch() {
+
+    QStringList lstWorkoutPat;
+    lstWorkoutPat.append(":/included_workout/crunch/resources/included_workout/Lunch Crunch/Crunch 1-1 Espresso Sweet Spot.workout");
+    lstWorkoutPat.append(":/included_workout/crunch/resources/included_workout/Lunch Crunch/Crunch 1-2 Micro 30-30s.workout");
+    lstWorkoutPat.append(":/included_workout/crunch/resources/included_workout/Lunch Crunch/Crunch 1-3 Tempo Rush.workout");
+    lstWorkoutPat.append(":/included_workout/crunch/resources/included_workout/Lunch Crunch/Crunch 2-1 Threshold Thirds.workout");
+    lstWorkoutPat.append(":/included_workout/crunch/resources/included_workout/Lunch Crunch/Crunch 2-2 Attack Snacks.workout");
+    lstWorkoutPat.append(":/included_workout/crunch/resources/included_workout/Lunch Crunch/Crunch 2-3 Steady State.workout");
+    lstWorkoutPat.append(":/included_workout/crunch/resources/included_workout/Lunch Crunch/Crunch 3-1 Sweet Spot Squeeze.workout");
+    lstWorkoutPat.append(":/included_workout/crunch/resources/included_workout/Lunch Crunch/Crunch 3-2 Micro 40-20s.workout");
+    lstWorkoutPat.append(":/included_workout/crunch/resources/included_workout/Lunch Crunch/Crunch 3-3 Friday Flush.workout");
+    return parseWorkoutLstPath(lstWorkoutPat, Workout::INCLUDED_WORKOUT);
+}
+
+
 //---------------------------------------------------------------------------------------------
 /// Workout files on user system
 QList<Workout> XmlUtil::getLstUserWorkout() {

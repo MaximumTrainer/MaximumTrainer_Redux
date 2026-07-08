@@ -758,9 +758,11 @@ private slots:
     void testBundledPlans_expectedCounts()
     {
         const struct { const char *dir; const char *plan; int count; } plans[] = {
+            { "Base Camp",       "Base Camp",       12 },
             { "FTP Kickstart",   "FTP Kickstart",   9 },
             { "Polarized 3x",    "Polarized 3x",    3 },
             { "VO2 Shock Block", "VO2 Shock Block", 6 },
+            { "Lunch Crunch",    "Lunch Crunch",    9 },
         };
 
         const QDir root(QStringLiteral(BUNDLED_WORKOUTS_DIR));
