@@ -497,7 +497,7 @@
         </p>
 
         <ol class="steps">
-          <li>Open <strong>Preferences</strong> from the menu bar (or <kbd>Ctrl</kbd>+<kbd>,</kbd>).</li>
+          <li>Open <strong>MaximumTrainer → Preferences</strong> from the menu bar (or <kbd>Ctrl</kbd>+<kbd>,</kbd>).</li>
           <li>Select the <strong>Profile</strong> category.</li>
           <li>Enter your <strong>FTP</strong> (watts), <strong>LTHR</strong> (lactate-threshold heart rate, bpm), and <strong>weight</strong> (kg).</li>
           <li>Click <strong>OK</strong>.</li>
@@ -505,14 +505,18 @@
 
         <h3>Don't know your FTP?</h3>
         <p>
-          Use the built-in <strong>FTP test</strong>: pick one of the FTP test workouts from your
-          library and ride it. When it finishes, Maximum Trainer calculates your result and updates
-          your profile. (Until you've tested, 200 W is a reasonable placeholder.)
+          Use one of the built-in tests (shown in <strong>amber</strong> in the workout list):
+          the <strong>FTP Test</strong> (20-minute protocol; FTP = 95 % of your test average),
+          the shorter <strong>FTP 8min Test</strong>, or the <strong>MAP Test</strong> (ramp to
+          failure; FTP is estimated as 75 % of your MAP). Your result appears on screen
+          <strong>as soon as the test interval ends</strong> — no need to finish the cooldown.
+          (Until you've tested, 200 W is a reasonable placeholder.)
         </p>
 
         <div class="callout">
-          <strong>Tip:</strong> The FTP test writes your new FTP straight into your profile, so all
-          future workout targets and difficulty adjustments scale correctly without any manual update.
+          <strong>Tip:</strong> Every test writes your new FTP (and LTHR, if you wear a heart rate
+          strap) straight into your profile, so all future workout targets and difficulty
+          adjustments scale correctly without any manual update.
         </div>
       </section>
 
@@ -745,14 +749,14 @@
 
         <h3>Importing a single workout file</h3>
         <ol class="steps">
-          <li>Go to <strong>File → Import → Single Workout</strong> in the menu bar.</li>
+          <li>Go to <strong>Workout → Import → Single Workout</strong> in the menu bar.</li>
           <li>Navigate to your <code>.erg</code> or <code>.mrc</code> file and click <strong>Open</strong>.</li>
           <li>Maximum Trainer converts the file to its native XML format and adds it to your library.</li>
         </ol>
 
         <h3>Importing multiple workout files</h3>
         <ol class="steps">
-          <li>Go to <strong>File → Import → Multiple Workouts</strong>.</li>
+          <li>Go to <strong>Workout → Import → Multiple Workouts</strong>.</li>
           <li>Select one or more <code>.erg</code> / <code>.mrc</code> files.</li>
           <li>All selected files are converted and batch-imported at once.</li>
         </ol>
@@ -833,9 +837,13 @@
         </div>
 
         <div class="callout">
-          <strong>Note:</strong> The workout player switches to Slope mode automatically when the
-          current interval has no power target, or when you press the
-          <strong>Increase / Decrease Difficulty</strong> buttons to temporarily override ERG.
+          <strong>Note:</strong> The workout player switches to Slope mode automatically for
+          <strong>free rides</strong>, <strong>test intervals</strong> (FTP / MAP tests), and any
+          interval <strong>without a power target</strong> (e.g. the Heart Rate Base plan). The
+          <strong>+ / − Difficulty</strong> buttons never change the mode — in ERG they raise or
+          lower every interval target by 1 % per press, and in Slope mode with
+          <a href="#workout-modes">Virtual shifting</a> enabled the same controls change the
+          virtual gear instead.
         </div>
 
         <h3>Virtual shifting (Zwift Cog / single-gear setups)</h3>
@@ -847,7 +855,7 @@
           the app gives you on-screen gears.
         </p>
         <ul>
-          <li>A <strong>gear indicator (▼ N / 24 ▲)</strong> appears on the workout top bar.</li>
+          <li>A <strong>gear indicator (▼ N / 30 ▲)</strong> appears on the workout top bar.</li>
           <li>Shift with the <strong>Up / Down arrow keys</strong> or by clicking the on-screen
               <strong>▲ / ▼</strong> arrows — a harder gear instantly raises resistance, like a real
               drivetrain.</li>
@@ -880,8 +888,9 @@
           <li>Maintain a <strong>smooth, consistent cadence</strong> (85–95 rpm is typical). Abrupt cadence changes
               cause the trainer to momentarily over- or under-correct resistance.</li>
           <li>When a new interval starts, give the trainer 5–10 seconds to settle at the new target.</li>
-          <li>If a target feels too hard or too easy, use <strong>Adjust Difficulty</strong> (±5 % FTP per press) to
-              scale the entire session without stopping.</li>
+          <li>If a target feels too hard or too easy, use <strong>Adjust Difficulty</strong> to scale
+              the entire session without stopping — ±1 % FTP per press on the on-screen
+              <strong>+ / −</strong> buttons, or ±5 % with the <kbd>+</kbd> / <kbd>-</kbd> keys.</li>
         </ul>
       </section>
 
@@ -954,11 +963,11 @@
           <table class="guide-table">
             <thead><tr><th>Control</th><th>Action</th></tr></thead>
             <tbody>
-              <tr><td><strong>Pause / Resume</strong></td><td>Temporarily pauses the workout timer and sets trainer load to 0 W. Press again to resume.</td></tr>
-              <tr><td><strong>Skip / jump interval</strong></td><td>Press <kbd>→</kbd> to skip to the next interval — or <strong>click any block in the interval graph</strong> to jump straight to it (the intervals in between are skipped).</td></tr>
-              <tr><td><strong>+ Difficulty</strong></td><td>Increases all remaining interval targets by 5 % of your FTP (stacks).</td></tr>
-              <tr><td><strong>− Difficulty</strong></td><td>Decreases all remaining interval targets by 5 % of your FTP (stacks).</td></tr>
-              <tr><td><strong>Interval</strong></td><td>Marks a manual lap / interval boundary in the recorded data (useful for free-ride segments).</td></tr>
+              <tr><td><strong>Pause / Resume</strong></td><td>Temporarily pauses the workout timer and data recording. Press again to resume.</td></tr>
+              <tr><td><strong>Skip / jump interval</strong></td><td>Press <kbd>→</kbd> to skip to the next interval — or <strong>click any block in the interval graph</strong> to jump straight to it (the intervals in between are skipped). Not available during tests.</td></tr>
+              <tr><td><strong>+ Difficulty</strong></td><td>Raises every interval's power (and HR) target by 1 % of FTP per press (stacks). The <kbd>+</kbd> key steps 5 % at a time.</td></tr>
+              <tr><td><strong>− Difficulty</strong></td><td>Lowers every interval's power (and HR) target by 1 % of FTP per press (stacks). The <kbd>-</kbd> key steps 5 % at a time.</td></tr>
+              <tr><td><strong>Interval</strong></td><td>Marks a manual lap / interval boundary in the recorded data. Only shown during a <strong>Free Ride</strong> — structured workouts advance intervals automatically.</td></tr>
               <tr><td><strong>Exit</strong></td><td>Leaves the session — see <a href="#saving-activity">Saving Your Activity</a> for what happens on a normal finish vs. an early exit.</td></tr>
             </tbody>
           </table>
@@ -1090,7 +1099,7 @@
         <h2>⚙️ Settings</h2>
         <p>
           Maximum Trainer has <strong>two</strong> settings dialogs. <strong>Preferences</strong>
-          (from the menu bar, or <kbd>Ctrl</kbd>+<kbd>,</kbd>) holds your account-wide options, organised
+          (<strong>MaximumTrainer → Preferences</strong>, or <kbd>Ctrl</kbd>+<kbd>,</kbd>) holds your account-wide options, organised
           into the categories below. Display options that apply only while you ride live in a separate
           dialog — see <a href="#workout-config">Workout settings</a> further down.
         </p>
@@ -1210,21 +1219,21 @@
               <tr>
                 <td><strong>Windows</strong></td>
                 <td>
-                  <code>%APPDATA%\MaximumTrainer\MaximumTrainer.log</code><br/>
-                  <small>e.g. <code>C:\Users\YourName\AppData\Roaming\MaximumTrainer\MaximumTrainer.log</code></small>
+                  <code>%APPDATA%\MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log</code><br/>
+                  <small>e.g. <code>C:\Users\YourName\AppData\Roaming\MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log</code></small>
                 </td>
               </tr>
               <tr>
                 <td><strong>macOS</strong></td>
                 <td>
-                  <code>~/Library/Application Support/MaximumTrainer/MaximumTrainer.log</code><br/>
+                  <code>~/Library/Application Support/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log</code><br/>
                   <small>Hold <kbd>⌥ Option</kbd> and click <strong>Go</strong> in Finder to reveal the hidden <code>Library</code> folder.</small>
                 </td>
               </tr>
               <tr>
                 <td><strong>Linux</strong></td>
                 <td>
-                  <code>~/.local/share/MaximumTrainer/MaximumTrainer.log</code><br/>
+                  <code>~/.local/share/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log</code><br/>
                   <small>Follows the <a href="https://specifications.freedesktop.org/basedir-spec/latest/" target="_blank" rel="noopener">XDG Base Directory</a> specification. Override with the <code>$XDG_DATA_HOME</code> environment variable.</small>
                 </td>
               </tr>
@@ -1254,9 +1263,9 @@
             <tbody>
               <tr><td><kbd>Space</kbd> / <kbd>Enter</kbd></td><td>Start / Pause workout</td></tr>
               <tr><td><kbd>→</kbd></td><td>Skip to next interval</td></tr>
-              <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Virtual shift gear up / down (when Virtual shifting is on; otherwise adjusts difficulty)</td></tr>
+              <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Virtual gear up / down when Virtual shifting is driving the resistance (free / test intervals); otherwise nudges difficulty ±1 %</td></tr>
               <tr><td><kbd>+</kbd> / <kbd>=</kbd></td><td>Increase difficulty +5 %</td></tr>
-              <tr><td><kbd>-</kbd></td><td>Decrease difficulty -5 %</td></tr>
+              <tr><td><kbd>-</kbd></td><td>Decrease difficulty −5 %</td></tr>
               <tr><td><kbd>L</kbd> / <kbd>Backspace</kbd></td><td>Mark interval (lap)</td></tr>
               <tr><td><kbd>F6</kbd> / <kbd>F7</kbd> / <kbd>F8</kbd></td><td>Radio: previous / play-pause / next track</td></tr>
               <tr><td><kbd>F11</kbd></td><td>Toggle fullscreen</td></tr>
@@ -1349,6 +1358,10 @@
               <tr>
                 <td>Upload to Strava fails</td>
                 <td>Re-link your Strava account in Preferences → Strava. OAuth tokens expire; re-linking refreshes them.</td>
+              </tr>
+              <tr>
+                <td>No sound / internet radio silent on a fresh Windows install</td>
+                <td>Windows <strong>N editions</strong> ship without Media Foundation, which audio and video playback require. Install the free <strong>Media Feature Pack</strong> (Settings → Apps → Optional features) and restart the app.</td>
               </tr>
             </tbody>
           </table>
