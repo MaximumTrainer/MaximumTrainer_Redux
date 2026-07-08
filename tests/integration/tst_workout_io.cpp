@@ -705,23 +705,32 @@ private slots:
     }
 
     // =========================================================================
-    // BUNDLED TRAINING PLANS (":/included_workout/..." from the compiled qrc,
-    // so the tests validate exactly what the app ships and run on CI test
-    // shards that only download the build artifact, with no source checkout)
+    // BUNDLED TRAINING PLANS — read from the included_workout/ directory the
+    // .pro copies next to the test binary, so the tests also run on CI test
+    // shards that only download the build artifact (no source checkout).
     // =========================================================================
 
+    static QString bundledPlansRoot()
+    {
+        return QCoreApplication::applicationDirPath()
+               + QStringLiteral("/included_workout");
+    }
+
     // -----------------------------------------------------------------------
-    // 21. Every bundled .workout resource parses into a valid workout: at
-    //     least one interval after repeat expansion, positive durations, and
-    //     power targets in a sane 0.2–1.5 FTP band (intervals without a power
+    // 21. Every bundled .workout file parses into a valid workout: at least
+    //     one interval after repeat expansion, positive durations, and power
+    //     targets in a sane 0.2–1.5 FTP band (intervals without a power
     //     target must carry an HR target instead).
     // -----------------------------------------------------------------------
     void testBundledWorkouts_allParseValid()
     {
+        QVERIFY2(QDir(bundledPlansRoot()).exists(),
+                 "included_workout/ not found next to the test binary");
+
         XmlUtil util;
         int filesChecked = 0;
 
-        QDirIterator it(QStringLiteral(":/included_workout"),
+        QDirIterator it(bundledPlansRoot(),
                         {QStringLiteral("*.workout")}, QDir::Files,
                         QDirIterator::Subdirectories);
         while (it.hasNext()) {
@@ -770,7 +779,7 @@ private slots:
         XmlUtil util;
         QMap<QString, int> planCounts;
 
-        QDirIterator it(QStringLiteral(":/included_workout"),
+        QDirIterator it(bundledPlansRoot(),
                         {QStringLiteral("*.workout")}, QDir::Files,
                         QDirIterator::Subdirectories);
         while (it.hasNext()) {

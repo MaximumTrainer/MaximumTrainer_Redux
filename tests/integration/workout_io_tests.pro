@@ -36,13 +36,19 @@ DESTDIR     = ../../build/tests
 OBJECTS_DIR = .obj_workout_io
 MOC_DIR     = .moc_workout_io
 
-# ── App resources: the bundled-plan tests read the .workout files from the
-#    compiled-in qrc (":/included_workout/...") so they validate exactly what
-#    the app ships and stay hermetic on artifact-only CI test runners.
-#    Format-version 1 (uncompressed) keeps the generated code free of the
-#    qt_resourceFeatureZstd reference, which fails to link on the macOS CI Qt. ─
-RESOURCES += ../../MyResources.qrc
-QMAKE_RESOURCE_FLAGS += -no-compress -format-version 1
+# ── Bundled training plans: copied next to the test binary at build time so
+#    the bundled-plan tests can read them on the artifact-only CI test runners
+#    (those download build/ with no source checkout). Plain files rather than
+#    an rcc-compiled qrc: compiling the app qrc into the test binary hits a
+#    qt_resourceFeatureZstd link failure against the macOS CI Qt. ──────────────
+PLANS_SRC = $$PWD/../../resources/included_workout
+unix {
+    QMAKE_POST_LINK += mkdir -p $$shell_quote($$DESTDIR/included_workout) && \
+                       cp -Rf $$shell_quote($$PLANS_SRC/.) $$shell_quote($$DESTDIR/included_workout/)
+}
+win32 {
+    QMAKE_POST_LINK += xcopy /E /I /Q /Y $$shell_quote($$shell_path($$PLANS_SRC)) $$shell_quote($$shell_path($$DESTDIR/included_workout))
+}
 
 # ── QWT: platform-specific include / link ────────────────────────────────────
 linux {
