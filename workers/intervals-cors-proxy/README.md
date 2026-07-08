@@ -149,10 +149,9 @@ store:
 grant_type=authorization_code&client_id=259&code=<code>&redirect_uri=<redirect_uri>
 ```
 
-**Refresh token (JSON or form-encoded):**
-```json
-{ "grant_type": "refresh_token", "client_id": "259", "refresh_token": "<token>" }
-```
+Intervals.icu has no refresh tokens — its token endpoint implements only the
+authorization-code exchange, so `refresh_token` grants are rejected with
+`unsupported_grant_type`.
 
 The worker looks up the `client_secret` from the `CLIENT_SECRETS` KV namespace
 using the supplied `client_id` as the key, then appends `grant_type`,
@@ -165,7 +164,7 @@ using the supplied `client_id` as the key, then appends `grant_type`,
 |------|---------------|-------|
 | 400 | `missing_client_id` | Request body contains no `client_id` |
 | 401 | `unauthorized_client` | `client_id` not registered in KV |
-| 400 | `unsupported_grant_type` | `grant_type` is not `authorization_code` or `refresh_token` |
+| 400 | `unsupported_grant_type` | `grant_type` is not `authorization_code` |
 | 503 | `kv_unavailable` | KV namespace is unreachable or timed out |
 | 500 | `internal_error` | Unexpected exception |
 
@@ -174,7 +173,7 @@ using the supplied `client_id` as the key, then appends `grant_type`,
 | HTTP | `error` field | Cause |
 |------|---------------|-------|
 | 500 | `worker_misconfigured` | `INTERVALS_CLIENT_ID` or `INTERVALS_CLIENT_SECRET` env var missing |
-| 400 | `unsupported_grant_type` | `grant_type` is not `authorization_code` or `refresh_token` |
+| 400 | `unsupported_grant_type` | `grant_type` is not `authorization_code` |
 | 500 | `internal_error` | Unexpected exception |
 
 ---

@@ -22,12 +22,13 @@
  *   application/x-www-form-urlencoded payload so that no app binary carries
  *   the secret.  Returns 401 if the client_id is not registered in KV.
  *
- *   Also accepts a JSON body with { grant_type: "refresh_token",
- *   refresh_token, client_id } for the refresh flow.
+ *   Intervals.icu has no refresh tokens (its token endpoint implements only
+ *   the authorization-code exchange), so refresh_token grants are rejected
+ *   with unsupported_grant_type.
  *
  *   For backwards-compatibility, application/x-www-form-urlencoded input
- *   is also accepted; the worker extracts client_id/code/redirect_uri/
- *   refresh_token and rebuilds the full payload from KV credentials.
+ *   is also accepted; the worker extracts client_id/code/redirect_uri and
+ *   rebuilds the full payload from KV credentials.
  *
  *   Legacy fallback: if the CLIENT_SECRETS KV binding is not configured,
  *   the worker falls back to the env vars INTERVALS_CLIENT_ID /
@@ -117,35 +118,35 @@ export default {
 
     // ── OAuth token exchange ───────────────────────────────────────────────
     // Handled before the origin/client allow-list check so that any frontend
-    // can exchange an authorization code or refresh a token.  The client_id
+    // can exchange an authorization code.  The client_id
     // is supplied by the caller; the client_secret is looked up server-side
     // from the CLIENT_SECRETS KV namespace and never echoed back to callers.
     if (request.method === 'POST' && url.pathname === '/proxy' + ICU_TOKEN_PATH) {
       try {
         // Accept both JSON and application/x-www-form-urlencoded input.
         const contentType = (request.headers.get('content-type') || '').toLowerCase();
-        let code, redirectUri, refreshToken, grantType, clientId;
+        let code, redirectUri, grantType, clientId;
 
         if (contentType.includes('application/json')) {
           const json = await request.json();
-          code         = json.code;
-          redirectUri  = json.redirect_uri;
-          refreshToken = json.refresh_token;
-          grantType    = json.grant_type;
-          clientId     = json.client_id;
+          code        = json.code;
+          redirectUri = json.redirect_uri;
+          grantType   = json.grant_type;
+          clientId    = json.client_id;
         } else {
           const form = new URLSearchParams(await request.text());
-          code         = form.get('code');
-          redirectUri  = form.get('redirect_uri');
-          refreshToken = form.get('refresh_token');
-          grantType    = form.get('grant_type');
-          clientId     = form.get('client_id');
+          code        = form.get('code');
+          redirectUri = form.get('redirect_uri');
+          grantType   = form.get('grant_type');
+          clientId    = form.get('client_id');
         }
 
-        // Infer grant type from the fields present when the caller omits it.
-        if (!grantType) {
-          grantType = refreshToken ? 'refresh_token' : 'authorization_code';
+        // Intervals.icu only implements the authorization-code exchange —
+        // there are no refresh tokens (upstream 422s on anything else).
+        if (grantType && grantType !== 'authorization_code') {
+          return jsonError('unsupported_grant_type', 400);
         }
+        grantType = 'authorization_code';
 
         // Resolve client credentials.
         // KV path (multi-tenant): CLIENT_SECRETS binding maps client_id → secret.
@@ -178,14 +179,8 @@ export default {
         params.set('client_id',     resolvedClientId);
         params.set('client_secret', clientSecret);
 
-        if (grantType === 'authorization_code') {
-          if (code)        params.set('code',         code);
-          if (redirectUri) params.set('redirect_uri', redirectUri);
-        } else if (grantType === 'refresh_token') {
-          if (refreshToken) params.set('refresh_token', refreshToken);
-        } else {
-          return jsonError('unsupported_grant_type', 400);
-        }
+        if (code)        params.set('code',         code);
+        if (redirectUri) params.set('redirect_uri', redirectUri);
 
         const upstream = await fetch(ICU_TOKEN_URL, {
           method:  'POST',

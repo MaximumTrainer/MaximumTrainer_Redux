@@ -54,7 +54,6 @@ private slots:
 
     // ── Silent session restore ───────────────────────────────────────────────
     void onSilentAuthFinished();
-    void onTokenRefreshFinished();
     void onSilentAuthTimeout();
 
     void on_checkBox_workOffline_clicked(bool checked);
@@ -108,7 +107,6 @@ private:
     QNetworkReply *replyIntervalsIcuAthlete;
     QNetworkReply *replyIntervalsIcuSettings;
     QNetworkReply *m_silentAuthReply;
-    QNetworkReply *m_tokenRefreshReply;
 
     QTimer *m_versionTimeout;
     QTimer *m_intervalsIcuTimeout;

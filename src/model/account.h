@@ -97,7 +97,6 @@ public:
     QString intervals_icu_api_key;     ///< Intervals.icu API key (legacy / manual entry)
     bool    intervals_icu_auto_upload; ///< Auto-upload completed activities to Intervals.icu
     QString intervals_icu_access_token;  ///< OAuth2 bearer token (from OAuth login flow)
-    QString intervals_icu_refresh_token; ///< OAuth2 refresh token (from OAuth login flow)
     QList<int> hr_zones;               ///< HR zone upper-bounds retrieved from Intervals.icu
     QList<int> power_zones;            ///< Power zone upper-bounds retrieved from Intervals.icu
 

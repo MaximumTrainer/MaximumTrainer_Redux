@@ -42,18 +42,6 @@ public:
                                                     const QString &redirectUri,
                                                     const QString &clientId);
 
-    /// Exchange a refresh token for a new access + refresh token pair.
-    /// POST <Cloudflare proxy>/proxy/api/oauth/token (grant_type=refresh_token)
-    /// The request body is JSON: { "grant_type": "refresh_token",
-    /// "refresh_token": ..., "client_id": ... }.
-    /// On success, the caller should parse the response with
-    /// Util::parseJsonIntervalsIcuOAuthToken() and call
-    /// account->saveIntervalsIcuCredentials().
-    /// @param refreshToken  The stored OAuth2 refresh token.
-    /// @param clientId      The OAuth2 client_id (mandatory — the Worker uses
-    ///                      it to look up the matching client_secret in KV).
-    static QNetworkReply* intervalsIcuOAuthRefresh(const QString &refreshToken,
-                                                   const QString &clientId);
 
 };
 
