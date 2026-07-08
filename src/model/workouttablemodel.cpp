@@ -130,6 +130,18 @@ QVariant WorkoutTableModel::data(const QModelIndex &index, int role) const {
         return QVariant::fromValue(dark ? QColor(0x5C, 0x9C, 0xFF)   // #5C9CFF
                                         : QColor(0x15, 0x4F, 0xC2)); // #154FC2
     }
+    ///Highlight colour for the FTP-calculating tests (FTP / FTP 8min / MAP) so
+    ///they stand out as the entry point of the training plans — amber, legible
+    ///on both themes.
+    else if (role == Qt::ForegroundRole && index.column() == 0
+             && (work.getWorkoutNameEnum() == Workout::FTP_TEST
+                 || work.getWorkoutNameEnum() == Workout::FTP8min_TEST
+                 || work.getWorkoutNameEnum() == Workout::MAP_TEST)) {
+        const bool dark = AppTheme::resolveMode(
+                              static_cast<AppTheme::Mode>(account->app_theme)) == AppTheme::Dark;
+        return QVariant::fromValue(dark ? QColor(0xFF, 0xB4, 0x54)   // #FFB454
+                                        : QColor(0xB2, 0x6A, 0x00)); // #B26A00
+    }
 
     /// Done check: centred + green (legible on both themes), oversized so it
     /// reads at a glance
