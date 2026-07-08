@@ -192,13 +192,6 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     m_pendingIntervalsIcuReplies = 0;
     m_silentAuthCancelled        = false;
 
-    // Loading animation (lives in the footer widget_bottom — always visible)
-    movie = new QMovie(":/image/icon/loading", QByteArray(), this);
-    movie->setPaused(false);
-    ui->label_loading->setMovie(movie);
-    movie->setSpeed(150);
-    movie->start();
-
     this->account  = qApp->property("Account").value<Account*>();
     this->settings = qApp->property("User_Settings").value<Settings*>();
 
@@ -274,7 +267,6 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
         // In test mode skip all network requests.  stackedWidget_main defaults
         // to page 0 (widget_center) from Qt Designer, so widget_center is
         // already "logically visible" and widget_loading is hidden.
-        ui->label_loading->setVisible(false);
         return;
     }
 

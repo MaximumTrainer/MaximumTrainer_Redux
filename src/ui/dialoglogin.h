@@ -4,7 +4,6 @@
 #include <QDialog>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMovie>
 #include <QNetworkReply>
 #include <QPushButton>
 #include <QTimer>
@@ -102,8 +101,6 @@ private:
 
     Account  *account;
     Settings *settings;
-
-    QMovie *movie;
 
     IntervalsIcuOAuthFlow *m_oauthFlow = nullptr;
 

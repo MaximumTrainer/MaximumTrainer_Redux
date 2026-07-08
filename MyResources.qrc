@@ -1,6 +1,5 @@
 <RCC>
     <qresource prefix="/image/icon" lang="user">
-        <file alias="loading">resources/images/loading.gif</file>
         <file alias="delete">resources/images/delete.png</file>
         <file alias="copy">resources/images/copy.png</file>
         <file alias="repeat">resources/images/repeat.png</file>
