@@ -118,6 +118,17 @@
         <file>resources/included_workout/Lunch Crunch/Crunch 3-2 Micro 40-20s.workout</file>
         <file>resources/included_workout/Lunch Crunch/Crunch 3-3 Friday Flush.workout</file>
     </qresource>
+    <qresource prefix="/included_workout/hrbase">
+        <file>resources/included_workout/Heart Rate Base/HR Base 1-1 Steady Zone 2.workout</file>
+        <file>resources/included_workout/Heart Rate Base/HR Base 1-2 Tempo Touch.workout</file>
+        <file>resources/included_workout/Heart Rate Base/HR Base 1-3 Long Zone 2.workout</file>
+        <file>resources/included_workout/Heart Rate Base/HR Base 2-1 Steady Zone 2 Plus.workout</file>
+        <file>resources/included_workout/Heart Rate Base/HR Base 2-2 Tempo Blocks.workout</file>
+        <file>resources/included_workout/Heart Rate Base/HR Base 2-3 Long Zone 2 Plus.workout</file>
+        <file>resources/included_workout/Heart Rate Base/HR Base 3-1 Threshold Touch.workout</file>
+        <file>resources/included_workout/Heart Rate Base/HR Base 3-2 Tempo Cruise.workout</file>
+        <file>resources/included_workout/Heart Rate Base/HR Base 3-3 Long Zone 2 Max.workout</file>
+    </qresource>
     <qresource prefix="/data">
         <file>resources/data/default_radios.json</file>
     </qresource>

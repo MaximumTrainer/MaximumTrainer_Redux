@@ -741,6 +741,16 @@ private slots:
                         QVERIFY2(interval.getFTP_end() >= 0.2 && interval.getFTP_end() <= 1.5,
                                  qPrintable(file + QStringLiteral(": power end out of range")));
                     }
+                    else {
+                        // No power target: the interval must carry an HR target
+                        // (fraction of LTHR) so it still guides the rider.
+                        QVERIFY2(interval.getHRStepType() != Interval::StepType::NONE,
+                                 qPrintable(file + QStringLiteral(": interval with neither power nor HR target")));
+                        QVERIFY2(interval.getHR_start() >= 0.5 && interval.getHR_start() <= 1.1,
+                                 qPrintable(file + QStringLiteral(": HR start out of range")));
+                        QVERIFY2(interval.getHR_end() >= 0.5 && interval.getHR_end() <= 1.1,
+                                 qPrintable(file + QStringLiteral(": HR end out of range")));
+                    }
                 }
                 filesChecked++;
             }
@@ -763,6 +773,7 @@ private slots:
             { "Polarized 3x",    "Polarized 3x",    3 },
             { "VO2 Shock Block", "VO2 Shock Block", 6 },
             { "Lunch Crunch",    "Lunch Crunch",    9 },
+            { "Heart Rate Base", "Heart Rate Base", 9 },
         };
 
         const QDir root(QStringLiteral(BUNDLED_WORKOUTS_DIR));

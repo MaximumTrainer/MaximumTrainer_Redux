@@ -161,6 +161,7 @@ void Main_WorkoutPage::parseIncludedWorkouts() {
     QList<Workout> polarized = xmlUtil->getLstWorkoutPolarized3x();
     QList<Workout> shockBlock = xmlUtil->getLstWorkoutVo2ShockBlock();
     QList<Workout> lunchCrunch = xmlUtil->getLstWorkoutLunchCrunch();
+    QList<Workout> hrBase = xmlUtil->getLstWorkoutHeartRateBase();
 
     lstWorkout.append(lstWorkoutBase);
     lstWorkout.append(baseCamp);
@@ -168,6 +169,7 @@ void Main_WorkoutPage::parseIncludedWorkouts() {
     lstWorkout.append(polarized);
     lstWorkout.append(shockBlock);
     lstWorkout.append(lunchCrunch);
+    lstWorkout.append(hrBase);
     tableModel->addListWorkout(lstWorkout);
 
 }

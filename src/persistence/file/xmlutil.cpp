@@ -339,6 +339,23 @@ QList<Workout> XmlUtil::getLstWorkoutLunchCrunch() {
 }
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+QList<Workout> XmlUtil::getLstWorkoutHeartRateBase() {
+
+    QStringList lstWorkoutPat;
+    lstWorkoutPat.append(":/included_workout/hrbase/resources/included_workout/Heart Rate Base/HR Base 1-1 Steady Zone 2.workout");
+    lstWorkoutPat.append(":/included_workout/hrbase/resources/included_workout/Heart Rate Base/HR Base 1-2 Tempo Touch.workout");
+    lstWorkoutPat.append(":/included_workout/hrbase/resources/included_workout/Heart Rate Base/HR Base 1-3 Long Zone 2.workout");
+    lstWorkoutPat.append(":/included_workout/hrbase/resources/included_workout/Heart Rate Base/HR Base 2-1 Steady Zone 2 Plus.workout");
+    lstWorkoutPat.append(":/included_workout/hrbase/resources/included_workout/Heart Rate Base/HR Base 2-2 Tempo Blocks.workout");
+    lstWorkoutPat.append(":/included_workout/hrbase/resources/included_workout/Heart Rate Base/HR Base 2-3 Long Zone 2 Plus.workout");
+    lstWorkoutPat.append(":/included_workout/hrbase/resources/included_workout/Heart Rate Base/HR Base 3-1 Threshold Touch.workout");
+    lstWorkoutPat.append(":/included_workout/hrbase/resources/included_workout/Heart Rate Base/HR Base 3-2 Tempo Cruise.workout");
+    lstWorkoutPat.append(":/included_workout/hrbase/resources/included_workout/Heart Rate Base/HR Base 3-3 Long Zone 2 Max.workout");
+    return parseWorkoutLstPath(lstWorkoutPat, Workout::INCLUDED_WORKOUT);
+}
+
+
 //---------------------------------------------------------------------------------------------
 /// Workout files on user system
 QList<Workout> XmlUtil::getLstUserWorkout() {

@@ -37,6 +37,7 @@ public:
     QList<Workout> getLstWorkoutVo2ShockBlock();
     QList<Workout> getLstWorkoutBaseCamp();
     QList<Workout> getLstWorkoutLunchCrunch();
+    QList<Workout> getLstWorkoutHeartRateBase();
 
 
     QList<Workout> getLstUserWorkout();
