@@ -185,19 +185,11 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     replyIntervalsIcuSettings    = nullptr;
     replyVersion                 = nullptr;
     m_silentAuthReply            = nullptr;
-    m_tokenRefreshReply          = nullptr;
     m_intervalsIcuTimeout        = nullptr;
     m_versionTimeout             = nullptr;
     m_silentAuthTimeout          = nullptr;
     m_pendingIntervalsIcuReplies = 0;
     m_silentAuthCancelled        = false;
-
-    // Loading animation (lives in the footer widget_bottom — always visible)
-    movie = new QMovie(":/image/icon/loading", QByteArray(), this);
-    movie->setPaused(false);
-    ui->label_loading->setMovie(movie);
-    movie->setSpeed(150);
-    movie->start();
 
     this->account  = qApp->property("Account").value<Account*>();
     this->settings = qApp->property("User_Settings").value<Settings*>();
@@ -274,7 +266,6 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
         // In test mode skip all network requests.  stackedWidget_main defaults
         // to page 0 (widget_center) from Qt Designer, so widget_center is
         // already "logically visible" and widget_loading is hidden.
-        ui->label_loading->setVisible(false);
         return;
     }
 
@@ -445,11 +436,6 @@ void DialogLogin::onSilentAuthTimeout()
         m_silentAuthReply = nullptr;
         r->abort(); r->deleteLater();
     }
-    if (m_tokenRefreshReply) {
-        auto *r = m_tokenRefreshReply;
-        m_tokenRefreshReply = nullptr;
-        r->abort(); r->deleteLater();
-    }
     showLoginForm(false);
 }
 
@@ -481,23 +467,12 @@ void DialogLogin::onSilentAuthFinished()
         m_loggingInViaIntervalsIcu = true;
         fetchIntervalsIcuDataOAuth();
 
-    } else if (isHttp401 && !account->intervals_icu_refresh_token.isEmpty()) {
-        // Token expired → try to refresh it
-        LOG_INFO("DialogLogin", QStringLiteral("Silent auth 401 – attempting token refresh"));
-        m_tokenRefreshReply = ExtRequest::intervalsIcuOAuthRefresh(
-            account->intervals_icu_refresh_token,
-            Environnement::getIntervalsIcuClientId());
-        if (m_tokenRefreshReply) {
-            connect(m_tokenRefreshReply, &QNetworkReply::finished,
-                    this, &DialogLogin::onTokenRefreshFinished);
-        } else {
-            showLoginForm(false);
-        }
-
     } else if (isHttp401) {
-        // Expired and no refresh token available
+        // Token invalidated (revoked, or replaced by a sign-in on another
+        // device). Intervals.icu has no refresh tokens, so the only recovery
+        // is a fresh browser sign-in.
         LOG_INFO("DialogLogin",
-                 QStringLiteral("Silent auth 401 – no refresh token, clearing credentials"));
+                 QStringLiteral("Silent auth 401 – clearing credentials"));
         clearTokens();
         showLoginForm(true); // show "session expired" notice
 
@@ -508,37 +483,6 @@ void DialogLogin::onSilentAuthFinished()
                  .arg(netError));
         showLoginForm(false);
     }
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void DialogLogin::onTokenRefreshFinished()
-{
-    if (!m_tokenRefreshReply) return;
-    if (m_silentAuthCancelled) {
-        m_tokenRefreshReply->deleteLater();
-        m_tokenRefreshReply = nullptr;
-        return;
-    }
-
-    const QNetworkReply::NetworkError netError = m_tokenRefreshReply->error();
-    const QByteArray data = m_tokenRefreshReply->readAll();
-    m_tokenRefreshReply->deleteLater();
-    m_tokenRefreshReply = nullptr;
-
-    if (netError == QNetworkReply::NoError && !data.isEmpty()) {
-        Util::parseJsonIntervalsIcuOAuthToken(QString::fromUtf8(data));
-        if (!account->intervals_icu_access_token.isEmpty()) {
-            account->saveIntervalsIcuCredentials();
-            LOG_INFO("DialogLogin", QStringLiteral("Token refresh succeeded – restoring session"));
-            m_loggingInViaIntervalsIcu = true;
-            fetchIntervalsIcuDataOAuth();
-            return;
-        }
-    }
-
-    LOG_WARN("DialogLogin", QStringLiteral("Token refresh failed – clearing credentials"));
-    clearTokens();
-    showLoginForm(true); // show "session expired" notice
 }
 
 
@@ -632,11 +576,6 @@ void DialogLogin::onSwitchAccountClicked()
     if (m_silentAuthReply) {
         auto *r = m_silentAuthReply;
         m_silentAuthReply = nullptr;
-        r->abort(); r->deleteLater();
-    }
-    if (m_tokenRefreshReply) {
-        auto *r = m_tokenRefreshReply;
-        m_tokenRefreshReply = nullptr;
         r->abort(); r->deleteLater();
     }
 
@@ -876,9 +815,9 @@ void DialogLogin::showLoginForm(bool showExpiredMessage)
 void DialogLogin::clearTokens()
 {
     CredentialStore::remove("intervals_icu", "access_token");
+    // Older versions stored a (never-usable) refresh token; keep purging it.
     CredentialStore::remove("intervals_icu", "refresh_token");
     account->intervals_icu_access_token.clear();
-    account->intervals_icu_refresh_token.clear();
 }
 
 

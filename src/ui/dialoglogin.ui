@@ -670,13 +670,6 @@ QPushButton#pushButton_loginIntervalsIcu:pressed {
           </spacer>
          </item>
          <item>
-          <widget class="QLabel" name="label_loading">
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
-         <item>
           <widget class="QLabel" name="label_version">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Preferred" vsizetype="Maximum">

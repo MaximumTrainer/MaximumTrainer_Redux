@@ -886,21 +886,13 @@ void Util::parseJsonIntervalsIcuOAuthToken(const QString &data)
 
     QJsonObject obj = doc.object();
 
-    const QString accessToken  = obj.value(QStringLiteral("access_token")).toString();
-    const QString refreshToken = obj.value(QStringLiteral("refresh_token")).toString();
-    // Intervals.icu returns the athlete ID as "athlete_id" in the token response.
-    const QString athleteId    = obj.value(QStringLiteral("athlete_id")).toString();
+    // Intervals.icu's token response carries only the access token: there are
+    // no refresh tokens, and the athlete id comes from the follow-up
+    // /athlete/0 profile fetch, not from this payload.
+    const QString accessToken = obj.value(QStringLiteral("access_token")).toString();
 
     if (!accessToken.isEmpty())
         account->intervals_icu_access_token = accessToken;
-
-    if (!refreshToken.isEmpty())
-        account->intervals_icu_refresh_token = refreshToken;
-
-    if (!athleteId.isEmpty())
-        account->intervals_icu_athlete_id = athleteId;
-
-    qDebug() << "parseJsonIntervalsIcuOAuthToken: athlete_id =" << account->intervals_icu_athlete_id;
 }
 
 

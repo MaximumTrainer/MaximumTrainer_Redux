@@ -1,8 +1,8 @@
 /*
  * tst_intervals_icu_oauth_exchange.cpp
  *
- * Qt Test suite for ExtRequest::intervalsIcuOAuthExchange /
- * intervalsIcuOAuthRefresh and Util::parseJsonIntervalsIcuOAuthErrorPayload.
+ * Qt Test suite for ExtRequest::intervalsIcuOAuthExchange and
+ * Util::parseJsonIntervalsIcuOAuthErrorPayload.
  *
  * The Intervals.icu OAuth callback (system-browser loopback on desktop, popup
  * on WASM) posts the authorization code to the Cloudflare Worker proxy at
@@ -119,10 +119,6 @@ private slots:
     void testExchange_emptyClientIdReturnsNullptr();
     void testExchange_nullManagerReturnsNullptr();
 
-    // ── intervalsIcuOAuthRefresh ───────────────────────────────────────────
-    void testRefresh_bodyContainsRefreshTokenClientIdGrantType();
-    void testRefresh_emptyClientIdReturnsNullptr();
-
     // ── parseJsonIntervalsIcuOAuthErrorPayload ─────────────────────────────
     void testParseErrorPayload_missingClientId();
     void testParseErrorPayload_unauthorizedClient();
@@ -140,7 +136,6 @@ private:
     static constexpr const char CLIENT_ID[]     = "259";
     static constexpr const char CODE[]          = "test_auth_code_abc";
     static constexpr const char REDIRECT_URI[]  = "http://localhost:43210/";
-    static constexpr const char REFRESH_TOKEN[] = "rt_test_refresh_token";
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -238,36 +233,6 @@ void TstIntervalsIcuOAuthExchange::testExchange_nullManagerReturnsNullptr()
     // Restore for subsequent tests.
     qApp->setProperty("NetworkManagerWS",
                       QVariant::fromValue<QNetworkAccessManager*>(m_manager));
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// intervalsIcuOAuthRefresh
-// ─────────────────────────────────────────────────────────────────────────────
-
-void TstIntervalsIcuOAuthExchange::testRefresh_bodyContainsRefreshTokenClientIdGrantType()
-{
-    QNetworkReply *reply =
-        ExtRequest::intervalsIcuOAuthRefresh(REFRESH_TOKEN, CLIENT_ID);
-    QVERIFY(reply != nullptr);
-    reply->deleteLater();
-
-    const QJsonObject obj = QJsonDocument::fromJson(m_manager->lastBody).object();
-    QCOMPARE(obj.value(QStringLiteral("grant_type")).toString(),    QStringLiteral("refresh_token"));
-    QCOMPARE(obj.value(QStringLiteral("refresh_token")).toString(), QString(REFRESH_TOKEN));
-    QCOMPARE(obj.value(QStringLiteral("client_id")).toString(),     QString(CLIENT_ID));
-
-    const QString contentType =
-        m_manager->lastRequest.header(QNetworkRequest::ContentTypeHeader).toString();
-    QVERIFY(contentType.toLower().contains(QStringLiteral("application/json")));
-}
-
-void TstIntervalsIcuOAuthExchange::testRefresh_emptyClientIdReturnsNullptr()
-{
-    QNetworkReply *reply =
-        ExtRequest::intervalsIcuOAuthRefresh(REFRESH_TOKEN, QString());
-    QVERIFY2(reply == nullptr,
-             "intervalsIcuOAuthRefresh must reject an empty client_id");
-    QCOMPARE(m_manager->callCount, 0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

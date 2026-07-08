@@ -69,6 +69,7 @@
 #include <QDir>
 #include <QDirIterator>
 
+#include "../../src/app/util.h"
 #include "../../src/persistence/file/importerworkoutzwo.h"
 #include "../../src/persistence/file/xmlutil.h"
 #include "../../src/model/account.h"
@@ -799,6 +800,56 @@ private slots:
 
         qDebug().noquote()
             << "[BundledPlans] plan counts and Plan fields all match — PASS";
+    }
+
+    // =========================================================================
+    // LOCAL .SAVE FILE (XmlUtil::parseLocalSaveFile)
+    // =========================================================================
+
+    // -----------------------------------------------------------------------
+    // 23. A .save file with an EMPTY AthleteId (as left behind by a logout)
+    //     must not clobber a live athlete id — that wiped the id right after
+    //     every OAuth login and made the session unrestorable on relaunch.
+    //     A populated AthleteId must still load normally.
+    // -----------------------------------------------------------------------
+    void testLocalSaveFile_emptyAthleteIdDoesNotClobber()
+    {
+        const QString savePath = Util::getMaximumTrainerDocumentPath()
+                                 + QDir::separator() + m_account->email_clean
+                                 + QStringLiteral(".save");
+        const auto writeSave = [&savePath](const QString &athleteId) {
+            QFile f(savePath);
+            QVERIFY(f.open(QIODevice::WriteOnly | QIODevice::Truncate));
+            f.write(QStringLiteral(
+                        "<?xml version=\"1.0\"?>\n<MaximumTrainer>\n"
+                        "  <WorkoutDone></WorkoutDone>\n"
+                        "  <IntervalsIcu>\n"
+                        "    <AthleteId>%1</AthleteId>\n"
+                        "    <ApiKey></ApiKey>\n"
+                        "  </IntervalsIcu>\n"
+                        "</MaximumTrainer>\n").arg(athleteId).toUtf8());
+            f.close();
+        };
+
+        // Poisoned file (empty id) must not wipe the live value.
+        m_account->intervals_icu_athlete_id = QStringLiteral("i-live-42");
+        m_account->intervals_icu_api_key    = QStringLiteral("live-key");
+        writeSave(QString());
+        XmlUtil::parseLocalSaveFile(m_account);
+        QCOMPARE(m_account->intervals_icu_athlete_id, QStringLiteral("i-live-42"));
+        QCOMPARE(m_account->intervals_icu_api_key,    QStringLiteral("live-key"));
+
+        // A populated file still loads.
+        writeSave(QStringLiteral("i-from-file"));
+        XmlUtil::parseLocalSaveFile(m_account);
+        QCOMPARE(m_account->intervals_icu_athlete_id, QStringLiteral("i-from-file"));
+
+        QFile::remove(savePath);
+        m_account->intervals_icu_athlete_id.clear();
+        m_account->intervals_icu_api_key.clear();
+
+        qDebug().noquote()
+            << "[LocalSave] empty AthleteId no longer clobbers the live id — PASS";
     }
 };
 

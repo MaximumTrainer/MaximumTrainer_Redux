@@ -54,21 +54,12 @@ Account::Account(QObject *parent) : QObject(parent)  {
     // exists (written by a previous version), copy it to CredentialStore and
     // remove the plain-text entry so the token is protected going forward.
     intervals_icu_access_token  = CredentialStore::load("intervals_icu", "access_token");
-    intervals_icu_refresh_token = CredentialStore::load("intervals_icu", "refresh_token");
     if (intervals_icu_access_token.isEmpty()) {
         const QString legacy = settings.value("intervals_icu_access_token", "").toString();
         if (!legacy.isEmpty()) {
             intervals_icu_access_token = legacy;
             CredentialStore::store("intervals_icu", "access_token", legacy);
             settings.remove("intervals_icu_access_token");
-        }
-    }
-    if (intervals_icu_refresh_token.isEmpty()) {
-        const QString legacy = settings.value("intervals_icu_refresh_token", "").toString();
-        if (!legacy.isEmpty()) {
-            intervals_icu_refresh_token = legacy;
-            CredentialStore::store("intervals_icu", "refresh_token", legacy);
-            settings.remove("intervals_icu_refresh_token");
         }
     }
     // Sensor dropout auto-pause
@@ -446,7 +437,6 @@ void Account::saveIntervalsIcuCredentials() {
 
     // OAuth2 tokens — persisted in the platform credential store (encrypted).
     CredentialStore::store("intervals_icu", "access_token",  intervals_icu_access_token);
-    CredentialStore::store("intervals_icu", "refresh_token", intervals_icu_refresh_token);
 }
 
 void Account::logout()
@@ -455,7 +445,6 @@ void Account::logout()
     CredentialStore::remove("intervals_icu", "access_token");
     CredentialStore::remove("intervals_icu", "refresh_token");
     intervals_icu_access_token.clear();
-    intervals_icu_refresh_token.clear();
 
     // Manual API key + athlete id (the athlete id is what auto-logs the app in).
     intervals_icu_api_key.clear();

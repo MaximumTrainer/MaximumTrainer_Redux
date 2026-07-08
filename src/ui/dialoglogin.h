@@ -4,7 +4,6 @@
 #include <QDialog>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMovie>
 #include <QNetworkReply>
 #include <QPushButton>
 #include <QTimer>
@@ -55,7 +54,6 @@ private slots:
 
     // ── Silent session restore ───────────────────────────────────────────────
     void onSilentAuthFinished();
-    void onTokenRefreshFinished();
     void onSilentAuthTimeout();
 
     void on_checkBox_workOffline_clicked(bool checked);
@@ -103,15 +101,12 @@ private:
     Account  *account;
     Settings *settings;
 
-    QMovie *movie;
-
     IntervalsIcuOAuthFlow *m_oauthFlow = nullptr;
 
     QNetworkReply *replyVersion;
     QNetworkReply *replyIntervalsIcuAthlete;
     QNetworkReply *replyIntervalsIcuSettings;
     QNetworkReply *m_silentAuthReply;
-    QNetworkReply *m_tokenRefreshReply;
 
     QTimer *m_versionTimeout;
     QTimer *m_intervalsIcuTimeout;
