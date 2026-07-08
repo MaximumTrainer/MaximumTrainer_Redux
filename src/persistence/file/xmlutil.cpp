@@ -92,8 +92,17 @@ void XmlUtil::parseLocalSaveFile(Account *account) {
             else if (xml.name() == QLatin1String("IntervalsIcu") && xml.isStartElement()) {
                 while (!xml.atEnd()) {
                     xml.readNextStartElement();
-                    if (xml.name() == QLatin1String("AthleteId"))
-                        account->intervals_icu_athlete_id = xml.readElementText();
+                    if (xml.name() == QLatin1String("AthleteId")) {
+                        // Never clobber a live athlete id with an empty stored
+                        // one: a logout can leave <AthleteId></AthleteId> in the
+                        // .save file, and this runs right after the OAuth login
+                        // populated the id — wiping it here made the session
+                        // impossible to restore on the next launch (silent auth
+                        // requires the athlete id).
+                        const QString storedId = xml.readElementText();
+                        if (!storedId.isEmpty())
+                            account->intervals_icu_athlete_id = storedId;
+                    }
                     else if (xml.name() == QLatin1String("ApiKey")) {
                         const QString stored = xml.readElementText();
                         // Decrypt the obfuscated API key. If the value is
@@ -102,7 +111,10 @@ void XmlUtil::parseLocalSaveFile(Account *account) {
                         // returns an empty string, which is handled safely.
                         SimpleCrypt crypto(INTERVALS_ICU_CRYPT_KEY);
                         const QString decrypted = crypto.decryptToString(stored);
-                        account->intervals_icu_api_key = decrypted.isEmpty() ? stored : decrypted;
+                        // Same guard as AthleteId: keep any live key rather
+                        // than overwriting it with an empty stored value.
+                        if (!stored.isEmpty())
+                            account->intervals_icu_api_key = decrypted.isEmpty() ? stored : decrypted;
                     }
                     else if (xml.tokenType() == QXmlStreamReader::EndElement
                              && xml.name() == QLatin1String("IntervalsIcu"))
