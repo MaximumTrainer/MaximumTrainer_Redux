@@ -40,6 +40,9 @@ signals:
     /// Emitted when the athlete profile (FTP / LTHR / weight) was edited, so the
     /// main window can recompute zones and workout targets.
     void profileChanged();
+    /// Emitted when Rowing mode (Beta) was toggled, so the main window can
+    /// swap the Workout tab icon and the Devices tab's FTMS slot live.
+    void rowingModeChanged();
 
 
 public slots:

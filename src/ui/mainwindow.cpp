@@ -336,6 +336,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // and workout targets, same as the old profile page's FTP-change path.
     connect(dconfig, &DialogMainWindowConfig::profileChanged,
             this, &MainWindow::ftpAndTabProfileChanged);
+    // Rowing mode (Beta) applies live: swap the Workout tab icon and the
+    // Devices tab's FTMS slot (Trainer ↔ Rower). Workout sessions read the
+    // mode when they start, so nothing else needs refreshing.
+    connect(dconfig, &DialogMainWindowConfig::rowingModeChanged, this, [this]() {
+        ftb->setTabIcon(0, QIcon(account->rowing_mode ? ":/image/icon/rower"
+                                                      : ":/image/icon/workoutMan"));
+        if (auto *sw = qobject_cast<SensorsWidget*>(ui->sensorsWidget))
+            sw->refreshRowingMode();
+    });
 
 
     leftMenuChanged(0);

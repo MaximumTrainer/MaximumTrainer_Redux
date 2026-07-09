@@ -10,6 +10,7 @@ class QLabel;
 class QPushButton;
 class QCheckBox;
 class QSpinBox;
+class QGroupBox;
 class Account;
 
 /*
@@ -45,6 +46,7 @@ private slots:
 private:
     struct SlotRow {
         BtleSensorRole  role;
+        QLabel         *roleLabel   = nullptr;
         QLabel         *deviceLabel = nullptr;
         QPushButton    *scanButton  = nullptr;
         QPushButton    *clearButton = nullptr;
@@ -52,11 +54,18 @@ private:
     };
 
     void buildUi();
+    /// Show the Trainer or Rower FTMS slot to match account->rowing_mode
+    /// (both stay built with their own saved pairing). Safe to call live.
+public:
+    void refreshRowingMode();
+private:
     void refreshRow(int rowIndex);
     /// True if the Trainer slot currently holds a valid saved device.
     bool trainerPaired() const;
 
     QVector<SlotRow> m_rows;
+    QGroupBox *m_trainerGroup = nullptr;
+    QWidget   *m_cyclingOnlyBox = nullptr;
     QCheckBox *m_controlResistanceCheck = nullptr;
     QCheckBox *m_virtualShiftingCheck = nullptr;
     QCheckBox *m_useZwiftClickCheck = nullptr;

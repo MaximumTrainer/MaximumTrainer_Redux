@@ -329,7 +329,10 @@ void DialogMainWindowConfig::accept() {
 
     account->strava_auto_upload = ui->checkBox_stravaAutoUpload->isChecked();
     account->force_workout_window_on_top = ui->checkBox_forceOnTop->isChecked();
+    const bool rowingWas = account->rowing_mode;
     account->rowing_mode = ui->checkBox_rowingMode->isChecked();
+    if (rowingWas != account->rowing_mode)
+        emit rowingModeChanged();
 
     // Athlete profile (FTP / LTHR / weight) — persist locally and notify the
     // main window so dependent metrics (zones, workout targets) recompute.
