@@ -61,8 +61,25 @@ jobs:
           /usr/local/qwt-6.3.0/mkspecs
         key: qwt-6.3.0-qt-6.11.1-macos-nodoc
 
+    - name: Validate QWT cache
+      id: qwt-validate
+      # A corrupted cache extraction can leave a partial tree behind while the
+      # action still reports a cache hit (gtar errors mid-restore have been
+      # seen on macOS runners). Verify the pieces the build links against and
+      # the qmake feature file; rebuild otherwise.
+      run: |
+        if [ "${{ steps.qwt-cache.outputs.cache-hit }}" = "true" ] && \
+           [ -f /usr/local/qwt-6.3.0/lib/libqwt.6.dylib ] && \
+           [ -f /usr/local/qwt-6.3.0/include/qwt_plot.h ] && \
+           [ -f /usr/local/qwt-6.3.0/features/qwt.prf ]; then
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "ok=false" >> "$GITHUB_OUTPUT"
+          sudo rm -rf /usr/local/qwt-6.3.0
+        fi
+
     - name: Build and install QWT
-      if: steps.qwt-cache.outputs.cache-hit != 'true'
+      if: steps.qwt-validate.outputs.ok != 'true'
       run: |
         # Remove any pre-installed Homebrew qwt that could shadow our headers
         brew uninstall qwt --force --ignore-dependencies 2>/dev/null || true
@@ -251,157 +268,29 @@ jobs:
         install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/tests/ui_navigation_tests
 
     - name: upload artifact
+      # Exclude compile intermediates (~3/4 of build/): the test and release
+      # jobs only need the binaries, and every one of them downloads this.
       uses: actions/upload-artifact@v4
       with:
         name: macos
-        path: build/
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Runtime Validation – macOS
-  #
-  # Verifies that the application UI initialises to a "Ready" state on macOS:
-  #   • Bluetooth stack is queryable (API returns "Not Found", not "Unsupported")
-  #   • All four sensor channels carry realistic values within 10 seconds
-  #   • A labelled 1280×720 screenshot is captured as visual build evidence
-  # ──────────────────────────────────────────────────────────────────────────
-  test_runtime_validation:
-    runs-on: macos-latest
-    needs: build_mac
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt (with Bluetooth)
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '6.11.1'
-        host: 'mac'
-        target: 'desktop'
-        arch: 'clang_64'
-        modules: 'qtconnectivity'
-        cache: true
-        cache-key-prefix: qt-mac
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: macos
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/runtime_validation_tests
-
-    - name: Run runtime validation test
-      run: ./build/tests/runtime_validation_tests -v2
-
-    - name: Upload runtime validation screenshot
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: runtime-validation-screenshot-macos
-        path: build/tests/screenshot-macos-*.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # BLE API Smoke Test – macOS
-  #
-  # Exercises the real BtleHub → QLowEnergyController code path on macOS.
-  # Uses CoreBluetooth; on CI runners with no BT hardware the test QSKIP
-  # gracefully.  No display required (headless Qt Test binary).
-  # ──────────────────────────────────────────────────────────────────────────
-  test_btle_api:
-    runs-on: macos-latest
-    needs: build_mac
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt (with Bluetooth)
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '6.11.1'
-        host: 'mac'
-        target: 'desktop'
-        arch: 'clang_64'
-        modules: 'qtconnectivity'
-        cache: true
-        cache-key-prefix: qt-mac
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: macos
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/btle_api_tests
-
-    - name: Run BLE API smoke test
-      run: ./build/tests/btle_api_tests -v2
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Offline Mode Integration Test – macOS
-  #
-  # Verifies that MaximumTrainer's core offline functionality works on macOS
-  # without a network connection and without physical Bluetooth hardware:
-  #   • Local workout XML files can be created and parsed from disk.
-  #   • SimulatorHub broadcasts realistic CSC (0x1816) and Power (0x1818)
-  #     cycling data (cadence, speed, power) within expected ranges.
-  #   • A labelled 1280×720 screenshot is captured showing the offline mode
-  #     indicator and live BTLE sensor metrics.
-  #   • Accumulated data points are written to a TSV activity file,
-  #     confirming offline data persistence.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_offline_mode:
-    runs-on: macos-latest
-    needs: build_mac
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '6.11.1'
-        host: 'mac'
-        target: 'desktop'
-        arch: 'clang_64'
-        cache: true
-        cache-key-prefix: qt-mac
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: macos
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/offline_mode_tests
-
-    - name: Run offline mode test
-      run: ./build/tests/offline_mode_tests -v2
-
-    - name: Upload offline mode screenshot and activity file
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: offline-mode-artefacts-macos
         path: |
-          build/tests/offline-mode-macos-*.png
-          build/tests/activity-macos-*.tsv
+          build/
+          !build/release/.obj/**
+          !build/release/.moc/**
+          !build/release/.qrc/**
+          !build/release/.u/**
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Intervals.icu Live Integration Tests – macOS
+  # Headless Test Suites (macOS) — consolidated (#352)
   #
-  # Makes real HTTP requests to https://intervals.icu/api/v1 using the shared
-  # test account.  Requires GitHub Secrets to be configured:
-  #   INTERVALS_ICU_API_KEY    – personal API key (intervals.icu Settings → API)
-  #   INTERVALS_ICU_ATHLETE_ID – athlete ID, e.g. i12345
-  #
-  # Tests call QSKIP gracefully when either secret is absent (fork PRs, local
-  # development without credentials).
+  # One runner and ONE Qt installation for every suite that needs no window:
+  # BLE API smoke, workout I/O, workout creator, workout parsing
+  # (secrets-gated cases QSKIP without credentials), and the self-built live
+  # Intervals.icu integration suite.
   # ──────────────────────────────────────────────────────────────────────────
-  test_intervals_icu_integration:
+  test_headless_suites:
     runs-on: macos-latest
+    needs: build_mac
     permissions:
       contents: read
     env:
@@ -414,20 +303,46 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install Qt (qtbase only)
+    - name: Install Qt (with Bluetooth)
       uses: jurplel/install-qt-action@v3
       with:
         version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
+        modules: 'qtconnectivity'
         cache: true
         cache-key-prefix: qt-mac
 
     - name: Install OpenSSL
       run: brew install openssl@3
 
-    - name: Build integration tests
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: macos
+        path: build
+
+    - name: Make test binaries executable
+      run: |
+        chmod +x build/tests/btle_api_tests \
+                 build/tests/workout_io_tests \
+                 build/tests/workout_creator_tests \
+                 build/tests/workout_parsing_tests
+
+    - name: BLE API smoke test
+      run: ./build/tests/btle_api_tests -v2
+
+    - name: Workout I/O tests
+      run: ./build/tests/workout_io_tests -v2
+
+    - name: Workout creator tests
+      run: ./build/tests/workout_creator_tests -v2
+
+    - name: Workout parsing tests
+      run: ./build/tests/workout_parsing_tests -v2
+
+    - name: Build Intervals.icu live integration tests
       run: |
         mkdir -p build/tests
         cd tests/intervals_icu_integration
@@ -436,7 +351,7 @@ jobs:
           QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
         make -j$(sysctl -n hw.logicalcpu)
 
-    - name: Run Intervals.icu integration tests
+    - name: Run Intervals.icu live integration tests
       run: |
         # Live test against intervals.icu: retry transient network/API blips
         # before failing the job. -o writes results to a file we echo into the
@@ -459,227 +374,21 @@ jobs:
         exit 1
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Online Mode Authentication Test – macOS
+  # GUI Integration Tests (macOS) — consolidated (#352)
   #
-  # Simulates a user authenticating into the running application on macOS.
-  # A 1280x720 window is shown, a live HTTPS authentication request is made
-  # to https://intervals.icu/api/v1 using credentials from GitHub Secrets,
-  # and the result is displayed in the window and captured as a screenshot.
-  #
-  # Requires GitHub Secrets to be configured:
-  #   INTERVALS_ICU_API_KEY    – personal API key (intervals.icu Settings → API)
-  #   INTERVALS_ICU_ATHLETE_ID – athlete ID, e.g. i12345
-  #
-  # The test calls QSKIP gracefully when either secret is absent (fork PRs,
-  # local development without credentials).
+  # One runner and ONE Qt installation for the windowed suites that need no
+  # secrets: runtime validation, offline mode, UI screens, and UI navigation
+  # (which launches the real MaximumTrainer.app). Screenshot evidence from
+  # every suite is uploaded as one artifact.
   # ──────────────────────────────────────────────────────────────────────────
-  test_online_mode:
-    runs-on: macos-latest
-    needs: build_mac
-    permissions:
-      contents: read
-    env:
-      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
-      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
-
-    steps:
-    - name: Install Qt (core + network + widgets for test binary)
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '6.11.1'
-        host: 'mac'
-        target: 'desktop'
-        arch: 'clang_64'
-        cache: true
-        cache-key-prefix: qt-mac
-
-    - name: Install OpenSSL
-      run: brew install openssl@3
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: macos
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/online_mode_tests
-
-    - name: Run online mode authentication test
-      run: ./build/tests/online_mode_tests -v2
-
-    - name: Upload online mode screenshot
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: online-mode-screenshot-macos
-        path: build/tests/online-mode-macos-*.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Login Screen Full-Application Test – macOS
-  #
-  # Validates that a user can log into MaximumTrainer and access key
-  # functionality without error on macOS:
-  #   • Offline login path: account setup logic is exercised end-to-end and
-  #     SimulatorHub confirms all four sensor channels (HR, cadence, speed,
-  #     power) carry realistic values once logged in.
-  #   • Intervals.icu OAuth URL: the OAuth2 authorization URL built by
-  #     Environnement is validated for all required parameters (client_id,
-  #     response_type, scope, redirect_uri, state).
-  #   • Intervals.icu API login (optional): a real HTTPS request is made to
-  #     intervals.icu/api/v1 using secrets when available; QSKIP otherwise.
-  #   • A labelled 1280×720 screenshot is captured as visual build evidence.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_login_screen:
-    runs-on: macos-latest
-    needs: build_mac
-    permissions:
-      contents: read
-    env:
-      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
-      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
-
-    steps:
-    - name: Install Qt (core + network + widgets + bluetooth for test binary)
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '6.11.1'
-        host: 'mac'
-        target: 'desktop'
-        arch: 'clang_64'
-        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning'
-        cache: true
-        cache-key-prefix: qt-mac
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: macos
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/login_screen_tests
-
-    - name: Run login screen test
-      run: ./build/tests/login_screen_tests -v2
-
-    - name: Upload login screen screenshot
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: login-screen-screenshot-macos
-        path: build/tests/*-macos-*.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Workout UI Integration Test – macOS
-  #
-  # Validates the end-to-end workout pipeline on macOS, including:
-  #   • User login (offline path)
-  #   • Workout XML creation and retrieval (round-trip, lightweight schema)
-  #   • Workout model construction and field verification (Workout / Interval)
-  #   • Workout XML round-trip via XmlUtil::createWorkoutXml + parseSingleWorkoutXml
-  #   • Workout average-power metric (getAveragePower)
-  #   • ERG simulation: setLoad and setSlope drive SimulatorHub to the
-  #     correct power target without physical Bluetooth hardware
-  #   • Workout session lifecycle: start / pause / resume / stop with data
-  #     accumulation across all four sensor channels
-  #   • Interval advancement: ERG target changes at each interval boundary
-  #   • Power-on-target: actual power stays within ±25 % of ERG target
-  #   • Network connectivity: HTTPS GET to intervals.icu/api/v1 (QSKIP when
-  #     credentials absent)
-  #   • Network workout retrieval: GET /athlete/{id}/workouts returns a JSON
-  #     array (QSKIP when credentials absent)
-  #   • A labelled 1280×720 screenshot with QWT power-curve plot is captured
-  #     as visual build evidence
-  # ──────────────────────────────────────────────────────────────────────────
-  test_workout_ui:
-    runs-on: macos-latest
-    needs: build_mac
-    permissions:
-      contents: read
-    env:
-      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
-      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
-
-    steps:
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '6.11.1'
-        host: 'mac'
-        target: 'desktop'
-        arch: 'clang_64'
-        cache: true
-        cache-key-prefix: qt-mac
-
-    - name: Install OpenSSL
-      run: brew install openssl@3
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: macos
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/workout_ui_tests
-
-    - name: Run workout UI test
-      run: ./build/tests/workout_ui_tests -v2
-
-    - name: Upload workout UI screenshot
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: workout-ui-screenshot-macos
-        path: build/tests/workout-ui-macos-*.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Workout Parsing Tests – macOS
-  # ──────────────────────────────────────────────────────────────────────────
-  test_workout_parsing:
-    runs-on: macos-latest
-    needs: build_mac
-    permissions:
-      contents: read
-    env:
-      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
-      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
-
-    steps:
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '6.11.1'
-        host: 'mac'
-        target: 'desktop'
-        arch: 'clang_64'
-        cache: true
-        cache-key-prefix: qt-mac
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: macos
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/workout_parsing_tests
-
-    - name: Run workout parsing tests
-      run: ./build/tests/workout_parsing_tests -v2
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # UI Navigation Tests – macOS
-  # ──────────────────────────────────────────────────────────────────────────
-  test_ui_navigation:
+  test_gui:
     runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
 
     steps:
-    - name: Install Qt (core + widgets + bluetooth + webengine for app binary)
+    - name: Install Qt (full app modules)
       uses: jurplel/install-qt-action@v3
       with:
         version: '6.11.1'
@@ -698,45 +407,72 @@ jobs:
 
     - name: Make binaries executable
       run: |
-        chmod +x build/tests/ui_navigation_tests
-        chmod +x build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
+        chmod +x build/tests/runtime_validation_tests \
+                 build/tests/offline_mode_tests \
+                 build/tests/ui_screens_tests \
+                 build/tests/ui_navigation_tests \
+                 build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer
 
-    - name: Run UI navigation tests
+    - name: Runtime validation test
+      run: ./build/tests/runtime_validation_tests -v2
+
+    - name: Offline mode test
+      run: ./build/tests/offline_mode_tests -v2
+
+    - name: UI screens test
+      run: ./build/tests/ui_screens_tests -v2
+
+    - name: UI navigation tests
       # MT_NO_NETWORK=1 disables all outbound network calls in the launched
       # MaximumTrainer binary (radio list, session check, Intervals.icu, etc.).
       # The child process inherits this variable from QProcess automatically.
-      # Remove or set to 0 when running locally to keep network enabled.
       env:
         MT_NO_NETWORK: "1"
       run: ./build/tests/ui_navigation_tests -v2
 
-    - name: Upload UI navigation screenshots
+    - name: Upload GUI test evidence
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: ui-navigation-screenshots-macos
+        name: gui-test-artifacts-macos
         path: |
+          build/tests/screenshot-macos-*.png
+          build/tests/offline-mode-macos-*.png
+          build/tests/activity-macos-*.tsv
+          build/tests/ui-screens-*.png
           build/tests/app-journey-*/
 
   # ──────────────────────────────────────────────────────────────────────────
-  # UI Screens Tests – macOS
+  # Live GUI Tests (macOS + Intervals.icu secrets) — consolidated (#352)
+  #
+  # The three windowed suites that talk to the live intervals.icu API: online
+  # mode, workout UI, and the login screen full-application journey. Kept
+  # separate from test_gui so a flaky live run retries cheaply. Tests QSKIP
+  # gracefully when the secrets are absent (fork PRs).
   # ──────────────────────────────────────────────────────────────────────────
-  test_ui_screens:
+  test_gui_live:
     runs-on: macos-latest
     needs: build_mac
     permissions:
       contents: read
+    env:
+      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
+      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
 
     steps:
-    - name: Install Qt
+    - name: Install Qt (with WebEngine + Bluetooth)
       uses: jurplel/install-qt-action@v3
       with:
         version: '6.11.1'
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning'
         cache: true
         cache-key-prefix: qt-mac
+
+    - name: Install OpenSSL
+      run: brew install openssl@3
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -744,79 +480,27 @@ jobs:
         name: macos
         path: build
 
-    - name: Make test binary executable
-      run: chmod +x build/tests/ui_screens_tests
+    - name: Make test binaries executable
+      run: |
+        chmod +x build/tests/online_mode_tests \
+                 build/tests/workout_ui_tests \
+                 build/tests/login_screen_tests
 
-    - name: Run UI screens test
-      run: ./build/tests/ui_screens_tests -v2
+    - name: Online mode authentication test
+      run: ./build/tests/online_mode_tests -v2
 
-    - name: Upload UI screens screenshots
+    - name: Workout UI test
+      run: ./build/tests/workout_ui_tests -v2
+
+    - name: Login screen test
+      run: ./build/tests/login_screen_tests -v2
+
+    - name: Upload live GUI test evidence
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: ui-screens-screenshots-macos
-        path: build/tests/ui-screens-*.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Workout I/O Tests – macOS
-  # ──────────────────────────────────────────────────────────────────────────
-  test_workout_io:
-    runs-on: macos-latest
-    needs: build_mac
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '6.11.1'
-        host: 'mac'
-        target: 'desktop'
-        arch: 'clang_64'
-        cache: true
-        cache-key-prefix: qt-mac
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: macos
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/workout_io_tests
-
-    - name: Run workout I/O tests
-      run: ./build/tests/workout_io_tests -v2
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Workout Creator Tests – macOS
-  # ──────────────────────────────────────────────────────────────────────────
-  test_workout_creator:
-    runs-on: macos-latest
-    needs: build_mac
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '6.11.1'
-        host: 'mac'
-        target: 'desktop'
-        arch: 'clang_64'
-        cache: true
-        cache-key-prefix: qt-mac
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: macos
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/workout_creator_tests
-
-    - name: Run workout creator tests
-      run: ./build/tests/workout_creator_tests -v2
+        name: gui-live-test-artifacts-macos
+        path: |
+          build/tests/online-mode-macos-*.png
+          build/tests/workout-ui-macos-*.png
+          build/tests/*-macos-*.png
