@@ -51,6 +51,7 @@
         <file alias="back">resources/images/button_blue_rew.png</file>
         <file alias="next">resources/images/button_blue_ffw.png</file>
         <file alias="workoutMan">resources/images/workoutMan.png</file>
+        <file alias="rower">resources/images/rower.png</file>
         <file alias="strava">resources/images/connectStrava1.png</file>
         <file alias="strava_logo">resources/images/strava_logomark.png</file>
         <file alias="studio">resources/images/studio.png</file>

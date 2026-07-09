@@ -381,6 +381,7 @@
         <li class="toc-section">Devices</li>
         <li><a href="#connecting-devices">Connecting Devices</a></li>
         <li><a href="#simulation-mode">Simulation Mode</a></li>
+        <li><a href="#rowing-beta">Rowing (Beta)</a></li>
 
         <li class="toc-section">Workouts</li>
         <li><a href="#finding-workouts">Finding Workouts</a></li>
@@ -659,6 +660,34 @@
           <strong>Good to know:</strong> The simulator responds to ERG load commands. When an
           interval target changes, the simulated power output adjusts accordingly — letting you
           verify the full workout flow before your first real ride.
+        </div>
+      </section>
+
+      <!-- ── Rowing (Beta) ─────────────────────────────────────── -->
+      <section class="guide-section" id="rowing-beta">
+        <h2>🚣 Rowing (Beta)</h2>
+        <p>
+          Maximum Trainer can drive workouts from an <strong>FTMS-compatible rowing
+          machine</strong>. Enable <strong>Rowing mode (Beta)</strong> in
+          <strong>MaximumTrainer → Preferences → General</strong>:
+        </p>
+        <ul>
+          <li>The <strong>Devices</strong> tab shows a <strong>Rower</strong> slot in place of the
+              Trainer slot. The two pairings are saved <strong>separately</strong>, so switching
+              between cycling and rowing never re-pairs your devices.</li>
+          <li>The workout dashboard adapts: the cadence box shows
+              <strong>Stroke Rate (spm)</strong> and the speed box shows
+              <strong>Pace per 500&nbsp;m</strong> (e.g. <code>2:05</code>).</li>
+          <li>Workout power targets and ERG control work as for cycling — rowing ergometer
+              watts are real watts.</li>
+          <li>Completed activities are saved (and uploaded) as <strong>rowing</strong>, so
+              Strava and Intervals.icu classify them correctly.</li>
+        </ul>
+        <div class="callout callout--warn">
+          <strong>Beta:</strong> tested against the FTMS Rower Data profile (and the built-in
+          simulator). Concept2 PM5 support (drag factor, splits, Logbook sync) is planned —
+          see <a href="https://github.com/MaximumTrainer/MaximumTrainer_Redux/issues/122"
+          target="_blank" rel="noopener">issue #122</a>. Feedback welcome.
         </div>
       </section>
 
@@ -1118,7 +1147,7 @@
             <tbody>
               <tr>
                 <td><strong>General</strong></td>
-                <td>Distance unit (km / miles), app theme (System / Light / Dark), and "force the workout window to stay on top"</td>
+                <td>Distance unit (km / miles), app theme (System / Light / Dark), "force the workout window to stay on top", and <a href="#rowing-beta">Rowing mode (Beta)</a></td>
               </tr>
               <tr>
                 <td><strong>Profile</strong></td>

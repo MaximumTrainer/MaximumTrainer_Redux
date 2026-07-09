@@ -246,7 +246,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // confused users. The page still lives in stackedWidget_menu (index 2); to
     // bring it back, re-insert the tab below and restore tabToPage in
     // leftMenuChanged().
-    ftb->insertTab(0, QIcon(":/image/icon/workoutMan"), tr("Workout"));
+    ftb->insertTab(0, QIcon(account->rowing_mode ? ":/image/icon/rower"
+                                                  : ":/image/icon/workoutMan"), tr("Workout"));
     ftb->insertTab(1, QIcon(":/image/icon/intervals"),   tr("Intervals.icu"));
     ftb->insertTab(2, QIcon(":/image/icon/studio"), tr("Studio"));
     ftb->insertTab(3, QIcon(":/image/icon/bluetooth"), tr("Devices"));
@@ -335,6 +336,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // and workout targets, same as the old profile page's FTP-change path.
     connect(dconfig, &DialogMainWindowConfig::profileChanged,
             this, &MainWindow::ftpAndTabProfileChanged);
+    // Rowing mode (Beta) applies live: swap the Workout tab icon and the
+    // Devices tab's FTMS slot (Trainer ↔ Rower). Workout sessions read the
+    // mode when they start, so nothing else needs refreshing.
+    connect(dconfig, &DialogMainWindowConfig::rowingModeChanged, this, [this]() {
+        ftb->setTabIcon(0, QIcon(account->rowing_mode ? ":/image/icon/rower"
+                                                      : ":/image/icon/workoutMan"));
+        if (auto *sw = qobject_cast<SensorsWidget*>(ui->sensorsWidget))
+            sw->refreshRowingMode();
+    });
 
 
     leftMenuChanged(0);
@@ -1560,6 +1570,7 @@ void MainWindow::startSimulatedWorkout(const Workout &workout)
     QList<SimulatorHub*> simHubs;
     for (int i = 0; i < nbRiders; ++i) {
         SimulatorHub *simHub = new SimulatorHub(this);
+        simHub->setRowingMode(account->rowing_mode);
         simHub->setUserID(i + 1);
 
         connect(simHub, SIGNAL(signal_hr(int,int)),               w, SLOT(HrDataReceived(int,int)));
@@ -1753,10 +1764,17 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
 // double-counted. Distinct hubs are added to \a allHubs for lifecycle cleanup.
 // Called once for solo and once per rider in Studio mode.
 void MainWindow::wireHubsToDialog(WorkoutDialog *w,
-                                  const QMap<BtleSensorRole, BtleHub*> &hubsByRole,
+                                  const QMap<BtleSensorRole, BtleHub*> &hubsByRoleIn,
                                   QSet<BtleHub*> &allHubs,
                                   int riderIndex)
 {
+    // A rower is FTMS like a trainer — alias it onto the Trainer wiring path
+    // (power/stroke-rate/pace channels, resistance control, HR bridge) so the
+    // rest of this function needs no rowing-specific branches.
+    QMap<BtleSensorRole, BtleHub*> hubsByRole = hubsByRoleIn;
+    if (hubsByRole.contains(BtleSensorRole::Rower) && !hubsByRole.contains(BtleSensorRole::Trainer))
+        hubsByRole.insert(BtleSensorRole::Trainer, hubsByRole.value(BtleSensorRole::Rower));
+
     QSet<BtleHub*> uniqueHubs;
     for (BtleHub *hub : hubsByRole)
         uniqueHubs.insert(hub);
@@ -2109,6 +2127,7 @@ void MainWindow::launchDemoWorkout()
 
     m_ssSimHub = new SimulatorHub(this);
     m_ssSimHub->setUserID(1); // userID must be 1-based; default 0 causes arrUserStudioWidget[-1] OOB crash
+    m_ssSimHub->setRowingMode(account->rowing_mode); // demo follows the app mode
     m_ssWorkoutDlg = new WorkoutDialog(makeDemoWorkout(), lstRadio, vecUserStudio, this);
 
     connect(m_ssSimHub, SIGNAL(signal_hr(int,int)),
@@ -2478,6 +2497,7 @@ void MainWindow::screenshotNextStep()
 
         for (int i = 0; i < nbRiders; ++i) {
             SimulatorHub *simHub = new SimulatorHub(this);
+        simHub->setRowingMode(account->rowing_mode);
             simHub->setUserID(i + 1);
             connect(simHub, SIGNAL(signal_hr(int,int)),      m_ssWorkoutDlg, SLOT(HrDataReceived(int,int)));
             connect(simHub, SIGNAL(signal_cadence(int,int)), m_ssWorkoutDlg, SLOT(CadenceDataReceived(int,int)));

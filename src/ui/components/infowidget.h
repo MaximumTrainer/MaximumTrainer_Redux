@@ -26,6 +26,9 @@ public:
     explicit InfoWidget(QWidget *parent = 0);
     ~InfoWidget();
     void setTypeInfoBox(TypeInfoBox type);
+    /// Rowing (Beta): CADENCE boxes read as Stroke Rate (spm) and SPEED boxes
+    /// format their km/h input as Pace per 500 m (m:ss).
+    void setRowingMode(bool rowing);
     void setUserData(double FTP, double LTHR);
 
 
@@ -59,6 +62,7 @@ private:
     double LTHR;
 
     TypeInfoBox type;
+    bool rowingMode = false;
     bool useMile;
 
     int target;

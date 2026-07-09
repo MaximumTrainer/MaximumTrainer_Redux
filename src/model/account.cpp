@@ -84,6 +84,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
 
     force_workout_window_on_top = false;
     show_included_workout = true;
+    rowing_mode = false;
     distance_in_km = true;
     strava_auto_upload = false;
     strava_token_expires_at = 0;
@@ -308,6 +309,7 @@ void Account::loadDisplayPrefs() {
     use_pm_for_cadence    = settings.value("use_pm_for_cadence",    use_pm_for_cadence).toBool();
     use_pm_for_speed      = settings.value("use_pm_for_speed",      use_pm_for_speed).toBool();
     show_included_workout = settings.value("show_included_workout", show_included_workout).toBool();
+    rowing_mode = settings.value("rowing_mode", rowing_mode).toBool();
 
     // Timer display
     show_timer_on_top       = settings.value("show_timer_on_top",       show_timer_on_top).toBool();
@@ -393,6 +395,7 @@ void Account::saveDisplayPrefs() {
     settings.setValue("use_pm_for_cadence",    use_pm_for_cadence);
     settings.setValue("use_pm_for_speed",      use_pm_for_speed);
     settings.setValue("show_included_workout", show_included_workout);
+    settings.setValue("rowing_mode", rowing_mode);
 
     settings.setValue("show_timer_on_top",       show_timer_on_top);
     settings.setValue("show_interval_remaining", show_interval_remaining);

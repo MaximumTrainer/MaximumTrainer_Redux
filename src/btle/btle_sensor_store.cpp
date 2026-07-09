@@ -8,9 +8,13 @@
 QList<BtleSensorRole> BtleSensorStore::allRoles()
 {
     // Trainer first: it is the primary device and, when paired, covers the
-    // Power and Cadence/Speed slots listed directly beneath it.
+    // Power and Cadence/Speed slots listed directly beneath it. The Rower is
+    // the FTMS slot shown instead of the Trainer in rowing mode — a separate
+    // saved pairing, so switching modes never re-pairs (callers filter which
+    // of the two applies to the current mode).
     return {
         BtleSensorRole::Trainer,
+        BtleSensorRole::Rower,
         BtleSensorRole::Power,
         BtleSensorRole::CadenceSpeed,
         BtleSensorRole::HeartRate,
@@ -50,6 +54,7 @@ QString BtleSensorStore::roleKey(BtleSensorRole role)
     case BtleSensorRole::CadenceSpeed: return QStringLiteral("csc");
     case BtleSensorRole::Trainer:      return QStringLiteral("trainer");
     case BtleSensorRole::Oxygen:       return QStringLiteral("oxygen");
+    case BtleSensorRole::Rower:        return QStringLiteral("rower");
     }
     return QStringLiteral("unknown");
 }
@@ -62,6 +67,7 @@ QString BtleSensorStore::roleDisplayName(BtleSensorRole role)
     case BtleSensorRole::CadenceSpeed: return QObject::tr("Cadence / Speed");
     case BtleSensorRole::Trainer:      return QObject::tr("Trainer");
     case BtleSensorRole::Oxygen:       return QObject::tr("Oxygen");
+    case BtleSensorRole::Rower:        return QObject::tr("Rower");
     }
     return QString();
 }
@@ -88,6 +94,8 @@ QList<QBluetoothUuid> BtleSensorStore::serviceUuidsForRole(BtleSensorRole role)
         return { QBluetoothUuid(FitnessMachine) };
     case BtleSensorRole::Oxygen:
         return { QBluetoothUuid(MoxyOxygen) };
+    case BtleSensorRole::Rower:
+        return { QBluetoothUuid(FitnessMachine) };
     }
     return {};
 }

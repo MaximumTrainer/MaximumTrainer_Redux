@@ -64,6 +64,7 @@ void SensorsWidget::buildUi()
         slot.role = role;
 
         QLabel *roleLabel = new QLabel(BtleSensorStore::roleDisplayName(role), group);
+        slot.roleLabel = roleLabel;
 
         slot.deviceLabel = new QLabel(group);
         slot.deviceLabel->setStyleSheet(QStringLiteral("color: #777;"));
@@ -88,6 +89,7 @@ void SensorsWidget::buildUi()
         ++row;
     }
 
+
     mainLayout->addWidget(group);
 
     QLabel *hint = new QLabel(
@@ -99,7 +101,8 @@ void SensorsWidget::buildUi()
     // Trainer control toggle. Lives here, next to the Trainer slot, rather than
     // in a separate Preferences page. Drives account->control_trainer_resistance,
     // which gates ERG setpoints over BLE FTMS at runtime.
-    QGroupBox *trainerGroup = new QGroupBox(tr("Smart Trainer"), this);
+    m_trainerGroup = new QGroupBox(tr("Smart Trainer"), this);
+    QGroupBox *trainerGroup = m_trainerGroup;
     QVBoxLayout *trainerLayout = new QVBoxLayout(trainerGroup);
     trainerLayout->setSpacing(4);
 
@@ -117,38 +120,46 @@ void SensorsWidget::buildUi()
     trainerHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
     trainerLayout->addWidget(trainerHint);
 
+    // Virtual shifting and the Zwift Click are cycling accessories — the whole
+    // block hides in rowing mode (see refreshRowingMode).
+    m_cyclingOnlyBox = new QWidget(trainerGroup);
+    QVBoxLayout *cyclingOnlyLayout = new QVBoxLayout(m_cyclingOnlyBox);
+    cyclingOnlyLayout->setContentsMargins(0, 0, 0, 0);
+    cyclingOnlyLayout->setSpacing(4);
+    trainerLayout->addWidget(m_cyclingOnlyBox);
+
     m_virtualShiftingCheck =
-        new QCheckBox(tr("Virtual shifting (Zwift Cog / single-gear setups)"), trainerGroup);
+        new QCheckBox(tr("Virtual shifting (Zwift Cog / single-gear setups)"), m_cyclingOnlyBox);
     connect(m_virtualShiftingCheck, &QCheckBox::toggled,
             this, &SensorsWidget::onVirtualShiftingToggled);
-    trainerLayout->addWidget(m_virtualShiftingCheck);
+    cyclingOnlyLayout->addWidget(m_virtualShiftingCheck);
 
     QLabel *vsHint = new QLabel(
         tr("Adds ▲/▼ gear shifting — by keyboard or the on-screen arrows — so a "
            "single-cog trainer has usable resistance on free rides and tests. "
-           "Leave off if you shift with a real cassette."), trainerGroup);
+           "Leave off if you shift with a real cassette."), m_cyclingOnlyBox);
     vsHint->setWordWrap(true);
     vsHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
-    trainerLayout->addWidget(vsHint);
+    cyclingOnlyLayout->addWidget(vsHint);
 
     m_useZwiftClickCheck =
-        new QCheckBox(tr("Use Zwift Click v2 controller (right side only) - Beta"), trainerGroup);
+        new QCheckBox(tr("Use Zwift Click v2 controller (right side only) - Beta"), m_cyclingOnlyBox);
     m_useZwiftClickCheck->setToolTip(
         tr("Wake BOTH controllers (press a button on each). The left/main one only "
            "keeps the link stable - its buttons aren't used; only the right side is "
            "supported."));
     connect(m_useZwiftClickCheck, &QCheckBox::toggled,
             this, &SensorsWidget::onUseZwiftClickToggled);
-    trainerLayout->addWidget(m_useZwiftClickCheck);
+    cyclingOnlyLayout->addWidget(m_useZwiftClickCheck);
 
     QLabel *clickHint = new QLabel(
         tr("Wake BOTH controllers before the workout (press a button on each). The "
            "left/main one only keeps the connection stable; its buttons aren't used. "
            "Right side: Y = gear up, B = gear down, A/Z = radio next/prev, "
-           "+ paddle = start/pause."), trainerGroup);
+           "+ paddle = start/pause."), m_cyclingOnlyBox);
     clickHint->setWordWrap(true);
     clickHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
-    trainerLayout->addWidget(clickHint);
+    cyclingOnlyLayout->addWidget(clickHint);
 
     QHBoxLayout *ergRampRow = new QHBoxLayout();
     ergRampRow->addWidget(new QLabel(tr("ERG transition ramp duration:"), trainerGroup));
@@ -233,6 +244,10 @@ void SensorsWidget::buildUi()
     mainLayout->addWidget(batteryGroup);
 
     mainLayout->addStretch();
+
+    // The FTMS slot and control group follow the app mode (Rower vs Trainer).
+    // Both pairings stay saved, so switching modes never re-pairs.
+    refreshRowingMode();
 #endif
 }
 
@@ -409,4 +424,27 @@ void SensorsWidget::onClearClicked(int rowIndex)
 #else
     Q_UNUSED(rowIndex);
 #endif
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+void SensorsWidget::refreshRowingMode()
+{
+    const bool rowing = m_account && m_account->rowing_mode;
+
+    // The control group applies to any FTMS machine; retitle it per mode and
+    // hide the cycling-only accessories (virtual shifting, Zwift Click).
+    if (m_trainerGroup)
+        m_trainerGroup->setTitle(rowing ? tr("Rower") : tr("Smart Trainer"));
+    if (m_cyclingOnlyBox)
+        m_cyclingOnlyBox->setVisible(!rowing);
+
+    for (const SlotRow &slot : m_rows) {
+        bool visible = true;
+        if (slot.role == BtleSensorRole::Trainer) visible = !rowing;
+        if (slot.role == BtleSensorRole::Rower)   visible = rowing;
+        if (slot.roleLabel)   slot.roleLabel->setVisible(visible);
+        if (slot.deviceLabel) slot.deviceLabel->setVisible(visible);
+        if (slot.scanButton)  slot.scanButton->setVisible(visible);
+        if (slot.clearButton) slot.clearButton->setVisible(visible);
+    }
 }

@@ -138,8 +138,8 @@ void DataWorkout::setStartTimeWorkout(QDateTime dt) {
 }
 
 //----------------------------------------------------------------------------
-void DataWorkout::initFitFile(bool createDir, QString username, QString nameWorkout, QDateTime timeStarted) {
-    fitCreator.initialize_FIT_File(createDir, username, nameWorkout, timeStarted);
+void DataWorkout::initFitFile(bool createDir, QString username, QString nameWorkout, QDateTime timeStarted, bool rowing) {
+    fitCreator.initialize_FIT_File(createDir, username, nameWorkout, timeStarted, rowing);
 }
 void DataWorkout::closeFitFile() {
     fitCreator.close_FIT_File();

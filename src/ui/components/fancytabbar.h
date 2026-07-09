@@ -88,6 +88,11 @@ public:
     QString tabToolTip(int index) const { return mAttachedTabs.at(index)->toolTip; }
 
     QIcon tabIcon(int index) const { return mAttachedTabs.at(index)->icon; }
+    void setTabIcon(int index, const QIcon &icon) {
+        if (index < 0 || index >= mAttachedTabs.size()) return;
+        mAttachedTabs.at(index)->icon = icon;
+        update();
+    }
     QString tabText(int index) const { return mAttachedTabs.at(index)->text; }
     int count() const {return mAttachedTabs.count(); }
     QRect tabRect(int index) const;

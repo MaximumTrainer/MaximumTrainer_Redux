@@ -57,7 +57,8 @@ QString FitActivityCreator::generateFileName(bool createDir, QString username, Q
 
 
 //------------------------------------------------------------------------------------------------------------
-void FitActivityCreator::initialize_FIT_File(bool createDir, QString username, QString nameWorkout, QDateTime startTimeWorkout) {
+void FitActivityCreator::initialize_FIT_File(bool createDir, QString username, QString nameWorkout, QDateTime startTimeWorkout, bool rowing) {
+    m_rowing = rowing;
 
 
     qDebug() << "initialize_FIT_File";
@@ -187,7 +188,7 @@ void FitActivityCreator::writeEndFile(double timeNow,
     sessionMesg.SetTotalElapsedTime(timeNow + totalTimePaused); //Total number of msec since timer started (includes pauses)
     sessionMesg.SetTotalTimerTime(timeNow); //Timer Time (excludes pauses)
     //    sessionMesg.SetTotalMovingTime(timeNow);
-    sessionMesg.SetSport(FIT_SPORT_CYCLING);
+    sessionMesg.SetSport(m_rowing ? FIT_SPORT_ROWING : FIT_SPORT_CYCLING);
     sessionMesg.SetSubSport(FIT_SUB_SPORT_INDOOR_CYCLING);
     sessionMesg.SetMessageIndex(0);
     sessionMesg.SetFirstLapIndex(0);
@@ -307,7 +308,7 @@ void FitActivityCreator::writeLapMesg(double timeStarted, double timeNow, int ti
     lapMesg.SetEventType(FIT_EVENT_TYPE_STOP);
     lapMesg.SetIntensity(FIT_INTENSITY_ACTIVE);
     lapMesg.SetLapTrigger(FIT_LAP_TRIGGER_TIME);
-    lapMesg.SetSport(FIT_SPORT_CYCLING);
+    lapMesg.SetSport(m_rowing ? FIT_SPORT_ROWING : FIT_SPORT_CYCLING);
     encode.Write(lapMesg);
 
 
