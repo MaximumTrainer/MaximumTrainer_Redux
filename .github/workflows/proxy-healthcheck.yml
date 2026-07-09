@@ -1,10 +1,11 @@
-name: Intervals proxy health check
+name: Worker proxies health check
 
-# Self-healing guard against the proxy clobber that broke Intervals.icu login
-# (#279/#284): if the Cloudflare worker at the proxy URL is ever overwritten by
-# a static-site deploy, a bogus token request returns an empty 404 / HTML
-# instead of a JSON error forwarded from intervals.icu. When that happens this
-# re-runs the deploy workflow to restore the real worker (and its client_secret).
+# Self-healing guard against worker clobber/loss for BOTH Cloudflare workers
+# (#279/#284, and the dead-subdomain incident that silently broke Strava token
+# refresh): a healthy worker forwards a bogus token request upstream and
+# returns a JSON error; a clobbered/missing one returns an empty 404 / HTML /
+# Cloudflare error page. On failure the matching deploy workflow re-creates
+# the real worker (secrets survive on the service).
 on:
   schedule:
     - cron: '*/30 * * * *'   # every 30 min (tune as needed)
@@ -40,4 +41,31 @@ jobs:
     needs: check
     if: needs.check.outputs.healthy == 'false'
     uses: ./.github/workflows/deploy-intervals-proxy.yml
+    secrets: inherit
+
+  check_strava:
+    name: Probe Strava token worker
+    runs-on: ubuntu-latest
+    outputs:
+      healthy: ${{ steps.probe.outputs.healthy }}
+    steps:
+      - id: probe
+        run: |
+          URL="https://mt-strava-token.intervals-login.workers.dev"
+          # A healthy worker forwards to strava.com -> JSON error body.
+          BODY=$(curl -s --compressed -m 25 -X POST "$URL/strava/oauth/token" \
+            -H 'X-MT-Client: desktop' \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            -d 'grant_type=refresh_token&refresh_token=healthcheck')
+          echo "Response: $BODY"
+          case "$BODY" in
+            \{*) echo "healthy=true"  >> "$GITHUB_OUTPUT"; echo "Strava worker healthy — forwarding to strava.com" ;;
+            *)   echo "healthy=false" >> "$GITHUB_OUTPUT"; echo "Strava worker DOWN/clobbered — will redeploy" ;;
+          esac
+
+  heal_strava:
+    name: Redeploy Strava worker (clobbered)
+    needs: check_strava
+    if: needs.check_strava.outputs.healthy == 'false'
+    uses: ./.github/workflows/deploy-strava-proxy.yml
     secrets: inherit

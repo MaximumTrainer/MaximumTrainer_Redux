@@ -105,8 +105,11 @@ const static QString urlIntervalsIcuRegister = "https://intervals.icu/register";
 /// (getWasmOAuthRedirectUri); the app's Authorization Callback Domain in Strava
 /// settings must be maximumtrainer.github.io. Scope is activity:write (upload).
 const static QString CLIENT_ID_STRAVA = QStringLiteral("7252");
+/// NOTE: the Cloudflare account's workers.dev subdomain is "intervals-login"
+/// (the old "maximumtrainer" subdomain is dead and 404s every worker URL —
+/// that silently broke Strava token refresh/exchange until it was caught).
 const static QString STRAVA_TOKEN_PROXY_BASE =
-    QStringLiteral("https://mt-strava-token.maximumtrainer.workers.dev");
+    QStringLiteral("https://mt-strava-token.intervals-login.workers.dev");
 const static QString URL_TOKEN_STRAVA = STRAVA_TOKEN_PROXY_BASE + "/strava/oauth/token";
 
 

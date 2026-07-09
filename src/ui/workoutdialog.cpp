@@ -3515,6 +3515,8 @@ void WorkoutDialog::showPostWorkoutPanel()
 {
     if (widgetPostWorkout) return;  // already shown
 
+    m_stravaUpload401Retried = false;
+
     // Parent to the whole dialog (not the bottom widget pane) so the panel is
     // visible even when the data panes are collapsed (e.g. fullscreen game).
     widgetPostWorkout = new QWidget(this);
@@ -3684,6 +3686,18 @@ void WorkoutDialog::slotPostStravaUploadDone()
                  .arg(httpStatus).arg(QString::fromUtf8(body)));
 
     if (reply->error() != QNetworkReply::NoError) {
+        // A 401 means the access token is stale or revoked even though the
+        // local expiry bookkeeping thought otherwise. Force a refresh through
+        // the token Worker and retry once before surfacing the failure.
+        if (httpStatus == 401 && !m_stravaUpload401Retried
+            && !account->strava_refresh_token.isEmpty()) {
+            m_stravaUpload401Retried = true;
+            account->strava_token_expires_at = 0;
+            LOG_WARN("WorkoutDialog",
+                     QStringLiteral("Strava upload got 401 – forcing token refresh and retrying"));
+            uploadToStrava();
+            return;
+        }
         LOG_WARN("WorkoutDialog",
                  QStringLiteral("Strava upload failed: ") + reply->errorString());
         setStravaPostStatus(tr("✗ Strava upload failed (HTTP %1): %2")
