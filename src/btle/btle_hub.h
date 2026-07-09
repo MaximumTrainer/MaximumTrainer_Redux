@@ -140,6 +140,7 @@ private:
     void parseCscMeasurement(const QByteArray &data);
     void parsePowerMeasurement(const QByteArray &data);
     void parseFtmsIndoorBikeData(const QByteArray &data);
+    void parseFtmsRowerData(const QByteArray &data);
     void parseFtmsFeature(const QByteArray &data);
     void parseMoxyMeasurement(const QByteArray &data);
     void parseBatteryLevel(const QByteArray &data);

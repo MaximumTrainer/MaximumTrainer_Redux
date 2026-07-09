@@ -188,6 +188,50 @@ inline QByteArray ftmsIndoorBikeData(double speedKmh,
     return pkt;
 }
 
+/**
+ * FTMS Rower Data (0x2AD1) packet.
+ *
+ * @param strokeRateSpm Stroke rate in strokes/min (encoded as uint8 × 0.5 spm)
+ * @param strokeCount   Total strokes (uint16)
+ * @param paceSecPer500 Instantaneous pace in seconds per 500 m (uint16)
+ * @param powerW        Power in watts (int16)
+ * @param includeStroke include stroke rate + count (bit 0 CLEAR when present)
+ * @param includePace   include instantaneous pace   (bit 3 set)
+ * @param includePower  include instantaneous power  (bit 5 set)
+ */
+inline QByteArray ftmsRowerData(double strokeRateSpm,
+                                quint16 strokeCount,
+                                quint16 paceSecPer500,
+                                qint16 powerW,
+                                bool includeStroke = true,
+                                bool includePace   = true,
+                                bool includePower  = true)
+{
+    quint16 flags = 0;
+    if (!includeStroke) flags |= 0x0001; // bit 0: "More Data" / stroke absent
+    if (includePace)    flags |= 0x0008; // bit 3: instantaneous pace present
+    if (includePower)   flags |= 0x0020; // bit 5: instantaneous power present
+
+    QByteArray pkt;
+    pkt.append(static_cast<char>( flags        & 0xFF));
+    pkt.append(static_cast<char>((flags >>  8) & 0xFF));
+
+    if (includeStroke) {
+        pkt.append(static_cast<char>(static_cast<quint8>(strokeRateSpm / 0.5)));
+        pkt.append(static_cast<char>( strokeCount        & 0xFF));
+        pkt.append(static_cast<char>((strokeCount >>  8) & 0xFF));
+    }
+    if (includePace) {
+        pkt.append(static_cast<char>( paceSecPer500        & 0xFF));
+        pkt.append(static_cast<char>((paceSecPer500 >>  8) & 0xFF));
+    }
+    if (includePower) {
+        pkt.append(static_cast<char>( powerW        & 0xFF));
+        pkt.append(static_cast<char>((powerW >>  8) & 0xFF));
+    }
+    return pkt;
+}
+
 } // namespace BtlePacketBuilder
 
 // ─────────────────────────────────────────────────────────────────────────────

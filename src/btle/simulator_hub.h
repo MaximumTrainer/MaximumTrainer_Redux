@@ -28,6 +28,7 @@ public:
     ~SimulatorHub() override = default;
 
     void start();
+    void setRowingMode(bool rowing);
     void stop();
 
     /// Set the userID emitted in every signal (default: 1).
@@ -60,6 +61,7 @@ private:
 
     // Current simulated values
     double m_hr      = 140.0;
+    bool   m_rowing  = false;
     double m_cadence =  90.0;
     double m_speed   =  28.0;
     double m_power   = 200.0;

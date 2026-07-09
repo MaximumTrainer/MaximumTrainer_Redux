@@ -86,6 +86,7 @@ public:
 
     bool force_workout_window_on_top;
     bool show_included_workout;
+    bool rowing_mode; ///< Rowing (Beta): rower FTMS slot, SPM/pace dashboard, FIT sport
     bool distance_in_km;
     QString strava_access_token;
     QString strava_refresh_token;    ///< OAuth2 refresh token for Strava.

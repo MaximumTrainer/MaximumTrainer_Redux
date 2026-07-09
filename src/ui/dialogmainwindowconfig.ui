@@ -114,6 +114,36 @@
             </layout>
            </item>
            <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_rowing">
+             <property name="spacing">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QCheckBox" name="checkBox_rowingMode">
+               <property name="text">
+                <string>Rowing mode (Beta)</string>
+               </property>
+               <property name="toolTip">
+                <string>Pair an FTMS rowing machine instead of a trainer; the workout dashboard shows Stroke Rate and Pace /500m, and activities record as rowing. The trainer and rower pairings are saved separately. Restart the app to apply.</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer_rowing">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>1</width>
+                 <height>1</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+           <item>
             <layout class="QHBoxLayout" name="horizontalLayout_8">
              <item>
               <widget class="QLabel" name="label_6">

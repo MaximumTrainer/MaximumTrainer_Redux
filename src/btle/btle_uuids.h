@@ -11,6 +11,7 @@ static constexpr quint16 BTLE_UUID_HR_MEASUREMENT    = 0x2A37;
 static constexpr quint16 BTLE_UUID_CSC_MEASUREMENT   = 0x2A5B;
 static constexpr quint16 BTLE_UUID_POWER_MEASUREMENT = 0x2A63;
 static constexpr quint16 BTLE_UUID_FTMS_BIKE_DATA    = 0x2AD2;
+static constexpr quint16 BTLE_UUID_FTMS_ROWER_DATA   = 0x2AD1;
 static constexpr quint16 BTLE_UUID_FTMS_FEATURE      = 0x2ACC;
 static constexpr quint16 BTLE_UUID_BATTERY_LEVEL     = 0x2A19;
 

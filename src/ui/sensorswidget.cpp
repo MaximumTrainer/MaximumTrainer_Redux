@@ -60,6 +60,13 @@ void SensorsWidget::buildUi()
 
     int row = 0;
     for (BtleSensorRole role : BtleSensorStore::allRoles()) {
+        // The FTMS slot follows the app mode: Rower in rowing mode, Trainer
+        // otherwise. Both keep their own saved pairing, so switching modes
+        // never requires re-pairing.
+        if (role == BtleSensorRole::Trainer && m_account->rowing_mode)
+            continue;
+        if (role == BtleSensorRole::Rower && !m_account->rowing_mode)
+            continue;
         SlotRow slot;
         slot.role = role;
 

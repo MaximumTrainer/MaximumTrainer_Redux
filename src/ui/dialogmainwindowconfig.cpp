@@ -151,6 +151,7 @@ void DialogMainWindowConfig::initUI() {
         ui->comboBox_distance->setCurrentIndex(1);
 
     ui->checkBox_forceOnTop->setChecked(account->force_workout_window_on_top);
+    ui->checkBox_rowingMode->setChecked(account->rowing_mode);
 
     ui->comboBox_theme->setCurrentIndex(themeComboIndexFromMode(account->app_theme));
 
@@ -328,6 +329,7 @@ void DialogMainWindowConfig::accept() {
 
     account->strava_auto_upload = ui->checkBox_stravaAutoUpload->isChecked();
     account->force_workout_window_on_top = ui->checkBox_forceOnTop->isChecked();
+    account->rowing_mode = ui->checkBox_rowingMode->isChecked();
 
     // Athlete profile (FTP / LTHR / weight) — persist locally and notify the
     // main window so dependent metrics (zones, workout targets) recompute.

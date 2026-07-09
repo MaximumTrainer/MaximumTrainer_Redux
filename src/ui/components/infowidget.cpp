@@ -78,7 +78,19 @@ void InfoWidget::setUserData(double FTP, double LTHR) {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 void InfoWidget::setValue(double v) {
 
-
+    // Rowing (Beta): the speed channel carries the pace-equivalent km/h from
+    // the rower; show it as time per 500 m instead of a speed.
+    if (rowingMode && type == InfoWidget::SPEED) {
+        if (v <= 0.5) {
+            ui->label_currentValue->setText(" -");
+            return;
+        }
+        const int paceSec = qRound(1800.0 / v);
+        ui->label_currentValue->setText(QStringLiteral(" %1:%2")
+            .arg(paceSec / 60)
+            .arg(paceSec % 60, 2, 10, QLatin1Char('0')));
+        return;
+    }
 
     if (v == 0) {
         ui->label_currentValue->setText(" 0");
@@ -320,6 +332,25 @@ void InfoWidget::setTypeInfoBox(TypeInfoBox type) {
         ui->label_image->setToolTip(tr("Power - watts"));
     }
 
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+void InfoWidget::setRowingMode(bool rowing) {
+    rowingMode = rowing;
+    if (!rowing)
+        return;
+    // Rowing (Beta): the cadence channel carries stroke rate and the speed
+    // channel carries the pace equivalent — relabel the tooltips to match.
+    if (type == InfoWidget::CADENCE) {
+        ui->label_currentValue->setToolTip(tr("Stroke Rate - spm"));
+        ui->label_targetValue->setToolTip(tr("Target Stroke Rate - spm"));
+        ui->label_range->setToolTip(tr("Difference from Target Stroke Rate - spm"));
+        ui->label_image->setToolTip(tr("Stroke Rate - spm"));
+    }
+    else if (type == InfoWidget::SPEED) {
+        ui->label_currentValue->setToolTip(tr("Pace - per 500 m"));
+        ui->label_image->setToolTip(tr("Pace - per 500 m"));
+    }
 }
 
 

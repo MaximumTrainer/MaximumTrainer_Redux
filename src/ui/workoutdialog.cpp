@@ -540,6 +540,9 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     ui->wid_2_infoBoxPower->setTypeInfoBox(InfoWidget::POWER);
     ui->wid_3_infoBoxCadence->setTypeInfoBox(InfoWidget::CADENCE);
     ui->wid_4_infoBoxSpeed->setTypeInfoBox(InfoWidget::SPEED);
+    // Rowing (Beta): cadence box shows stroke rate, speed box shows pace /500m.
+    ui->wid_3_infoBoxCadence->setRowingMode(account->rowing_mode);
+    ui->wid_4_infoBoxSpeed->setRowingMode(account->rowing_mode);
     if (!account->distance_in_km) {
         ui->wid_4_infoBoxSpeed->setUseMiles(true);
         ui->wid_5_infoWorkout->setDistanceInMile(true);
@@ -1598,7 +1601,7 @@ void WorkoutDialog::startWorkout() {
     }
     else {
         arrDataWorkout[0]->setStartTimeWorkout(dateTimeStartedWorkout.toUTC());
-        arrDataWorkout[0]->initFitFile(false, account->email_clean, workout.getName(), dateTimeStartedWorkout.toUTC() );
+        arrDataWorkout[0]->initFitFile(false, account->email_clean, workout.getName(), dateTimeStartedWorkout.toUTC(), account->rowing_mode );
     }
 
     timerCheckToActivateSound->start();

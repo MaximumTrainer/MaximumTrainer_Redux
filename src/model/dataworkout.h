@@ -34,7 +34,7 @@ public:
 
     void changeInterval(double timeStarted, double timeNow, int timePaused_msec, bool workoutOver, bool testInterval);
     void writeEndFile(double timeNow);
-    void initFitFile(bool createDir, QString username, QString nameWorkout, QDateTime timeStarted);
+    void initFitFile(bool createDir, QString username, QString nameWorkout, QDateTime timeStarted, bool rowing = false);
     void closeFitFile();
     void closeAndDeleteFitFile();
 

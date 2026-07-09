@@ -10,6 +10,18 @@ SimulatorHub::SimulatorHub(QObject *parent)
     connect(m_timer, &QTimer::timeout, this, &SimulatorHub::tick);
 }
 
+// Rowing (Beta): simulate a rower instead of a bike — the cadence channel
+// becomes stroke rate (~28 spm) and the speed channel the pace-equivalent
+// km/h (~14.4 km/h ≈ 2:05 /500 m).
+void SimulatorHub::setRowingMode(bool rowing)
+{
+    m_rowing = rowing;
+    if (rowing) {
+        m_cadence = 28.0;
+        m_speed   = 14.4;
+    }
+}
+
 void SimulatorHub::start()
 {
     m_timer->start();
@@ -44,8 +56,13 @@ void SimulatorHub::tick()
     };
 
     drift(m_hr,      m_hrDir,      140.0, 125.0, 165.0, 3.0);
-    drift(m_cadence, m_cadenceDir,  90.0,  80.0, 100.0, 2.0);
-    drift(m_speed,   m_speedDir,    28.0,  23.0,  33.0, 1.0);
+    if (m_rowing) {
+        drift(m_cadence, m_cadenceDir, 28.0, 22.0, 34.0, 1.0);   // stroke rate (spm)
+        drift(m_speed,   m_speedDir,   14.4, 12.0, 17.0, 0.4);   // ≈ 1:46–2:30 /500 m
+    } else {
+        drift(m_cadence, m_cadenceDir,  90.0,  80.0, 100.0, 2.0);
+        drift(m_speed,   m_speedDir,    28.0,  23.0,  33.0, 1.0);
+    }
     drift(m_power,   m_powerDir,   200.0, 170.0, 260.0, 5.0);
     drift(m_smo2,    m_smo2Dir,     65.0,  50.0,  80.0, 1.0);
     drift(m_thb,     m_thbDir,      13.0,  11.0,  15.0, 0.2);

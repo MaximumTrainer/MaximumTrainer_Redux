@@ -22,6 +22,7 @@ static const QBluetoothUuid HeartRateMeasurement    (QBluetoothUuid::Characteris
 static const QBluetoothUuid CSCMeasurement          (QBluetoothUuid::CharacteristicType::CSCMeasurement);
 static const QBluetoothUuid CyclingPowerMeasurement (QBluetoothUuid::CharacteristicType::CyclingPowerMeasurement);
 static const QBluetoothUuid FtmsIndoorBikeData      (quint16(0x2AD2));
+static const QBluetoothUuid FtmsRowerData           (quint16(0x2AD1));
 static const QBluetoothUuid FtmsControlPoint        (quint16(0x2AD9));
 static const QBluetoothUuid FtmsFeature             (quint16(0x2ACC));
 static const QBluetoothUuid BatteryLevel            (quint16(0x2A19));
@@ -257,6 +258,7 @@ void BtleHub::simulateNotification(quint16 characteristicUuid, const QByteArray 
     case BTLE_UUID_CSC_MEASUREMENT:   parseCscMeasurement(data);     break;
     case BTLE_UUID_POWER_MEASUREMENT: parsePowerMeasurement(data);   break;
     case BTLE_UUID_FTMS_BIKE_DATA:    parseFtmsIndoorBikeData(data); break;
+    case BTLE_UUID_FTMS_ROWER_DATA:   parseFtmsRowerData(data);      break;
     case BTLE_UUID_FTMS_FEATURE:      parseFtmsFeature(data);        break;
     case BTLE_UUID_MOXY_MEASUREMENT:  parseMoxyMeasurement(data);    break;
     case BTLE_UUID_BATTERY_LEVEL:     parseBatteryLevel(data);       break;
@@ -563,6 +565,10 @@ void BtleHub::onServiceStateChanged(QLowEnergyService::ServiceState state)
     else if (service == m_ftmsService) {
         enableNotification(service,
             service->characteristic(BtleUuid::FtmsIndoorBikeData));
+        // Rowers expose Rower Data (0x2AD1) on the same FTMS service instead
+        // of Indoor Bike Data; subscribe to whichever the device provides.
+        enableNotification(service,
+            service->characteristic(BtleUuid::FtmsRowerData));
         // Control Point needs INDICATIONS, and Request Control must wait for
         // the descriptor write to be confirmed (see onDescriptorWritten) —
         // trainers ignore/refuse control commands on an unconfigured control
@@ -607,6 +613,8 @@ void BtleHub::onCharacteristicChanged(const QLowEnergyCharacteristic &characteri
         parsePowerMeasurement(value);
     else if (uuid == BtleUuid::FtmsIndoorBikeData)
         parseFtmsIndoorBikeData(value);
+    else if (uuid == BtleUuid::FtmsRowerData)
+        parseFtmsRowerData(value);
     else if (uuid == BtleUuid::FtmsControlPoint)
         handleFtmsControlPointResponse(value);
     else if (uuid == BtleUuid::FtmsFeature)
@@ -837,6 +845,64 @@ void BtleHub::parseFtmsIndoorBikeData(const QByteArray &data)
 
     // Bit 6: Instantaneous Power NOT present when set
     if (!(flags & 0x0040)) {
+        qint16 power = static_cast<qint16>(readU16());
+        emit signal_power(m_userID, static_cast<int>(power));
+    }
+}
+
+// FTMS Rower Data (0x2AD1) — the rowing counterpart of Indoor Bike Data.
+// Emits stroke rate on the cadence channel (SPM), pace converted to km/h on
+// the speed channel (the dashboard formats it back to /500m in rowing mode),
+// and instantaneous power on the power channel.
+void BtleHub::parseFtmsRowerData(const QByteArray &data)
+{
+    if (data.size() < 2)
+        return;
+
+    quint16 flags = static_cast<quint8>(data[0])
+                  | (static_cast<quint8>(data[1]) << 8);
+
+    int offset = 2;
+
+    auto readU8 = [&]() -> quint8 {
+        if (offset + 1 > data.size()) return 0;
+        return static_cast<quint8>(data[offset++]);
+    };
+    auto readU16 = [&]() -> quint16 {
+        if (offset + 2 > data.size()) return 0;
+        quint16 v = static_cast<quint8>(data[offset])
+                  | (static_cast<quint8>(data[offset+1]) << 8);
+        offset += 2;
+        return v;
+    };
+
+    // Bit 0: More Data — Stroke Rate (u8, 0.5 spm) + Stroke Count (u16)
+    // present when CLEAR.
+    if (!(flags & 0x0001)) {
+        emit signal_cadence(m_userID, static_cast<int>(readU8() * 0.5));
+        offset += 2; // stroke count
+    }
+
+    // Bit 1: Average Stroke Rate (u8)
+    if (flags & 0x0002) offset += 1;
+
+    // Bit 2: Total Distance (u24, metres)
+    if (flags & 0x0004) offset += 3;
+
+    // Bit 3: Instantaneous Pace (u16, seconds per 500 m; 0xFFFF = invalid)
+    if (flags & 0x0008) {
+        quint16 paceSec = readU16();
+        if (paceSec > 0 && paceSec != 0xFFFF)
+            emit signal_speed(m_userID, 1800.0 / paceSec); // km/h equivalent
+        else
+            emit signal_speed(m_userID, 0.0);
+    }
+
+    // Bit 4: Average Pace (u16)
+    if (flags & 0x0010) offset += 2;
+
+    // Bit 5: Instantaneous Power (s16, watts)
+    if (flags & 0x0020) {
         qint16 power = static_cast<qint16>(readU16());
         emit signal_power(m_userID, static_cast<int>(power));
     }

@@ -8,6 +8,7 @@
 #include <QTimer>
 
 #include "btle_hub.h"
+#include "account.h"
 #include "btle_sensor_store.h"
 
 namespace {
@@ -37,8 +38,17 @@ SensorConnectDialog::SensorConnectDialog(
     grid->setHorizontalSpacing(16);
     grid->setVerticalSpacing(8);
 
+    Account *account = qApp->property("Account").value<Account*>();
+    const bool rowingMode = account && account->rowing_mode;
+
     int row = 0;
     for (BtleSensorRole role : BtleSensorStore::allRoles()) {
+        // The FTMS device follows the app mode: connect the Rower pairing in
+        // rowing mode and the Trainer pairing otherwise (both stay saved).
+        if (role == BtleSensorRole::Trainer && rowingMode)
+            continue;
+        if (role == BtleSensorRole::Rower && !rowingMode)
+            continue;
         if (!savedSensors.contains(role))
             continue;
         const BtleSavedSensor saved = savedSensors.value(role);

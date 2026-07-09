@@ -65,6 +65,9 @@ private slots:
     void testFtms_speedOnly();
     void testFtms_cadenceOnly();
     void testFtms_powerOnly();
+    void testFtmsRower_allFields();
+    void testFtmsRower_invalidPace();
+    void testFtmsRower_strokeOnly();
     void testFtms_allThree();
     void testFtms_zeroValues();
     void testFtms_tooShort_ignored();
@@ -388,6 +391,59 @@ void TstBtleHub::testFtms_powerOnly()
     QCOMPARE(spyCad.count(), 0);
     QCOMPARE(spyPwr.count(), 1);
     QCOMPARE(spyPwr.at(0).at(1).toInt(), 300);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FTMS Rower Data (0x2AD1) — Rowing (Beta)
+// ─────────────────────────────────────────────────────────────────────────────
+void TstBtleHub::testFtmsRower_allFields()
+{
+    QSignalSpy spySpd(hub, &BtleHub::signal_speed);
+    QSignalSpy spyCad(hub, &BtleHub::signal_cadence);
+    QSignalSpy spyPwr(hub, &BtleHub::signal_power);
+
+    // 28 spm, 120 strokes, 2:05 /500 m (125 s), 180 W
+    hub->simulateNotification(BTLE_UUID_FTMS_ROWER_DATA,
+        BtlePacketBuilder::ftmsRowerData(28.0, 120, 125, 180));
+
+    // Stroke rate arrives on the cadence channel.
+    QCOMPARE(spyCad.count(), 1);
+    QCOMPARE(spyCad.at(0).at(1).toInt(), 28);
+
+    // Pace arrives on the speed channel as its km/h equivalent: 1800/125 = 14.4.
+    QCOMPARE(spySpd.count(), 1);
+    QVERIFY2(qAbs(spySpd.at(0).at(1).toDouble() - 14.4) < 0.01, "Pace mismatch");
+
+    QCOMPARE(spyPwr.count(), 1);
+    QCOMPARE(spyPwr.at(0).at(1).toInt(), 180);
+}
+
+void TstBtleHub::testFtmsRower_invalidPace()
+{
+    QSignalSpy spySpd(hub, &BtleHub::signal_speed);
+
+    // 0xFFFF pace = invalid per FTMS — must report 0, not a bogus speed.
+    hub->simulateNotification(BTLE_UUID_FTMS_ROWER_DATA,
+        BtlePacketBuilder::ftmsRowerData(30.0, 10, 0xFFFF, 200));
+
+    QCOMPARE(spySpd.count(), 1);
+    QCOMPARE(spySpd.at(0).at(1).toDouble(), 0.0);
+}
+
+void TstBtleHub::testFtmsRower_strokeOnly()
+{
+    QSignalSpy spySpd(hub, &BtleHub::signal_speed);
+    QSignalSpy spyCad(hub, &BtleHub::signal_cadence);
+    QSignalSpy spyPwr(hub, &BtleHub::signal_power);
+
+    hub->simulateNotification(BTLE_UUID_FTMS_ROWER_DATA,
+        BtlePacketBuilder::ftmsRowerData(26.0, 55, 0, 0,
+            /*includeStroke=*/true, /*includePace=*/false, /*includePower=*/false));
+
+    QCOMPARE(spyCad.count(), 1);
+    QCOMPARE(spyCad.at(0).at(1).toInt(), 26);
+    QCOMPARE(spySpd.count(), 0);
+    QCOMPARE(spyPwr.count(), 0);
 }
 
 void TstBtleHub::testFtms_allThree()
