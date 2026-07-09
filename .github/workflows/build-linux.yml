@@ -63,11 +63,26 @@ jobs:
         path: ${{ env.QWT_DIR }}
         key: qwt-6.3.0-qt-${{ env.QT_VERSION }}-linux
 
+    - name: Validate QWT cache
+      id: qwt-validate
+      # A corrupted cache extraction can leave a partial tree behind while the
+      # action still reports a cache hit (seen on macOS: gtar errors mid
+      # restore). Verify the pieces the build links against; rebuild otherwise.
+      run: |
+        if [ "${{ steps.qwt-cache.outputs.cache-hit }}" = "true" ] && \
+           [ -e "$QWT_DIR/lib/libqwt.so.6" ] && \
+           [ -f "$QWT_DIR/include/qwt_plot.h" ]; then
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "ok=false" >> "$GITHUB_OUTPUT"
+          rm -rf "$QWT_DIR"
+        fi
+
     - name: Build and install QWT
       # No QWT apt package exists for Qt6, so build 6.3.0 from source against the
       # installed Qt6 and stage it under QWT_DIR. MaximumTrainer.pro is pointed at it
       # via QWT_INSTALL=... .
-      if: steps.qwt-cache.outputs.cache-hit != 'true'
+      if: steps.qwt-validate.outputs.ok != 'true'
       run: |
         cd /tmp
         curl -L -o qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.3.0/qwt-6.3.0.tar.bz2/download"
@@ -145,10 +160,17 @@ jobs:
         cp -P "$QWT_DIR"/lib/libqwt.so* build/qwtlib/
 
     - name: Upload artifact
+      # Exclude compile intermediates (~3/4 of build/): the test and release
+      # jobs only need the binaries, and every one of them downloads this.
       uses: actions/upload-artifact@v4
       with:
         name: linux
-        path: build/
+        path: |
+          build/
+          !build/release/.obj/**
+          !build/release/.moc/**
+          !build/release/.qrc/**
+          !build/release/.u/**
 
   # ──────────────────────────────────────────────────────────────────────────
   # Unit & Service Test Suites (Linux) — consolidated (#352)

@@ -115,11 +115,27 @@ jobs:
         path: ${{ env.QWT_INSTALL_DIR }}
         key: qwt-6.3.0-qt-${{ env.QT_VERSION }}-msvc2022-win64
 
+    - name: Validate QWT cache
+      id: qwt-validate
+      shell: powershell
+      # A corrupted cache extraction can leave a partial tree behind while the
+      # action still reports a cache hit. Verify the pieces the build links
+      # against; rebuild otherwise.
+      run: |
+        if (("${{ steps.qwt-cache.outputs.cache-hit }}" -eq "true") -and
+            (Test-Path "$env:QWT_INSTALL_DIR\lib\qwt.dll") -and
+            (Test-Path "$env:QWT_INSTALL_DIR\include\qwt_plot.h")) {
+          "ok=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        } else {
+          "ok=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          if (Test-Path $env:QWT_INSTALL_DIR) { Remove-Item -Recurse -Force $env:QWT_INSTALL_DIR }
+        }
+
     - name: Build QWT
       # No QWT apt/Qt6 binary package exists, so build 6.3.0 from source against
       # the installed Qt6 and install it to QWT_INSTALL_DIR. MaximumTrainer.pro is
       # pointed at this location via QWT_INSTALL=... .
-      if: steps.qwt-cache.outputs.cache-hit != 'true'
+      if: steps.qwt-validate.outputs.ok != 'true'
       run: |
         $qwtInstallDirFwd = $env:QWT_INSTALL_DIR -replace '\\', '/'
         Set-Location ..
@@ -399,10 +415,18 @@ jobs:
       shell: powershell
 
     - name: Upload artifact
+      # Exclude compile intermediates (~3/4 of build/): the test and release
+      # jobs only need the binaries and deployed DLLs, and every one of them
+      # downloads this.
       uses: actions/upload-artifact@v4
       with:
         name: windows
-        path: build\
+        path: |
+          build/
+          !build/release/.obj/**
+          !build/release/.moc/**
+          !build/release/.qrc/**
+          !build/release/.u/**
 
   # ──────────────────────────────────────────────────────────────────────────
   # Headless Test Suites (Windows) — consolidated (#352)

@@ -61,8 +61,25 @@ jobs:
           /usr/local/qwt-6.3.0/mkspecs
         key: qwt-6.3.0-qt-6.11.1-macos-nodoc
 
+    - name: Validate QWT cache
+      id: qwt-validate
+      # A corrupted cache extraction can leave a partial tree behind while the
+      # action still reports a cache hit (gtar errors mid-restore have been
+      # seen on macOS runners). Verify the pieces the build links against and
+      # the qmake feature file; rebuild otherwise.
+      run: |
+        if [ "${{ steps.qwt-cache.outputs.cache-hit }}" = "true" ] && \
+           [ -f /usr/local/qwt-6.3.0/lib/libqwt.6.dylib ] && \
+           [ -f /usr/local/qwt-6.3.0/include/qwt_plot.h ] && \
+           [ -f /usr/local/qwt-6.3.0/features/qwt.prf ]; then
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "ok=false" >> "$GITHUB_OUTPUT"
+          sudo rm -rf /usr/local/qwt-6.3.0
+        fi
+
     - name: Build and install QWT
-      if: steps.qwt-cache.outputs.cache-hit != 'true'
+      if: steps.qwt-validate.outputs.ok != 'true'
       run: |
         # Remove any pre-installed Homebrew qwt that could shadow our headers
         brew uninstall qwt --force --ignore-dependencies 2>/dev/null || true
@@ -251,10 +268,17 @@ jobs:
         install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/tests/ui_navigation_tests
 
     - name: upload artifact
+      # Exclude compile intermediates (~3/4 of build/): the test and release
+      # jobs only need the binaries, and every one of them downloads this.
       uses: actions/upload-artifact@v4
       with:
         name: macos
-        path: build/
+        path: |
+          build/
+          !build/release/.obj/**
+          !build/release/.moc/**
+          !build/release/.qrc/**
+          !build/release/.u/**
 
   # ──────────────────────────────────────────────────────────────────────────
   # Headless Test Suites (macOS) — consolidated (#352)
