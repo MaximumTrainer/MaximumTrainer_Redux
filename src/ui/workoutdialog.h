@@ -521,6 +521,8 @@ private:
     bool isWorkoutOver;
     bool isWorkoutPaused;
     bool testResultShown;
+    /// One automatic refresh-and-retry when a Strava upload answers 401.
+    bool m_stravaUpload401Retried = false;
 
 
     /// disable screen saver

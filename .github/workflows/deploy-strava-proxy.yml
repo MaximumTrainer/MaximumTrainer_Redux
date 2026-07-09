@@ -6,6 +6,7 @@ on:
     paths:
       - 'workers/strava-token-proxy/**'
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   deploy:
