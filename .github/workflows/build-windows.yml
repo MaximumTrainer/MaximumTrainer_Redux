@@ -335,13 +335,22 @@ jobs:
         jom /J $env:NUMBER_OF_PROCESSORS
       shell: powershell
 
+    - name: Build Intervals.icu live integration test
+      run: |
+        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
+        Set-Location tests\intervals_icu_integration
+        qmake intervals_icu_integration_tests.pro
+        jom /J $env:NUMBER_OF_PROCESSORS
+      shell: powershell
+
     - name: Deploy Qt for test binaries
       run: |
         $tests = @(
           "runtime_validation_tests", "btle_api_tests", "offline_mode_tests",
           "online_mode_tests", "login_screen_tests", "workout_ui_tests",
           "workout_parsing_tests", "ui_navigation_tests", "ui_screens_tests",
-          "workout_io_tests", "workout_creator_tests"
+          "workout_io_tests", "workout_creator_tests",
+          "intervals_icu_integration_tests"
         )
         foreach ($t in $tests) {
           $exe = "build\tests\$t.exe"
@@ -396,113 +405,17 @@ jobs:
         path: build\
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Runtime Validation – Windows
+  # Headless Test Suites (Windows) — consolidated (#352)
   #
-  # Verifies that the application UI initialises to a "Ready" state on Windows:
-  #   • Bluetooth stack is queryable (API returns "Not Found", not "Unsupported")
-  #   • All four sensor channels carry realistic values within 10 seconds
-  #   • A labelled 1280×720 screenshot is captured as visual build evidence
+  # One runner for every suite that needs no window, running the pre-built,
+  # windeployqt'd binaries from the build artifact — no Qt installation at
+  # all in this job. Covers BLE API smoke, workout I/O, workout creator,
+  # workout parsing, and the live Intervals.icu integration suite
+  # (secrets-gated cases QSKIP without credentials).
   # ──────────────────────────────────────────────────────────────────────────
-  test_runtime_validation:
+  test_headless_suites:
     runs-on: windows-latest
     needs: build_windows
-    permissions:
-      contents: read
-
-    steps:
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: windows
-        path: build
-
-    - name: Run runtime validation test
-      run: .\build\tests\runtime_validation_tests.exe -v2
-      shell: powershell
-
-    - name: Upload runtime validation screenshot
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: runtime-validation-screenshot-windows
-        path: build\tests\screenshot-windows-*.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # BLE API Smoke Test – Windows
-  #
-  # Exercises the real BtleHub → QLowEnergyController code path on Windows.
-  # Uses the WinRT Bluetooth stack; on CI runners with no BT adapter the test
-  # QSKIP gracefully.  No display required (headless Qt Test binary).
-  # ──────────────────────────────────────────────────────────────────────────
-  test_btle_api:
-    runs-on: windows-latest
-    needs: build_windows
-    permissions:
-      contents: read
-
-    steps:
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: windows
-        path: build
-
-    - name: Run BLE API smoke test
-      run: .\build\tests\btle_api_tests.exe -v2
-      shell: powershell
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Offline Mode Integration Test – Windows
-  #
-  # Verifies that MaximumTrainer's core offline functionality works on Windows
-  # without a network connection and without physical Bluetooth hardware:
-  #   • Local workout XML files can be created and parsed from disk.
-  #   • SimulatorHub broadcasts realistic CSC (0x1816) and Power (0x1818)
-  #     cycling data (cadence, speed, power) within expected ranges.
-  #   • A labelled 1280×720 screenshot is captured showing the offline mode
-  #     indicator and live BTLE sensor metrics.
-  #   • Accumulated data points are written to a TSV activity file,
-  #     confirming offline data persistence.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_offline_mode:
-    runs-on: windows-latest
-    needs: build_windows
-    permissions:
-      contents: read
-
-    steps:
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: windows
-        path: build
-
-    - name: Run offline mode test
-      run: .\build\tests\offline_mode_tests.exe -v2
-      shell: powershell
-
-    - name: Upload offline mode screenshot and activity file
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: offline-mode-artefacts-windows
-        path: |
-          build\tests\offline-mode-windows-*.png
-          build\tests\activity-windows-*.tsv
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Intervals.icu Live Integration Tests – Windows
-  #
-  # Makes real HTTP requests to https://intervals.icu/api/v1 using the shared
-  # test account.  Requires GitHub Secrets to be configured:
-  #   INTERVALS_ICU_API_KEY    – personal API key (intervals.icu Settings → API)
-  #   INTERVALS_ICU_ATHLETE_ID – athlete ID, e.g. i12345
-  #
-  # Tests call QSKIP gracefully when either secret is absent (fork PRs, local
-  # development without credentials).
-  # ──────────────────────────────────────────────────────────────────────────
-  test_intervals_icu_integration:
-    runs-on: windows-latest
     permissions:
       contents: read
     env:
@@ -510,91 +423,29 @@ jobs:
       INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
 
     steps:
-    - name: MSVC Environment Setup
-      uses: ilammy/msvc-dev-cmd@v1
-
-    - name: Checkout
-      uses: actions/checkout@v4
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
       with:
-        fetch-depth: 0
+        name: windows
+        path: build
 
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        # Released aqt can't resolve Qt 6.11's new Windows repo layout (aqtinstall
-        # #959); use git master until a fixed release ships.
-        aqtversion: ' @ git+https://github.com/miurahr/aqtinstall.git@master'
-        arch: win64_msvc2022_64
-        dir: 'C:\Qt'
-        cache: true
-        cache-key-prefix: qt-win
-
-    - name: Set QTDIR
-      run: echo "QTDIR=C:\Qt\Qt\${{ env.QT_VERSION }}\msvc2022_64" >> $env:GITHUB_ENV
+    - name: BLE API smoke test
+      run: .\build\tests\btle_api_tests.exe -v2
       shell: powershell
 
-    - name: Install jom
-      shell: pwsh
-      run: |
-        # Chocolatey's CDN occasionally returns a 504 and then exits 0 with
-        # "Chocolatey installed 0/0 packages" — leaving jom missing, which only
-        # surfaces later as "jom : not recognized" in a build step. Retry until
-        # jom.exe actually exists, fail fast if it never does, and pin it on PATH.
-        $jom = "C:\ProgramData\chocolatey\bin\jom.exe"
-        for ($i = 1; $i -le 5 -and -not (Test-Path $jom); $i++) {
-          if ($i -gt 1) { Start-Sleep -Seconds 15 }
-          Write-Host "Installing jom (attempt $i)..."
-          choco install jom -y --no-progress
-        }
-        if (-not (Test-Path $jom)) {
-          throw "jom failed to install after 5 attempts (Chocolatey source issue)"
-        }
-        "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-
-    - name: Restore OpenSSL cache
-      id: openssl-cache
-      uses: actions/cache@v4
-      with:
-        path: C:\openssl
-        key: openssl-3.5.4-win64
-
-    - name: Download OpenSSL 3
-      if: steps.openssl-cache.outputs.cache-hit != 'true'
-      run: |
-        curl.exe -L -o "$env:TEMP\openssl.zip" "https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.4.zip"
-        Expand-Archive -Path "$env:TEMP\openssl.zip" -DestinationPath "C:\openssl" -Force
+    - name: Workout I/O tests
+      run: .\build\tests\workout_io_tests.exe -v2
       shell: powershell
 
-    - name: Set OPENSSL_BIN
-      run: |
-        $dll = Get-ChildItem "C:\openssl" -Recurse -Filter "libssl-3-x64.dll" |
-               Select-Object -First 1
-        if (-not $dll) { Write-Error "libssl-3-x64.dll not found in C:\openssl"; exit 1 }
-        echo "OPENSSL_BIN=$($dll.DirectoryName)" >> $env:GITHUB_ENV
+    - name: Workout creator tests
+      run: .\build\tests\workout_creator_tests.exe -v2
       shell: powershell
 
-    - name: Build integration tests
-      run: |
-        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
-        Set-Location tests\intervals_icu_integration
-        qmake intervals_icu_integration_tests.pro
-        jom /J $env:NUMBER_OF_PROCESSORS
+    - name: Workout parsing tests
+      run: .\build\tests\workout_parsing_tests.exe -v2
       shell: powershell
 
-    - name: Deploy Qt DLLs for test binary
-      run: |
-        & "$env:QTDIR\bin\windeployqt.exe" --release `
-            --no-translations `
-            --no-system-d3d-compiler `
-            build\tests\intervals_icu_integration_tests.exe
-        foreach ($dll in @("libssl-3-x64.dll", "libcrypto-3-x64.dll")) {
-          $src = "$env:OPENSSL_BIN\$dll"
-          if (Test-Path $src) { Copy-Item $src "build\tests\" -Force }
-        }
-      shell: powershell
-
-    - name: Run Intervals.icu integration tests
+    - name: Run Intervals.icu live integration tests
       shell: powershell
       run: |
         # Live test against intervals.icu: retry transient network/API blips
@@ -616,28 +467,19 @@ jobs:
         exit 1
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Online Mode Authentication Test – Windows
+  # GUI Integration Tests (Windows) — consolidated (#352)
   #
-  # Simulates a user authenticating into the running application on Windows.
-  # A 1280x720 window is shown, a live HTTPS authentication request is made
-  # to https://intervals.icu/api/v1 using credentials from GitHub Secrets,
-  # and the result is displayed in the window and captured as a screenshot.
-  #
-  # Requires GitHub Secrets to be configured:
-  #   INTERVALS_ICU_API_KEY    – personal API key (intervals.icu Settings → API)
-  #   INTERVALS_ICU_ATHLETE_ID – athlete ID, e.g. i12345
-  #
-  # The test calls QSKIP gracefully when either secret is absent (fork PRs,
-  # local development without credentials).
+  # One runner for the windowed suites that need no secrets, running the
+  # pre-built binaries from the build artifact (no Qt installation): runtime
+  # validation, offline mode, UI screens, and UI navigation (which launches
+  # the real MaximumTrainer.exe). Screenshot evidence from every suite is
+  # uploaded as one artifact.
   # ──────────────────────────────────────────────────────────────────────────
-  test_online_mode:
+  test_gui:
     runs-on: windows-latest
     needs: build_windows
     permissions:
       contents: read
-    env:
-      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
-      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
 
     steps:
     - name: Download build artifact
@@ -646,168 +488,22 @@ jobs:
         name: windows
         path: build
 
-    - name: Run online mode authentication test
-      run: .\build\tests\online_mode_tests.exe -v2
+    - name: Runtime validation test
+      run: .\build\tests\runtime_validation_tests.exe -v2
       shell: powershell
 
-    - name: Upload online mode screenshot
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: online-mode-screenshot-windows
-        path: build\tests\online-mode-windows-*.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Login Screen Full-Application Test – Windows
-  #
-  # Validates that a user can log into MaximumTrainer and access key
-  # functionality without error on Windows (the OS reported in the original
-  # login-screen bug):
-  #   • Offline login path: account setup logic is exercised end-to-end and
-  #     SimulatorHub confirms all four sensor channels (HR, cadence, speed,
-  #     power) carry realistic values once logged in.
-  #   • Intervals.icu OAuth URL: the OAuth2 authorization URL built by
-  #     Environnement is validated for all required parameters (client_id,
-  #     response_type, scope, redirect_uri, state).
-  #   • Intervals.icu API login (optional): a real HTTPS request is made to
-  #     intervals.icu/api/v1 using secrets when available; QSKIP otherwise.
-  #   • A labelled 1280×720 screenshot is captured as visual build evidence.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_login_screen:
-    runs-on: windows-latest
-    needs: build_windows
-    permissions:
-      contents: read
-    env:
-      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
-      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
-
-    steps:
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: windows
-        path: build
-
-    - name: Run login screen test
-      run: |
-        # Use QTest's -o flag to capture output to file — Tee-Object does not
-        # work for Win32 GUI subsystem apps (no console stdout).
-        .\build\tests\login_screen_tests.exe -v2 -o build\tests\login-screen-test-output.txt,txt
-        exit $LASTEXITCODE
+    - name: Offline mode test
+      run: .\build\tests\offline_mode_tests.exe -v2
       shell: powershell
 
-    - name: Upload login screen screenshot
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: login-screen-screenshot-windows
-        path: |
-          build\tests\*-windows-*.png
-          build\tests\*dialoglogin*-windows-*.png
-          build\tests\login-screen-test-output.txt
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Workout UI Integration Test – Windows
-  #
-  # Validates the end-to-end workout pipeline on Windows, including:
-  #   • User login (offline path)
-  #   • Workout XML creation and retrieval (round-trip, lightweight schema)
-  #   • Workout model construction and field verification (Workout / Interval)
-  #   • Workout XML round-trip via XmlUtil::createWorkoutXml + parseSingleWorkoutXml
-  #   • Workout average-power metric (getAveragePower)
-  #   • ERG simulation: setLoad and setSlope drive SimulatorHub to the
-  #     correct power target without physical Bluetooth hardware
-  #   • Workout session lifecycle: start / pause / resume / stop with data
-  #     accumulation across all four sensor channels
-  #   • Interval advancement: ERG target changes at each interval boundary
-  #   • Power-on-target: actual power stays within ±25 % of ERG target
-  #   • Network connectivity: HTTPS GET to intervals.icu/api/v1 (QSKIP when
-  #     credentials absent)
-  #   • Network workout retrieval: GET /athlete/{id}/workouts returns a JSON
-  #     array (QSKIP when credentials absent)
-  #   • A labelled 1280×720 screenshot with QWT power-curve plot is captured
-  #     as visual build evidence
-  # ──────────────────────────────────────────────────────────────────────────
-  test_workout_ui:
-    runs-on: windows-latest
-    needs: build_windows
-    permissions:
-      contents: read
-    env:
-      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
-      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
-
-    steps:
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: windows
-        path: build
-
-    # QTest stdout from Windows GUI-subsystem processes is not reliably
-    # captured by the runner; write results to a file and print it so
-    # failures are diagnosable from the log.
-    - name: Run workout UI test
-      run: |
-        .\build\tests\workout_ui_tests.exe -v2 -o workout_ui_results.txt,txt
-        $code = $LASTEXITCODE
-        Write-Host "QTest exit code: $code"
-        if (Test-Path workout_ui_results.txt) { Get-Content workout_ui_results.txt }
-        exit $code
+    - name: UI screens test
+      run: .\build\tests\ui_screens_tests.exe -v2
       shell: powershell
 
-    - name: Upload workout UI screenshot
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: workout-ui-screenshot-windows
-        path: build\tests\workout-ui-windows-*.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Workout Parsing Tests – Windows
-  # ──────────────────────────────────────────────────────────────────────────
-  test_workout_parsing:
-    runs-on: windows-latest
-    needs: build_windows
-    permissions:
-      contents: read
-    env:
-      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
-      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
-
-    steps:
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: windows
-        path: build
-
-    - name: Run workout parsing tests
-      run: .\build\tests\workout_parsing_tests.exe -v2
-      shell: powershell
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # UI Navigation Tests – Windows
-  # ──────────────────────────────────────────────────────────────────────────
-  test_ui_navigation:
-    runs-on: windows-latest
-    needs: build_windows
-    permissions:
-      contents: read
-
-    steps:
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: windows
-        path: build
-
-    - name: Run UI navigation tests
+    - name: UI navigation tests
       # MT_NO_NETWORK=1 disables all outbound network calls in the launched
       # MaximumTrainer binary (radio list, session check, Intervals.icu, etc.).
       # The child process inherits this variable from QProcess automatically.
-      # Remove or set to 0 when running locally to keep network enabled.
       env:
         MT_NO_NETWORK: "1"
       run: |
@@ -817,7 +513,7 @@ jobs:
         exit $LASTEXITCODE
       shell: powershell
 
-    - name: Print test output
+    - name: Print UI navigation test output
       if: always()
       shell: powershell
       run: |
@@ -827,23 +523,35 @@ jobs:
           Get-Content $logPath
         }
 
-    - name: Upload UI navigation screenshots and log
+    - name: Upload GUI test evidence
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: ui-navigation-screenshots-windows
+        name: gui-test-artifacts-windows
         path: |
+          build\tests\screenshot-windows-*.png
+          build\tests\offline-mode-windows-*.png
+          build\tests\activity-windows-*.tsv
+          build\tests\ui-screens-*.png
           build\tests\app-journey-*\
           build\tests\ui-navigation-test-output.txt
 
   # ──────────────────────────────────────────────────────────────────────────
-  # UI Screens Tests – Windows
+  # Live GUI Tests (Windows + Intervals.icu secrets) — consolidated (#352)
+  #
+  # The three windowed suites that talk to the live intervals.icu API: online
+  # mode, workout UI, and the login screen full-application journey. Kept
+  # separate from test_gui so a flaky live run retries cheaply. Tests QSKIP
+  # gracefully when the secrets are absent (fork PRs).
   # ──────────────────────────────────────────────────────────────────────────
-  test_ui_screens:
+  test_gui_live:
     runs-on: windows-latest
     needs: build_windows
     permissions:
       contents: read
+    env:
+      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
+      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
 
     steps:
     - name: Download build artifact
@@ -852,53 +560,37 @@ jobs:
         name: windows
         path: build
 
-    - name: Run UI screens test
-      run: .\build\tests\ui_screens_tests.exe -v2
+    - name: Online mode authentication test
+      run: .\build\tests\online_mode_tests.exe -v2
       shell: powershell
 
-    - name: Upload UI screens screenshots
+    # QTest stdout from Windows GUI-subsystem processes is not reliably
+    # captured by the runner; write results to a file and print it so
+    # failures are diagnosable from the log.
+    - name: Workout UI test
+      run: |
+        .\build\tests\workout_ui_tests.exe -v2 -o workout_ui_results.txt,txt
+        $code = $LASTEXITCODE
+        Write-Host "QTest exit code: $code"
+        if (Test-Path workout_ui_results.txt) { Get-Content workout_ui_results.txt }
+        exit $code
+      shell: powershell
+
+    - name: Login screen test
+      run: |
+        # Use QTest's -o flag to capture output to file — Tee-Object does not
+        # work for Win32 GUI subsystem apps (no console stdout).
+        .\build\tests\login_screen_tests.exe -v2 -o build\tests\login-screen-test-output.txt,txt
+        exit $LASTEXITCODE
+      shell: powershell
+
+    - name: Upload live GUI test evidence
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: ui-screens-screenshots-windows
-        path: build\tests\ui-screens-*.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Workout I/O Tests – Windows
-  # ──────────────────────────────────────────────────────────────────────────
-  test_workout_io:
-    runs-on: windows-latest
-    needs: build_windows
-    permissions:
-      contents: read
-
-    steps:
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: windows
-        path: build
-
-    - name: Run workout I/O tests
-      run: .\build\tests\workout_io_tests.exe -v2
-      shell: powershell
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Workout Creator Tests – Windows
-  # ──────────────────────────────────────────────────────────────────────────
-  test_workout_creator:
-    runs-on: windows-latest
-    needs: build_windows
-    permissions:
-      contents: read
-
-    steps:
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: windows
-        path: build
-
-    - name: Run workout creator tests
-      run: .\build\tests\workout_creator_tests.exe -v2
-      shell: powershell
+        name: gui-live-test-artifacts-windows
+        path: |
+          build\tests\online-mode-windows-*.png
+          build\tests\workout-ui-windows-*.png
+          build\tests\*-windows-*.png
+          build\tests\login-screen-test-output.txt

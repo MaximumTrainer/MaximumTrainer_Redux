@@ -449,42 +449,39 @@ npx playwright test
 ```
 Push to branch
       │
-      ├─► build_linux ──► test_btle_unit              (51 unit tests)
-      │                ├─► test_btle_integration       (Xvfb, screenshot)
-      │                ├─► test_btle_api               (BLE adapter smoke)
-      │                ├─► test_runtime_validation     (Qt/BLE/DB/FIT checks)
-      │                ├─► test_offline_mode           (Xvfb, screenshot)
-      │                ├─► test_login_screen           (Xvfb, screenshot)
-      │                ├─► test_workout_ui             (Xvfb, screenshot)
-      │                ├─► test_intervals_icu          (service + ZWO parser)
-      │                ├─► test_intervals_icu_integration (live network, skipped without secrets)
-      │                ├─► test_online_mode            (live network, skipped without secrets)
-      │                ├─► test_credential_store
-      │                ├─► test_plan_adherence
-      │                └─► test_logger
-      ├─► build_windows
-      ├─► build_mac
+      ├─► test_unit_suites (Linux, no build needed): logger, apptheme,
+      │     intervals_icu (4 suites), strava, credential_store,
+      │     plan_adherence, history, live Intervals.icu integration
+      ├─► build_linux ──► test_integration_headless   (btle unit/api, workout io/creator/parsing)
+      │                ├─► test_gui                    (Xvfb: btle integration, runtime validation,
+      │                │                                offline mode, ui screens, ui navigation)
+      │                └─► test_gui_live               (Xvfb + secrets: online mode, workout ui,
+      │                                                 login screen)
+      ├─► build_windows ─► test_headless_suites / test_gui / test_gui_live
+      │                    (artifact-only: windeployqt'd binaries, no Qt install)
+      ├─► build_mac ────► test_headless_suites / test_gui / test_gui_live
       └─► build_wasm (continue-on-error)
               │
-      (master only, all non-wasm pass)
+      (master only, all non-wasm platform packages pass)
               │
               ▼
-        tag_release (auto-increment semver, dispatch release.yml)
+        compute_version (auto-increment semver, serialised)
               │
               ▼
-        release.yml: create GitHub Release + attach artefacts
+        publish: create GitHub Release + attach artefacts + commit WASM to docs/app/
               │
               ▼
         pages.yml: deploy docs/ + WASM to GitHub Pages
               │
               ▼
-        test_playwright (Chromium headless, 6 spec files)
+        test_playwright (Chromium headless)
 ```
 
-All build jobs run in parallel.  WASM failure does not block release
-publication (`continue-on-error: true` + `always()` guard on publish job).
-Test jobs that require live network credentials (`test_online_mode`,
-`test_intervals_icu_integration`) call `QSKIP` when secrets are absent, so
+Test suites are grouped into a few jobs per OS (one Qt installation each)
+rather than one job per suite — see issue #352; this cut Qt CDN downloads
+per run from ~27 to ~10.  WASM failure does not block release publication
+(`continue-on-error: true` + `always()` guard on publish job).  Suites that
+require live network credentials call `QSKIP` when secrets are absent, so
 they degrade gracefully on fork PRs.
 
 ---

@@ -151,16 +151,25 @@ jobs:
         path: build/
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Logger Unit Test (Linux)
+  # Unit & Service Test Suites (Linux) — consolidated (#352)
   #
-  # Builds and runs the Logger unit test suite (tests/logger/) to verify that
-  # the cross-platform logging framework filters levels correctly, writes to
-  # file sinks, routes Qt messages, and round-trips configuration.
+  # All self-building suites share one runner and ONE Qt installation instead
+  # of one job (= one Qt CDN download) per suite. Runs in parallel with
+  # build_linux — none of these need the build artifact.
+  #
+  # Suites: logger, apptheme, intervals_icu (service / ZWO importer / DAO
+  # bearer / OAuth exchange), strava + third-party services, credential_store,
+  # plan_adherence, history, and the live Intervals.icu integration suite
+  # (uses secrets; QSKIPs gracefully without them).
   # ──────────────────────────────────────────────────────────────────────────
-  test_logger:
+  test_unit_suites:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
+    env:
+      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
+      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
+      STRAVA_ACCESS_TOKEN:      ${{ secrets.STRAVA_ACCESS_TOKEN }}
 
     steps:
     - name: Checkout
@@ -178,129 +187,30 @@ jobs:
         cache: true
         cache-key-prefix: qt-linux
 
-    - name: Build logger unit tests
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y libssl-dev
+
+    - name: Logger unit tests
       run: |
         mkdir -p build/tests
         cd tests/logger
         qmake logger_tests.pro
         make -j$(nproc)
-
-    - name: Run logger unit tests
-      run: |
+        cd ../..
         ./build/tests/logger_tests -v2
 
-  # ──────────────────────────────────────────────────────────────────────────
-  # AppTheme Unit Tests (Linux)
-  #
-  # Builds and runs the AppTheme unit test suite (tests/apptheme/) to verify
-  # the dark/light theming helper: explicit-mode resolution, that apply()
-  # switches the global stylesheet, and that no stylesheet colour literals are
-  # invalid. Runs under the offscreen platform (no display needed).
-  # ──────────────────────────────────────────────────────────────────────────
-  test_apptheme:
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Build AppTheme unit tests
+    - name: AppTheme unit tests
       run: |
-        mkdir -p build/tests
         cd tests/apptheme
         qmake apptheme_tests.pro
         make -j$(nproc)
-
-    - name: Run AppTheme unit tests
-      run: |
+        cd ../..
         QT_QPA_PLATFORM=offscreen ./build/tests/apptheme_tests -v2
 
-  # ──────────────────────────────────────────────────────────────────────────
-  # BTLE Unit Tests (Linux)
-  #
-  # Builds and runs the BtleHub unit test suite (tests/btle/) to verify that
-  # BLE characteristic parsing (HR, CSC, Power, FTMS) is correct and that
-  # integer-overflow and bounds-check security fixes have not broken behaviour.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_btle_unit:
-    runs-on: ubuntu-22.04
-    needs: build_linux
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt (with Bluetooth)
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        modules: 'qtconnectivity'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: linux
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/btle_tests
-
-    - name: Run BTLE unit tests
-      run: ./build/tests/btle_tests -v2
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # IntervalsIcuService + ImporterWorkoutZwo Unit Tests (Linux)
-  #
-  # Builds and runs two test suites:
-  # • intervals_icu_tests — verifies Authorization header construction, Accept
-  #   header, URL building, query parameters, and null-manager guard.
-  # • importer_workout_zwo_tests — verifies ZWO XML parser for SteadyState,
-  #   Ramp, IntervalsT, FreeRide, and mixed workout structures.
-  # • intervals_icu_dao_bearer_tests — verifies the OAuth2 Bearer-token methods
-  #   added to IntervalsIcuDAO (getAthleteBearer, getAthleteSettingsBearer).
-  # ──────────────────────────────────────────────────────────────────────────
-  test_intervals_icu:
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Build Intervals.icu unit tests
+    - name: Intervals.icu unit tests
       run: |
-        mkdir -p build/tests
         cd tests/intervals_icu
         qmake intervals_icu_tests.pro
         make -j$(nproc)
@@ -308,280 +218,53 @@ jobs:
         make -j$(nproc)
         qmake intervals_icu_dao_bearer_tests.pro
         make -j$(nproc)
-
-    - name: Run Intervals.icu unit tests
-      run: |
+        qmake intervals_icu_oauth_exchange_tests.pro
+        make -j$(nproc)
+        cd ../..
         ./build/tests/intervals_icu_tests -v2
         ./build/tests/importer_workout_zwo_tests -v2
         ./build/tests/intervals_icu_dao_bearer_tests -v2
+        ./build/tests/intervals_icu_oauth_exchange_tests -v2
 
-  # ──────────────────────────────────────────────────────────────────────────
-  # BTLE Integration Test (Linux)
-  #
-  # Runs SimulatorHub in a Qt window under Xvfb, takes a screenshot as
-  # evidence that Bluetooth sensor detection and an activity session work
-  # end-to-end without physical hardware.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_btle_integration:
-    runs-on: ubuntu-22.04
-    needs: build_linux
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt (with Bluetooth)
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        modules: 'qtconnectivity'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Install X11 runtime dependencies
+    - name: Strava service tests
       run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          xvfb \
-          libxcb-cursor0 \
-          libfontconfig1 \
-          libxrender1 \
-          libxext6 \
-          libgl1-mesa-dev
+        cd tests/strava
+        qmake strava_tests.pro
+        make -j$(nproc)
+        cd ../..
+        ./build/tests/strava_tests -v2
 
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: linux
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/btle_integration_tests
-
-    - name: Run BTLE integration test with Xvfb
+    - name: CredentialStore tests
       run: |
-        Xvfb :99 -screen 0 1280x800x24 &
-        sleep 1
-        export DISPLAY=:99
-        ./build/tests/btle_integration_tests -v2
+        cd tests/credential_store
+        qmake credential_store_tests.pro
+        make -j$(nproc)
+        cd ../..
+        ./build/tests/credential_store_tests -v2
 
-    - name: Upload screenshot evidence
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: btle-integration-screenshot
-        path: build/tests/btle_integration_screenshot.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # BLE API Smoke Test – Linux
-  #
-  # Exercises the real BtleHub → QLowEnergyController code path on Linux.
-  # With no physical BLE hardware the OS BLE stack reports a connection error
-  # for the fake device address, confirming the real API is invoked.
-  # On CI runners with no BT adapter the test QSKIP gracefully.
-  # No display required (headless Qt Test binary).
-  # ──────────────────────────────────────────────────────────────────────────
-  test_btle_api:
-    runs-on: ubuntu-22.04
-    needs: build_linux
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt (with Bluetooth)
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        modules: 'qtconnectivity'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: linux
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/btle_api_tests
-
-    - name: Run BLE API smoke test
-      run: ./build/tests/btle_api_tests -v2
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Runtime Validation – Linux
-  #
-  # Verifies that the application UI initialises to a "Ready" state on Linux:
-  #   • Bluetooth stack is queryable (API returns "Not Found", not "Unsupported")
-  #   • All four sensor channels carry realistic values within 10 seconds
-  #   • A labelled 1280×720 screenshot is captured as visual build evidence
-  # ──────────────────────────────────────────────────────────────────────────
-  test_runtime_validation:
-    runs-on: ubuntu-22.04
-    needs: build_linux
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt (with Bluetooth)
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        modules: 'qtconnectivity'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Install X11 runtime dependencies
+    - name: PlanAdherence tests
       run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          xvfb \
-          libxcb-cursor0 \
-          libfontconfig1 \
-          libxrender1 \
-          libxext6 \
-          libgl1-mesa-dev
+        cd tests/plan_adherence
+        qmake plan_adherence_tests.pro
+        make -j$(nproc)
+        cd ../..
+        ./build/tests/plan_adherence_tests -v2
 
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: linux
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/runtime_validation_tests
-
-    - name: Run runtime validation test with Xvfb (1280×800 display)
+    - name: History tests
       run: |
-        Xvfb :99 -screen 0 1280x800x24 &
-        sleep 1
-        export DISPLAY=:99
-        ./build/tests/runtime_validation_tests -v2
+        cd tests/history
+        qmake history_tests.pro
+        make -j$(nproc)
+        cd ../..
+        ./build/tests/history_tests -v2
 
-    - name: Upload runtime validation screenshot
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: runtime-validation-screenshot-linux
-        path: build/tests/screenshot-linux-*.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Offline Mode Integration Test – Linux
-  #
-  # Verifies that MaximumTrainer's core offline functionality works without a
-  # network connection and without physical Bluetooth hardware:
-  #   • Local workout XML files can be created and parsed from disk.
-  #   • SimulatorHub broadcasts realistic CSC (0x1816) and Power (0x1818)
-  #     cycling data (cadence, speed, power) within expected ranges.
-  #   • A labelled 1280×720 screenshot is captured showing the offline mode
-  #     indicator and live BTLE sensor metrics.
-  #   • Accumulated data points are written to a TSV activity file,
-  #     confirming offline data persistence.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_offline_mode:
-    runs-on: ubuntu-22.04
-    needs: build_linux
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Install X11 runtime dependencies
+    - name: Build Intervals.icu live integration tests
       run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          xvfb \
-          libxcb-cursor0 \
-          libfontconfig1 \
-          libxrender1 \
-          libxext6 \
-          libgl1-mesa-dev
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: linux
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/offline_mode_tests
-
-    - name: Run offline mode test with Xvfb (1280×800 display)
-      run: |
-        Xvfb :99 -screen 0 1280x800x24 &
-        sleep 1
-        export DISPLAY=:99
-        ./build/tests/offline_mode_tests -v2
-
-    - name: Upload offline mode screenshot and activity file
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: offline-mode-artefacts-linux
-        path: |
-          build/tests/offline-mode-linux-*.png
-          build/tests/activity-linux-*.tsv
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Intervals.icu Live Integration Tests – Linux
-  #
-  # Makes real HTTP requests to https://intervals.icu/api/v1 using the shared
-  # test account.  Requires GitHub Secrets to be configured:
-  #   INTERVALS_ICU_API_KEY    – personal API key (intervals.icu Settings → API)
-  #   INTERVALS_ICU_ATHLETE_ID – athlete ID, e.g. i12345
-  #
-  # Tests call QSKIP gracefully when either secret is absent (fork PRs, local
-  # development without credentials).
-  # ──────────────────────────────────────────────────────────────────────────
-  test_intervals_icu_integration:
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-    env:
-      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
-      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Build integration tests
-      run: |
-        mkdir -p build/tests
         cd tests/intervals_icu_integration
         qmake intervals_icu_integration_tests.pro
         make -j$(nproc)
 
-    - name: Run Intervals.icu integration tests
+    - name: Run Intervals.icu live integration tests
       run: |
         # Live test against intervals.icu: retry transient network/API blips
         # before failing the job. -o writes results to a file we echo into the
@@ -604,21 +287,14 @@ jobs:
         exit 1
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Online Mode Authentication Test – Linux
+  # Headless Integration Tests (Linux) — consolidated (#352)
   #
-  # Simulates a user authenticating into the running application on Linux.
-  # A 1280x720 window is shown, a live HTTPS authentication request is made
-  # to https://intervals.icu/api/v1 using credentials from GitHub Secrets,
-  # and the result is displayed in the window and captured as a screenshot.
-  #
-  # Requires GitHub Secrets to be configured:
-  #   INTERVALS_ICU_API_KEY    – personal API key (intervals.icu Settings → API)
-  #   INTERVALS_ICU_ATHLETE_ID – athlete ID, e.g. i12345
-  #
-  # The test calls QSKIP gracefully when either secret is absent (fork PRs,
-  # local development without credentials).
+  # Runs the pre-built headless test binaries from the build artifact with a
+  # single Qt installation: BTLE unit + BLE API smoke, workout I/O, workout
+  # creator, and workout parsing (secrets-gated live cases QSKIP without
+  # credentials).
   # ──────────────────────────────────────────────────────────────────────────
-  test_online_mode:
+  test_integration_headless:
     runs-on: ubuntu-22.04
     needs: build_linux
     permissions:
@@ -628,13 +304,80 @@ jobs:
       INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
 
     steps:
-    - name: Install Qt
+    - name: Install Qt (with Bluetooth)
       uses: jurplel/install-qt-action@v3
       with:
         version: ${{ env.QT_VERSION }}
         host: 'linux'
         target: 'desktop'
         arch: 'linux_gcc_64'
+        modules: 'qtconnectivity'
+        cache: true
+        cache-key-prefix: qt-linux
+
+    - name: Install runtime dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          libfontconfig1 \
+          libxrender1 \
+          libxext6
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: linux
+        path: build
+
+    - name: Make test binaries executable
+      run: |
+        chmod +x build/tests/btle_tests \
+                 build/tests/btle_api_tests \
+                 build/tests/workout_io_tests \
+                 build/tests/workout_creator_tests \
+                 build/tests/workout_parsing_tests
+
+    - name: BTLE unit tests
+      run: ./build/tests/btle_tests -v2
+
+    - name: BLE API smoke test
+      run: ./build/tests/btle_api_tests -v2
+
+    - name: Workout I/O tests
+      run: |
+        export LD_LIBRARY_PATH="$PWD/build/qwtlib:$LD_LIBRARY_PATH"
+        QT_QPA_PLATFORM=offscreen ./build/tests/workout_io_tests -v2
+
+    - name: Workout creator tests
+      run: ./build/tests/workout_creator_tests -v2
+
+    - name: Workout parsing tests
+      run: ./build/tests/workout_parsing_tests -v2
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # GUI Integration Tests (Linux, Xvfb) — consolidated (#352)
+  #
+  # Runs the pre-built windowed test binaries under one Xvfb display with a
+  # single Qt installation: BTLE integration, runtime validation, offline
+  # mode, UI screens, and UI navigation (which launches the real
+  # MaximumTrainer binary). Screenshot evidence from every suite is uploaded
+  # as one artifact.
+  # ──────────────────────────────────────────────────────────────────────────
+  test_gui:
+    runs-on: ubuntu-22.04
+    needs: build_linux
+    permissions:
+      contents: read
+
+    steps:
+    - name: Install Qt (full app modules)
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'linux_gcc_64'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -647,7 +390,13 @@ jobs:
           libfontconfig1 \
           libxrender1 \
           libxext6 \
-          libgl1-mesa-dev
+          libgl1-mesa-dev \
+          libnss3 \
+          libxcomposite1 \
+          libxdamage1 \
+          libxrandr2 \
+          libxkbcommon0 \
+          libasound2
 
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -655,39 +404,64 @@ jobs:
         name: linux
         path: build
 
-    - name: Make test binary executable
-      run: chmod +x build/tests/online_mode_tests
+    - name: Make binaries executable
+      run: |
+        chmod +x build/tests/btle_integration_tests \
+                 build/tests/runtime_validation_tests \
+                 build/tests/offline_mode_tests \
+                 build/tests/ui_screens_tests \
+                 build/tests/ui_navigation_tests \
+                 build/release/MaximumTrainer
 
-    - name: Run online mode authentication test with Xvfb
+    - name: Start Xvfb
       run: |
         Xvfb :99 -screen 0 1280x800x24 &
         sleep 1
-        export DISPLAY=:99
-        ./build/tests/online_mode_tests -v2
+        echo "DISPLAY=:99" >> "$GITHUB_ENV"
+        echo "LD_LIBRARY_PATH=$PWD/build/qwtlib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
 
-    - name: Upload online mode screenshot
+    - name: BTLE integration test
+      run: ./build/tests/btle_integration_tests -v2
+
+    - name: Runtime validation test
+      run: ./build/tests/runtime_validation_tests -v2
+
+    - name: Offline mode test
+      run: ./build/tests/offline_mode_tests -v2
+
+    - name: UI screens test
+      run: ./build/tests/ui_screens_tests -v2
+
+    - name: UI navigation tests
+      # MT_NO_NETWORK=1 disables all outbound network calls in the launched
+      # MaximumTrainer binary (radio list, session check, Intervals.icu, etc.).
+      # The child process inherits this variable from QProcess automatically.
+      env:
+        MT_NO_NETWORK: "1"
+      run: ./build/tests/ui_navigation_tests -v2
+
+    - name: Upload GUI test evidence
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: online-mode-screenshot-linux
-        path: build/tests/online-mode-linux-*.png
+        name: gui-test-artifacts-linux
+        path: |
+          build/tests/btle_integration_screenshot.png
+          build/tests/screenshot-linux-*.png
+          build/tests/offline-mode-linux-*.png
+          build/tests/activity-linux-*.tsv
+          build/tests/ui-screens-*.png
+          build/tests/app-journey-*/
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Login Screen Full-Application Test – Linux
+  # Live GUI Tests (Linux, Xvfb + Intervals.icu secrets) — consolidated (#352)
   #
-  # Validates that a user can log into MaximumTrainer and access key
-  # functionality without error on Linux:
-  #   • Offline login path: account setup logic is exercised end-to-end and
-  #     SimulatorHub confirms all four sensor channels (HR, cadence, speed,
-  #     power) carry realistic values once logged in.
-  #   • Intervals.icu OAuth URL: the OAuth2 authorization URL built by
-  #     Environnement is validated for all required parameters (client_id,
-  #     response_type, scope, redirect_uri, state).
-  #   • Intervals.icu API login (optional): a real HTTPS request is made to
-  #     intervals.icu/api/v1 using secrets when available; QSKIP otherwise.
-  #   • A labelled 1280×720 screenshot is captured as visual build evidence.
+  # The three suites that talk to the live intervals.icu API from a windowed
+  # session: online mode, workout UI, and the login screen full-application
+  # journey. Kept separate from test_gui so a flaky live run retries cheaply.
+  # Tests QSKIP gracefully when the secrets are absent (fork PRs).
   # ──────────────────────────────────────────────────────────────────────────
-  test_login_screen:
+  test_gui_live:
     runs-on: ubuntu-22.04
     needs: build_linux
     permissions:
@@ -731,530 +505,34 @@ jobs:
         name: linux
         path: build
 
-    - name: Make test binary executable
-      run: chmod +x build/tests/login_screen_tests
-
-    - name: Run login screen test with Xvfb
+    - name: Make test binaries executable
       run: |
-        export LD_LIBRARY_PATH="$PWD/build/qwtlib:$LD_LIBRARY_PATH"
+        chmod +x build/tests/online_mode_tests \
+                 build/tests/workout_ui_tests \
+                 build/tests/login_screen_tests
+
+    - name: Start Xvfb
+      run: |
         Xvfb :99 -screen 0 1280x800x24 &
         sleep 1
-        export DISPLAY=:99
-        ./build/tests/login_screen_tests -v2
+        echo "DISPLAY=:99" >> "$GITHUB_ENV"
+        echo "LD_LIBRARY_PATH=$PWD/build/qwtlib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
 
-    - name: Upload login screen screenshot
+    - name: Online mode authentication test
+      run: ./build/tests/online_mode_tests -v2
+
+    - name: Workout UI test
+      run: ./build/tests/workout_ui_tests -v2
+
+    - name: Login screen test
+      run: ./build/tests/login_screen_tests -v2
+
+    - name: Upload live GUI test evidence
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: login-screen-screenshot-linux
-        path: build/tests/*-linux-*.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Workout UI Integration Test – Linux
-  #
-  # Validates the end-to-end workout pipeline on Linux, including:
-  #   • User login (offline path)
-  #   • Workout XML creation and retrieval (round-trip, lightweight schema)
-  #   • Workout model construction and field verification (Workout / Interval)
-  #   • Workout XML round-trip via XmlUtil::createWorkoutXml + parseSingleWorkoutXml
-  #   • Workout average-power metric (getAveragePower)
-  #   • ERG simulation: setLoad and setSlope drive SimulatorHub to the
-  #     correct power target without physical Bluetooth hardware
-  #   • Workout session lifecycle: start / pause / resume / stop with data
-  #     accumulation across all four sensor channels
-  #   • Interval advancement: ERG target changes at each interval boundary
-  #   • Power-on-target: actual power stays within ±25 % of ERG target
-  #   • Network connectivity: HTTPS GET to intervals.icu/api/v1 (QSKIP when
-  #     credentials absent)
-  #   • Network workout retrieval: GET /athlete/{id}/workouts returns a JSON
-  #     array (QSKIP when credentials absent)
-  #   • A labelled 1280×720 screenshot with QWT power-curve plot is captured
-  #     as visual build evidence
-  # ──────────────────────────────────────────────────────────────────────────
-  test_workout_ui:
-    runs-on: ubuntu-22.04
-    needs: build_linux
-    permissions:
-      contents: read
-    env:
-      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
-      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
-
-    steps:
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Install X11 runtime dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          xvfb \
-          libxcb-cursor0 \
-          libfontconfig1 \
-          libxrender1 \
-          libxext6 \
-          libgl1-mesa-dev
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: linux
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/workout_ui_tests
-
-    - name: Run workout UI test with Xvfb
-      run: |
-        export LD_LIBRARY_PATH="$PWD/build/qwtlib:$LD_LIBRARY_PATH"
-        Xvfb :99 -screen 0 1280x800x24 &
-        sleep 1
-        export DISPLAY=:99
-        ./build/tests/workout_ui_tests -v2
-
-    - name: Upload workout UI screenshot
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: workout-ui-screenshot-linux
-        path: build/tests/workout-ui-linux-*.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Workout Parsing Tests – Linux
-  #
-  # Validates the ZWO (Zwift workout XML) parsing pipeline end-to-end:
-  #   • ZWO inline string parsing — SteadyState, Ramp, IntervalsT, FreeRide,
-  #     mixed Warmup/SteadyState/Cooldown embedded directly in test source
-  #   • Workout model from programmatic Interval objects — structural fields,
-  #     average-power metric, and total-duration round-trip via getDurationQTime()
-  #   • Edge cases — empty byte array and malformed XML return empty Workout
-  #   • Intervals.icu pull-and-load (QSKIP when credentials absent)
-  #
-  # No display required (QT -= gui); runs in a plain headless environment.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_workout_parsing:
-    runs-on: ubuntu-22.04
-    needs: build_linux
-    permissions:
-      contents: read
-    env:
-      INTERVALS_ICU_API_KEY:    ${{ secrets.INTERVALS_ICU_API_KEY }}
-      INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
-
-    steps:
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: linux
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/workout_parsing_tests
-
-    - name: Run workout parsing tests
-      run: ./build/tests/workout_parsing_tests -v2
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # UI Navigation Tests – Linux
-  #
-  # Validates the primary UI screens and user interaction flows:
-  #   • ConnectionDialog — QTest::mouseClick() on "Simulation" and "BTLE Device";
-  #     QSignalSpy verifies accepted() fires and selectedMethod() is correct
-  #   • WorkoutCreator IntervalTableModel — insertRows / removeRows / copyRows /
-  #     setListInterval; dataChanged signal verified
-  #   • Post-workout summary screen — WorkoutHistorySummary field verification
-  #   • Visual evidence screenshots (1280×720, platform-tagged, PNG)
-  #
-  # Uses Xvfb for the headless X11 display required by Qt Widgets.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_ui_navigation:
-    runs-on: ubuntu-22.04
-    needs: build_linux
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt (full app modules)
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Install runtime dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          xvfb \
-          libxcb-cursor0 \
-          libfontconfig1 \
-          libxrender1 \
-          libxext6 \
-          libgl1-mesa-dev \
-          libnss3 \
-          libxcomposite1 \
-          libxdamage1 \
-          libxrandr2 \
-          libxkbcommon0 \
-          libasound2
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: linux
-        path: build
-
-    - name: Make binaries executable
-      run: |
-        chmod +x build/tests/ui_navigation_tests
-        chmod +x build/release/MaximumTrainer
-
-    - name: Run UI navigation tests with Xvfb
-      # Xvfb provides a real X11 display server so the installed MaximumTrainer
-      # binary launched by testFullApplicationJourney() can render its windows
-      # and write screenshots, and the component-level dialog tests can show
-      # real Qt windows.  This is not "headless" — Xvfb is a fully functional
-      # X11 server; it just has no physical hardware attached.
-      # MT_NO_NETWORK=1 disables all outbound network calls in the launched
-      # MaximumTrainer binary (radio list, session check, Intervals.icu, etc.).
-      # The child process inherits this variable from QProcess automatically.
-      # Remove or set to 0 when running locally to keep network enabled.
-      env:
-        MT_NO_NETWORK: "1"
-      run: |
-        export LD_LIBRARY_PATH="$PWD/build/qwtlib:$LD_LIBRARY_PATH"
-        Xvfb :99 -screen 0 1280x800x24 &
-        sleep 1
-        export DISPLAY=:99
-        ./build/tests/ui_navigation_tests -v2
-
-    - name: Upload UI navigation screenshots
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: ui-navigation-screenshots-linux
+        name: gui-live-test-artifacts-linux
         path: |
-          build/tests/app-journey-*/
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # UI Screens Tests – Linux
-  #
-  # Runs the UI screen navigation test suite (tst_ui_screens.cpp):
-  #   • DialogConnectionMethod — "BTLE Device" and "Simulation" button clicks
-  #     verified with QTest::mouseClick and QSignalSpy.
-  #   • PostWorkoutSummary widget — metric labels verified as visible and
-  #     non-empty.
-  #   • ZWO inline-string parsing — ImporterWorkoutZwo exercised with XML
-  #     strings embedded in the source (no external files); covers Warmup,
-  #     SteadyState, Cooldown, IntervalsT expansion, FreeRide, edge cases.
-  #   • Labelled 1280×720 screenshots uploaded as build evidence.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_ui_screens:
-    runs-on: ubuntu-22.04
-    needs: build_linux
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Install X11 runtime dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          xvfb \
-          libxcb-cursor0 \
-          libfontconfig1 \
-          libxrender1 \
-          libxext6 \
-          libgl1-mesa-dev
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: linux
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/ui_screens_tests
-
-    - name: Run UI screens test with Xvfb
-      run: |
-        export LD_LIBRARY_PATH="$PWD/build/qwtlib:$LD_LIBRARY_PATH"
-        Xvfb :99 -screen 0 1280x800x24 &
-        sleep 1
-        export DISPLAY=:99
-        ./build/tests/ui_screens_tests -v2
-
-    - name: Upload UI screens screenshots
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: ui-screens-screenshots-linux
-        path: build/tests/ui-screens-*.png
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Workout I/O Tests – Linux
-  #
-  # Runs the workout I/O test suite (tst_workout_io.cpp):
-  #   • ZWO import from inline XML strings (SteadyState, Ramp, IntervalsT,
-  #     FreeRide, mixed, name extraction, edge cases).
-  #   • Intervals.icu mock JSON → ZWO → Workout model workflow.
-  #   • XmlUtil round-trip (createWorkoutXml + parseSingleWorkoutXml) for
-  #     interval count, power, duration, and plan fields.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_workout_io:
-    runs-on: ubuntu-22.04
-    needs: build_linux
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Install runtime dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          libfontconfig1 \
-          libxrender1 \
-          libxext6
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: linux
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/workout_io_tests
-
-    - name: Run workout I/O tests
-      run: |
-        export LD_LIBRARY_PATH="$PWD/build/qwtlib:$LD_LIBRARY_PATH"
-        QT_QPA_PLATFORM=offscreen ./build/tests/workout_io_tests -v2
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Workout Creator Tests – Linux
-  #
-  # Runs the workout creator test suite (tst_workout_creator.cpp):
-  #   • Constructs Workout objects from Interval domain objects (Warmup,
-  #     SteadyState/FLAT, Cooldown) and verifies count, step types, power
-  #     values, durations, cadence, metadata, and total duration.
-  #   • Computed metrics (averagePower) verified for flat and mixed workouts.
-  #   • Edge cases: FTP=0, empty list, single interval, 10×on/off, cadence
-  #     range, testInterval flag.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_workout_creator:
-    runs-on: ubuntu-22.04
-    needs: build_linux
-    permissions:
-      contents: read
-
-    steps:
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: linux
-        path: build
-
-    - name: Make test binary executable
-      run: chmod +x build/tests/workout_creator_tests
-
-    - name: Run workout creator tests
-      run: ./build/tests/workout_creator_tests -v2
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Strava Service Unit Tests – Linux
-  #
-  # Builds and runs all three offline service test suites.  These tests use
-  # a mock network manager and do not require real API credentials.
-  #
-  # Optional live tests are gated behind GitHub Secrets and QSKIP gracefully
-  # when the relevant secret is absent.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_third_party_services:
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-    env:
-      STRAVA_ACCESS_TOKEN: ${{ secrets.STRAVA_ACCESS_TOKEN }}
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Build Strava service tests
-      run: |
-        mkdir -p build/tests
-        cd tests/strava
-        qmake strava_tests.pro
-        make -j$(nproc)
-
-    - name: Run Strava service tests
-      run: ./build/tests/strava_tests -v2
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # CredentialStore Unit Tests – Linux
-  #
-  # Tests the AES-256-GCM CredentialStore backend (Linux only).
-  # The roundtrip, overwrite, remove, missing-key, multi-service, empty-value,
-  # and special-character tests all execute without any external dependencies.
-  # Requires libssl-dev.
-  # ──────────────────────────────────────────────────────────────────────────
-  test_credential_store:
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Install build dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y libssl-dev
-
-    - name: Build CredentialStore tests
-      run: |
-        mkdir -p build/tests
-        cd tests/credential_store
-        qmake credential_store_tests.pro
-        make -j$(nproc)
-
-    - name: Run CredentialStore tests
-      run: ./build/tests/credential_store_tests -v2
-
-  test_plan_adherence:
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Build PlanAdherence tests
-      run: |
-        mkdir -p build/tests
-        cd tests/plan_adherence
-        qmake plan_adherence_tests.pro
-        make -j$(nproc)
-
-    - name: Run PlanAdherence tests
-      run: ./build/tests/plan_adherence_tests -v2
-
-  test_history:
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: ${{ env.QT_VERSION }}
-        host: 'linux'
-        target: 'desktop'
-        arch: 'linux_gcc_64'
-        cache: true
-        cache-key-prefix: qt-linux
-
-    - name: Build History tests
-      run: |
-        mkdir -p build/tests
-        cd tests/history
-        qmake history_tests.pro
-        make -j$(nproc)
-
-    - name: Run History tests
-      run: ./build/tests/history_tests -v2
+          build/tests/online-mode-linux-*.png
+          build/tests/workout-ui-linux-*.png
+          build/tests/*-linux-*.png
