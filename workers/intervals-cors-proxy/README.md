@@ -151,7 +151,20 @@ grant_type=authorization_code&client_id=259&code=<code>&redirect_uri=<redirect_u
 
 Intervals.icu has no refresh tokens — its token endpoint implements only the
 authorization-code exchange, so `refresh_token` grants are rejected with
-`unsupported_grant_type`.
+`unsupported_grant_type`.  Re-verified upstream on 2026-08-31 (#359): the
+endpoint requires `code` whatever `grant_type` says, and behaves identically
+when `grant_type` is omitted entirely, so it never reads a `refresh_token`:
+
+```
+grant_type=refresh_token&client_id=259&client_secret=…&refresh_token=…
+→ 422 {"error":"Required request parameter 'code' … is not present"}
+
+grant_type=refresh_token&client_id=259&client_secret=dummy&code=probe   → 404 "Client and/or secret not found"
+(no grant_type)&client_id=259&client_secret=dummy&code=probe            → 404 "Client and/or secret not found"
+```
+
+Clients must therefore treat a `401` as "session expired — sign in again"
+rather than attempting a refresh.
 
 The worker looks up the `client_secret` from the `CLIENT_SECRETS` KV namespace
 using the supplied `client_id` as the key, then appends `grant_type`,
@@ -198,17 +211,60 @@ is made.
 
 ---
 
+## Activity uploads (multipart/form-data)
+
+The general proxy forwards binary uploads untouched — VirtualRow posts a FIT
+file to `/proxy/api/v1/athlete/0/activities?name=…&external_id=…` with a
+bearer token, and no upload-specific routing is needed:
+
+- the body is read as `arrayBuffer()`, so the multipart boundary and the FIT
+  bytes survive intact;
+- `content-type` is forwarded, so the boundary parameter reaches upstream;
+- `url.search` is appended to the target, so the query string is preserved.
+
+Every deploy re-verifies this (see `deploy-intervals-proxy.yml`) by posting a
+binary part with a deliberately invalid bearer token from each browser origin;
+intervals.icu answers `401` before creating anything, so the probe is
+non-mutating:
+
+```bash
+printf '\x0e\x10\x20\x00.FIT\x00\x00' > probe.fit
+curl -i -X POST \
+  -H 'Origin: http://localhost:5173' \
+  -H 'Authorization: Bearer not-a-real-token' \
+  -F 'file=@probe.fit;type=application/octet-stream' \
+  'https://mt-intervals-proxy.intervals-login.workers.dev/proxy/api/v1/athlete/0/activities?name=probe&external_id=probe'
+```
+
+A `401` with `Via: 1.1 Caddy` is upstream answering; a `403` means the origin
+is not allow-listed.
+
+---
+
 ## Security
 
 - **OAuth token endpoint (`/proxy/api/oauth/token`)**: open to any caller —
   `Access-Control-Allow-Origin: *` ensures every frontend can read both
   success and error bodies.  The `client_secret` is looked up from KV and
   never echoed back to callers.  Unknown `client_id` values receive a 401.
-- **General proxy (`/proxy/*`)**: restricted to known browser origins
-  (`https://maximumtrainer.github.io` and localhost) and the desktop
-  `X-MT-Client: desktop` header to prevent this worker from acting as a
-  fully open relay.  This is **not** a hard security boundary — it is
-  anti-abuse rate-limiting.
+- **General proxy (`/proxy/*`)**: restricted to known browser origins and the
+  desktop `X-MT-Client: desktop` header to prevent this worker from acting as
+  a fully open relay.  This is **not** a hard security boundary — it is
+  anti-abuse rate-limiting.  Allowed origins:
+
+  | Origin | Used by |
+  |--------|---------|
+  | `https://maximumtrainer.github.io` | the deployed WASM app |
+  | `http://localhost:8080`, `http://127.0.0.1:8080` | local WASM builds |
+  | `http://localhost:5173`, `http://127.0.0.1:5173` | Vite dev servers (VirtualRow) |
+  | `http://localhost:5500` | VS Code Live Server |
+
+  Vite answers on both `localhost` and `127.0.0.1`, which are distinct origins,
+  so both spellings of a dev port are listed.
+
+  A rejected origin gets `403 Forbidden` **with** CORS headers, so the browser
+  can read the status and report a configuration problem rather than a bare
+  `TypeError: Failed to fetch` (#359).
 - Only the headers the API actually needs (`Authorization`, `Content-Type`,
   `Accept`) are forwarded upstream.  `X-MT-Client` is consumed by the
   worker and not forwarded to intervals.icu.

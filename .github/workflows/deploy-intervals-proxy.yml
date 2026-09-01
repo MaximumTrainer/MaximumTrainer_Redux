@@ -101,3 +101,44 @@ jobs:
             \{*) echo "OK — proxy forwards to intervals.icu" ;;
             *)  echo "FAIL — expected a JSON error from intervals.icu; the worker is not proxying"; exit 1 ;;
           esac
+
+      # VirtualRow uploads activities as multipart/form-data with a binary FIT
+      # part (#359).  An invalid bearer token means upstream answers 401 before
+      # anything is created, so these probes are non-mutating.  A 401 proves the
+      # method, query string, Authorization header and binary body all reached
+      # intervals.icu; a 403 would mean the origin was rejected by the worker.
+      - name: Verify multipart upload + CORS on rejected origins
+        run: |
+          WORKER_URL="${{ steps.deploy.outputs.worker_url }}"
+          printf '\x0e\x10\x20\x00.FIT\x00\x00' > probe.fit
+          fail=0
+
+          for ORIGIN in https://maximumtrainer.github.io http://localhost:5173 http://127.0.0.1:5173; do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+              -H "Origin: $ORIGIN" \
+              -H 'Authorization: Bearer not-a-real-token' \
+              -F 'file=@probe.fit;type=application/octet-stream' \
+              "$WORKER_URL/proxy/api/v1/athlete/0/activities?name=ci-probe&external_id=ci-probe")
+            if [ "$STATUS" = "401" ]; then
+              echo "OK — multipart POST from $ORIGIN reached intervals.icu (401)"
+            else
+              echo "FAIL — multipart POST from $ORIGIN returned $STATUS, expected upstream 401"; fail=1
+            fi
+          done
+
+          # A disallowed origin must still get readable CORS headers on the 403,
+          # otherwise the browser reports a network error instead of the real cause.
+          HEADERS=$(curl -s -D - -o /dev/null -X POST \
+            -H 'Origin: https://not-allow-listed.example' \
+            -H 'Authorization: Bearer not-a-real-token' \
+            -F 'file=@probe.fit;type=application/octet-stream' \
+            "$WORKER_URL/proxy/api/v1/athlete/0/activities")
+          echo "$HEADERS"
+          if echo "$HEADERS" | grep -qi '^HTTP/[0-9.]* 403' \
+             && echo "$HEADERS" | grep -qi '^access-control-allow-origin:'; then
+            echo "OK — 403 carries CORS headers"
+          else
+            echo "FAIL — 403 for a disallowed origin is missing CORS headers"; fail=1
+          fi
+
+          exit $fail
