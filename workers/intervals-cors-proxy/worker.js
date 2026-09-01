@@ -56,12 +56,15 @@
 
 // Browser origins (real web origins) that are allowed to use the general
 // proxy.  The OAuth token endpoint is open to any origin (uses * CORS).
+// Vite serves the same dev server on both localhost and 127.0.0.1, and they
+// are distinct origins, so both spellings of a dev port must be listed.
 const ALLOWED_ORIGINS = [
   'https://maximumtrainer.github.io',
   'http://localhost:8080',
   'http://localhost:5173',
   'http://localhost:5500',
   'http://127.0.0.1:8080',
+  'http://127.0.0.1:5173',
 ];
 
 // Native desktop clients (Qt Widgets build) are not browsers and are not
@@ -102,8 +105,14 @@ function jsonError(code, status) {
   });
 }
 
+// CORS headers matter here too: without them a browser cannot read the 403
+// and fetch() rejects with a bare "TypeError: Failed to fetch", which is
+// indistinguishable from the network being down (#359).
 function forbidden() {
-  return new Response('Forbidden', { status: 403 });
+  return new Response('Forbidden', {
+    status: 403,
+    headers: { ...CORS_HEADERS, 'Cache-Control': 'no-store' },
+  });
 }
 
 export default {
