@@ -214,3 +214,16 @@ The **workout dialog timer** is driven by a `Clock` QObject on a worker
 `QThread` ticking every 25ms; it derives elapsed seconds from a monotonic
 high-res clock (no drift). The three bottom mini-graphs (`WorkoutPlotZoomer`)
 are throttled to ~20fps rather than replotting on every 25ms tick.
+
+## Shared agent skills
+
+Shared skills live in [MaximumTrainer/agent-skills](https://github.com/MaximumTrainer/agent-skills). Before writing a new
+skill, runbook or repeated procedure, check the catalogue - and send genuinely
+general improvements back so the other repositories get them too.
+
+```bash
+python3 .claude/skills/skill-exchange/scripts/skills.py list
+python3 .claude/skills/skill-exchange/scripts/skills.py status
+```
+
+See `.claude/skills/skill-exchange/` for the workflow.
