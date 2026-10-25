@@ -62,7 +62,7 @@ foreach ($step in 'configuration bootstrap', 'QWebEngineProfile init', 'metatype
 }
 foreach ($line in $runLog | Where-Object { $_.Contains('[Startup] ') -and $_.EndsWith($begin) }) {
     $label = $line.Substring($line.IndexOf('[Startup] ') + 10)
-    $label = $label.Substring(0, $label.Length - $begin.Length)
+    $label = $label.Substring(0, $label.Length - $begin.Length).TrimEnd()
     if (-not ($runLog | Where-Object { $_.Contains("$label $([char]0x2026) done") })) { Fail "step began but never finished: $label" }
 }
 
