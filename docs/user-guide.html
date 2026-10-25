@@ -403,6 +403,7 @@
         <li><a href="#log-files">Log Files &amp; Troubleshooting</a></li>
         <li><a href="#tips">Tips &amp; Shortcuts</a></li>
         <li><a href="#platform-requirements">Platform Requirements</a></li>
+        <li><a href="#faq">FAQ</a></li>
       </ul>
       <a href="#top" class="sidebar-back">↑ Back to top</a>
     </aside>
@@ -1244,6 +1245,7 @@
               <tr>
                 <th>Platform</th>
                 <th>Default log file path</th>
+                <th>Fallback if the default folder is not writable</th>
               </tr>
             </thead>
             <tbody>
@@ -1253,6 +1255,10 @@
                   <code>%APPDATA%\MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log</code><br/>
                   <small>e.g. <code>C:\Users\YourName\AppData\Roaming\MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log</code></small>
                 </td>
+                <td>
+                  <code>%TEMP%\MaximumTrainer.log</code><br/>
+                  <small>e.g. <code>C:\Users\YourName\AppData\Local\Temp\MaximumTrainer.log</code></small>
+                </td>
               </tr>
               <tr>
                 <td><strong>macOS</strong></td>
@@ -1260,13 +1266,26 @@
                   <code>~/Library/Application Support/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log</code><br/>
                   <small>Hold <kbd>⌥ Option</kbd> and click <strong>Go</strong> in Finder to reveal the hidden <code>Library</code> folder.</small>
                 </td>
+                <td>
+                  <code>$TMPDIR/MaximumTrainer.log</code><br/>
+                  <small>A per-user folder under <code>/var/folders/…/T/</code>. Run <code>echo $TMPDIR</code> in Terminal to see it, or <code>open $TMPDIR</code> to show it in Finder.</small>
+                </td>
               </tr>
               <tr>
                 <td><strong>Linux</strong></td>
                 <td>
                   <code>~/.local/share/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log</code><br/>
-                  <small>Follows the <a href="https://specifications.freedesktop.org/basedir-spec/latest/" target="_blank" rel="noopener">XDG Base Directory</a> specification. Override with the <code>$XDG_DATA_HOME</code> environment variable.</small>
+                  <small>Follows the <a href="https://specifications.freedesktop.org/basedir-spec/latest/" target="_blank" rel="noopener">XDG Base Directory</a> specification. When <code>$XDG_DATA_HOME</code> is set, the log is at <code>$XDG_DATA_HOME/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log</code>.</small>
                 </td>
+                <td>
+                  <code>$TMPDIR/MaximumTrainer.log</code><br/>
+                  <small><code>/tmp/MaximumTrainer.log</code> when <code>$TMPDIR</code> is not set.</small>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Browser (WASM)</strong></td>
+                <td>No log file. Messages go to the browser's developer console.</td>
+                <td>n/a</td>
               </tr>
             </tbody>
           </table>
@@ -1278,9 +1297,14 @@
           (loading configuration, account, sound, network, theme, login screen) is logged as it
           begins and ends. If Maximum Trainer hangs or closes while starting, the last line of the
           log names the step that failed. If the default folder cannot be written, the log is
-          written to the system temp folder instead (<code>%TEMP%\MaximumTrainer.log</code> on
-          Windows). Launch with <code>--debug</code> (or <code>/debug</code> on Windows) for
+          written to the fallback file in the system temp folder shown in the table above, and its
+          first lines record the fallback. Launch with <code>--debug</code> (or <code>/debug</code> on Windows) for
           Debug-level detail from the first line.
+        </p>
+        <p>
+          If you chose a custom log file path, the app switches to it once the configuration has
+          loaded. Anything logged before that point, including the startup banner and the
+          configuration steps, is still in the default file, so check both when the app fails early.
         </p>
 
         <div class="callout">
@@ -1479,6 +1503,38 @@
             </tbody>
           </table>
         </div>
+      </section>
+
+      <!-- ── FAQ ───────────────────────────────────────────────── -->
+      <section class="guide-section" id="faq">
+        <h2>❓ FAQ</h2>
+
+        <h3>Where is the log file on my computer?</h3>
+        <p>The log file is named <code>MaximumTrainer.log</code>. Its location depends on your operating system:</p>
+        <ul>
+          <li><strong>Windows:</strong> <code>%APPDATA%\MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log</code>.
+            Paste <code>%APPDATA%\MaximumTrainer\MaximumTrainer_Redux</code> into the File Explorer address bar to open the folder.</li>
+          <li><strong>macOS:</strong> <code>~/Library/Application Support/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log</code>.
+            In Finder choose <strong>Go → Go to Folder…</strong> and paste the folder path.</li>
+          <li><strong>Linux:</strong> <code>~/.local/share/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log</code>,
+            or under <code>$XDG_DATA_HOME</code> when that variable is set.</li>
+          <li><strong>Browser (WASM):</strong> there is no log file. Open the browser's developer console (<kbd>F12</kbd>) to see messages.</li>
+        </ul>
+        <p>
+          If that folder cannot be written, the app writes the log to the system temp folder instead:
+          <code>%TEMP%\MaximumTrainer.log</code> on Windows, and <code>$TMPDIR/MaximumTrainer.log</code>
+          on macOS and Linux (on Linux that is usually <code>/tmp/MaximumTrainer.log</code>).
+          If you set a custom path in <strong>Preferences → Logging</strong>, the log moves there once the
+          configuration has loaded. See <a href="#log-files">Log Files &amp; Troubleshooting</a> for details.
+        </p>
+
+        <h3>The app hangs or closes while starting. What should I send?</h3>
+        <p>
+          Launch it once more with <code>--debug</code> (or <code>/debug</code> on Windows), then attach
+          <code>MaximumTrainer.log</code> from the location above to your
+          <a href="https://github.com/MaximumTrainer/MaximumTrainer_Redux/issues" target="_blank" rel="noopener">bug report</a>.
+          The last line of the log names the startup step that failed.
+        </p>
       </section>
 
     </main>

@@ -198,16 +198,21 @@ MaximumTrainer writes diagnostic messages (network errors, BLE events, OAuth log
 file. File logging is **enabled by default** on first launch; you can adjust the level or disable it
 in **Preferences → Logging**.
 
-| Platform | Default log file path |
-|----------|-----------------------|
-| **Windows** | `%APPDATA%\MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log`<br/>(e.g. `C:\Users\YourName\AppData\Roaming\MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log`) |
-| **macOS** | `~/Library/Application Support/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log` |
-| **Linux** | `~/.local/share/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log` (XDG data dir; override with `$XDG_DATA_HOME`) |
+| Platform | Default log file path | Fallback if the default folder is not writable |
+|----------|-----------------------|------------------------------------------------|
+| **Windows** | `%APPDATA%\MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log`<br/>(e.g. `C:\Users\YourName\AppData\Roaming\MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log`) | `%TEMP%\MaximumTrainer.log`<br/>(e.g. `C:\Users\YourName\AppData\Local\Temp\MaximumTrainer.log`) |
+| **macOS** | `~/Library/Application Support/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log` | `$TMPDIR/MaximumTrainer.log`<br/>(a per-user folder under `/var/folders/…/T/`; run `echo $TMPDIR` in Terminal to see it) |
+| **Linux** | `~/.local/share/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log`<br/>(or `$XDG_DATA_HOME/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log` when `$XDG_DATA_HOME` is set) | `$TMPDIR/MaximumTrainer.log`, which is `/tmp/MaximumTrainer.log` when `$TMPDIR` is not set |
+| **Web (WASM)** | No log file; messages go to the browser's developer console | n/a |
 
 The log file is opened before the splash screen appears, and every startup step is logged as it
 begins and ends, so if the app hangs or crashes while starting, the last line of the log names the
-step that failed. If the default folder cannot be written, the log goes to the system temp folder
-instead (`%TEMP%\MaximumTrainer.log` on Windows) and the log records the fallback.
+step that failed. If the default folder cannot be written, the log goes to the fallback file above
+and its first lines record the fallback. If neither can be written, messages go to stdout only.
+
+If you chose a custom path in **Preferences → Logging**, the app switches to it once the
+configuration has loaded. Anything logged before that point (the startup banner and the
+configuration steps) is still in the default file, so check both when the app fails early.
 
 Set the log level to **Debug** before reproducing an issue (or launch with `--debug`, or `/debug` on
 Windows), then attach the log file to your bug report.
