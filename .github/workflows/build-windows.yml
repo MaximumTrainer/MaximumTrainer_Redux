@@ -521,6 +521,11 @@ jobs:
       contents: read
 
     steps:
+    - name: Checkout scripts
+      uses: actions/checkout@v7
+      with:
+        sparse-checkout: scripts
+
     - name: Download build artifact
       uses: actions/download-artifact@v8
       with:
@@ -562,6 +567,23 @@ jobs:
           Get-Content $logPath
         }
 
+    - name: Startup smoke test - first run, clean profile (#377)
+      # Deletes HKCU\Software\MaximumTrainer and %APPDATA%\MaximumTrainer, then
+      # runs MaximumTrainer.exe --startup-check and checks the startup log.
+      run: .\scripts\startup-smoke.ps1 -App build\release\MaximumTrainer.exe -Mode first
+      shell: powershell
+
+    - name: Startup smoke test - second run (#377)
+      run: .\scripts\startup-smoke.ps1 -App build\release\MaximumTrainer.exe -Mode second
+      shell: powershell
+
+    - name: Collect startup log
+      if: always()
+      shell: powershell
+      run: |
+        $log = Join-Path $env:APPDATA 'MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log'
+        if (Test-Path $log) { Copy-Item $log build\tests\startup-windows.log }
+
     - name: Upload GUI test evidence
       uses: actions/upload-artifact@v7
       if: always()
@@ -574,6 +596,7 @@ jobs:
           build\tests\ui-screens-*.png
           build\tests\app-journey-*\
           build\tests\ui-navigation-test-output.txt
+          build\tests\startup-windows.log
 
   # ──────────────────────────────────────────────────────────────────────────
   # Live GUI Tests (Windows + Intervals.icu secrets) — consolidated (#352)

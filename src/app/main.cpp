@@ -18,6 +18,14 @@
 #include "xmlutil.h"
 #include "apptheme.h"
 #include "env_config.h"
+#include "config_bootstrap.h"
+#include "environnement.h"
+#include "startup_trace.h"
+
+#include <QElapsedTimer>
+#include <QDir>
+#include <exception>
+#include <memory>
 
 #ifndef Q_OS_WASM
 #include <QQuickWidget>
@@ -32,11 +40,19 @@
 
 int main(int argc, char *argv[]) {
 
-    // Install the Logger as the Qt message handler as early as possible so
-    // that qWarning() / qCritical() calls from Qt internals and third-party
-    // libraries are captured.  Default log level is Info; loadConfig() below
-    // will override it from QSettings once the application identity is set.
+    QElapsedTimer startupTimer;
+    startupTimer.start();
+
+    // Identity and the log file come first, before QApplication and the splash:
+    // the Windows build is a GUI-subsystem exe with no console, so a failure
+    // during startup is only diagnosable if the file sink is already open.
+    QStringList rawArgs;
+    for (int i = 0; i < argc; ++i)
+        rawArgs << QString::fromLocal8Bit(argv[i]);
+    ConfigBootstrap::applyAppIdentity(Environnement::getVersion());
+    Logger::instance().bootstrap(rawArgs);
     Logger::install();
+    StartupTrace::installCrashHandlers();
 
 #if defined(Q_OS_LINUX) && !defined(Q_OS_WASM)
     // Force the xcb platform (via XWayland) under a native Wayland session.
@@ -97,7 +113,12 @@ int main(int argc, char *argv[]) {
     // stay native and keep working.
     QApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
 
-    QApplication app(argc, argv);
+    std::unique_ptr<QApplication> appHolder;
+    {
+        StartupStep step("main: QApplication");
+        appHolder = std::make_unique<QApplication>(argc, argv);
+    }
+    QApplication &app = *appHolder;
 
     // Bundled UI font: one family with a deliberate weight scale on every
     // platform, instead of whatever each OS defaults to. Inter (SIL OFL,
@@ -148,27 +169,55 @@ int main(int argc, char *argv[]) {
     splash.setProgress(10);
 #endif // Q_OS_WASM
 
-    //initialize global object (Account, Settings, SoundPlayer and QNetworkAccessManager)
-    GlobalVars myVars;
-
-    // Now that the application identity has been established by GlobalVars
-    // (org "MaximumTrainer", app "MaximumTrainer_Redux"), load logging preferences from
-    // QSettings so the user's level / file-path choices take effect for the
-    // rest of the session.
-    Logger::instance().loadConfig();
-
-    // --debug (Unix style) and /debug (Windows style) both enable verbose
-    // diagnostic output for this session, overriding any saved QSettings level.
-    {
-        const QStringList args = QCoreApplication::arguments();
-        const bool debugMode = args.contains(QStringLiteral("--debug"), Qt::CaseInsensitive)
-                            || args.contains(QStringLiteral("/debug"),  Qt::CaseInsensitive);
-        if (debugMode) {
-            Logger::instance().setLogLevel(LogLevel::Debug);
-            Logger::instance().setFileLogging(true);
-            LOG_INFO("main", QStringLiteral("Debug mode enabled via command-line switch"));
+    // Configuration bootstrap and the global objects. Any exception escaping
+    // here is reported to the user instead of leaving the splash up forever.
+    std::unique_ptr<GlobalVars> globalVars;
+    const auto loadConfiguration = [&globalVars]() {
+        {
+            StartupStep step("main: configuration bootstrap (migration + defaults)");
+            ConfigBootstrap::run(Logger::instance().defaultLogFilePath());
         }
+        {
+            StartupStep step("main: apply logging preferences");
+            Logger::instance().loadConfig();
+        }
+        {
+            // Account, Settings, SoundPlayer and QNetworkAccessManager
+            StartupStep step("main: GlobalVars");
+            globalVars = std::make_unique<GlobalVars>();
+        }
+    };
+    QString startupFailure;
+#ifdef Q_OS_WASM
+    loadConfiguration();    // WebAssembly builds have exceptions disabled
+#else
+    try {
+        loadConfiguration();
+    } catch (const std::exception &e) {
+        startupFailure = QString::fromLocal8Bit(e.what());
+    } catch (...) {
+        startupFailure = QStringLiteral("unknown exception");
     }
+#endif
+    if (!startupFailure.isEmpty()) {
+        const QString logPath = Logger::instance().isFileLoggingEnabled()
+            ? QDir::toNativeSeparators(Logger::instance().logFilePath())
+            : QObject::tr("(no log file could be written)");
+        LOG_ERROR("Startup", QStringLiteral("Startup failed while loading configuration: %1").arg(startupFailure));
+#ifndef Q_OS_WASM
+        splash.hide();
+#endif
+        if (!QCoreApplication::arguments().contains(QLatin1String("--startup-check"), Qt::CaseInsensitive))
+            QMessageBox::critical(nullptr,
+                QObject::tr("MaximumTrainer could not start"),
+                QObject::tr("MaximumTrainer failed while loading its configuration:\n%1\n\n"
+                            "Details have been written to the log file:\n%2")
+                    .arg(startupFailure, logPath));
+        return 2;
+    }
+
+    if (Logger::hasDebugSwitch(QCoreApplication::arguments()))
+        LOG_INFO("main", QStringLiteral("Debug mode enabled via command-line switch"));
 
     LOG_INFO("main", QStringLiteral("MaximumTrainer starting"));
 
@@ -186,16 +235,19 @@ int main(int argc, char *argv[]) {
     splash.setProgress(30);
 #endif // Q_OS_WASM
 
-    /// App Stylesheet — apply light theme as baseline; re-applied after login
-    /// based on the user's saved theme preference (Light / Dark / System).
-    Z_StyleSheet styleSheetDummy;
-    const QString lightQss = styleSheetDummy.styleSheet();
-    qApp->setProperty("lightStylesheet", lightQss);
-    // Force the light palette for the baseline/login UI too: otherwise, under an
-    // OS dark theme Qt hands the app a dark palette and the light stylesheet
-    // (which only sets a few backgrounds) renders light text on light widgets.
-    app.setPalette(AppTheme::lightPalette());
-    app.setStyleSheet(lightQss);
+    {
+        /// App Stylesheet — apply light theme as baseline; re-applied after login
+        /// based on the user's saved theme preference (Light / Dark / System).
+        StartupStep step("main: stylesheet / theme");
+        Z_StyleSheet styleSheetDummy;
+        const QString lightQss = styleSheetDummy.styleSheet();
+        qApp->setProperty("lightStylesheet", lightQss);
+        // Force the light palette for the baseline/login UI too: otherwise, under an
+        // OS dark theme Qt hands the app a dark palette and the light stylesheet
+        // (which only sets a few backgrounds) renders light text on light widgets.
+        app.setPalette(AppTheme::lightPalette());
+        app.setStyleSheet(lightQss);
+    }
 
     // --screenshots [dir] / /screenshots [dir]: bypass login, capture UI
     // screenshots to [dir] (default: <appdir>/screenshots), then quit.
@@ -495,7 +547,21 @@ int main(int argc, char *argv[]) {
             loginDlg->activateWindow();
         });
     };
-    showLogin();
+    {
+        StartupStep step("main: login dialog shown");
+        showLogin();
+    }
+    LOG_INFO("Startup", QStringLiteral("Startup complete: login dialog shown %1 ms after launch")
+                            .arg(startupTimer.elapsed()));
+
+    // --startup-check: CI smoke test. Quit once the login dialog has been up
+    // for a moment, so every startup step above is exercised for real.
+    if (cliArgs.contains(QLatin1String("--startup-check"), Qt::CaseInsensitive)) {
+        QTimer::singleShot(1000, &app, []() {
+            LOG_INFO("Startup", QStringLiteral("--startup-check: startup succeeded, exiting"));
+            QCoreApplication::exit(0);
+        });
+    }
 
     return app.exec();
 }

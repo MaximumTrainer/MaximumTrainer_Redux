@@ -42,7 +42,10 @@ contains(QMAKE_PLATFORM, wasm) {
     LIBS    += -lcrypto
 }
 
-HEADERS += ../../src/app/credential_store.h
+HEADERS += ../../src/app/credential_store.h \
+           ../../src/app/logger.h
+
+SOURCES += ../../src/app/logger.cpp
 
 SOURCES += tst_credential_store.cpp
 

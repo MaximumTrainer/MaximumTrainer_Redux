@@ -352,6 +352,7 @@ requires no display or hardware:
 | `trainingpeaks_tests.pro` | `tests/trainingpeaks/` | TrainingPeaks upload/refresh headers, URLs, no hardcoded secret |
 | `selfloops_tests.pro` | `tests/selfloops/` | Selfloops upload URL construction, POST method, null-manager guard |
 | `credential_store_tests.pro` | `tests/credential_store/` | Round-trip read/write, overwrite, remove, missing key, multi-service, WASM no-op |
+| `config_bootstrap_tests.pro` | `tests/config_bootstrap/` | First-run defaults, no overwrite on rerun, config_version upgrade, legacy migration before defaults, corrupt store left untouched, credential failures logged without values |
 | `plan_adherence_tests.pro` | `tests/plan_adherence/` | Completed/skipped/substituted entries, adherence %, encode-decode round-trip, change signals |
 | `logger_tests.pro` | `tests/logger/` | Log level filtering, output format (timestamp/level/module/message), file write enable/disable |
 | `studio_tests.pro` | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling formula, settings persistence |
@@ -450,11 +451,12 @@ npx playwright test
 Push to branch
       │
       ├─► test_unit_suites (Linux, no build needed): logger, apptheme,
-      │     intervals_icu (4 suites), strava, credential_store,
+      │     intervals_icu (4 suites), strava, credential_store, config_bootstrap,
       │     plan_adherence, history, live Intervals.icu integration
       ├─► build_linux ──► test_integration_headless   (btle unit/api, workout io/creator/parsing)
       │                ├─► test_gui                    (Xvfb: btle integration, runtime validation,
-      │                │                                offline mode, ui screens, ui navigation)
+      │                │                                offline mode, ui screens, ui navigation,
+      │                │                                startup smoke + log check)
       │                └─► test_gui_live               (Xvfb + secrets: online mode, workout ui,
       │                                                 login screen)
       ├─► build_windows ─► test_headless_suites / test_gui / test_gui_live

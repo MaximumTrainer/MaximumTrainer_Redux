@@ -10,6 +10,10 @@
  * File sink    – messages written to and flushed to a temp file when enabled
  * Qt handler   – qWarning / qCritical routed through Logger
  * Config       – saveConfig / loadConfig round-trip via QSettings
+ * Bootstrap    – file sink + banner before any QApplication (issue #377)
+ *
+ * Runs without a Q(Core)Application (QTEST_APPLESS_MAIN) so the bootstrap
+ * tests see the same environment as the top of main().
  */
 
 #include <QtTest/QtTest>
@@ -20,6 +24,8 @@
 #include <QDir>
 #include <QFile>
 #include <QScopeGuard>
+#include <QStandardPaths>
+#include <QSysInfo>
 
 #include "../../src/app/logger.h"
 
@@ -113,6 +119,17 @@ private slots:
     // ── Config round-trip ─────────────────────────────────────────────────────
     void testConfig_saveAndLoad();
     void testConfig_fileLoggingEnabledByDefault();
+
+    // ── Startup bootstrap (#377) ──────────────────────────────────────────────
+    void testBootstrap_fileSinkBeforeQApplication();
+    void testBootstrap_fallbackToTemp();
+    void testBootstrap_debugSwitchSurvivesLoadConfig();
+    void testLoadConfig_preservesBootstrapLines();
+    void testLoadConfig_unwritablePathKeepsCurrentFile();
+    void testBanner_containsRequiredFields();
+
+private:
+    static QString readAll(const QString &path);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -482,7 +499,209 @@ void TstLogger::testConfig_fileLoggingEnabledByDefault()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Startup bootstrap (#377)
+// ─────────────────────────────────────────────────────────────────────────────
+
+QString TstLogger::readAll(const QString &path)
+{
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+        return QString();
+    return QString::fromUtf8(f.readAll());
+}
+
+// Restores the Logger and the process-wide identity / QSettings defaults that
+// the bootstrap tests change.
+struct BootstrapEnv
+{
+    QTemporaryDir dir;
+    LogLevel savedLevel = Logger::instance().logLevel();
+    bool savedEnabled = Logger::instance().isFileLoggingEnabled();
+    QString savedPath = Logger::instance().logFilePath();
+    QString savedOrg = QCoreApplication::organizationName();
+    QString savedApp = QCoreApplication::applicationName();
+    QString savedVersion = QCoreApplication::applicationVersion();
+    QSettings::Format savedFormat = QSettings::defaultFormat();
+
+    BootstrapEnv()
+    {
+        QStandardPaths::setTestModeEnabled(true);
+        QCoreApplication::setOrganizationName(QStringLiteral("MaximumTrainerTest"));
+        QCoreApplication::setApplicationName(QStringLiteral("LoggerBootstrapTest"));
+        QCoreApplication::setApplicationVersion(QStringLiteral("9.8.7-test"));
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, dir.path());
+    }
+
+    ~BootstrapEnv()
+    {
+        Logger::instance().setFileLogging(savedEnabled, savedPath);
+        Logger::instance().setLogLevel(savedLevel);
+        QCoreApplication::setOrganizationName(savedOrg);
+        QCoreApplication::setApplicationName(savedApp);
+        QCoreApplication::setApplicationVersion(savedVersion);
+        QSettings::setDefaultFormat(savedFormat);
+        QStandardPaths::setTestModeEnabled(false);
+    }
+
+    QString path(const QString &name) const { return dir.filePath(name); }
+};
+
+void TstLogger::testBootstrap_fileSinkBeforeQApplication()
+{
+    QVERIFY2(QCoreApplication::instance() == nullptr,
+             "bootstrap must work before any application object exists");
+    BootstrapEnv env;
+    QVERIFY(env.dir.isValid());
+
+    const QString expected = Logger::defaultLogFilePath();
+    QVERIFY(expected.endsWith(QStringLiteral("/MaximumTrainer.log")));
+    QVERIFY(expected.contains(QStringLiteral("MaximumTrainerTest")));
+    QFile::remove(expected);
+
+    const QString used = Logger::instance().bootstrap({ QStringLiteral("MaximumTrainer") });
+    LOG_INFO("Test", QStringLiteral("bootstrap-line-1"));
+
+    QCOMPARE(used, expected);
+    QVERIFY(QFile::exists(expected));
+    const QString content = readAll(expected);
+    QVERIFY(content.contains(QStringLiteral("bootstrap-line-1")));
+    QVERIFY(content.indexOf(QStringLiteral("starting")) < content.indexOf(QStringLiteral("bootstrap-line-1")));
+    QFile::remove(expected);
+}
+
+void TstLogger::testBootstrap_fallbackToTemp()
+{
+    BootstrapEnv env;
+    // A regular file used as a directory component makes the path unwritable
+    // for every user, including root on CI containers.
+    QFile blocker(env.path(QStringLiteral("not-a-dir")));
+    QVERIFY(blocker.open(QIODevice::WriteOnly));
+    blocker.close();
+    const QString unwritable = env.path(QStringLiteral("not-a-dir/sub/MaximumTrainer.log"));
+
+    QTemporaryDir fallbackDir;
+    QVERIFY(fallbackDir.isValid());
+
+    const QString used = Logger::instance().bootstrap({ QStringLiteral("MaximumTrainer") },
+                                                      unwritable, fallbackDir.path());
+    LOG_INFO("Test", QStringLiteral("after-fallback"));
+
+    QCOMPARE(used, fallbackDir.filePath(QStringLiteral("MaximumTrainer.log")));
+    const QString content = readAll(used);
+    QVERIFY2(content.contains(QStringLiteral("falling back")), qPrintable(content));
+    QVERIFY(content.contains(QDir::toNativeSeparators(unwritable)));
+    QVERIFY(content.contains(QStringLiteral("after-fallback")));
+}
+
+void TstLogger::testBootstrap_debugSwitchSurvivesLoadConfig()
+{
+    BootstrapEnv env;
+    {
+        QSettings s;
+        s.setValue(QStringLiteral("logging/level"), static_cast<int>(LogLevel::Warn));
+    }
+    const QString logPath = env.path(QStringLiteral("debug.log"));
+    Logger::instance().bootstrap({ QStringLiteral("MaximumTrainer"), QStringLiteral("/debug") }, logPath);
+    QCOMPARE(Logger::instance().logLevel(), LogLevel::Debug);
+    LOG_DEBUG("Test", QStringLiteral("debug-before-config"));
+
+    Logger::instance().loadConfig();
+    QCOMPARE(Logger::instance().logLevel(), LogLevel::Debug);
+    LOG_DEBUG("Test", QStringLiteral("debug-after-config"));
+
+    const QString content = readAll(logPath);
+    QVERIFY(content.contains(QStringLiteral("debug-before-config")));
+    QVERIFY(content.contains(QStringLiteral("debug-after-config")));
+    QVERIFY(content.contains(QStringLiteral("(--debug)")));
+}
+
+void TstLogger::testLoadConfig_preservesBootstrapLines()
+{
+    BootstrapEnv env;
+    const QString bootPath = env.path(QStringLiteral("boot.log"));
+    const QString userPath = env.path(QStringLiteral("user/custom.log"));
+
+    // Same path: lines written before loadConfig() stay in the file.
+    {
+        QSettings s;
+        s.setValue(QStringLiteral("logging/file_enabled"), true);
+        s.setValue(QStringLiteral("logging/file_path"), bootPath);
+    }
+    Logger::instance().bootstrap({ QStringLiteral("MaximumTrainer") }, bootPath);
+    LOG_INFO("Test", QStringLiteral("line-before-load"));
+    Logger::instance().loadConfig();
+    LOG_INFO("Test", QStringLiteral("line-after-load"));
+    QString content = readAll(bootPath);
+    QVERIFY(content.contains(QStringLiteral("line-before-load")));
+    QVERIFY(content.contains(QStringLiteral("line-after-load")));
+    QVERIFY(!content.contains(QStringLiteral("Switching log file")));
+
+    // Different path: the bootstrap file names the new path, then later lines
+    // go to the new file; nothing already written is lost.
+    {
+        QSettings s;
+        s.setValue(QStringLiteral("logging/file_path"), userPath);
+    }
+    Logger::instance().loadConfig();
+    LOG_INFO("Test", QStringLiteral("line-in-user-file"));
+
+    content = readAll(bootPath);
+    QVERIFY(content.contains(QStringLiteral("line-before-load")));
+    QVERIFY(content.contains(QStringLiteral("Switching log file to %1")
+                                 .arg(QDir::toNativeSeparators(userPath))));
+    QVERIFY(!content.contains(QStringLiteral("line-in-user-file")));
+    QCOMPARE(Logger::instance().logFilePath(), userPath);
+    QVERIFY(readAll(userPath).contains(QStringLiteral("line-in-user-file")));
+}
+
+void TstLogger::testLoadConfig_unwritablePathKeepsCurrentFile()
+{
+    BootstrapEnv env;
+    QFile blocker(env.path(QStringLiteral("blocker")));
+    QVERIFY(blocker.open(QIODevice::WriteOnly));
+    blocker.close();
+    const QString bad = env.path(QStringLiteral("blocker/x/MaximumTrainer.log"));
+    {
+        QSettings s;
+        s.setValue(QStringLiteral("logging/file_path"), bad);
+    }
+    const QString bootPath = env.path(QStringLiteral("keep.log"));
+    Logger::instance().bootstrap({ QStringLiteral("MaximumTrainer") }, bootPath);
+    Logger::instance().loadConfig();
+    LOG_INFO("Test", QStringLiteral("still-here"));
+
+    QVERIFY(Logger::instance().isFileLoggingEnabled());
+    QCOMPARE(Logger::instance().logFilePath(), bootPath);
+    const QString content = readAll(bootPath);
+    QVERIFY(content.contains(QStringLiteral("still-here")));
+    QVERIFY(content.contains(QStringLiteral("continuing with")));
+}
+
+void TstLogger::testBanner_containsRequiredFields()
+{
+    BootstrapEnv env;
+    const QString logPath = env.path(QStringLiteral("banner.log"));
+    const QStringList args { QStringLiteral("MaximumTrainer"), QStringLiteral("--screenshots"),
+                             QStringLiteral("/tmp/shots") };
+    Logger::instance().bootstrap(args, logPath);
+
+    const QString content = readAll(logPath);
+    QVERIFY2(content.contains(QStringLiteral("9.8.7-test")), "version");
+    QVERIFY2(content.contains(QString::fromLatin1(qVersion())), "Qt runtime version");
+    QVERIFY2(content.contains(QSysInfo::prettyProductName()), "OS name and version");
+    QVERIFY2(content.contains(QSysInfo::currentCpuArchitecture()), "CPU architecture");
+    QVERIFY2(content.contains(QStringLiteral("--screenshots /tmp/shots")), "command line");
+    QVERIFY2(content.contains(QStringLiteral("Log file: %1").arg(QDir::toNativeSeparators(logPath))), "log path");
+    const QSettings settings;
+    QVERIFY2(content.contains(QDir::toNativeSeparators(settings.fileName())), "settings location");
+    // The banner is the first thing in the file.
+    QVERIFY(content.startsWith(QLatin1Char('[')));
+    QVERIFY(content.section(QLatin1Char('\n'), 0, 0).contains(QStringLiteral("starting")));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Test runner
 // ─────────────────────────────────────────────────────────────────────────────
-QTEST_MAIN(TstLogger)
+QTEST_APPLESS_MAIN(TstLogger)
 #include "tst_logger.moc"

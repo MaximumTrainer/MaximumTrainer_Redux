@@ -1272,6 +1272,17 @@
           </table>
         </div>
 
+        <h3>When the app will not start</h3>
+        <p>
+          The log file is opened before the splash screen appears, and every startup step
+          (loading configuration, account, sound, network, theme, login screen) is logged as it
+          begins and ends. If Maximum Trainer hangs or closes while starting, the last line of the
+          log names the step that failed. If the default folder cannot be written, the log is
+          written to the system temp folder instead (<code>%TEMP%\MaximumTrainer.log</code> on
+          Windows). Launch with <code>--debug</code> (or <code>/debug</code> on Windows) for
+          Debug-level detail from the first line.
+        </p>
+
         <div class="callout">
           <strong>Tip:</strong> Set the log level to <strong>Debug</strong> or <strong>Verbose</strong>
           before reproducing an issue, then send the log file when reporting a bug. Reset the level

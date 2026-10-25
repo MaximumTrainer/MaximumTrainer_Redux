@@ -172,6 +172,7 @@ MaximumTrainer has a multi-tier test suite covering BLE parsing, service APIs, U
 | Service unit tests | `tests/strava/`, `tests/intervals_icu/` | HTTP request construction, auth headers, URL patterns, null-manager guards for the Strava and Intervals.icu upload services |
 | ZWO importer tests | `tests/intervals_icu/` | Parsing of SteadyState, Ramp, IntervalsT, FreeRide, mixed, and malformed ZWO workout files |
 | Credential store tests | `tests/credential_store/` | Round-trip read/write, overwrite, remove, missing key, multi-service, WASM no-op |
+| Config bootstrap tests | `tests/config_bootstrap/` | First-run default configuration, legacy settings migration, unreadable settings store, credential load failures logged without values |
 | Plan adherence tests | `tests/plan_adherence/` | Completed/skipped/substituted entries, adherence %, encode-decode, change signals |
 | Logger tests | `tests/logger/` | Log level filtering, output format, file write enable/disable |
 | Studio tests | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling |
@@ -203,7 +204,13 @@ in **Preferences → Logging**.
 | **macOS** | `~/Library/Application Support/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log` |
 | **Linux** | `~/.local/share/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log` (XDG data dir; override with `$XDG_DATA_HOME`) |
 
-Set the log level to **Debug** before reproducing an issue, then attach the log file to your bug report.
+The log file is opened before the splash screen appears, and every startup step is logged as it
+begins and ends, so if the app hangs or crashes while starting, the last line of the log names the
+step that failed. If the default folder cannot be written, the log goes to the system temp folder
+instead (`%TEMP%\MaximumTrainer.log` on Windows) and the log records the fallback.
+
+Set the log level to **Debug** before reproducing an issue (or launch with `--debug`, or `/debug` on
+Windows), then attach the log file to your bug report.
 The **Open log file** button in the Logging settings page opens the file directly in your default text editor.
 
 For full troubleshooting guidance see the

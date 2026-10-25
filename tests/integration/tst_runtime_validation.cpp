@@ -31,6 +31,9 @@
  *   non-zero values within 10 seconds.
  * - The Bluetooth API call does not crash or return an "Unsupported" state;
  *   an empty device list ("Not Found") is acceptable.
+ * - When MT_APP_BINARY names an installed MaximumTrainer executable, launching
+ *   it with --startup-check exits 0 and its log file holds the startup banner
+ *   and a completed "login dialog shown" step (#377).  Skipped otherwise.
  *
  * Build:
  *   qmake runtime_validation_tests.pro && make
@@ -56,6 +59,10 @@
 #include <QSysInfo>
 #include <QDateTime>
 #include <QTimer>
+#include <QProcess>
+#include <QProcessEnvironment>
+#include <QStandardPaths>
+#include <QFile>
 
 #include <QBluetoothLocalDevice>
 #include <QBluetoothHostInfo>
@@ -457,6 +464,62 @@ private slots:
                  << " Cadence="          << window.cadence()
                  << " Speed="            << window.speed()
                  << " Power="            << window.power();
+    }
+    /*
+     * testInstalledAppStartupLog (#377)
+     *
+     * Launches the installed app (path from MT_APP_BINARY) with
+     * --startup-check and checks the log file it writes to
+     * <AppData>/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log.
+     */
+    void testInstalledAppStartupLog()
+    {
+        const QString app = qEnvironmentVariable("MT_APP_BINARY");
+        if (app.isEmpty())
+            QSKIP("MT_APP_BINARY not set; post-install startup log check skipped");
+        QVERIFY2(QFile::exists(app), qPrintable(QStringLiteral("MT_APP_BINARY not found: ") + app));
+
+        // The app's AppDataLocation, resolved with its identity.
+        const QString savedOrg = QCoreApplication::organizationName();
+        const QString savedApp = QCoreApplication::applicationName();
+        QCoreApplication::setOrganizationName(QStringLiteral("MaximumTrainer"));
+        QCoreApplication::setApplicationName(QStringLiteral("MaximumTrainer_Redux"));
+        const QString logPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                                + QStringLiteral("/MaximumTrainer.log");
+        QCoreApplication::setOrganizationName(savedOrg);
+        QCoreApplication::setApplicationName(savedApp);
+
+        qint64 startOffset = 0;
+        {
+            QFile existing(logPath);
+            if (existing.exists())
+                startOffset = existing.size();
+        }
+
+        QProcess proc;
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        env.insert(QStringLiteral("MT_NO_NETWORK"), QStringLiteral("1"));
+        proc.setProcessEnvironment(env);
+        proc.start(app, { QStringLiteral("--startup-check") });
+        QVERIFY2(proc.waitForStarted(10000), "installed app did not start");
+        const bool finished = proc.waitForFinished(60000);
+        if (!finished)
+            proc.kill();
+
+        QFile logFile(logPath);
+        QVERIFY2(logFile.open(QIODevice::ReadOnly | QIODevice::Text),
+                 qPrintable(QStringLiteral("no log file at ") + logPath));
+        logFile.seek(startOffset);
+        const QString runLog = QString::fromUtf8(logFile.readAll());
+        qDebug().noquote() << "[StartupLog]" << logPath << "\n" << runLog;
+
+        QVERIFY2(finished, "installed app did not exit within 60 s");
+        QCOMPARE(proc.exitStatus(), QProcess::NormalExit);
+        QCOMPARE(proc.exitCode(), 0);
+        QVERIFY2(runLog.section(QLatin1Char('\n'), 0, 0).contains(QStringLiteral("starting ====")),
+                 "the startup banner must be the first line of the run");
+        QVERIFY(runLog.contains(QStringLiteral("Settings: ")));
+        QVERIFY(runLog.contains(QStringLiteral("main: login dialog shown … done")));
     }
 };
 

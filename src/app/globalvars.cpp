@@ -10,9 +10,10 @@
 #include "trackpoint.h"
 #include "userstudio.h"
 #include "networkmonitor.h"
+#include "config_bootstrap.h"
+#include "logger.h"
+#include "startup_trace.h"
 
-#include <QDir>
-#include <QSettings>
 #include <QWebEngineSettings>
 #include <QWebEngineProfile>
 
@@ -21,67 +22,67 @@ GlobalVars::GlobalVars(QObject *parent) :
     QObject(parent)
 {
 
-    qInfo() << "SSL version"
 #ifndef GC_WASM_BUILD
-             << QSslSocket::sslLibraryBuildVersionString()
+    LOG_INFO("Startup", QStringLiteral("SSL library: %1").arg(QSslSocket::sslLibraryBuildVersionString()));
 #endif
-    ;
 
-    QCoreApplication::setOrganizationName("MaximumTrainer");
-    QCoreApplication::setOrganizationDomain("maximumtrainer.com");
-    QCoreApplication::setApplicationName("MaximumTrainer_Redux");
-    QCoreApplication::setApplicationVersion(Environnement::getVersion());
-
-    // One-time migration: copy QSettings from the old scope (org "Max++ inc.",
-    // app "MaximumTrainer") into the new scope so existing user preferences,
-    // logging config, account credentials, etc. are preserved across the rebrand.
-    {
-        QSettings oldSettings(QStringLiteral("Max++ inc."), QStringLiteral("MaximumTrainer"));
-        QSettings newSettings; // uses the newly registered org / app name
-        if (!newSettings.contains(QStringLiteral("migrated_from_max_inc"))) {
-            const QStringList keys = oldSettings.allKeys();
-            for (const QString &key : keys)
-                newSettings.setValue(key, oldSettings.value(key));
-            newSettings.setValue(QStringLiteral("migrated_from_max_inc"), true);
-        }
-    }
-
+    ConfigBootstrap::applyAppIdentity(Environnement::getVersion());
 
 #ifndef Q_OS_WASM
-    QWebEngineProfile::defaultProfile()->settings()->setAttribute(QWebEngineSettings::PluginsEnabled, true);
+    {
+        StartupStep step("GlobalVars: QWebEngineProfile init");
+        QWebEngineProfile::defaultProfile()->settings()->setAttribute(QWebEngineSettings::PluginsEnabled, true);
+    }
 #endif // !Q_OS_WASM
 
-
-    // Used in Signal/Slots connection
-    qRegisterMetaType<Sensor>("Sensor");
-    qRegisterMetaType<QList<Sensor> >( "QList<Sensor>" );
-    qRegisterMetaType<QList<int> >( "QList<int>" );
-    qRegisterMetaType<QVector<UserStudio> >( "QVector<UserStudio>" );
-    qRegisterMetaType<QList<Trackpoint> >( "QList<Trackpoint>" );
-
+    {
+        // Used in Signal/Slots connection
+        StartupStep step("GlobalVars: metatype registration");
+        qRegisterMetaType<Sensor>("Sensor");
+        qRegisterMetaType<QList<Sensor> >( "QList<Sensor>" );
+        qRegisterMetaType<QList<int> >( "QList<int>" );
+        qRegisterMetaType<QVector<UserStudio> >( "QVector<UserStudio>" );
+        qRegisterMetaType<QList<Trackpoint> >( "QList<Trackpoint>" );
+    }
 
     ///-------- INIT GLOBAL VAR ---------------------------
-    Account *account = new Account(this);
-    Settings *settings = new Settings(this);
-    SoundPlayer *soundPlayer = new SoundPlayer(this);
+    Account *account = nullptr;
+    {
+        StartupStep step("GlobalVars: Account");
+        account = new Account(this);
+    }
+    Settings *settings = nullptr;
+    {
+        StartupStep step("GlobalVars: Settings");
+        settings = new Settings(this);
+    }
+    SoundPlayer *soundPlayer = nullptr;
+    {
+        StartupStep step("GlobalVars: SoundPlayer");
+        soundPlayer = new SoundPlayer(this);
+    }
 
-    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
-    QNetworkAccessManager *managerWS = new QNetworkAccessManager(this);
-
+    QNetworkAccessManager *manager = nullptr;
+    QNetworkAccessManager *managerWS = nullptr;
+    {
+        StartupStep step("GlobalVars: network managers / SSL config");
+        manager = new QNetworkAccessManager(this);
+        managerWS = new QNetworkAccessManager(this);
 
 #ifndef GC_WASM_BUILD
-    QSslConfiguration sslCfg = QSslConfiguration::defaultConfiguration();
-    QList<QSslCertificate> ca_list = sslCfg.caCertificates();
-    QList<QSslCertificate> ca_new = QSslCertificate::fromData("CaCertificates");
-    ca_list += ca_new;
-    sslCfg.setCaCertificates(ca_list);
-    sslCfg.setProtocol(QSsl::AnyProtocol);
-    QSslConfiguration::setDefaultConfiguration(sslCfg);
+        QSslConfiguration sslCfg = QSslConfiguration::defaultConfiguration();
+        QList<QSslCertificate> ca_list = sslCfg.caCertificates();
+        QList<QSslCertificate> ca_new = QSslCertificate::fromData("CaCertificates");
+        ca_list += ca_new;
+        sslCfg.setCaCertificates(ca_list);
+        sslCfg.setProtocol(QSsl::AnyProtocol);
+        QSslConfiguration::setDefaultConfiguration(sslCfg);
 
 
-    connect(manager, &QNetworkAccessManager::sslErrors, this, &GlobalVars::sslErrorHandler);
-    connect(managerWS, &QNetworkAccessManager::sslErrors, this, &GlobalVars::sslErrorHandler);
+        connect(manager, &QNetworkAccessManager::sslErrors, this, &GlobalVars::sslErrorHandler);
+        connect(managerWS, &QNetworkAccessManager::sslErrors, this, &GlobalVars::sslErrorHandler);
 #endif
+    }
 
 
     qApp->setProperty("Account", QVariant::fromValue<Account*>(account));
@@ -92,6 +93,7 @@ GlobalVars::GlobalVars(QObject *parent) :
 
     // Initialise the network connectivity monitor now that the network managers
     // are registered.  The first probe fires after a 3-second startup delay.
+    StartupStep step("GlobalVars: NetworkMonitor");
     NetworkMonitor::instance();
 }
 

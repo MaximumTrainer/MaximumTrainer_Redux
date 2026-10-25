@@ -12,6 +12,7 @@
 //   authentication — a tampered ciphertext returns an empty QString.
 
 #include "credential_store.h"
+#include "logger.h"
 
 #include <QSettings>
 #include <QStandardPaths>
@@ -203,10 +204,17 @@ QString CredentialStore::load(const QString &service, const QString &key)
         return {};
 
     const QByteArray aesKey = loadOrCreateKey();
-    if (aesKey.isEmpty())
+    if (aesKey.isEmpty()) {
+        LOG_WARN("CredentialStore", QStringLiteral("Encryption key unavailable — credential %1/%2 treated as empty")
+                                        .arg(service, key));
         return {};
+    }
 
-    return decryptGCM(b64, aesKey);
+    const QString value = decryptGCM(b64, aesKey);
+    if (value.isEmpty())
+        LOG_WARN("CredentialStore", QStringLiteral("Could not decrypt credential %1/%2 (corrupt or written with another key) — treating it as empty")
+                                        .arg(service, key));
+    return value;
 }
 
 void CredentialStore::remove(const QString &service, const QString &key)

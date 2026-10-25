@@ -265,8 +265,29 @@ jobs:
       shell: powershell
 
     - name: Run runtime validation test (post-install smoke test)
-      run: .\build\tests\runtime_validation_tests.exe -v2
+      # MT_APP_BINARY also launches the installed app with --startup-check and
+      # checks the log it writes (#377).
+      env:
+        MT_NO_NETWORK: "1"
+      run: |
+        $env:MT_APP_BINARY = "$env:ProgramFiles\MaximumTrainer\MaximumTrainer.exe"
+        .\build\tests\runtime_validation_tests.exe -v2
+        exit $LASTEXITCODE
       shell: powershell
+
+    - name: Collect installed app startup log
+      if: always()
+      shell: powershell
+      run: |
+        $log = Join-Path $env:APPDATA 'MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log'
+        if (Test-Path $log) { Copy-Item $log build\tests\startup-installed-windows.log }
+
+    - name: Upload installed app startup log
+      uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: install-verification-startup-log-windows
+        path: build\tests\startup-installed-windows.log
 
     - name: Upload install verification screenshot
       uses: actions/upload-artifact@v7

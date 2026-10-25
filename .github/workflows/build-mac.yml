@@ -410,6 +410,11 @@ jobs:
       contents: read
 
     steps:
+    - name: Checkout scripts
+      uses: actions/checkout@v7
+      with:
+        sparse-checkout: scripts
+
     - name: Install Qt (full app modules)
       uses: jurplel/install-qt-action@v4
       with:
@@ -452,12 +457,23 @@ jobs:
         MT_NO_NETWORK: "1"
       run: ./build/tests/ui_navigation_tests -v2
 
+    - name: Startup smoke test - first run, clean profile (#377)
+      run: scripts/startup-smoke.sh build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer first
+
+    - name: Startup smoke test - second run (#377)
+      run: scripts/startup-smoke.sh build/release/MaximumTrainer.app/Contents/MacOS/MaximumTrainer second
+
+    - name: Collect startup log
+      if: always()
+      run: cp "$HOME/Library/Application Support/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log" build/tests/startup-macos.log || true
+
     - name: Upload GUI test evidence
       uses: actions/upload-artifact@v7
       if: always()
       with:
         name: gui-test-artifacts-macos
         path: |
+          build/tests/startup-macos.log
           build/tests/screenshot-macos-*.png
           build/tests/offline-mode-macos-*.png
           build/tests/activity-macos-*.tsv

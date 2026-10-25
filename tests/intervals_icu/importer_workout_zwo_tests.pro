@@ -46,6 +46,7 @@ SOURCES += \
     ../../src/model/workout.cpp \
     ../../src/model/interval.cpp \
     ../../src/model/account.cpp \
+    ../../src/app/logger.cpp \
     ../../src/model/repeatdata.cpp \
     credential_store_stub.cpp \
     tst_importer_workout_zwo.cpp

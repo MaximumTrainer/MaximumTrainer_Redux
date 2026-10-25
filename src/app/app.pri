@@ -3,6 +3,8 @@ DEPENDPATH += $$PWD
 
 SOURCES += $$PWD/main.cpp\
     $$PWD/logger.cpp \
+    $$PWD/config_bootstrap.cpp \
+    $$PWD/startup_trace.cpp \
     $$PWD/util.cpp \
     $$PWD/globalvars.cpp \
     $$PWD/simplecrypt.cpp \
@@ -37,6 +39,9 @@ HEADERS += $$PWD/qtmediaplayer.h
 
 HEADERS += $$PWD/util.h \
     $$PWD/logger.h \
+    $$PWD/config_bootstrap.h \
+    $$PWD/config_defaults.h \
+    $$PWD/startup_trace.h \
     $$PWD/soundplayer.h \
     $$PWD/globalvars.h \
     $$PWD/simplecrypt.h \

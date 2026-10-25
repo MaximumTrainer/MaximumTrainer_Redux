@@ -4,6 +4,7 @@
 // AES key or OpenSSL headers are required.
 
 #include "credential_store.h"
+#include "logger.h"
 
 #include <QSettings>
 #include <QString>
@@ -49,15 +50,24 @@ QString CredentialStore::load(const QString &service, const QString &key)
     if (b64.isEmpty())
         return {};
 
-    QByteArray encrypted = QByteArray::fromBase64(b64.toLatin1());
+    const auto decoded = QByteArray::fromBase64Encoding(b64.toLatin1());
+    if (!decoded || decoded.decoded.isEmpty()) {
+        LOG_WARN("CredentialStore", QStringLiteral("Stored credential %1/%2 is not valid base64 — treating it as empty")
+                                        .arg(service, key));
+        return {};
+    }
+    QByteArray encrypted = decoded.decoded;
 
     DATA_BLOB in{};
     in.pbData = reinterpret_cast<BYTE *>(encrypted.data());
     in.cbData = static_cast<DWORD>(encrypted.size());
 
     DATA_BLOB out{};
-    if (!CryptUnprotectData(&in, nullptr, nullptr, nullptr, nullptr, 0, &out))
+    if (!CryptUnprotectData(&in, nullptr, nullptr, nullptr, nullptr, 0, &out)) {
+        LOG_WARN("CredentialStore", QStringLiteral("DPAPI could not decrypt credential %1/%2 (error %3) — treating it as empty")
+                                        .arg(service, key).arg(GetLastError()));
         return {};
+    }
 
     QString result = QString::fromUtf8(reinterpret_cast<const char *>(out.pbData),
                                        static_cast<int>(out.cbData));

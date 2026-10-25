@@ -59,6 +59,7 @@ SOURCES += \
     ../../src/model/workout.cpp \
     ../../src/model/interval.cpp \
     ../../src/model/account.cpp \
+    ../../src/app/logger.cpp \
     ../../src/model/repeatdata.cpp \
     ../intervals_icu/credential_store_stub.cpp \
     tst_workout_parsing.cpp

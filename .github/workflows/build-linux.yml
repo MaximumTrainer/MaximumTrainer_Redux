@@ -195,6 +195,7 @@ jobs:
   #
   # Suites: logger, apptheme, intervals_icu (service / ZWO importer / DAO
   # bearer / OAuth exchange), strava + third-party services, credential_store,
+  # config_bootstrap,
   # plan_adherence, history, and the live Intervals.icu integration suite
   # (uses secrets; QSKIPs gracefully without them).
   # ──────────────────────────────────────────────────────────────────────────
@@ -291,6 +292,14 @@ jobs:
         make -j$(nproc)
         cd ../..
         ./build/tests/credential_store_tests -v2
+
+    - name: Config bootstrap tests
+      run: |
+        cd tests/config_bootstrap
+        qmake config_bootstrap_tests.pro
+        make -j$(nproc)
+        cd ../..
+        ./build/tests/config_bootstrap_tests -v2
 
     - name: PlanAdherence tests
       run: |
@@ -420,6 +429,11 @@ jobs:
       contents: read
 
     steps:
+    - name: Checkout scripts
+      uses: actions/checkout@v7
+      with:
+        sparse-checkout: scripts
+
     - name: Install Qt (full app modules)
       uses: jurplel/install-qt-action@v4
       with:
@@ -490,12 +504,23 @@ jobs:
         MT_NO_NETWORK: "1"
       run: ./build/tests/ui_navigation_tests -v2
 
+    - name: Startup smoke test - first run, clean profile (#377)
+      run: scripts/startup-smoke.sh build/release/MaximumTrainer first
+
+    - name: Startup smoke test - second run (#377)
+      run: scripts/startup-smoke.sh build/release/MaximumTrainer second
+
+    - name: Collect startup log
+      if: always()
+      run: cp "$HOME/.local/share/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log" build/tests/startup-linux.log || true
+
     - name: Upload GUI test evidence
       uses: actions/upload-artifact@v7
       if: always()
       with:
         name: gui-test-artifacts-linux
         path: |
+          build/tests/startup-linux.log
           build/tests/btle_integration_screenshot.png
           build/tests/screenshot-linux-*.png
           build/tests/offline-mode-linux-*.png

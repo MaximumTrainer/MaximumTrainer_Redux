@@ -3,6 +3,7 @@
 // storage — no AES key management is required in application code.
 
 #include "credential_store.h"
+#include "logger.h"
 
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
@@ -46,8 +47,12 @@ QString CredentialStore::load(const QString &service, const QString &key)
 
     CFTypeRef result = nullptr;
     OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
-    if (status != errSecSuccess || !result)
+    if (status != errSecSuccess || !result) {
+        if (status != errSecItemNotFound)
+            LOG_WARN("CredentialStore", QStringLiteral("Keychain read of credential %1/%2 failed (OSStatus %3) — treating it as empty")
+                                            .arg(service, key).arg(static_cast<int>(status)));
         return {};
+    }
 
     // Built without ARC: release the copied keychain item and the string
     // explicitly (a __bridge_transfer cast does nothing here and leaked both).

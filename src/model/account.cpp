@@ -1,5 +1,7 @@
 #include "account.h"
 #include "credential_store.h"
+#include "config_defaults.h"
+#include "startup_trace.h"
 
 
 Account::~Account() {
@@ -21,9 +23,9 @@ Account::Account(QObject *parent) : QObject(parent)  {
     last_name = "last_name";
     display_name = "display_name";
 
-    FTP = 150;
-    LTHR = 150;
-    weight_kg = 70;
+    FTP = ConfigDefaults::FTP;
+    LTHR = ConfigDefaults::LTHR;
+    weight_kg = ConfigDefaults::WeightKg;
     weight_in_kg = true;
 
     bike_weight_kg = 9;
@@ -34,9 +36,9 @@ Account::Account(QObject *parent) : QObject(parent)  {
     //-- no more DB settings, move them here later
     QSettings settings;
     settings.beginGroup("account");
-    nb_sec_show_interval = settings.value("nb_sec_show_interval", 5 ).toInt();
-    nb_sec_show_interval_before = settings.value("nb_sec_show_interval_before", 4 ).toInt();
-    erg_smoothing_duration_s = settings.value("erg_smoothing_duration_s", 5).toInt();
+    nb_sec_show_interval = settings.value("nb_sec_show_interval", ConfigDefaults::NbSecShowInterval).toInt();
+    nb_sec_show_interval_before = settings.value("nb_sec_show_interval_before", ConfigDefaults::NbSecShowIntervalBefore).toInt();
+    erg_smoothing_duration_s = settings.value("erg_smoothing_duration_s", ConfigDefaults::ErgSmoothingDurationS).toInt();
     // Athlete profile — edited in Preferences and persisted locally so FTP /
     // LTHR / weight survive a restart (and offline use), overriding the
     // hardcoded defaults above. A live server value may still override at runtime.
@@ -50,7 +52,10 @@ Account::Account(QObject *parent) : QObject(parent)  {
     // Migration: if the CredentialStore is empty but an old plain-QSettings value
     // exists (written by a previous version), copy it to CredentialStore and
     // remove the plain-text entry so the token is protected going forward.
-    intervals_icu_access_token  = CredentialStore::load("intervals_icu", "access_token");
+    {
+        StartupStep step("Account: CredentialStore load (intervals_icu)");
+        intervals_icu_access_token  = CredentialStore::load("intervals_icu", "access_token");
+    }
     if (intervals_icu_access_token.isEmpty()) {
         const QString legacy = settings.value("intervals_icu_access_token", "").toString();
         if (!legacy.isEmpty()) {
@@ -60,14 +65,17 @@ Account::Account(QObject *parent) : QObject(parent)  {
         }
     }
     // Sensor dropout auto-pause
-    sensor_dropout_enabled   = settings.value("sensor_dropout_enabled",   true).toBool();
-    sensor_dropout_timeout_s = qBound(2, settings.value("sensor_dropout_timeout_s", 5).toInt(), 30);
-    battery_warning_threshold = qBound(5, settings.value("battery_warning_threshold", 20).toInt(), 50);
+    sensor_dropout_enabled   = settings.value("sensor_dropout_enabled",   ConfigDefaults::SensorDropoutEnabled).toBool();
+    sensor_dropout_timeout_s = qBound(2, settings.value("sensor_dropout_timeout_s", ConfigDefaults::SensorDropoutTimeoutS).toInt(), 30);
+    battery_warning_threshold = qBound(5, settings.value("battery_warning_threshold", ConfigDefaults::BatteryWarningThreshold).toInt(), 50);
     settings.endGroup();
 
     // Load encrypted third-party service credentials from the platform credential store.
-    strava_access_token         = CredentialStore::load("strava",        "access_token");
-    strava_refresh_token        = CredentialStore::load("strava",        "refresh_token");
+    {
+        StartupStep step("Account: CredentialStore load (strava)");
+        strava_access_token         = CredentialStore::load("strava",        "access_token");
+        strava_refresh_token        = CredentialStore::load("strava",        "refresh_token");
+    }
 
 
     // -----------------------------------  Settings ----------------------------------------------------------------------

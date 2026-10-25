@@ -55,6 +55,7 @@ INCLUDEPATH += \
 
 SOURCES += \
     ../../src/model/account.cpp \
+    ../../src/app/logger.cpp \
     ../../src/model/workout.cpp \
     ../../src/model/interval.cpp \
     ../../src/model/repeatdata.cpp \

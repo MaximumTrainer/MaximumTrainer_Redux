@@ -22,10 +22,12 @@
  *   logging/file_path    (string, default <AppData>/MaximumTrainer.log)
  *
  * Quick-start:
- *   // In main() – before QApplication.exec():
+ *   // At the very top of main(), right after the app identity is set and
+ *   // before QApplication / the splash screen:
+ *   Logger::instance().bootstrap(args);   // file sink + startup banner
  *   Logger::install();          // route qWarning / qCritical through Logger
- *   // … after QCoreApplication org/app-name are set …
- *   Logger::instance().loadConfig();
+ *   // … later, once the configuration has been bootstrapped …
+ *   Logger::instance().loadConfig();      // apply saved user preferences
  *
  *   // Anywhere in the codebase:
  *   LOG_INFO ("BtleHub",       "Device connected");
@@ -74,6 +76,35 @@ public:
     bool isFileLoggingEnabled() const;
     QString logFilePath() const;
 
+    /// <AppDataLocation>/MaximumTrainer.log for the current app identity.
+    static QString defaultLogFilePath();
+
+    /// True when @p args contain the --debug / /debug switch.
+    static bool hasDebugSwitch(const QStringList& args);
+
+    // ── Startup bootstrap ─────────────────────────────────────────────────────
+
+    /// Turn on the file sink before QApplication exists and write the startup
+    /// banner.  Requires only the application identity to be set.
+    /// @p preferredPath  log file to use; defaults to defaultLogFilePath().
+    /// @p fallbackDir    directory used when @p preferredPath cannot be
+    ///                   written; defaults to QStandardPaths::TempLocation.
+    /// A --debug / /debug switch in @p args applies Debug level immediately
+    /// and keeps it through loadConfig().  Never fails: without any writable
+    /// location the stdout sink keeps working.
+    /// @return the log file path in use (empty when no file could be opened).
+    QString bootstrap(const QStringList& args,
+                      const QString& preferredPath = QString(),
+                      const QString& fallbackDir = QString());
+
+    /// Write the startup banner (version, Qt, OS, arch, args, log path,
+    /// settings location) at Info level.
+    void writeBanner(const QStringList& args);
+
+    /// Best-effort write of one Error line for crash / terminate handlers.
+    /// Never blocks on the logger mutex.
+    void emergencyLog(const QString& message);
+
     // ── Core logging API ──────────────────────────────────────────────────────
 
     /// Emit one formatted log entry if @p level >= current log level.
@@ -83,6 +114,9 @@ public:
 
     /// Load settings from the "logging" QSettings group.
     /// Must be called after QCoreApplication org / app names have been set.
+    /// Lines already written are kept: when the saved file_path differs from
+    /// the current file, a "switching to <path>" line is written to the
+    /// current file first, and a path that cannot be opened is ignored.
     void loadConfig();
 
     /// Save current settings to the "logging" QSettings group.
@@ -112,6 +146,10 @@ private:
     // Open (or re-open) m_logFile at m_filePath.  Returns true on success.
     bool openLogFile();
 
+    // Close the current file and open @p path instead.  Caller must NOT hold
+    // m_mutex.  Returns false (and leaves file logging off) on failure.
+    bool openFileAt(const QString& path);
+
     // Format a single log entry:  "[timestamp] [LEVEL] [module] message"
     static QString formatEntry(LogLevel level,
                                 const QString& module,
@@ -125,6 +163,7 @@ private:
     // The mutex protects all state below (file handles, flags, path).
     mutable QMutex m_mutex;
     bool        m_fileEnabled { false };
+    bool        m_debugSwitch { false };
     QString     m_filePath;
     QFile       m_logFile;
 };
