@@ -110,6 +110,13 @@ Outcome run(QSettings &settings, QSettings *legacy, const QString &logFilePath)
 {
     Outcome outcome;
 
+    // Without this, macOS allKeys() also returns the global preferences domain
+    // (AppleLocale etc.), so a fresh install never looks empty and the legacy
+    // migration would copy those system keys.
+    settings.setFallbacksEnabled(false);
+    if (legacy)
+        legacy->setFallbacksEnabled(false);
+
     // allKeys() forces the store to be read so status() reflects it.
     const bool hadUserKeys = hasUserKeys(settings);
     if (settings.status() != QSettings::NoError) {
