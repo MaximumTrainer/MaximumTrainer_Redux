@@ -134,20 +134,22 @@ export default {
       try {
         // Accept both JSON and application/x-www-form-urlencoded input.
         const contentType = (request.headers.get('content-type') || '').toLowerCase();
-        let code, redirectUri, grantType, clientId;
+        let code, redirectUri, grantType, clientId, codeVerifier;
 
         if (contentType.includes('application/json')) {
           const json = await request.json();
-          code        = json.code;
-          redirectUri = json.redirect_uri;
-          grantType   = json.grant_type;
-          clientId    = json.client_id;
+          code         = json.code;
+          redirectUri  = json.redirect_uri;
+          grantType    = json.grant_type;
+          clientId     = json.client_id;
+          codeVerifier = json.code_verifier;
         } else {
           const form = new URLSearchParams(await request.text());
-          code        = form.get('code');
-          redirectUri = form.get('redirect_uri');
-          grantType   = form.get('grant_type');
-          clientId    = form.get('client_id');
+          code         = form.get('code');
+          redirectUri  = form.get('redirect_uri');
+          grantType    = form.get('grant_type');
+          clientId     = form.get('client_id');
+          codeVerifier = form.get('code_verifier');
         }
 
         // Intervals.icu only implements the authorization-code exchange —
@@ -188,8 +190,15 @@ export default {
         params.set('client_id',     resolvedClientId);
         params.set('client_secret', clientSecret);
 
-        if (code)        params.set('code',         code);
-        if (redirectUri) params.set('redirect_uri', redirectUri);
+        if (code)         params.set('code',          code);
+        if (redirectUri)  params.set('redirect_uri',  redirectUri);
+        // Forward PKCE verifier when the caller sent one. VirtualRow (a public
+        // SPA) opts into PKCE S256 at the authorize step, which means
+        // intervals.icu requires `code_verifier` at the token exchange or it
+        // rejects with "Code not found (expired?) or code_verifier does not
+        // match". The verifier is not a secret — it's the whole point of PKCE
+        // that only the browser holds it — so forwarding it as-is is correct.
+        if (codeVerifier) params.set('code_verifier', codeVerifier);
 
         const upstream = await fetch(ICU_TOKEN_URL, {
           method:  'POST',
