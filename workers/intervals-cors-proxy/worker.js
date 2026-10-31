@@ -59,6 +59,14 @@
 // Vite serves the same dev server on both localhost and 127.0.0.1, and they
 // are distinct origins, so both spellings of a dev port must be listed.
 const ALLOWED_ORIGINS = [
+  // Current GitHub Pages origin after the 2026-10-29 virtualrow repo
+  // transfer to the `maximum-trainer` org (the hyphen is part of the org
+  // slug, so this is a different origin from `maximumtrainer.github.io`).
+  'https://maximum-trainer.github.io',
+  // Pre-transfer origin, kept so links shared before the transfer still
+  // complete the OAuth flow (GitHub Pages continues to serve the old URL
+  // via 301, but the authenticated profile fetch runs from whichever
+  // origin the SPA was loaded on).
   'https://maximumtrainer.github.io',
   'http://localhost:8080',
   'http://localhost:5173',
