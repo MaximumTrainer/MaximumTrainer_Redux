@@ -162,13 +162,22 @@ jobs:
         # Qt's libqwasm.a fails (Emscripten gives no cross-version ABI guarantee).
         version: '4.0.7'
 
-    - name: Use the main Ubuntu archive instead of the Azure mirror
-      # The runners' Azure apt mirror intermittently fails DNS resolution and
-      # apt's mirror+file method does not fall through to the next entry.
+    - name: Point apt at a reachable Ubuntu mirror
+      # On 2026-11-11 the runners could not resolve any *.ubuntu.com host, and
+      # apt's mirror+file method hangs ~30 min on DNS errors instead of falling
+      # through. Use the first mirror that resolves; cap timeouts so a dead
+      # mirror fails fast.
       run: |
-        sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null || true
-        sudo grep -rl 'azure\.archive\.ubuntu\.com' /etc/apt | xargs -r sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g' || true
-        cat /etc/apt/apt-mirrors.txt 2>/dev/null || true
+        for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
+          if getent hosts "$host" >/dev/null; then
+            echo "Using http://$host/ubuntu/"
+            echo "http://$host/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
+            sudo grep -rl 'azure\.archive\.ubuntu\.com\|//archive\.ubuntu\.com\|//security\.ubuntu\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
+              | xargs -r sudo sed -i -E "s#https?://(azure\.archive|archive|security)\.ubuntu\.com/ubuntu/?#http://$host/ubuntu/#g" || true
+            break
+          fi
+        done
+        printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99-ci-timeouts
 
     - name: Install Qt (Wasm singlethread)
       uses: jurplel/install-qt-action@v4
@@ -330,13 +339,22 @@ jobs:
       with:
         node-version: '24'
 
-    - name: Use the main Ubuntu archive instead of the Azure mirror
-      # The runners' Azure apt mirror intermittently fails DNS resolution and
-      # apt's mirror+file method does not fall through to the next entry.
+    - name: Point apt at a reachable Ubuntu mirror
+      # On 2026-11-11 the runners could not resolve any *.ubuntu.com host, and
+      # apt's mirror+file method hangs ~30 min on DNS errors instead of falling
+      # through. Use the first mirror that resolves; cap timeouts so a dead
+      # mirror fails fast.
       run: |
-        sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null || true
-        sudo grep -rl 'azure\.archive\.ubuntu\.com' /etc/apt | xargs -r sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g' || true
-        cat /etc/apt/apt-mirrors.txt 2>/dev/null || true
+        for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
+          if getent hosts "$host" >/dev/null; then
+            echo "Using http://$host/ubuntu/"
+            echo "http://$host/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
+            sudo grep -rl 'azure\.archive\.ubuntu\.com\|//archive\.ubuntu\.com\|//security\.ubuntu\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
+              | xargs -r sudo sed -i -E "s#https?://(azure\.archive|archive|security)\.ubuntu\.com/ubuntu/?#http://$host/ubuntu/#g" || true
+            break
+          fi
+        done
+        printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99-ci-timeouts
 
     - name: Install Playwright and browsers
       run: |
