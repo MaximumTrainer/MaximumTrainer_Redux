@@ -37,7 +37,7 @@
 ###############################################################################
 
 QT       += core gui widgets network sql testlib
-CONFIG   += qt c++17
+CONFIG   += qt c++20
 CONFIG   -= app_bundle
 
 TARGET   = ui_navigation_tests

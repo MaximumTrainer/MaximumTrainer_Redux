@@ -13,7 +13,7 @@
 QT       += core testlib
 QT       -= gui
 
-CONFIG   += qt c++17 console
+CONFIG   += qt c++20 console
 CONFIG   -= app_bundle
 
 TARGET   = logger_tests

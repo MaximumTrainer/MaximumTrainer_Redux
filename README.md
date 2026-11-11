@@ -1,6 +1,6 @@
 # MaximumTrainer
 
-An open-source, high-performance indoor cycling training application built with the **Qt framework (C++17)**. MaximumTrainer delivers structured interval workouts with real-time power, cadence, heart rate, and speed feedback, and controls smart trainers automatically via FTMS ERG mode. Browse and sync workouts from [intervals.icu](https://www.intervals.icu), or import your own `.erg` / `.mrc` / `.zwo` files.
+An open-source, high-performance indoor cycling training application built with the **Qt framework (C++20)**. MaximumTrainer delivers structured interval workouts with real-time power, cadence, heart rate, and speed feedback, and controls smart trainers automatically via FTMS ERG mode. Browse and sync workouts from [intervals.icu](https://www.intervals.icu), or import your own `.erg` / `.mrc` / `.zwo` files.
 
 > 📖 **Want to use the app?** See the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)** — pairing sensors, finding & building workouts, training, Studio mode, and more.
 
@@ -21,7 +21,7 @@ Prefer to compile it yourself? See [Building](#building) below.
 
 | Item | Details |
 |------|---------|
-| **Language** | C++17 (≈ 95 % C++) |
+| **Language** | C++20 (≈ 95 % C++) |
 | **Framework** | Qt 6 (6.11+) on all platforms |
 | **Build file** | `MaximumTrainer.pro` (qmake) |
 | **Qt modules** | core · gui · widgets · network · bluetooth · webenginewidgets · printsupport · concurrent |

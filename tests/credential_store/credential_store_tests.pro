@@ -16,7 +16,7 @@
 QT       += core network testlib
 QT       -= gui
 
-CONFIG   += qt c++17 console
+CONFIG   += qt c++20 console
 CONFIG   -= app_bundle
 
 TARGET   = credential_store_tests

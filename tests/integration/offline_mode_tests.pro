@@ -31,7 +31,7 @@
 
 QT       += core gui widgets testlib
 QT       -= network
-CONFIG   += qt c++17
+CONFIG   += qt c++20
 CONFIG   -= app_bundle
 
 TARGET   = offline_mode_tests
