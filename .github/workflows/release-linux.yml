@@ -47,7 +47,7 @@ jobs:
       # apt's mirror+file method does not fall through to the next entry.
       run: |
         sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null || true
-        sudo grep -rl 'azure\.archive\.ubuntu\.com' /etc/apt | xargs -r sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g'
+        sudo grep -rl 'azure\.archive\.ubuntu\.com' /etc/apt | xargs -r sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g' || true
         cat /etc/apt/apt-mirrors.txt 2>/dev/null || true
 
     - name: Install Qt
