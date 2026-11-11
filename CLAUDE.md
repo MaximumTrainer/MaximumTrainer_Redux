@@ -10,7 +10,7 @@ This file is the "how to actually get work done here" cheat sheet.
 
 ## What this is
 
-MaximumTrainer — a cross-platform (Linux / Windows / macOS / WASM) Qt 6 / C++17
+MaximumTrainer — a cross-platform (Linux / Windows / macOS / WASM) Qt 6 / C++20
 indoor cycling & rowing trainer app. BLE sensors, ERG-mode interval workouts,
 FIT export, QWT plots. Build system is **qmake** (`.pro` / `.pri`), not CMake.
 

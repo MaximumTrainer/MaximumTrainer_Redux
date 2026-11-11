@@ -81,7 +81,7 @@ else: DEFINES += QT_NO_UITOOLS
 isEmpty(QWT_INSTALL): CONFIG += qwt
 CONFIG += qt thread
 CONFIG += release
-CONFIG += c++17
+CONFIG += c++20
 
 #INCLUDEPATH	+= /usr/lib/x86_64-linux-gnu/qt5
 

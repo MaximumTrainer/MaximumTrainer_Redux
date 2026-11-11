@@ -20,7 +20,7 @@
 ###############################################################################
 
 QT       += core gui widgets bluetooth testlib
-CONFIG   += qt c++17
+CONFIG   += qt c++20
 CONFIG   -= app_bundle
 
 TARGET   = runtime_validation_tests

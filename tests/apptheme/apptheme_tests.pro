@@ -14,7 +14,7 @@
 
 QT       += core gui widgets testlib
 
-CONFIG   += qt c++17 console
+CONFIG   += qt c++20 console
 CONFIG   -= app_bundle
 
 TARGET   = apptheme_tests

@@ -23,14 +23,14 @@
 ## 1. Project Overview
 
 MaximumTrainer is a cross-platform cycling and rowing training application
-built with **Qt / C++17**.  It connects to smart trainers, power meters, heart
+built with **Qt / C++20**.  It connects to smart trainers, power meters, heart
 rate monitors, cadence sensors, and rowing ergometers via Bluetooth Low Energy
 (BLE), plays structured interval workouts in ERG-mode, and exports
 completed activities to the Garmin FIT format.
 
 | Attribute | Value |
 |-----------|-------|
-| Language | C++17 |
+| Language | C++20 |
 | UI Toolkit | Qt 6 (Widgets + WebEngineWidgets) |
 | Plotting | QWT 6.3 |
 | Serialisation | Garmin FIT SDK, TCX, GPX, XML |
@@ -547,7 +547,7 @@ responsibility:
 
 ### 5.4 Coding Conventions
 
-- **C++17** throughout (`std::optional`, structured bindings, `if constexpr`).
+- **C++20** throughout (`std::optional`, structured bindings, `if constexpr`); Qt APIs deprecated up to 6.10 are compiled out via `.qmake.conf`.
 - Include paths are resolved by `INCLUDEPATH` in `.pro` — use bare filenames
   without path prefixes in `#include` directives for files within the same
   module (e.g., `#include "btle_hub.h"`).  For cross-module includes or

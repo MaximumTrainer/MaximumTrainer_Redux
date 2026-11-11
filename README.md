@@ -1,6 +1,6 @@
 # MaximumTrainer
 
-An open-source, high-performance indoor cycling training application built with the **Qt framework (C++17)**. MaximumTrainer delivers structured interval workouts with real-time power, cadence, heart rate, and speed feedback, and controls smart trainers automatically via FTMS ERG mode. Browse and sync workouts from [intervals.icu](https://www.intervals.icu), or import your own `.erg` / `.mrc` / `.zwo` files.
+An open-source, high-performance indoor cycling training application built with the **Qt framework (C++20)**. MaximumTrainer delivers structured interval workouts with real-time power, cadence, heart rate, and speed feedback, and controls smart trainers automatically via FTMS ERG mode. Browse and sync workouts from [intervals.icu](https://www.intervals.icu), or import your own `.erg` / `.mrc` / `.zwo` files.
 
 > 📖 **Want to use the app?** See the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)** — pairing sensors, finding & building workouts, training, Studio mode, and more.
 
@@ -10,10 +10,24 @@ Prebuilt binaries for each release live on the [**Releases**](https://github.com
 
 | Platform | Asset | Notes |
 |----------|-------|-------|
-| **Linux** | `MaximumTrainer-linux-x86_64.AppImage` | `chmod +x` it and run — self-contained, no install |
-| **Windows** | `MaximumTrainer-windows-x64.msi` (installer) or `-windows-x64.zip` (portable) | Windows 10 1809+ |
-| **macOS** | `MaximumTrainer-macos.dmg` | Open and drag to Applications |
-| **Web (WASM)** | `MaximumTrainer-wasm.zip` | Runs in a WebAssembly-capable browser |
+| **Linux** | `MaximumTrainer-linux-x86_64.AppImage` | Ubuntu 22.04+ or equivalent. `chmod +x` it and run - self-contained, no install |
+| **Windows** | `MaximumTrainer-windows-x64.msi` (installer) or `-windows-x64.zip` (portable) | Windows 10 1809+. The Visual C++ runtime is bundled, no redistributable needed |
+| **macOS** | `MaximumTrainer-macos.dmg` | macOS 13+, Apple Silicon. Open and drag to Applications |
+| **Web (WASM)** | `MaximumTrainer-wasm.zip` | Chrome or Edge (needs Web Bluetooth) |
+
+### First launch
+
+The release builds are not code-signed, so each OS warns the first time you open them:
+
+- **Windows:** SmartScreen shows *"Windows protected your PC"*. Click **More info → Run anyway**.
+  On Windows **N editions**, install the **Media Feature Pack** (Settings → Apps → Optional features)
+  or audio and video won't play.
+- **macOS:** Gatekeeper refuses to open the app. Go to **System Settings → Privacy & Security**,
+  click **Open Anyway** next to the MaximumTrainer message, then confirm. Alternatively, run:
+  `xattr -dr com.apple.quarantine /Applications/MaximumTrainer.app`
+- **Linux:** AppImages need FUSE 2. If the app doesn't start, install it
+  (`sudo apt install libfuse2t64` on Ubuntu 24.04+, `libfuse2` on 22.04), or run
+  `./MaximumTrainer-linux-x86_64.AppImage --appimage-extract-and-run`.
 
 Prefer to compile it yourself? See [Building](#building) below.
 
@@ -21,7 +35,7 @@ Prefer to compile it yourself? See [Building](#building) below.
 
 | Item | Details |
 |------|---------|
-| **Language** | C++17 (≈ 95 % C++) |
+| **Language** | C++20 (≈ 95 % C++) |
 | **Framework** | Qt 6 (6.11+) on all platforms |
 | **Build file** | `MaximumTrainer.pro` (qmake) |
 | **Qt modules** | core · gui · widgets · network · bluetooth · webenginewidgets · printsupport · concurrent |

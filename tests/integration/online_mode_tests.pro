@@ -29,7 +29,7 @@
 ###############################################################################
 
 QT       += core gui widgets network testlib
-CONFIG   += qt c++17
+CONFIG   += qt c++20
 CONFIG   -= app_bundle
 
 TARGET   = online_mode_tests

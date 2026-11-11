@@ -30,7 +30,7 @@
 QT       += core network testlib xml
 QT       -= gui
 
-CONFIG   += qt c++17 console
+CONFIG   += qt c++20 console
 CONFIG   -= app_bundle
 
 TARGET   = workout_parsing_tests

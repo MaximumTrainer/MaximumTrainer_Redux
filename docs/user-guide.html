@@ -1429,6 +1429,18 @@
                 <td>No sound / internet radio silent on a fresh Windows install</td>
                 <td>Windows <strong>N editions</strong> ship without Media Foundation, which audio and video playback require. Install the free <strong>Media Feature Pack</strong> (Settings → Apps → Optional features) and restart the app.</td>
               </tr>
+              <tr>
+                <td>Windows says "Windows protected your PC"</td>
+                <td>The release builds are not code-signed, so SmartScreen warns on first launch. Click <strong>More info → Run anyway</strong>.</td>
+              </tr>
+              <tr>
+                <td>macOS won't open the app</td>
+                <td>The app is not notarized, so Gatekeeper blocks it the first time. Open <strong>System Settings → Privacy &amp; Security</strong> and click <strong>Open Anyway</strong>, or run <code>xattr -dr com.apple.quarantine /Applications/MaximumTrainer.app</code>.</td>
+              </tr>
+              <tr>
+                <td>Linux AppImage doesn't start</td>
+                <td>AppImages need FUSE 2. Install <code>libfuse2t64</code> (Ubuntu 24.04+) or <code>libfuse2</code> (22.04), or run the AppImage with <code>--appimage-extract-and-run</code>.</td>
+              </tr>
             </tbody>
           </table>
         </div>
