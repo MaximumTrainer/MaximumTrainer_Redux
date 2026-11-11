@@ -162,6 +162,14 @@ jobs:
         # Qt's libqwasm.a fails (Emscripten gives no cross-version ABI guarantee).
         version: '4.0.7'
 
+    - name: Use the main Ubuntu archive instead of the Azure mirror
+      # The runners' Azure apt mirror intermittently fails DNS resolution and
+      # apt's mirror+file method does not fall through to the next entry.
+      run: |
+        sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null || true
+        sudo grep -rl 'azure\.archive\.ubuntu\.com' /etc/apt | xargs -r sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g'
+        cat /etc/apt/apt-mirrors.txt 2>/dev/null || true
+
     - name: Install Qt (Wasm singlethread)
       uses: jurplel/install-qt-action@v4
       with:
@@ -321,6 +329,14 @@ jobs:
       uses: actions/setup-node@v7
       with:
         node-version: '24'
+
+    - name: Use the main Ubuntu archive instead of the Azure mirror
+      # The runners' Azure apt mirror intermittently fails DNS resolution and
+      # apt's mirror+file method does not fall through to the next entry.
+      run: |
+        sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null || true
+        sudo grep -rl 'azure\.archive\.ubuntu\.com' /etc/apt | xargs -r sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g'
+        cat /etc/apt/apt-mirrors.txt 2>/dev/null || true
 
     - name: Install Playwright and browsers
       run: |

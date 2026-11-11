@@ -35,6 +35,14 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Use the main Ubuntu archive instead of the Azure mirror
+      # The runners' Azure apt mirror intermittently fails DNS resolution and
+      # apt's mirror+file method does not fall through to the next entry.
+      run: |
+        sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null || true
+        sudo grep -rl 'azure\.archive\.ubuntu\.com' /etc/apt | xargs -r sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g'
+        cat /etc/apt/apt-mirrors.txt 2>/dev/null || true
+
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
@@ -214,6 +222,14 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Use the main Ubuntu archive instead of the Azure mirror
+      # The runners' Azure apt mirror intermittently fails DNS resolution and
+      # apt's mirror+file method does not fall through to the next entry.
+      run: |
+        sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null || true
+        sudo grep -rl 'azure\.archive\.ubuntu\.com' /etc/apt | xargs -r sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g'
+        cat /etc/apt/apt-mirrors.txt 2>/dev/null || true
+
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
@@ -371,6 +387,14 @@ jobs:
       INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
 
     steps:
+    - name: Use the main Ubuntu archive instead of the Azure mirror
+      # The runners' Azure apt mirror intermittently fails DNS resolution and
+      # apt's mirror+file method does not fall through to the next entry.
+      run: |
+        sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null || true
+        sudo grep -rl 'azure\.archive\.ubuntu\.com' /etc/apt | xargs -r sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g'
+        cat /etc/apt/apt-mirrors.txt 2>/dev/null || true
+
     - name: Install Qt (with Bluetooth)
       uses: jurplel/install-qt-action@v4
       with:
@@ -441,6 +465,14 @@ jobs:
       uses: actions/checkout@v7
       with:
         sparse-checkout: scripts
+
+    - name: Use the main Ubuntu archive instead of the Azure mirror
+      # The runners' Azure apt mirror intermittently fails DNS resolution and
+      # apt's mirror+file method does not fall through to the next entry.
+      run: |
+        sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null || true
+        sudo grep -rl 'azure\.archive\.ubuntu\.com' /etc/apt | xargs -r sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g'
+        cat /etc/apt/apt-mirrors.txt 2>/dev/null || true
 
     - name: Install Qt (full app modules)
       uses: jurplel/install-qt-action@v4
@@ -554,6 +586,14 @@ jobs:
       INTERVALS_ICU_ATHLETE_ID: ${{ secrets.INTERVALS_ICU_ATHLETE_ID }}
 
     steps:
+    - name: Use the main Ubuntu archive instead of the Azure mirror
+      # The runners' Azure apt mirror intermittently fails DNS resolution and
+      # apt's mirror+file method does not fall through to the next entry.
+      run: |
+        sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null || true
+        sudo grep -rl 'azure\.archive\.ubuntu\.com' /etc/apt | xargs -r sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g'
+        cat /etc/apt/apt-mirrors.txt 2>/dev/null || true
+
     - name: Install Qt (with WebEngine + Bluetooth)
       uses: jurplel/install-qt-action@v4
       with:
