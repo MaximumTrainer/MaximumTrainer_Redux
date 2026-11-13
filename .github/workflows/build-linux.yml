@@ -38,11 +38,12 @@ jobs:
     - name: Point apt at a reachable Ubuntu mirror
       # On 2026-11-11 the runners could not resolve any *.ubuntu.com host, and
       # apt's mirror+file method hangs ~30 min on DNS errors instead of falling
-      # through. Use the first mirror that resolves; cap timeouts so a dead
-      # mirror fails fast.
+      # through. Use the first mirror that answers; cap timeouts so a dead
+      # mirror fails fast. A mirror can resolve yet refuse connections (kernel.org,
+      # 2026-11-13), so probe it with a real request before using it.
       run: |
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if getent hosts "$host" >/dev/null; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
             echo "Using http://$host/ubuntu/"
             echo "http://$host/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
             sudo grep -rl 'azure\.archive\.ubuntu\.com\|//archive\.ubuntu\.com\|//security\.ubuntu\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
@@ -234,11 +235,12 @@ jobs:
     - name: Point apt at a reachable Ubuntu mirror
       # On 2026-11-11 the runners could not resolve any *.ubuntu.com host, and
       # apt's mirror+file method hangs ~30 min on DNS errors instead of falling
-      # through. Use the first mirror that resolves; cap timeouts so a dead
-      # mirror fails fast.
+      # through. Use the first mirror that answers; cap timeouts so a dead
+      # mirror fails fast. A mirror can resolve yet refuse connections (kernel.org,
+      # 2026-11-13), so probe it with a real request before using it.
       run: |
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if getent hosts "$host" >/dev/null; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
             echo "Using http://$host/ubuntu/"
             echo "http://$host/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
             sudo grep -rl 'azure\.archive\.ubuntu\.com\|//archive\.ubuntu\.com\|//security\.ubuntu\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
@@ -417,11 +419,12 @@ jobs:
     - name: Point apt at a reachable Ubuntu mirror
       # On 2026-11-11 the runners could not resolve any *.ubuntu.com host, and
       # apt's mirror+file method hangs ~30 min on DNS errors instead of falling
-      # through. Use the first mirror that resolves; cap timeouts so a dead
-      # mirror fails fast.
+      # through. Use the first mirror that answers; cap timeouts so a dead
+      # mirror fails fast. A mirror can resolve yet refuse connections (kernel.org,
+      # 2026-11-13), so probe it with a real request before using it.
       run: |
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if getent hosts "$host" >/dev/null; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
             echo "Using http://$host/ubuntu/"
             echo "http://$host/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
             sudo grep -rl 'azure\.archive\.ubuntu\.com\|//archive\.ubuntu\.com\|//security\.ubuntu\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
@@ -505,11 +508,12 @@ jobs:
     - name: Point apt at a reachable Ubuntu mirror
       # On 2026-11-11 the runners could not resolve any *.ubuntu.com host, and
       # apt's mirror+file method hangs ~30 min on DNS errors instead of falling
-      # through. Use the first mirror that resolves; cap timeouts so a dead
-      # mirror fails fast.
+      # through. Use the first mirror that answers; cap timeouts so a dead
+      # mirror fails fast. A mirror can resolve yet refuse connections (kernel.org,
+      # 2026-11-13), so probe it with a real request before using it.
       run: |
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if getent hosts "$host" >/dev/null; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
             echo "Using http://$host/ubuntu/"
             echo "http://$host/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
             sudo grep -rl 'azure\.archive\.ubuntu\.com\|//archive\.ubuntu\.com\|//security\.ubuntu\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
@@ -634,11 +638,12 @@ jobs:
     - name: Point apt at a reachable Ubuntu mirror
       # On 2026-11-11 the runners could not resolve any *.ubuntu.com host, and
       # apt's mirror+file method hangs ~30 min on DNS errors instead of falling
-      # through. Use the first mirror that resolves; cap timeouts so a dead
-      # mirror fails fast.
+      # through. Use the first mirror that answers; cap timeouts so a dead
+      # mirror fails fast. A mirror can resolve yet refuse connections (kernel.org,
+      # 2026-11-13), so probe it with a real request before using it.
       run: |
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if getent hosts "$host" >/dev/null; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
             echo "Using http://$host/ubuntu/"
             echo "http://$host/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
             sudo grep -rl 'azure\.archive\.ubuntu\.com\|//archive\.ubuntu\.com\|//security\.ubuntu\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
