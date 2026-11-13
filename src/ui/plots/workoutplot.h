@@ -53,6 +53,8 @@ public:
 
     void setMessageEndWorkout();
     void setMessage(QString msg);
+    /// Changes the text of a message already on screen without replaying its fade-in.
+    void updateMessageText(const QString &msg);
     void setDisplayIntervalMessage(bool fadeIn, QString text, int timeToDisplay);
     void setAlertMessage(bool fadeIn, bool fadeOut, QString text, int timeToDisplay);
     void removeAlertMessage();

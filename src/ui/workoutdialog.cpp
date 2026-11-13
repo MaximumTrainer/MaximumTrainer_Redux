@@ -2950,7 +2950,7 @@ void WorkoutDialog::setMessagePlot() {
         } else {
             groupMessage = tr("Waiting for the host to start the group ride");
         }
-        ui->widget_workoutPlot->setMessage(groupMessage);
+        ui->widget_workoutPlot->updateMessageText(groupMessage);
         return;
     }
 
