@@ -1,8 +1,8 @@
 # MaximumTrainer
 
-An open-source, high-performance indoor cycling training application built with the **Qt framework (C++20)**. MaximumTrainer delivers structured interval workouts with real-time power, cadence, heart rate, and speed feedback, and controls smart trainers automatically via FTMS ERG mode. Browse and sync workouts from [intervals.icu](https://www.intervals.icu), or import your own `.erg` / `.mrc` / `.zwo` files.
+An open-source, high-performance indoor cycling training application built with the **Qt framework (C++20)**. MaximumTrainer delivers structured interval workouts with real-time power, cadence, heart rate, and speed feedback, and controls smart trainers automatically via FTMS ERG mode. Browse and sync workouts from [intervals.icu](https://www.intervals.icu), or import your own `.erg` / `.mrc` / `.zwo` files. Ride the same workout with friends over the internet with **group workouts**: no account or subscription needed.
 
-> 📖 **Want to use the app?** See the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)** — pairing sensors, finding & building workouts, training, Studio mode, and more.
+> 📖 **Want to use the app?** See the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)** — pairing sensors, finding & building workouts, training, group workouts, Studio mode, and more.
 
 ## Download
 
@@ -38,15 +38,16 @@ Prefer to compile it yourself? See [Building](#building) below.
 | **Language** | C++20 (≈ 95 % C++) |
 | **Framework** | Qt 6 (6.11+) on all platforms |
 | **Build file** | `MaximumTrainer.pro` (qmake) |
-| **Qt modules** | core · gui · widgets · network · bluetooth · webenginewidgets · printsupport · concurrent |
+| **Qt modules** | core · gui · widgets · network · websockets · bluetooth · webenginewidgets · printsupport · concurrent |
 | **Trainer protocol** | Bluetooth LE Fitness Machine Service (FTMS / 0x1826) for ERG resistance control |
 | **Sensor profiles** | Heart Rate (0x180D) · Cycling Speed & Cadence (0x1816) · Cycling Power (0x1818) · Moxy Muscle Oxygen (0xAAB0) |
 | **Workout formats** | `.erg`, `.mrc`, `.zwo` (imported and converted to the native XML format) · Intervals.icu calendar sync · export as `.fit` |
 | **Workout source** | Integrated intervals.icu for online workout plans |
+| **Group workouts** | Small relay on Cloudflare Workers (`workers/group-relay/`) passes room messages over WebSockets; trainer control stays local |
 
 ## Using MaximumTrainer
 
-For everything about **using** the app — pairing sensors, finding / importing / creating workouts, ERG vs Slope, the workout player (video · web · Retro Race game), Studio mode, activity uploads, and troubleshooting — see the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)**.
+For everything about **using** the app — pairing sensors, finding / importing / creating workouts, ERG vs Slope, the workout player (video · web · Retro Race game), group workouts, Studio mode, activity uploads, and troubleshooting — see the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)**.
 
 > **No hardware?** A built-in **Simulation** mode emits realistic drifting power / HR / cadence /
 > speed and responds to ERG commands, so you can exercise the full workout flow — handy for
@@ -82,7 +83,7 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 
 | Dependency | Version | Platform | Notes |
 |------------|---------|----------|-------|
-| Qt | 6.x (6.11+) | all | Core framework (incl. QtMultimedia, QtWebEngine, QtBluetooth) |
+| Qt | 6.x (6.11+) | all | Core framework (incl. QtMultimedia, QtWebEngine, QtBluetooth, QtWebSockets) |
 | QWT | 6.3.0 | all | Plotting widgets (built from source against Qt 6) |
 
 > **Audio & media playback:** both sound-effect feedback (interval beeps, etc.,
@@ -100,7 +101,7 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 ### Windows
 
 **Required tools:** Qt 6.x (msvc2022_64, with the `qtwebengine`, `qtconnectivity`,
-`qtmultimedia`, `qtwebchannel`, `qtpositioning` modules), Visual Studio 2022+ (MSVC; Qt 6.11 ships msvc2022 builds only).
+`qtmultimedia`, `qtwebchannel`, `qtpositioning`, `qtwebsockets` modules), Visual Studio 2022+ (MSVC; Qt 6.11 ships msvc2022 builds only).
 
 **Environment variables** — set before running `qmake`:
 
@@ -130,7 +131,7 @@ exists), then build the app:
 sudo apt-get install -y \
   qt6-base-dev qt6-webengine-dev qt6-connectivity-dev \
   qt6-multimedia-dev qt6-webchannel-dev qt6-positioning-dev \
-  cmake build-essential
+  qt6-websockets-dev cmake build-essential
 
 # Build QWT 6.3.0 from source against Qt 6 (installs to /tmp/qwt6 here)
 cd /tmp && curl -L -o qwt.tar.bz2 \
@@ -159,7 +160,7 @@ Uses Qt 6.11.3 with Clang. QWT is built from source (non-framework) against Qt 6
 > **macOS Bluetooth permission:** The app's `mac/Info.plist` includes the `NSBluetoothAlwaysUsageDescription` key, which is required by macOS 10.15+ for any app that accesses BLE devices. The first time the app attempts to connect a sensor, macOS will prompt for Bluetooth permission. This permission can be reviewed or revoked in **System Settings → Privacy & Security → Bluetooth**.
 
 ```bash
-# Install Qt 6.11.3 via install-qt-action or the Qt Installer, then:
+# Install Qt 6.11.3 (with the qtwebsockets module) via install-qt-action or the Qt Installer, then:
 
 # Build QWT 6.3.0 from source (non-framework, required for Qt 6)
 curl -L -o /tmp/qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.3.0/qwt-6.3.0.tar.bz2/download"
@@ -190,6 +191,7 @@ MaximumTrainer has a multi-tier test suite covering BLE parsing, service APIs, U
 | Plan adherence tests | `tests/plan_adherence/` | Completed/skipped/substituted entries, adherence %, encode-decode, change signals |
 | Logger tests | `tests/logger/` | Log level filtering, output format, file write enable/disable |
 | Studio tests | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling |
+| Group workout tests | `tests/group/` | Room-code parsing, message encode/decode, clock-offset estimate, rider-row states; live relay test when `GROUP_RELAY_URL` is set |
 | Login screen tests | `tests/integration/` | OAuth dialog state, offline login path, Intervals.icu OAuth URL generation |
 | Workout UI tests | `tests/integration/` | Full ERG session driven by SimulatorHub through WorkoutDialog; interval advancement; data accumulation |
 | Offline / BLE integration | `tests/integration/` | BLE adapter smoke test, offline mode screenshot, runtime validation |
@@ -205,6 +207,22 @@ make -j$(nproc)
 ```
 
 The BLE suite has **51 test cases** across HR parsing, CSC, Power, FTMS, trainer simulations, SimulatorHub, battery, and interval summary. See the [CI run status](https://github.com/MaximumTrainer/MaximumTrainer_Redux/actions) for pass/fail counts on Linux, Windows, and macOS.
+
+### Group workout relay
+
+The group-workout relay is a Cloudflare Worker with one Durable Object per room
+(`workers/group-relay/`, deployed by `deploy-group-relay.yml`). To develop
+against a local copy and simulate riders:
+
+```bash
+cd workers/group-relay && npx wrangler dev --port 8787     # local relay, no account needed
+node test/relay.smoke.mjs                                   # relay smoke test
+MT_GROUP_RELAY_URL=ws://127.0.0.1:8787 LD_LIBRARY_PATH=/tmp/qwt6/lib ./build/release/MaximumTrainer
+LD_LIBRARY_PATH=/tmp/qwt6/lib ./build/release/MaximumTrainer --group-sim 20 30   # 20 simulated riders
+```
+
+`--group-sim 19 600 --join GRP-XXXX --relay <url>` adds 19 simulated riders to a
+room hosted in the app, to check the riders column with a full room.
 
 ## Log Files
 

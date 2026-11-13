@@ -1,6 +1,7 @@
 #ifndef MAIN_WORKOUTPAGE_H
 #define MAIN_WORKOUTPAGE_H
 
+#include <optional>
 #include <QWidget>
 #include <QLabel>
 #include <QMenu>

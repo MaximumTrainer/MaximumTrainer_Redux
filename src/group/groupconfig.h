@@ -14,7 +14,7 @@ inline QUrl relayBaseUrl() {
     QSettings settings;
     const QString fromSettings = settings.value(QStringLiteral("group_relay_url")).toString();
     if (!fromSettings.isEmpty()) return QUrl(fromSettings);
-    return QUrl(QStringLiteral("wss://mt-group-relay.maximumtrainer.workers.dev"));
+    return QUrl(QStringLiteral("wss://mt-group-relay.intervals-login.workers.dev"));
 }
 
 } // namespace GroupConfig

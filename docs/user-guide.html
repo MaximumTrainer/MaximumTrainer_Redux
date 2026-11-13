@@ -392,6 +392,7 @@
         <li><a href="#workout-modes">ERG vs Slope Mode</a></li>
         <li><a href="#workout-player">The Workout Player</a></li>
         <li><a href="#during-workout">During a Workout</a></li>
+        <li><a href="#group-workouts">Group Workouts</a></li>
 
         <li class="toc-section">Post-Workout</li>
         <li><a href="#saving-activity">Saving Your Activity</a></li>
@@ -442,6 +443,11 @@
             <div class="card-icon">☁️</div>
             <h4>Activity Upload</h4>
             <p>Post-workout upload to Strava and Intervals.icu — directly from the app.</p>
+          </div>
+          <div class="guide-card">
+            <div class="card-icon">👥</div>
+            <h4>Group Workouts</h4>
+            <p>Ride the same workout with friends over the internet, each at their own FTP. <a href="#group-workouts">How it works</a></p>
           </div>
         </div>
 
@@ -1054,6 +1060,84 @@
         </div>
       </section>
 
+      <!-- ── Group Workouts ────────────────────────────────────── -->
+      <section class="guide-section" id="group-workouts">
+        <h2>👥 Group Workouts</h2>
+        <p>
+          Ride the same structured workout with friends over the internet. Everyone rides at
+          home on their own trainer, and each trainer runs the workout at <strong>its rider's
+          own FTP</strong>: a 90 % interval is 225 W for a 250 W rider and 162 W for a 180 W
+          rider, so everyone works equally hard. A column in the workout player shows everyone's
+          live numbers. No account or subscription is needed.
+        </p>
+
+        <h3>Hosting a group workout</h3>
+        <ol class="steps">
+          <li>In the <strong>Workout</strong> tab, right-click a workout and choose
+              <strong>Host Group Workout…</strong> (or select it and use
+              <strong>Workout → Host Group Workout…</strong> in the menu bar).</li>
+          <li>Choose your connection method (<strong>BTLE Device</strong> or
+              <strong>Simulation</strong>) as for any workout.</li>
+          <li>The workout player opens with a <strong>Group ride</strong> column on the right.
+              Click <strong>Copy</strong> next to the room code (for example
+              <code>GRP-7KQ2</code>) and send it to your friends.</li>
+          <li>Riders appear in the column as they join. Someone still pairing their sensors shows
+              <em>connecting sensors…</em> under their name.</li>
+          <li>When everyone is in, click <strong>Start group ride</strong> (or press
+              <kbd>Enter</kbd>). Everyone gets the same 10-second countdown and starts together.</li>
+        </ol>
+
+        <h3>Joining a group workout</h3>
+        <ol class="steps">
+          <li>Choose <strong>Workout → Join Group Workout…</strong> (<kbd>Ctrl</kbd>+<kbd>J</kbd>).</li>
+          <li>Enter the room code from the host and the name the other riders will see, then click
+              <strong>Join</strong>. The host's workout downloads automatically.</li>
+          <li>Choose your connection method and pair your sensors as usual.</li>
+          <li>Wait in the workout player. Pedalling doesn't start the workout in a group ride:
+              the host starts it for everyone.</li>
+        </ol>
+
+        <h3>The riders column</h3>
+        <p>
+          You are always at the top, then riders in the order they joined. Each row shows power
+          and heart rate on the right, and % of FTP, cadence and how far behind or ahead of you
+          they are (when more than 5 seconds) underneath. The stripe on the left shows each
+          rider's state:
+        </p>
+        <div class="guide-table-wrap">
+          <table class="guide-table">
+            <thead><tr><th>Stripe</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Green</strong></td><td>On target (within 5 % of the target power)</td></tr>
+              <tr><td><strong>Amber</strong></td><td>More than 5 % above or below the target</td></tr>
+              <tr><td><strong>Grey</strong></td><td>Paused, still connecting sensors, or no data for 5 seconds (<em>connection lost</em>)</td></tr>
+              <tr><td><strong>Blue</strong></td><td>Finished the workout</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Good to know</h3>
+        <ul>
+          <li><strong>Pausing is personal.</strong> Pausing or skipping an interval only affects
+              you; the others keep riding and see how far behind you are.</li>
+          <li><strong>Your trainer never depends on the internet.</strong> If your connection
+              drops, your workout keeps running and the app reconnects to the group on its own.</li>
+          <li>A rider who joins after the start begins the workout from the beginning.</li>
+          <li>Up to <strong>20 riders</strong> per room.</li>
+          <li>Each rider's activity is saved and uploaded to Strava or Intervals.icu as for a solo
+              ride (see <a href="#uploading">Uploading</a>).</li>
+          <li>Group workouts are available in the desktop app. They aren't available in Studio Mode,
+              for Free Ride, or in the browser version yet.</li>
+        </ul>
+
+        <div class="callout">
+          <strong>Privacy:</strong> the other riders only see the name you entered and your live
+          numbers (power, % of FTP, heart rate, cadence). Your FTP, email and account are never
+          sent. Messages pass through a small relay that stores nothing about your ride; a room
+          disappears 30 minutes after the last rider leaves.
+        </div>
+      </section>
+
       <!-- ── Saving ────────────────────────────────────────────── -->
       <section class="guide-section" id="saving-activity">
         <h2>💾 Saving Your Activity</h2>
@@ -1348,6 +1432,7 @@
             <tbody>
               <tr><td><kbd>Ctrl</kbd>+<kbd>,</kbd></td><td>Open Preferences</td></tr>
               <tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>Create new workout</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>J</kbd></td><td>Join a group workout</td></tr>
               <tr><td><kbd>Ctrl</kbd>+<kbd>Q</kbd></td><td>Quit application</td></tr>
               <tr><td><kbd>F1</kbd></td><td>Show keyboard shortcuts</td></tr>
             </tbody>

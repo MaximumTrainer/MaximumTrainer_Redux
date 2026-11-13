@@ -69,3 +69,26 @@ jobs:
     if: needs.check_strava.outputs.healthy == 'false'
     uses: ./.github/workflows/deploy-strava-proxy.yml
     secrets: inherit
+
+  check_group_relay:
+    name: Probe group-workout relay
+    runs-on: ubuntu-latest
+    outputs:
+      healthy: ${{ steps.probe.outputs.healthy }}
+    steps:
+      - id: probe
+        run: |
+          URL="https://mt-group-relay.intervals-login.workers.dev"
+          BODY=$(curl -s --compressed -m 25 "$URL/health" || true)
+          echo "Response: $BODY"
+          case "$BODY" in
+            *'"ok":true'*) echo "healthy=true"  >> "$GITHUB_OUTPUT"; echo "Group relay healthy" ;;
+            *)             echo "healthy=false" >> "$GITHUB_OUTPUT"; echo "Group relay DOWN - will redeploy" ;;
+          esac
+
+  heal_group_relay:
+    name: Redeploy group-workout relay
+    needs: check_group_relay
+    if: needs.check_group_relay.outputs.healthy == 'false'
+    uses: ./.github/workflows/deploy-group-relay.yml
+    secrets: inherit
