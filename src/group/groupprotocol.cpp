@@ -113,6 +113,7 @@ QByteArray encodeTelemetry(const RiderTelemetry &telemetry) {
     if (telemetry.targetPowerWatts) object.insert(QStringLiteral("tgt"), *telemetry.targetPowerWatts);
     if (telemetry.heartRateBpm) object.insert(QStringLiteral("hr"), *telemetry.heartRateBpm);
     if (telemetry.cadenceRpm) object.insert(QStringLiteral("cad"), *telemetry.cadenceRpm);
+    if (telemetry.percentFtp) object.insert(QStringLiteral("pf"), *telemetry.percentFtp);
     return toFrame(object);
 }
 
@@ -185,6 +186,7 @@ IncomingMessage decode(const QByteArray &frame) {
         telemetry.targetPowerWatts = optionalInt(object, QStringLiteral("tgt"));
         telemetry.heartRateBpm = optionalInt(object, QStringLiteral("hr"));
         telemetry.cadenceRpm = optionalInt(object, QStringLiteral("cad"));
+        telemetry.percentFtp = optionalInt(object, QStringLiteral("pf"));
         telemetry.intervalIndex = object.value(QStringLiteral("iv")).toInt();
         telemetry.status = statusFromWire(object.value(QStringLiteral("st")).toString());
     } else if (type == QLatin1String("pong")) {

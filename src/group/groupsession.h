@@ -56,7 +56,8 @@ signals:
     void joined(const QString &roomCode, bool isHost);
     void rosterChanged(const QList<GroupProtocol::RosterEntry> &roster);
     void workoutReceived(const GroupProtocol::SharedWorkout &workout);
-    /// Local epoch ms at which the shared start happens on this machine.
+    /// Local epoch ms at which the shared start happens on this machine. Emitted
+    /// again with a corrected time if the clock estimate improves before it.
     void startScheduled(qint64 localStartMs);
     void telemetryReceived(const GroupProtocol::RiderTelemetry &telemetry);
     void clockSynchronized(qint64 serverOffsetMs, qint64 roundTripMs);

@@ -1,5 +1,12 @@
 #include "groupsimtest.h"
 
+#include "grouppanel.h"
+#include "groupridersmodel.h"
+
+#include <QApplication>
+
+#include "apptheme.h"
+
 #include <QDateTime>
 #include <QTextStream>
 #include <QtMath>
@@ -30,11 +37,14 @@ qint64 percentile(QList<qint64> values, double fraction) {
 
 } // namespace
 
-GroupSimTest::GroupSimTest(const QUrl &relayBaseUrl, int riderCount, int rideSeconds, QObject *parent)
+GroupSimTest::GroupSimTest(const QUrl &relayBaseUrl, int riderCount, int rideSeconds,
+                           const QString &joinRoomCode, QObject *parent)
     : QObject(parent),
       m_relayBaseUrl(relayBaseUrl),
-      m_riderCount(qBound(2, riderCount, kMaxRiders)),
-      m_rideSeconds(qMax(5, rideSeconds))
+      m_riderCount(qBound(joinRoomCode.isEmpty() ? 2 : 1, riderCount,
+                          joinRoomCode.isEmpty() ? kMaxRiders : kMaxRiders - 1)),
+      m_rideSeconds(qMax(5, rideSeconds)),
+      m_joinRoomCode(joinRoomCode)
 {
     m_deadline.setSingleShot(true);
     connect(&m_deadline, &QTimer::timeout, this, [this] { fail(QStringLiteral("timed out")); });
@@ -44,11 +54,14 @@ void GroupSimTest::start() {
     m_wallClock.start();
     out() << "group-sim: " << m_riderCount << " riders, " << m_rideSeconds << " s ride, relay "
           << m_relayBaseUrl.toString() << Qt::endl;
-    m_deadline.start(kSetupBudgetMs + kStartDelayMs + m_rideSeconds * 1000 + 15000);
+    // Joining someone else's room: wait as long as they take to press Start.
+    if (m_joinRoomCode.isEmpty())
+        m_deadline.start(kSetupBudgetMs + kStartDelayMs + m_rideSeconds * 1000 + 15000);
 
     for (int index = 0; index < m_riderCount; ++index) {
         SimRider rider;
-        rider.name = index == 0 ? QStringLiteral("Host") : QStringLiteral("Sim %1").arg(index);
+        rider.name = m_joinRoomCode.isEmpty() && index == 0 ? QStringLiteral("Host")
+                                                             : QStringLiteral("Sim %1").arg(index + (m_joinRoomCode.isEmpty() ? 0 : 1));
         rider.basePowerWatts = 150 + index * 7;
         rider.session = new GroupSession(m_relayBaseUrl, this);
         rider.startTimer = new QTimer(this);
@@ -66,15 +79,20 @@ void GroupSimTest::start() {
             fail(QStringLiteral("%1 got relay error '%2'").arg(m_riders[index].name, code));
         });
         connect(session, &GroupSession::joined, this, [this, index, session](const QString &code) {
-            if (index == 0) onHostJoined(code);
+            if (index == 0 && m_joinRoomCode.isEmpty()) onHostJoined(code);
+            if (index == 0 && !m_joinRoomCode.isEmpty()) {
+                m_roomCode = code;
+                out() << m_riderCount << " simulated riders joining " << code
+                      << "; waiting for the host to start" << Qt::endl;
+            }
             session->setReady(true, SharedSensors{true, true, true});
         });
         connect(session, &GroupSession::rosterChanged, this, [this, index] {
-            if (index == 0) maybeStartRide();
+            if (index == 0 && m_joinRoomCode.isEmpty()) maybeStartRide();
         });
         connect(session, &GroupSession::startScheduled, this, [this, index](qint64 localStartMs) {
             SimRider &simRider = m_riders[index];
-            if (simRider.scheduledLocalStartMs) return;
+            if (simRider.actualStartMs) return;
             simRider.scheduledLocalStartMs = localStartMs;
             simRider.startTimer->start(int(qMax<qint64>(0, localStartMs - nowMs())));
         });
@@ -88,7 +106,11 @@ void GroupSimTest::start() {
         });
     }
 
-    m_riders[0].session->hostRoom(m_riders[0].name);
+    if (m_joinRoomCode.isEmpty()) {
+        m_riders[0].session->hostRoom(m_riders[0].name);
+        return;
+    }
+    for (SimRider &rider : m_riders) rider.session->joinRoom(m_joinRoomCode, rider.name);
 }
 
 void GroupSimTest::onHostJoined(const QString &roomCode) {
@@ -115,8 +137,10 @@ void GroupSimTest::onRiderStart(int riderIndex) {
     SimRider &rider = m_riders[riderIndex];
     rider.actualStartMs = nowMs();
     rider.telemetryTimer->start();
-    if (riderIndex == m_riderCount - 1)
+    if (riderIndex == m_riderCount - 1 && m_joinRoomCode.isEmpty())
         QTimer::singleShot(m_rideSeconds * 1000 / 2, this, &GroupSimTest::dropAndRejoinOneRider);
+    if (riderIndex == 0 && !m_joinRoomCode.isEmpty())
+        out() << "group started, riding for " << m_rideSeconds << " s" << Qt::endl;
     if (riderIndex == 0)
         QTimer::singleShot(m_rideSeconds * 1000 + 2500, this, &GroupSimTest::finish);
 }
@@ -137,6 +161,9 @@ void GroupSimTest::sendTelemetry(int riderIndex) {
     telemetry.heartRateBpm = 120 + riderIndex + int(elapsedSeconds / 4);
     telemetry.cadenceRpm = 85 + riderIndex % 10;
     telemetry.intervalIndex = int(elapsedSeconds) / 60;
+    telemetry.percentFtp = qRound(100.0 * *telemetry.powerWatts / 250.0);
+    if (riderIndex % 5 == 2) telemetry.powerWatts = int(rider.basePowerWatts * 0.85);
+    if (riderIndex % 7 == 3 && int(elapsedSeconds) % 40 >= 30) telemetry.status = RiderStatus::Paused;
 
     if (rider.session->state() != GroupSession::State::Connected) return;
     m_sentAtMs.insert(rider.session->riderId() + QLatin1Char('/')
@@ -175,22 +202,35 @@ void GroupSimTest::finish() {
     }
     // Every frame a rider sends should reach the other N-1 riders while they
     // are connected; the dropped rider misses a few seconds by design.
+    qint64 minOffset = std::numeric_limits<qint64>::max();
+    qint64 maxOffset = std::numeric_limits<qint64>::min();
+    qint64 minScheduled = std::numeric_limits<qint64>::max();
+    qint64 maxScheduled = 0;
+    for (const SimRider &rider : std::as_const(m_riders)) {
+        minOffset = qMin(minOffset, rider.session->serverOffsetMs());
+        maxOffset = qMax(maxOffset, rider.session->serverOffsetMs());
+        minScheduled = qMin(minScheduled, rider.scheduledLocalStartMs);
+        maxScheduled = qMax(maxScheduled, rider.scheduledLocalStartMs);
+    }
     const int expected = totalSent * (m_riderCount - 1);
     const double deliveryRatio = expected ? double(totalReceived) / expected : 0.0;
     const qint64 startSpreadMs = latestStart - earliestStart;
 
     out() << "--- group-sim report ---" << Qt::endl
           << "room:              " << m_roomCode << Qt::endl
-          << "start spread:      " << startSpreadMs << " ms" << Qt::endl
+          << "start spread:      " << startSpreadMs << " ms (scheduled " << (maxScheduled - minScheduled)
+          << " ms, clock offsets spread " << (maxOffset - minOffset) << " ms)" << Qt::endl
           << "telemetry sent:    " << totalSent << Qt::endl
           << "telemetry recv:    " << totalReceived << " of " << expected
           << QStringLiteral(" (%1%)").arg(deliveryRatio * 100.0, 0, 'f', 1) << Qt::endl
           << "latency p50 / p95: " << percentile(m_latenciesMs, 0.5) << " / "
           << percentile(m_latenciesMs, 0.95) << " ms" << Qt::endl
-          << "reconnect:         " << (m_droppedRiderRejoinedSameId ? "same rider id" : "FAILED") << Qt::endl
+          << "reconnect:         " << (!m_joinRoomCode.isEmpty() ? "not tested (joined a hosted room)"
+                                       : m_droppedRiderRejoinedSameId ? "same rider id" : "FAILED") << Qt::endl
           << "relay round trip:  " << m_riders[0].session->lastRoundTripMs() << " ms" << Qt::endl;
 
-    const bool passed = startSpreadMs < 200 && deliveryRatio > 0.9 && m_droppedRiderRejoinedSameId;
+    const bool reconnectOk = !m_joinRoomCode.isEmpty() || m_droppedRiderRejoinedSameId;
+    const bool passed = startSpreadMs < 200 && deliveryRatio > 0.9 && reconnectOk;
     out() << (passed ? "PASS" : "FAIL") << Qt::endl;
 
     for (SimRider &rider : m_riders) rider.session->leave();
@@ -207,4 +247,53 @@ void GroupSimTest::fail(const QString &reason) {
 
 QByteArray GroupSimTest::sampleWorkoutXml() {
     return QByteArrayLiteral("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Workout><Name>Group sim</Name></Workout>");
+}
+
+
+bool GroupSimTest::renderPanelPreview(const QString &pngPath, int riderCount) {
+    static const char *const names[] = {"Maxime", "Julie", "Marc", "Sam", "Alex", "Chloé", "Nico",
+        "Léa", "Tom", "Ines", "Hugo", "Emma", "Louis", "Zoé", "Paul", "Jade", "Theo", "Lina",
+        "Victor", "Rose with a very long display name"};
+    riderCount = qBound(1, riderCount, kMaxRiders);
+
+    if (qEnvironmentVariableIsSet("MT_PREVIEW_DARK")) qApp->setPalette(AppTheme::darkPalette());
+    GroupPanel panel(nullptr);
+    panel.setRoomCodeForPreview(QStringLiteral("GRP-V2AT"));
+    panel.setRideStarted();
+
+    QList<RosterEntry> roster;
+    for (int index = 0; index < riderCount; ++index) {
+        RosterEntry entry;
+        entry.riderId = QStringLiteral("r%1").arg(index + 1);
+        entry.name = QString::fromUtf8(names[index]);
+        entry.isHost = index == 0;
+        entry.isReady = index != 5;              // one rider still pairing
+        roster.append(entry);
+    }
+    GroupRidersModel *model = panel.ridersModel();
+    model->setRoster(roster, QStringLiteral("r1"));
+
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    for (int index = 0; index < riderCount; ++index) {
+        if (index == 5) continue;
+        RiderTelemetry telemetry;
+        telemetry.riderId = roster[index].riderId;
+        telemetry.elapsedWorkoutSeconds = index == 3 ? 1210 : 1234;   // Sam is 0:24 behind
+        const int target = 180 + index * 6;
+        telemetry.targetPowerWatts = target;
+        telemetry.powerWatts = index % 4 == 2 ? int(target * 0.88) : target + (index % 3) - 1;
+        telemetry.percentFtp = 100 + (index % 7) - 3;
+        telemetry.heartRateBpm = 140 + index;
+        telemetry.cadenceRpm = 85 + index % 9;
+        if (index == 3) telemetry.status = RiderStatus::Paused;
+        if (index == 7) telemetry.status = RiderStatus::Done;
+        const qint64 receivedAt = index == 9 ? now - 10000 : now;   // Ines lost connection
+        if (index == 0) model->updateOwnTelemetry(telemetry, receivedAt);
+        else model->updateTelemetry(telemetry, receivedAt);
+    }
+
+    panel.resize(panel.width(), 852);
+    panel.show();
+    QCoreApplication::processEvents();
+    return panel.grab().save(pngPath);
 }

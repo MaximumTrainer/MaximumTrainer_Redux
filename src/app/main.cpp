@@ -288,8 +288,19 @@ int main(int argc, char *argv[]) {
         return app.exec();
     }
 
-    // --group-sim [riders] [seconds] [--relay URL]: headless group-workout room
-    // check against a relay (default: a local `wrangler dev` on port 8787).
+    // --group-panel-shot out.png [riders]: render the group riders column with
+    // fake riders (layout check without a relay or a workout window).
+    if (cliArgs.contains(QLatin1String("--group-panel-shot"))) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--group-panel-shot"));
+        const QString outPath = idx + 1 < cliArgs.size() ? cliArgs.at(idx + 1) : QStringLiteral("group-panel.png");
+        const int riders = idx + 2 < cliArgs.size() && cliArgs.at(idx + 2).toInt() > 0 ? cliArgs.at(idx + 2).toInt() : 20;
+        return GroupSimTest::renderPanelPreview(outPath, riders) ? 0 : 1;
+    }
+
+    // --group-sim [riders] [seconds] [--relay URL] [--join CODE]: headless
+    // group-workout room check (default relay: a local `wrangler dev` on port
+    // 8787). With --join, the simulated riders join a room hosted in the app.
     if (cliArgs.contains(QLatin1String("--group-sim"), Qt::CaseInsensitive)) {
         splash.hide();
         const int idx = cliArgs.indexOf(QLatin1String("--group-sim"));
@@ -300,7 +311,9 @@ int main(int argc, char *argv[]) {
         QUrl relayUrl(QStringLiteral("ws://127.0.0.1:8787"));
         const int relayIdx = cliArgs.indexOf(QLatin1String("--relay"));
         if (relayIdx >= 0 && relayIdx + 1 < cliArgs.size()) relayUrl = QUrl(cliArgs.at(relayIdx + 1));
-        auto *groupSim = new GroupSimTest(relayUrl, riderCount, rideSeconds, &app);
+        const int joinIdx = cliArgs.indexOf(QLatin1String("--join"));
+        const QString joinCode = joinIdx >= 0 && joinIdx + 1 < cliArgs.size() ? cliArgs.at(joinIdx + 1) : QString();
+        auto *groupSim = new GroupSimTest(relayUrl, riderCount, rideSeconds, joinCode, &app);
         QObject::connect(groupSim, &GroupSimTest::finished, &app, &QCoreApplication::exit);
         groupSim->start();
         return app.exec();

@@ -25,8 +25,10 @@ INCLUDEPATH += . ../../src/group
 SOURCES += \
     ../../src/group/groupprotocol.cpp \
     ../../src/group/groupsession.cpp \
+    ../../src/group/groupridersmodel.cpp \
     tst_group.cpp
 
 HEADERS += \
     ../../src/group/groupprotocol.h \
-    ../../src/group/groupsession.h
+    ../../src/group/groupsession.h \
+    ../../src/group/groupridersmodel.h

@@ -506,8 +506,14 @@ private:
     QTimer *m_groupCountdownTimer = nullptr;
     bool m_groupAwaitingStart = false;
     qint64 m_groupStartLocalMs = 0;
+    QTimer *m_groupTelemetryTimer = nullptr;
+    struct GroupSample { int value = 0; qint64 atMs = 0; };
+    GroupSample m_groupLatestPower;
+    GroupSample m_groupLatestHr;
+    GroupSample m_groupLatestCadence;
     void onGroupStartScheduled(qint64 localStartMs);
     void beginGroupRide();
+    void sendGroupTelemetry();
     bool testResultShown;
     /// One automatic refresh-and-retry when a Strava upload answers 401.
     bool m_stravaUpload401Retried = false;

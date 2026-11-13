@@ -26,6 +26,7 @@ struct RiderTelemetry {
     std::optional<int> targetPowerWatts;
     std::optional<int> heartRateBpm;
     std::optional<int> cadenceRpm;
+    std::optional<int> percentFtp;       // power as % of the rider's FTP; FTP itself is never sent
     int intervalIndex = 0;
     RiderStatus status = RiderStatus::Riding;
 };

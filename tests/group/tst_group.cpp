@@ -6,6 +6,7 @@
 
 #include "groupprotocol.h"
 #include "groupsession.h"
+#include "groupridersmodel.h"
 
 using namespace GroupProtocol;
 
@@ -24,9 +25,32 @@ private slots:
     void decodeErrorAndGarbage();
     void clockOffsetUsesShortestRoundTrip();
     void clockOffsetIgnoresImpossibleSamples();
+    void ridersModelPutsYouFirstThenJoinOrder();
+    void ridersModelStates();
+    void ridersModelDetailShowsBehindAndAhead();
+    void ridersModelKeepsTelemetryAcrossRosterChanges();
     void liveTwoRidersShareStartAndTelemetry();
 
 private:
+    static QList<RosterEntry> roster(std::initializer_list<const char *> ids) {
+        QList<RosterEntry> entries;
+        for (const char *id : ids) {
+            RosterEntry entry;
+            entry.riderId = QString::fromLatin1(id);
+            entry.name = QStringLiteral("Name ") + entry.riderId;
+            entry.isReady = true;
+            entries.append(entry);
+        }
+        return entries;
+    }
+    static RiderTelemetry tel(const char *id, std::optional<int> power, std::optional<int> target, double elapsed = 100) {
+        RiderTelemetry telemetry;
+        telemetry.riderId = QString::fromLatin1(id);
+        telemetry.powerWatts = power;
+        telemetry.targetPowerWatts = target;
+        telemetry.elapsedWorkoutSeconds = elapsed;
+        return telemetry;
+    }
     static QJsonObject parse(const QByteArray &frame) { return QJsonDocument::fromJson(frame).object(); }
 };
 
@@ -71,6 +95,7 @@ void TstGroup::telemetryRoundTripsAndOmitsMissingSensors() {
     sent.elapsedWorkoutSeconds = 1934.24;
     sent.powerWatts = 281;
     sent.targetPowerWatts = 290;
+    sent.percentFtp = 105;
     sent.intervalIndex = 6;
     sent.status = RiderStatus::Paused;
 
@@ -89,6 +114,7 @@ void TstGroup::telemetryRoundTripsAndOmitsMissingSensors() {
     QCOMPARE(message.telemetry.elapsedWorkoutSeconds, 1934.2);
     QCOMPARE(message.telemetry.powerWatts, std::optional<int>(281));
     QCOMPARE(message.telemetry.targetPowerWatts, std::optional<int>(290));
+    QCOMPARE(message.telemetry.percentFtp, std::optional<int>(105));
     QVERIFY(!message.telemetry.heartRateBpm.has_value());
     QCOMPARE(message.telemetry.intervalIndex, 6);
     QCOMPARE(message.telemetry.status, RiderStatus::Paused);
@@ -154,6 +180,72 @@ void TstGroup::clockOffsetUsesShortestRoundTrip() {
 void TstGroup::clockOffsetIgnoresImpossibleSamples() {
     const QList<ClockSample> samples{{2000, 1990, 0}, {1000, 1010, 1505}};
     QCOMPARE(estimateServerOffsetMs(samples), std::optional<qint64>(500));
+}
+
+void TstGroup::ridersModelPutsYouFirstThenJoinOrder() {
+    GroupRidersModel model;
+    model.setRoster(roster({"r1", "r2", "r3"}), "r2");
+    QCOMPARE(model.rowCount(), 3);
+    QCOMPARE(model.rowAt(0).riderId, QStringLiteral("r2"));
+    QVERIFY(model.rowAt(0).isYou);
+    QCOMPARE(model.rowAt(1).riderId, QStringLiteral("r1"));
+    QCOMPARE(model.rowAt(2).riderId, QStringLiteral("r3"));
+}
+
+void TstGroup::ridersModelStates() {
+    using State = GroupRidersModel::RowState;
+    GroupRidersModel model;
+    QList<RosterEntry> entries = roster({"me", "a", "b", "c", "d", "e"});
+    entries[5].isReady = false;
+    model.setRoster(entries, "me");
+    const qint64 now = 1'000'000;
+    model.updateTelemetry(tel("a", 210, 200), now);            // +5%: on target
+    model.updateTelemetry(tel("b", 170, 200), now);            // -15%: off target
+    RiderTelemetry paused = tel("c", 0, 200);
+    paused.status = RiderStatus::Paused;
+    model.updateTelemetry(paused, now);
+    model.updateTelemetry(tel("d", 200, 200), now - GroupRidersModel::kStaleAfterMs - 1);
+
+    QCOMPARE(model.stateOf(model.rowAt(0), now), State::Waiting);
+    QCOMPARE(model.stateOf(model.rowAt(1), now), State::OnTarget);
+    QCOMPARE(model.stateOf(model.rowAt(2), now), State::OffTarget);
+    QCOMPARE(model.stateOf(model.rowAt(3), now), State::Paused);
+    QCOMPARE(model.stateOf(model.rowAt(4), now), State::Stale);
+    QCOMPARE(model.stateOf(model.rowAt(5), now), State::Connecting);
+
+    // Your own row never goes stale: it is fed locally, not by the relay.
+    model.updateOwnTelemetry(tel("", 200, 0), now - 60'000);
+    QCOMPARE(model.stateOf(model.rowAt(0), now), State::OnTarget);
+}
+
+void TstGroup::ridersModelDetailShowsBehindAndAhead() {
+    GroupRidersModel model;
+    model.setRoster(roster({"me", "late", "early", "close"}), "me");
+    const qint64 now = 5'000;
+    model.updateOwnTelemetry(tel("", 200, 200, 600), now);
+    RiderTelemetry late = tel("late", 200, 200, 576);
+    late.percentFtp = 105;
+    late.cadenceRpm = 92;
+    model.updateTelemetry(late, now);
+    model.updateTelemetry(tel("early", 200, 200, 671), now);
+    model.updateTelemetry(tel("close", 200, 200, 597), now);
+
+    QCOMPARE(model.detailLine(model.rowAt(1), now), QStringLiteral("105% FTP · 92 rpm · 0:24 behind"));
+    QCOMPARE(model.detailLine(model.rowAt(2), now), QStringLiteral("1:11 ahead"));
+    QCOMPARE(model.detailLine(model.rowAt(3), now), QString());
+}
+
+void TstGroup::ridersModelKeepsTelemetryAcrossRosterChanges() {
+    GroupRidersModel model;
+    model.setRoster(roster({"me", "a"}), "me");
+    model.updateTelemetry(tel("a", 250, 250), 1000);
+    model.setRoster(roster({"me", "a", "b"}), "me");
+    QCOMPARE(model.rowCount(), 3);
+    QVERIFY(model.rowAt(1).telemetry.has_value());
+    QCOMPARE(model.rowAt(1).telemetry->powerWatts, std::optional<int>(250));
+    model.setRoster(roster({"me", "b"}), "me");
+    QCOMPARE(model.rowCount(), 2);
+    QCOMPARE(model.rowAt(1).riderId, QStringLiteral("b"));
 }
 
 void TstGroup::liveTwoRidersShareStartAndTelemetry() {

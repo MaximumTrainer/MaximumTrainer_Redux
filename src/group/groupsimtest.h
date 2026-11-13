@@ -18,8 +18,14 @@ class GroupSimTest : public QObject
     Q_OBJECT
 
 public:
-    GroupSimTest(const QUrl &relayBaseUrl, int riderCount, int rideSeconds, QObject *parent = nullptr);
+    /// With \a joinRoomCode set, every simulated rider joins that room (hosted
+    /// elsewhere, e.g. from the app) and rides once its host starts it.
+    GroupSimTest(const QUrl &relayBaseUrl, int riderCount, int rideSeconds,
+                 const QString &joinRoomCode = QString(), QObject *parent = nullptr);
     void start();
+
+    /// Renders the riders column with \a riderCount fake riders to a PNG.
+    static bool renderPanelPreview(const QString &pngPath, int riderCount);
 
 signals:
     void finished(int exitCode);
@@ -52,6 +58,7 @@ private:
     int m_rideSeconds;
     QList<SimRider> m_riders;
     QString m_roomCode;
+    QString m_joinRoomCode;
     bool m_rideStarted = false;
     bool m_finished = false;
     QHash<QString, qint64> m_sentAtMs;          // "riderId/seq" -> local ms

@@ -1,11 +1,14 @@
 #include "grouppanel.h"
 
+#include "groupriderdelegate.h"
+#include "groupridersmodel.h"
+
 #include <QApplication>
 #include <QClipboard>
 #include <QDateTime>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QListWidget>
+#include <QListView>
 #include <QPushButton>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -13,7 +16,7 @@
 using namespace GroupProtocol;
 
 namespace {
-constexpr int kPanelWidth = 220;
+constexpr int kPanelWidth = 230;
 }
 
 GroupPanel::GroupPanel(GroupSession *session, QWidget *parent)
@@ -21,24 +24,25 @@ GroupPanel::GroupPanel(GroupSession *session, QWidget *parent)
 {
     setObjectName(QStringLiteral("groupPanel"));
     setFixedWidth(kPanelWidth);
+    m_ridersModel = new GroupRidersModel(this);
 
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(8, 8, 8, 8);
     layout->setSpacing(6);
 
-    auto *title = new QLabel(tr("Group ride"), this);
-    QFont titleFont = title->font();
+    m_titleLabel = new QLabel(this);
+    QFont titleFont = m_titleLabel->font();
     titleFont.setBold(true);
-    titleFont.setPointSizeF(titleFont.pointSizeF() * 1.15);
-    title->setFont(titleFont);
-    layout->addWidget(title);
+    titleFont.setPointSizeF(titleFont.pointSizeF() * 1.1);
+    m_titleLabel->setFont(titleFont);
+    layout->addWidget(m_titleLabel);
 
     auto *codeRow = new QHBoxLayout();
     m_codeLabel = new QLabel(this);
     QFont codeFont(QStringLiteral("monospace"));
     codeFont.setStyleHint(QFont::Monospace);
     codeFont.setBold(true);
-    codeFont.setPointSizeF(titleFont.pointSizeF() * 1.2);
+    codeFont.setPointSizeF(titleFont.pointSizeF() * 1.1);
     m_codeLabel->setFont(codeFont);
     m_codeLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     m_copyButton = new QPushButton(tr("Copy"), this);
@@ -52,13 +56,21 @@ GroupPanel::GroupPanel(GroupSession *session, QWidget *parent)
     m_statusLabel->setWordWrap(true);
     layout->addWidget(m_statusLabel);
 
-    m_riderList = new QListWidget(this);
+    m_riderList = new QListView(this);
+    m_riderList->setModel(m_ridersModel);
+    m_riderList->setItemDelegate(new GroupRiderDelegate(m_ridersModel, m_riderList));
+    m_riderList->setUniformItemSizes(true);
     m_riderList->setFocusPolicy(Qt::NoFocus);
     m_riderList->setSelectionMode(QAbstractItemView::NoSelection);
+    m_riderList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_riderList->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    m_riderList->setFrameShape(QFrame::NoFrame);
+    m_riderList->viewport()->setAutoFillBackground(false);
     layout->addWidget(m_riderList, 1);
+    connect(m_ridersModel, &QAbstractItemModel::modelReset, this, &GroupPanel::refreshStatus);
 
     m_startButton = new QPushButton(tr("Start group ride"), this);
-    m_startButton->setToolTip(tr("Everyone starts together 10 seconds after you press this"));
+    m_startButton->setToolTip(tr("Everyone starts together 10 seconds after you press this (or Enter)"));
     m_startButton->setFocusPolicy(Qt::NoFocus);
     layout->addWidget(m_startButton);
 
@@ -66,68 +78,71 @@ GroupPanel::GroupPanel(GroupSession *session, QWidget *parent)
     m_waitingLabel->setWordWrap(true);
     layout->addWidget(m_waitingLabel);
 
-    m_countdownTimer = new QTimer(this);
-    m_countdownTimer->setInterval(250);
-    connect(m_countdownTimer, &QTimer::timeout, this, &GroupPanel::refreshStatus);
+    m_refreshTimer = new QTimer(this);
+    m_refreshTimer->setInterval(500);
+    connect(m_refreshTimer, &QTimer::timeout, this, [this] {
+        m_ridersModel->tick(QDateTime::currentMSecsSinceEpoch());
+        refreshStatus();
+    });
+    m_refreshTimer->start();
 
     connect(m_copyButton, &QPushButton::clicked, this, [this] {
-        if (m_session) QApplication::clipboard()->setText(m_session->roomCode());
+        QApplication::clipboard()->setText(m_codeLabel->text());
         m_copyButton->setText(tr("Copied"));
         QTimer::singleShot(1500, m_copyButton, [this] { m_copyButton->setText(tr("Copy")); });
     });
     connect(m_startButton, &QPushButton::clicked, this, &GroupPanel::startRequested);
 
     if (m_session) {
-        connect(m_session, &GroupSession::rosterChanged, this, [this] {
-            refreshRoster();
+        connect(m_session, &GroupSession::rosterChanged, this, [this](const QList<RosterEntry> &roster) {
+            m_ridersModel->setRoster(roster, m_session ? m_session->riderId() : QString());
             refreshHostControls();
+            refreshStatus();
+        });
+        connect(m_session, &GroupSession::telemetryReceived, this, [this](const RiderTelemetry &telemetry) {
+            m_ridersModel->updateTelemetry(telemetry, QDateTime::currentMSecsSinceEpoch());
         });
         connect(m_session, &GroupSession::stateChanged, this, &GroupPanel::refreshStatus);
+        m_ridersModel->setRoster(m_session->roster(), m_session->riderId());
     }
 
-    refreshRoster();
     refreshHostControls();
     refreshStatus();
 }
 
 void GroupPanel::setScheduledStart(qint64 localStartMs) {
     m_scheduledStartLocalMs = localStartMs;
-    m_countdownTimer->start();
     refreshHostControls();
     refreshStatus();
 }
 
 void GroupPanel::setRideStarted() {
     m_rideStarted = true;
-    m_countdownTimer->stop();
     refreshHostControls();
     refreshStatus();
 }
 
-void GroupPanel::refreshRoster() {
-    m_riderList->clear();
-    if (!m_session) return;
-    for (const RosterEntry &rider : m_session->roster()) {
-        QString text = rider.name;
-        if (rider.riderId == m_session->riderId()) text += tr(" (you)");
-        if (rider.isHost) text += tr(" · host");
-        if (!rider.isReady) text += QStringLiteral("\n") + tr("connecting sensors…");
-        auto *item = new QListWidgetItem(text, m_riderList);
-        item->setForeground(rider.isReady ? palette().color(QPalette::WindowText)
-                                          : palette().color(QPalette::PlaceholderText));
-    }
+void GroupPanel::setOwnTelemetry(const RiderTelemetry &telemetry) {
+    m_ridersModel->updateOwnTelemetry(telemetry, QDateTime::currentMSecsSinceEpoch());
+}
+
+void GroupPanel::setRoomCodeForPreview(const QString &roomCode) {
+    m_codeLabel->setText(roomCode);
 }
 
 void GroupPanel::refreshHostControls() {
     const bool isHost = m_session && m_session->isHost();
     const bool waitingForStart = !m_rideStarted && m_scheduledStartLocalMs == 0;
     m_startButton->setVisible(isHost && waitingForStart);
-    m_waitingLabel->setVisible(!isHost && waitingForStart);
+    m_waitingLabel->setVisible(m_session && !isHost && waitingForStart);
 }
 
 void GroupPanel::refreshStatus() {
+    const int riderCount = m_ridersModel->rowCount();
+    m_titleLabel->setText(riderCount == 1 ? tr("Group ride · 1 rider")
+                                          : tr("Group ride · %1 riders").arg(riderCount));
     if (!m_session) {
-        m_statusLabel->setText(tr("Disconnected from the group."));
+        m_statusLabel->setText(m_rideStarted ? tr("Riding together.") : QString());
         return;
     }
     m_codeLabel->setText(m_session->roomCode());
@@ -149,8 +164,7 @@ void GroupPanel::refreshStatus() {
     }
     if (m_scheduledStartLocalMs > 0) {
         const qint64 remainingMs = m_scheduledStartLocalMs - QDateTime::currentMSecsSinceEpoch();
-        const int remainingSeconds = int((qMax<qint64>(0, remainingMs) + 999) / 1000);
-        m_statusLabel->setText(tr("Starting in %1 s").arg(remainingSeconds));
+        m_statusLabel->setText(tr("Starting in %1 s").arg((qMax<qint64>(0, remainingMs) + 999) / 1000));
         return;
     }
     m_statusLabel->setText(tr("Share the code. Riders appear here when they join."));

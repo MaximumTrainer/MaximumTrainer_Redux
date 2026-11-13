@@ -10,6 +10,7 @@ constexpr int kClockProbesOnJoin = 5;
 constexpr int kClockProbeSpacingMs = 200;
 constexpr int kClockResyncIntervalMs = 60 * 1000;
 constexpr int kMaxReconnectDelayMs = 15 * 1000;
+constexpr qint64 kStartResyncThresholdMs = 10;
 
 qint64 nowMs() { return QDateTime::currentMSecsSinceEpoch(); }
 
@@ -216,6 +217,14 @@ void GroupSession::handlePong(ClockSample sample) {
     m_lastRoundTripMs = sample.localReceiveMs - sample.localSendMs;
     const std::optional<qint64> offset = estimateServerOffsetMs(m_clockSamples);
     if (!offset) return;
+    const qint64 previousOffset = m_serverOffsetMs.value_or(*offset);
     m_serverOffsetMs = offset;
     emit clockSynchronized(*offset, m_lastRoundTripMs);
+
+    // A better estimate moves a pending shared start, so a slow first sample
+    // can't leave this rider starting late.
+    if (m_announcedStartServerMs && qAbs(*offset - previousOffset) >= kStartResyncThresholdMs) {
+        const qint64 localStartMs = serverToLocalMs(*m_announcedStartServerMs);
+        if (localStartMs > nowMs()) emit startScheduled(localStartMs);
+    }
 }

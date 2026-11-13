@@ -10,7 +10,9 @@ HEADERS += \
     $$PWD/groupconfig.h \
     $$PWD/groupworkoutcodec.h \
     $$PWD/grouppanel.h \
-    $$PWD/joingroupdialog.h
+    $$PWD/joingroupdialog.h \
+    $$PWD/groupridersmodel.h \
+    $$PWD/groupriderdelegate.h
 
 SOURCES += \
     $$PWD/groupprotocol.cpp \
@@ -18,4 +20,6 @@ SOURCES += \
     $$PWD/groupsimtest.cpp \
     $$PWD/groupworkoutcodec.cpp \
     $$PWD/grouppanel.cpp \
-    $$PWD/joingroupdialog.cpp
+    $$PWD/joingroupdialog.cpp \
+    $$PWD/groupridersmodel.cpp \
+    $$PWD/groupriderdelegate.cpp
