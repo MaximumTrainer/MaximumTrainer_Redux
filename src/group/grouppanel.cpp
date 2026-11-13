@@ -111,7 +111,7 @@ void GroupPanel::refreshRoster() {
         QString text = rider.name;
         if (rider.riderId == m_session->riderId()) text += tr(" (you)");
         if (rider.isHost) text += tr(" · host");
-        text += QStringLiteral("\n") + (rider.isReady ? tr("Ready") : tr("Getting ready…"));
+        if (!rider.isReady) text += QStringLiteral("\n") + tr("connecting sensors…");
         auto *item = new QListWidgetItem(text, m_riderList);
         item->setForeground(rider.isReady ? palette().color(QPalette::WindowText)
                                           : palette().color(QPalette::PlaceholderText));
