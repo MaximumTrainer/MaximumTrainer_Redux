@@ -492,6 +492,14 @@ void WorkoutPlot::setMessage(QString msg) {
 
 
 }
+void WorkoutPlot::updateMessageText(const QString &msg) {
+    if (!showingMessage) {
+        setMessage(msg);
+        return;
+    }
+    labelMsg->setText(msg);
+}
+
 void WorkoutPlot::removeMainMessage() {
     labelMsg->fadeOut(300);
     showingMessage = false;

@@ -147,12 +147,13 @@
              integration and built-in simulator — fully implemented.</p>
         </div>
 
-        <!-- Studio Mode -->
+        <!-- Ride Together: group workouts + Studio Mode -->
         <div class="feature-card">
-          <div class="feature-icon">🏟️</div>
-          <h3>Studio Mode</h3>
-          <p>Support for <strong>multiple riders / users concurrently</strong> on a single installation
-             — ideal for spinning studios and group training sessions.</p>
+          <div class="feature-icon">👥</div>
+          <h3>Ride Together</h3>
+          <p><strong>Group workouts</strong>: host a room, share the code, and ride the same workout
+             with up to 20 friends over the internet, each at their own FTP, with everyone's live
+             numbers on screen. <strong>Studio Mode</strong> runs up to 8 riders on one computer.</p>
         </div>
 
         <!-- Workout Formats -->
@@ -198,6 +199,7 @@
             <tr><td>Sensor profiles</td><td>Heart Rate (0x180D) · CSC (0x1816) · Power (0x1818) · Moxy NIRS (0xAAB0)</td></tr>
             <tr><td>Workout formats</td><td><code>.erg</code> · <code>.mrc</code> · <code>.zwo</code> · <code>.fit</code> (native XML) · Intervals.icu calendar sync</td></tr>
             <tr><td>Cloud integrations</td><td>Strava · Intervals.icu</td></tr>
+            <tr><td>Group workouts</td><td>Up to 20 riders per room over WebSockets, via a self-hostable Cloudflare Worker relay</td></tr>
             <tr><td>License</td><td>GPL-3.0</td></tr>
           </tbody>
         </table>
@@ -319,7 +321,7 @@ nmake</code></pre>
   qt6-base-dev qt6-webengine-dev \
   qt6-connectivity-dev qt6-multimedia-dev \
   qt6-webchannel-dev qt6-positioning-dev \
-  cmake build-essential
+  qt6-websockets-dev cmake build-essential
 
 qmake6 MaximumTrainer.pro QWT_INSTALL=/tmp/qwt6
 make -j$(nproc)</code></pre>

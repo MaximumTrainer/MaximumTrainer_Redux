@@ -52,7 +52,7 @@ jobs:
         # #959); use git master until a fixed release ships.
         aqtversion: ' @ git+https://github.com/miurahr/aqtinstall.git@master'
         arch: win64_msvc2022_64
-        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia qtwebsockets'
         dir: ${{ env.QT_HOME }}
         cache: true
         cache-key-prefix: qt-win

@@ -66,7 +66,7 @@ jobs:
         host: 'linux'
         target: 'desktop'
         arch: 'linux_gcc_64'
-        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia qtserialport'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia qtserialport qtwebsockets'
         cache: true
         cache-key-prefix: qt-linux
 

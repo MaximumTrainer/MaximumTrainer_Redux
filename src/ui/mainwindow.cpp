@@ -64,6 +64,10 @@
 #include "sensorswidget.h"
 #include "studiowidget.h"
 #include "asyncdialogs.h"
+#include "groupconfig.h"
+#include "groupsession.h"
+#include "groupworkoutcodec.h"
+#include "joingroupdialog.h"
 
 #ifdef GC_WASM_BUILD
 #include <emscripten.h>
@@ -283,6 +287,24 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // connect Workout Dialog done with refresh Training Data page
     connect (ui->tab_workout1, &Main_WorkoutPage::executeWorkout, this, &MainWindow::executeWorkout);
+
+#ifndef GC_WASM_BUILD
+    connect(ui->tab_workout1, &Main_WorkoutPage::hostGroupWorkout, this, &MainWindow::hostGroupWorkout);
+    ui->menuTEst->addSeparator();
+    QAction *actionHostGroup = ui->menuTEst->addAction(tr("Host Group Workout…"));
+    connect(actionHostGroup, &QAction::triggered, this, [this] {
+        const std::optional<Workout> selected = ui->tab_workout1->selectedWorkout();
+        if (!selected) {
+            AsyncDialogs::information(this, tr("Host Group Workout"),
+                tr("Select a workout in the Workout list first, then choose Host Group Workout."));
+            return;
+        }
+        hostGroupWorkout(*selected);
+    });
+    QAction *actionJoinGroup = ui->menuTEst->addAction(tr("Join Group Workout…"));
+    actionJoinGroup->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_J));
+    connect(actionJoinGroup, &QAction::triggered, this, &MainWindow::showJoinGroupDialog);
+#endif
 
 
     /// Connect Workout Creator --> WorkoutList Page
@@ -1505,6 +1527,7 @@ void MainWindow::startSimulatedWorkout(const Workout &workout)
 
     for (SimulatorHub *simHub : simHubs)
         simHub->start();
+    attachPendingGroupSession(w);
     workoutExecuting();
     QApplication::restoreOverrideCursor();
     w->show();
@@ -1617,6 +1640,7 @@ void MainWindow::startWorkoutWithConnectedHub(const Workout &workout, BtleHub *b
         tryAdvanceWorkoutQueue();
     });
 
+    attachPendingGroupSession(w);
     workoutExecuting();
     QApplication::restoreOverrideCursor();
     w->show();
@@ -1653,6 +1677,7 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
         tryAdvanceWorkoutQueue();
     });
 
+    attachPendingGroupSession(w);
     workoutExecuting();
     QApplication::restoreOverrideCursor();
     w->show();
@@ -1781,6 +1806,7 @@ void MainWindow::startWorkoutWithStudioHubs(const Workout &workout,
         tryAdvanceWorkoutQueue();
     });
 
+    attachPendingGroupSession(w);
     workoutExecuting();
     QApplication::restoreOverrideCursor();
     w->show();
@@ -2413,4 +2439,94 @@ void MainWindow::screenshotNextStep()
         QTimer::singleShot(ssDelays[step], this, &MainWindow::screenshotNextStep);
     else
         scheduleScreenshotQuit();
+}
+
+QString MainWindow::groupDisplayName() const {
+    if (!account->first_name.trimmed().isEmpty()) return account->first_name.trimmed();
+    if (!account->display_name.trimmed().isEmpty()) return account->display_name.trimmed();
+    return tr("Rider");
+}
+
+bool MainWindow::canRideInGroup(const Workout &workout) {
+    if (isInsideWorkout || m_launchingWorkout) return false;
+    if (account->enable_studio_mode) {
+        AsyncDialogs::information(this, tr("Group Workout"),
+            tr("Group workouts aren't available in Studio mode. Turn Studio mode off to ride with others."));
+        return false;
+    }
+    if (workout.getWorkoutNameEnum() == Workout::OPEN_RIDE) {
+        AsyncDialogs::information(this, tr("Group Workout"),
+            tr("Free Ride can't be shared yet. Pick a structured workout to ride with others."));
+        return false;
+    }
+    return true;
+}
+
+void MainWindow::hostGroupWorkout(const Workout &workout) {
+    if (!canRideInGroup(workout)) return;
+
+    const std::optional<GroupProtocol::SharedWorkout> shared = GroupWorkoutCodec::encode(workout);
+    if (!shared) {
+        AsyncDialogs::warning(this, tr("Host Group Workout"), tr("This workout could not be prepared for sharing."));
+        return;
+    }
+
+    auto *session = new GroupSession(GroupConfig::relayBaseUrl(), this);
+    ui->widget_bottomMenu->setGeneralMessage(tr("Creating a group room…"), 10000);
+    connect(session, &GroupSession::joined, this, [this, session, workout, shared] {
+        session->disconnect(this);
+        session->shareWorkout(*shared);
+        ui->widget_bottomMenu->setGeneralMessage(tr("Group room %1 created").arg(session->roomCode()), 5000);
+        startGroupWorkout(workout, session);
+    }, Qt::QueuedConnection);
+    connect(session, &GroupSession::relayError, this, [this, session](const QString &errorCode) {
+        session->disconnect(this);
+        session->deleteLater();
+        AsyncDialogs::warning(this, tr("Host Group Workout"),
+            errorCode == QLatin1String("relay_unreachable")
+                ? tr("Could not reach the group server. Check your internet connection.")
+                : tr("The group server refused to create a room (%1).").arg(errorCode));
+    });
+    session->hostRoom(groupDisplayName());
+}
+
+void MainWindow::showJoinGroupDialog() {
+    if (isInsideWorkout || m_launchingWorkout) return;
+    auto *dialog = new JoinGroupDialog(GroupConfig::relayBaseUrl(), groupDisplayName(), this);
+    connect(dialog, &JoinGroupDialog::workoutReady, this,
+            [this](GroupSession *session, const Workout &workout) {
+        if (!canRideInGroup(workout)) {
+            session->leave();
+            session->deleteLater();
+            return;
+        }
+        startGroupWorkout(workout, session);
+    }, Qt::QueuedConnection);
+    dialog->open();
+}
+
+void MainWindow::startGroupWorkout(const Workout &workout, GroupSession *session) {
+    session->setParent(this);
+    m_pendingGroupSession = session;
+    executeWorkout(workout);
+#ifndef GC_WASM_BUILD
+    // The desktop launch runs to the shown WorkoutDialog before returning, so a
+    // session that is still pending means the rider cancelled the launch.
+    if (m_pendingGroupSession) {
+        m_pendingGroupSession->leave();
+        m_pendingGroupSession->deleteLater();
+        m_pendingGroupSession = nullptr;
+    }
+#endif
+}
+
+void MainWindow::attachPendingGroupSession(WorkoutDialog *dialog) {
+    if (!m_pendingGroupSession) return;
+    GroupSession *session = m_pendingGroupSession;
+    m_pendingGroupSession = nullptr;
+    dialog->setGroupSession(session);
+    connect(dialog, &QDialog::finished, session, [session] {
+        session->leave();
+        session->deleteLater();
+    });
 }

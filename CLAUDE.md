@@ -210,6 +210,16 @@ web frontend), #248 (editor popup UI), #251 (audio output fix), #252 (window-on-
 + toolbar grouping + FTP-test profile update). Earlier: #227, #228, #230, #234,
 #235, #236, dark-mode + OpenSSL AppImage fixes, QWT 6.2 → 6.3.
 
+**Group workouts** (branch `group-workouts-relay`): ride a workout with friends over
+the internet. Relay = Cloudflare Worker + one Durable Object per room in
+`workers/group-relay/` (deployed by `deploy-group-relay.yml`, probed by
+`proxy-healthcheck.yml`); app side in `src/group/` (`GroupSession` QWebSocket client,
+`GroupPanel` riders column added to `WorkoutDialog`); tests in `tests/group/`
+(live test needs `GROUP_RELAY_URL`). Point the app at another relay with
+`MT_GROUP_RELAY_URL`. Headless helpers: `--group-sim [riders] [secs] [--relay URL]
+[--join CODE]` and `--group-panel-shot out.png [riders]`. Durable Object gotcha: with
+the hibernation API, `webSocketClose` must call `ws.close()` or the client's close hangs.
+
 The **workout dialog timer** is driven by a `Clock` QObject on a worker
 `QThread` ticking every 25ms; it derives elapsed seconds from a monotonic
 high-res clock (no drift). The three bottom mini-graphs (`WorkoutPlotZoomer`)

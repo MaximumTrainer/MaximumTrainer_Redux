@@ -121,6 +121,12 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
     actionOpenFolder = contextMenu->addAction(QIcon(":/image/icon/folder"), tr("Open in folder"));
     contextMenu->addSeparator();
     actionAddToQueue = contextMenu->addAction(QIcon(":/image/icon/add"), tr("Add to Queue"));
+#ifndef GC_WASM_BUILD
+    QAction *actionHostGroup = contextMenu->addAction(tr("Host Group Workout…"));
+    connect(actionHostGroup, &QAction::triggered, this, [this] {
+        emit hostGroupWorkout(tableModel->getWorkoutAtRow(indexSourceSelected));
+    });
+#endif
     contextMenu->addSeparator();
     actionRefresh = contextMenu->addAction(QIcon(":/image/icon/refresh"), tr("Refresh"));
 
@@ -554,3 +560,10 @@ void Main_WorkoutPage::paintEvent(QPaintEvent *) {
     style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
 }
 
+
+
+std::optional<Workout> Main_WorkoutPage::selectedWorkout() const {
+    const QModelIndexList selectedRows = ui->tableView_workout->selectionModel()->selectedRows();
+    if (selectedRows.isEmpty()) return std::nullopt;
+    return tableModel->getWorkoutAtRow(proxyModel->mapToSource(selectedRows.first()));
+}

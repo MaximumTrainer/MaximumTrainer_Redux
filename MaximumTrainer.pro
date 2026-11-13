@@ -337,6 +337,7 @@ include(src/workout/workout.pri)
 
 # Retro ghost-race (QML/QQuickWidget) — built on every target, including WASM.
 include(src/game/game.pri)
+include(src/group/group.pri)
 
 
 RESOURCES += MyResources.qrc

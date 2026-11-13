@@ -1,6 +1,7 @@
 #ifndef MAIN_WORKOUTPAGE_H
 #define MAIN_WORKOUTPAGE_H
 
+#include <optional>
 #include <QWidget>
 #include <QLabel>
 #include <QMenu>
@@ -42,10 +43,14 @@ signals :
 
     void executeWorkout(Workout);
     void addWorkoutToQueue(const Workout &workout);
+    void hostGroupWorkout(const Workout &workout);
 
 
 
 
+
+public:
+    std::optional<Workout> selectedWorkout() const;
 
 public slots:
     void addWorkout(const Workout&);
