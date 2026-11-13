@@ -13,19 +13,22 @@ class Client {
       const message = JSON.parse(event.data);
       if (process.env.DEBUG) console.log(params.name, event.data.slice(0, 120));
       this.messages.push(message);
-      this.waiters = this.waiters.filter((w) => !(w.match(message) && (w.resolve(message), true)));
+      const waiter = this.waiters.find((candidate) => candidate.accepts(message));
+      if (!waiter) return;
+      this.waiters.splice(this.waiters.indexOf(waiter), 1);
+      this.messages.splice(this.messages.indexOf(message), 1);
+      waiter.resolve(message);
     };
     this.closed = new Promise((resolve) => (this.ws.onclose = (e) => resolve(e)));
     this.welcome = this.next((m) => m.type === "welcome");
     this.welcome.catch(() => {}); // clients that are refused never get one
   }
-  next(match, timeoutMs = 3000) {
-    const found = this.messages.find(match);
+  next(accepts, timeoutMs = 3000) {
+    const found = this.messages.find(accepts);
     if (found) { this.messages.splice(this.messages.indexOf(found), 1); return Promise.resolve(found); }
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error("timeout waiting for message")), timeoutMs);
-      this.waiters.push({ match: (m) => match(m) && (this.messages.splice(this.messages.indexOf(m), 1), true),
-                          resolve: (m) => { clearTimeout(timer); resolve(m); } });
+      this.waiters.push({ accepts, resolve: (message) => { clearTimeout(timer); resolve(message); } });
     });
   }
   send(message) { this.ws.send(JSON.stringify(message)); }
