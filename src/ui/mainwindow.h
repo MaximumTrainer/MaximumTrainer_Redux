@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QPointer>
 #include <QMainWindow>
 #include <QNetworkReply>
 #include <QThread>
@@ -36,6 +37,8 @@ class WorkoutCountdownDialog; // forward
 namespace Ui {
 class MainWindow;
 }
+
+class GroupSession;
 
 class WorkoutDialog;
 class SimulatorHub;
@@ -146,6 +149,10 @@ public slots:
     void workoutExecuting();
     void workoutOver();
 
+    // Group workouts (desktop only for now).
+    void hostGroupWorkout(const Workout &workout);
+    void showJoinGroupDialog();
+
     void checkToUploadFile(const QString& filename, const QString& nameOnly, const QString& description);
 
 
@@ -243,6 +250,12 @@ private:
     // never spawn a second WorkoutDialog. isInsideWorkout takes over once the
     // workout is actually running.
     bool m_launchingWorkout = false;
+
+    void startGroupWorkout(const Workout &workout, GroupSession *session);
+    void attachPendingGroupSession(WorkoutDialog *dialog);
+    bool canRideInGroup(const Workout &workout);
+    QString groupDisplayName() const;
+    QPointer<GroupSession> m_pendingGroupSession;
 
     QString lastWorkoutNameDownloaded;
 

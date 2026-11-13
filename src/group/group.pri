@@ -6,9 +6,16 @@ INCLUDEPATH += $$PWD
 HEADERS += \
     $$PWD/groupprotocol.h \
     $$PWD/groupsession.h \
-    $$PWD/groupsimtest.h
+    $$PWD/groupsimtest.h \
+    $$PWD/groupconfig.h \
+    $$PWD/groupworkoutcodec.h \
+    $$PWD/grouppanel.h \
+    $$PWD/joingroupdialog.h
 
 SOURCES += \
     $$PWD/groupprotocol.cpp \
     $$PWD/groupsession.cpp \
-    $$PWD/groupsimtest.cpp
+    $$PWD/groupsimtest.cpp \
+    $$PWD/groupworkoutcodec.cpp \
+    $$PWD/grouppanel.cpp \
+    $$PWD/joingroupdialog.cpp

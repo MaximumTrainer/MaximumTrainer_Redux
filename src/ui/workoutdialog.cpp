@@ -50,6 +50,12 @@
 #include "intervalsicuservice.h"
 #include "extrequest.h"
 #include "intervalsummaryutil.h"
+#include "groupsession.h"
+#include "grouppanel.h"
+
+namespace {
+constexpr int kGroupStartDelayMs = 10000;
+}
 
 
 WorkoutDialog::~WorkoutDialog() {
@@ -1641,6 +1647,14 @@ void WorkoutDialog::start_or_pause_workout() {
         return;
     }
 
+    // In a group workout nobody starts alone: the host's Enter/Start schedules
+    // the shared start, and pedalling triggers wait for it.
+    if (!isWorkoutStarted && m_groupAwaitingStart) {
+        if (m_groupSession && m_groupSession->isHost() && m_groupStartLocalMs == 0)
+            m_groupSession->startIn(kGroupStartDelayMs);
+        return;
+    }
+
     // If workout not started, we start it
     if (!isWorkoutStarted) {
         if (account->enable_sound  && account->sound_pause_resume_workout)
@@ -2919,6 +2933,20 @@ void WorkoutDialog::showPowerBalanceWidget(int display) {
 
 void WorkoutDialog::setMessagePlot() {
 
+    if (!isWorkoutStarted && m_groupAwaitingStart) {
+        QString groupMessage;
+        if (m_groupStartLocalMs > 0) {
+            const qint64 remainingMs = m_groupStartLocalMs - QDateTime::currentMSecsSinceEpoch();
+            groupMessage = tr("Group ride starts in %1 s").arg((qMax<qint64>(0, remainingMs) + 999) / 1000);
+        } else if (m_groupSession && m_groupSession->isHost()) {
+            groupMessage = tr("When everyone is ready, press Enter or Start group ride");
+        } else {
+            groupMessage = tr("Waiting for the host to start the group ride");
+        }
+        ui->widget_workoutPlot->setMessage(groupMessage);
+        return;
+    }
+
     if (isWorkoutOver)
         return;
 
@@ -4073,3 +4101,61 @@ void WorkoutDialog::showNormalWin() {
 
 }
 
+
+
+void WorkoutDialog::setGroupSession(GroupSession *session) {
+    m_groupSession = session;
+    if (!session) return;
+
+    m_groupAwaitingStart = true;
+    m_groupPanel = new GroupPanel(session, this);
+    ui->gridLayout->addWidget(m_groupPanel, 0, 1);
+    connect(m_groupPanel, &GroupPanel::startRequested, this, [this] {
+        if (m_groupSession && m_groupStartLocalMs == 0) m_groupSession->startIn(kGroupStartDelayMs);
+    });
+
+    m_groupStartTimer = new QTimer(this);
+    m_groupStartTimer->setSingleShot(true);
+    m_groupStartTimer->setTimerType(Qt::PreciseTimer);
+    connect(m_groupStartTimer, &QTimer::timeout, this, &WorkoutDialog::beginGroupRide);
+
+    m_groupCountdownTimer = new QTimer(this);
+    m_groupCountdownTimer->setInterval(250);
+    connect(m_groupCountdownTimer, &QTimer::timeout, this, &WorkoutDialog::setMessagePlot);
+
+    connect(session, &GroupSession::startScheduled, this, &WorkoutDialog::onGroupStartScheduled);
+    connect(session, &GroupSession::rosterChanged, this, &WorkoutDialog::setMessagePlot);
+    connect(session, &GroupSession::relayError, this, [](const QString &errorCode) {
+        LOG_WARN("WorkoutDialog", QStringLiteral("Group relay error: ") + errorCode);
+    });
+
+    session->setReady(true, GroupProtocol::SharedSensors{true, true, true});
+    if (const std::optional<qint64> alreadyScheduled = session->scheduledStartLocalMs())
+        onGroupStartScheduled(*alreadyScheduled);
+    setMessagePlot();
+}
+
+void WorkoutDialog::onGroupStartScheduled(qint64 localStartMs) {
+    if (!m_groupAwaitingStart) return;
+    m_groupStartLocalMs = localStartMs;
+    if (m_groupPanel) m_groupPanel->setScheduledStart(localStartMs);
+
+    const qint64 delayMs = localStartMs - QDateTime::currentMSecsSinceEpoch();
+    if (delayMs <= 0) {
+        // Joined after the start: ride from the beginning of the workout.
+        beginGroupRide();
+        return;
+    }
+    m_groupStartTimer->start(int(delayMs));
+    m_groupCountdownTimer->start();
+    setMessagePlot();
+}
+
+void WorkoutDialog::beginGroupRide() {
+    if (!m_groupAwaitingStart) return;
+    m_groupAwaitingStart = false;
+    m_groupStartTimer->stop();
+    m_groupCountdownTimer->stop();
+    if (m_groupPanel) m_groupPanel->setRideStarted();
+    if (!isWorkoutStarted) start_or_pause_workout();
+}

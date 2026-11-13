@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QTime>
 #include <QTimer>
+#include <QPointer>
 
 #include "virtual_gear.h"
 #include <QHash>
@@ -40,6 +41,8 @@ class WebBrowserView;   // forward declaration (lazily created web video player)
 class QQuickWidget;
 class RetroRaceController;   // retro ghost-race view
 class ZwiftClickManager;     // Zwift Click v2 (right) controller input, direct BLE
+class GroupSession;
+class GroupPanel;
 
 namespace Ui {
 class WorkoutDialog;
@@ -64,6 +67,10 @@ public:
     void enableTrainerControl();   // sets the solo id and reveals the gear indicator
 
     void showVideoPlayer(int choice);
+
+    /// Group workout: shows the group column and holds the start until the
+    /// host's shared start time. The session is owned by the caller.
+    void setGroupSession(GroupSession *session);
 
     void showHeartRateDisplayWidget(int display);
     void showPowerDisplayWidget(int display);
@@ -492,6 +499,15 @@ private:
     bool isWorkoutStarted;
     bool isWorkoutOver;
     bool isWorkoutPaused;
+
+    QPointer<GroupSession> m_groupSession;
+    GroupPanel *m_groupPanel = nullptr;
+    QTimer *m_groupStartTimer = nullptr;
+    QTimer *m_groupCountdownTimer = nullptr;
+    bool m_groupAwaitingStart = false;
+    qint64 m_groupStartLocalMs = 0;
+    void onGroupStartScheduled(qint64 localStartMs);
+    void beginGroupRide();
     bool testResultShown;
     /// One automatic refresh-and-retry when a Strava upload answers 401.
     bool m_stravaUpload401Retried = false;

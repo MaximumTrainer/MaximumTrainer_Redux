@@ -42,10 +42,14 @@ signals :
 
     void executeWorkout(Workout);
     void addWorkoutToQueue(const Workout &workout);
+    void hostGroupWorkout(const Workout &workout);
 
 
 
 
+
+public:
+    std::optional<Workout> selectedWorkout() const;
 
 public slots:
     void addWorkout(const Workout&);

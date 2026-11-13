@@ -42,6 +42,11 @@ public:
     qint64 serverOffsetMs() const { return m_serverOffsetMs.value_or(0); }
     qint64 lastRoundTripMs() const { return m_lastRoundTripMs; }
     const QList<GroupProtocol::RosterEntry> &roster() const { return m_roster; }
+    /// Local epoch ms of the shared start, if the host has started the room.
+    std::optional<qint64> scheduledStartLocalMs() const {
+        if (!m_announcedStartServerMs) return std::nullopt;
+        return serverToLocalMs(*m_announcedStartServerMs);
+    }
 
     qint64 localToServerMs(qint64 localMs) const { return localMs + serverOffsetMs(); }
     qint64 serverToLocalMs(qint64 serverMs) const { return serverMs - serverOffsetMs(); }
