@@ -255,6 +255,7 @@ jobs:
         host: 'linux'
         target: 'desktop'
         arch: 'linux_gcc_64'
+        modules: 'qtwebsockets'
         cache: true
         cache-key-prefix: qt-linux
 
