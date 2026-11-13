@@ -1,6 +1,9 @@
 #include "groupsession.h"
 
 #include <QDateTime>
+#include <QLoggingCategory>
+
+Q_LOGGING_CATEGORY(lcGroup, "mt.group")
 
 using namespace GroupProtocol;
 
@@ -11,6 +14,7 @@ constexpr int kClockProbeSpacingMs = 200;
 constexpr int kClockResyncIntervalMs = 60 * 1000;
 constexpr int kMaxReconnectDelayMs = 15 * 1000;
 constexpr qint64 kStartResyncThresholdMs = 10;
+constexpr qint64 kReadyResendMinIntervalMs = 2000;
 
 qint64 nowMs() { return QDateTime::currentMSecsSinceEpoch(); }
 
@@ -67,6 +71,9 @@ void GroupSession::leave() {
 void GroupSession::setReady(bool isReady, const SharedSensors &sensors) {
     m_lastReady = isReady;
     m_lastSensors = sensors;
+    m_readyRequested = true;
+    m_lastReadySentMs = nowMs();
+    qCInfo(lcGroup) << "ready" << isReady << "in" << m_roomCode;
     send(encodeReady(isReady, sensors));
 }
 
@@ -101,7 +108,10 @@ void GroupSession::setState(State state) {
 }
 
 void GroupSession::send(const QByteArray &frame) {
-    if (m_socket.state() != QAbstractSocket::ConnectedState) return;
+    if (m_socket.state() != QAbstractSocket::ConnectedState) {
+        qCWarning(lcGroup) << "dropped" << frame.left(40) << "- socket state" << m_socket.state();
+        return;
+    }
     m_socket.sendTextMessage(QString::fromUtf8(frame));
 }
 
@@ -111,6 +121,8 @@ void GroupSession::onConnected() {
 
 void GroupSession::onDisconnected() {
     m_clockProbeTimer.stop();
+    qCInfo(lcGroup) << "disconnected from" << m_roomCode << "code" << m_socket.closeCode()
+                    << m_socket.closeReason() << "leaving" << m_leaving;
     if (m_leaving) { setState(State::Closed); return; }
 
     // Refusals arrive as an error frame (handled in onTextMessage), so a first
@@ -140,6 +152,7 @@ void GroupSession::onTextMessage(const QString &frame) {
     case MessageType::Roster: {
         m_roster = message.roster;
         m_isHost = message.hostRiderId == m_riderId;
+        resendReadyIfRelayDisagrees();
         emit rosterChanged(m_roster);
         break;
     }
@@ -160,6 +173,7 @@ void GroupSession::onTextMessage(const QString &frame) {
         break;
     }
     case MessageType::Error:
+        qCWarning(lcGroup) << "relay error" << message.errorCode << message.errorDetail;
         emit relayError(message.errorCode);
         if (isFatalJoinError(message.errorCode)) leave();
         break;
@@ -176,6 +190,8 @@ void GroupSession::handleWelcome(const Welcome &welcome) {
     m_riderId = welcome.yourRiderId;
     m_rejoinToken = welcome.rejoinToken;
     m_isHost = welcome.isHost;
+    qCInfo(lcGroup) << (isRejoin ? "rejoined" : "joined") << m_roomCode << "as" << m_riderId
+                    << (m_isHost ? "(host)" : "");
     setState(State::Connected);
 
     // A rough offset straight away so a start can be shown before probing ends.
@@ -186,7 +202,7 @@ void GroupSession::handleWelcome(const Welcome &welcome) {
     m_clockProbeTimer.start(kClockProbeSpacingMs);
 
     if (!isRejoin) emit joined(m_roomCode, m_isHost);
-    if (isRejoin) send(encodeReady(m_lastReady, m_lastSensors));
+    if (isRejoin && m_readyRequested) send(encodeReady(m_lastReady, m_lastSensors));
     if (welcome.workout) emit workoutReceived(*welcome.workout);
     if (welcome.startAtServerMs && welcome.startAtServerMs != m_announcedStartServerMs) {
         m_announcedStartServerMs = welcome.startAtServerMs;
@@ -226,5 +242,18 @@ void GroupSession::handlePong(ClockSample sample) {
     if (m_announcedStartServerMs && qAbs(*offset - previousOffset) >= kStartResyncThresholdMs) {
         const qint64 localStartMs = serverToLocalMs(*m_announcedStartServerMs);
         if (localStartMs > nowMs()) emit startScheduled(localStartMs);
+    }
+}
+
+void GroupSession::resendReadyIfRelayDisagrees() {
+    if (!m_readyRequested) return;
+    for (const RosterEntry &entry : std::as_const(m_roster)) {
+        if (entry.riderId != m_riderId || entry.isReady == m_lastReady) continue;
+        const qint64 now = nowMs();
+        if (now - m_lastReadySentMs < kReadyResendMinIntervalMs) return;
+        m_lastReadySentMs = now;
+        qCWarning(lcGroup) << "relay shows ready" << entry.isReady << "but we are" << m_lastReady << "- resending";
+        send(encodeReady(m_lastReady, m_lastSensors));
+        return;
     }
 }

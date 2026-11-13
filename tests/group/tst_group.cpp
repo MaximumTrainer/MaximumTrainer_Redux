@@ -30,6 +30,7 @@ private slots:
     void ridersModelDetailShowsBehindAndAhead();
     void ridersModelKeepsTelemetryAcrossRosterChanges();
     void liveTwoRidersShareStartAndTelemetry();
+    void liveHostReadyAfterDelaySurvivesJoins();
 
 private:
     static QList<RosterEntry> roster(std::initializer_list<const char *> ids) {
@@ -289,6 +290,33 @@ void TstGroup::liveTwoRidersShareStartAndTelemetry() {
     QCOMPARE(strangerError.first().first().toString(), QStringLiteral("room_not_found"));
 
     rider.leave();
+    host.leave();
+}
+
+void TstGroup::liveHostReadyAfterDelaySurvivesJoins() {
+    const QByteArray relay = qgetenv("GROUP_RELAY_URL");
+    if (relay.isEmpty()) QSKIP("GROUP_RELAY_URL not set");
+    const QUrl relayUrl(QString::fromUtf8(relay));
+
+    GroupSession host(relayUrl);
+    QSignalSpy hostJoined(&host, &GroupSession::joined);
+    host.hostRoom("Host");
+    QVERIFY(hostJoined.wait(5000));
+    host.shareWorkout(SharedWorkout{"Test", "<Workout/>"});
+    QTest::qWait(3000);                       // rider picks a connection method
+    host.setReady(true, SharedSensors{true, true, true});
+    QTest::qWait(1000);
+
+    QList<GroupSession *> riders;
+    for (int index = 0; index < 5; ++index) {
+        auto *rider = new GroupSession(relayUrl, this);
+        rider->joinRoom(host.roomCode(), QStringLiteral("R%1").arg(index));
+        riders.append(rider);
+    }
+    QTRY_COMPARE_WITH_TIMEOUT(host.roster().size(), 6, 10000);
+    for (const RosterEntry &entry : host.roster())
+        if (entry.riderId == host.riderId()) QVERIFY2(entry.isReady, "host lost its ready flag");
+    for (GroupSession *rider : riders) { rider->leave(); rider->deleteLater(); }
     host.leave();
 }
 

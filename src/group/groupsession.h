@@ -78,6 +78,7 @@ private:
     void handleWelcome(const GroupProtocol::Welcome &welcome);
     void handlePong(GroupProtocol::ClockSample sample);
     void sendNextClockProbe();
+    void resendReadyIfRelayDisagrees();
 
     QUrl m_relayBaseUrl;
     QWebSocket m_socket;
@@ -98,6 +99,8 @@ private:
     qint64 m_lastRoundTripMs = -1;
     std::optional<qint64> m_announcedStartServerMs;
     bool m_lastReady = false;
+    bool m_readyRequested = false;
+    qint64 m_lastReadySentMs = 0;
     GroupProtocol::SharedSensors m_lastSensors;
     QList<GroupProtocol::RosterEntry> m_roster;
 };
