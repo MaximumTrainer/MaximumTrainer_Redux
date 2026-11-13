@@ -59,7 +59,7 @@ jobs:
         host: 'linux'
         target: 'desktop'
         arch: 'linux_gcc_64'
-        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia qtwebsockets'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -319,6 +319,14 @@ jobs:
         cd ../..
         ./build/tests/strava_tests -v2
 
+    - name: Group workout tests
+      run: |
+        cd tests/group
+        qmake group_tests.pro
+        make -j$(nproc)
+        cd ../..
+        ./build/tests/group_tests -v2
+
     - name: CredentialStore tests
       run: |
         cd tests/credential_store
@@ -517,7 +525,7 @@ jobs:
         host: 'linux'
         target: 'desktop'
         arch: 'linux_gcc_64'
-        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia qtwebsockets'
         cache: true
         cache-key-prefix: qt-linux
 
@@ -646,7 +654,7 @@ jobs:
         host: 'linux'
         target: 'desktop'
         arch: 'linux_gcc_64'
-        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtwebsockets'
         cache: true
         cache-key-prefix: qt-linux
 

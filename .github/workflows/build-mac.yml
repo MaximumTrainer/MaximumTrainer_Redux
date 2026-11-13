@@ -40,7 +40,7 @@ jobs:
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
-        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia qtwebsockets'
         cache: true
         cache-key-prefix: qt-mac
 
@@ -422,7 +422,7 @@ jobs:
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
-        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia qtwebsockets'
         cache: true
         cache-key-prefix: qt-mac
 
@@ -505,7 +505,7 @@ jobs:
         host: 'mac'
         target: 'desktop'
         arch: 'clang_64'
-        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtwebsockets'
         cache: true
         cache-key-prefix: qt-mac
 

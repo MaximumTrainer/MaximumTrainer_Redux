@@ -189,7 +189,7 @@ jobs:
         host: 'all_os'
         target: 'wasm'
         arch: 'wasm_singlethread'
-        modules: 'qtwebchannel'
+        modules: 'qtwebchannel qtwebsockets'
         cache: true
         cache-key-prefix: qt-wasm
         # --autodesktop (v4) auto-installs the matching linux gcc_64 desktop Qt

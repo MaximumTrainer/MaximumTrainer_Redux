@@ -35,6 +35,7 @@
 #include <QImage>
 #include "retroracecontroller.h"
 #include "zwift_click_test.h"
+#include "groupsimtest.h"
 #endif
 
 
@@ -284,6 +285,24 @@ int main(int argc, char *argv[]) {
         auto *t = new ZwiftClickTest(&app);
         QObject::connect(t, &ZwiftClickTest::finished, &app, &QCoreApplication::quit);
         t->start(nameFilter, /*scanSeconds=*/8, runSeconds, singleDevice);
+        return app.exec();
+    }
+
+    // --group-sim [riders] [seconds] [--relay URL]: headless group-workout room
+    // check against a relay (default: a local `wrangler dev` on port 8787).
+    if (cliArgs.contains(QLatin1String("--group-sim"), Qt::CaseInsensitive)) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--group-sim"));
+        int riderCount = 20;
+        int rideSeconds = 30;
+        if (idx + 1 < cliArgs.size() && cliArgs.at(idx + 1).toInt() > 0) riderCount = cliArgs.at(idx + 1).toInt();
+        if (idx + 2 < cliArgs.size() && cliArgs.at(idx + 2).toInt() > 0) rideSeconds = cliArgs.at(idx + 2).toInt();
+        QUrl relayUrl(QStringLiteral("ws://127.0.0.1:8787"));
+        const int relayIdx = cliArgs.indexOf(QLatin1String("--relay"));
+        if (relayIdx >= 0 && relayIdx + 1 < cliArgs.size()) relayUrl = QUrl(cliArgs.at(relayIdx + 1));
+        auto *groupSim = new GroupSimTest(relayUrl, riderCount, rideSeconds, &app);
+        QObject::connect(groupSim, &GroupSimTest::finished, &app, &QCoreApplication::exit);
+        groupSim->start();
         return app.exec();
     }
 

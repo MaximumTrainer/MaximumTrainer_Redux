@@ -1,0 +1,12 @@
+name               = "mt-group-relay"
+main               = "worker.js"
+compatibility_date = "2025-06-01"
+
+[[durable_objects.bindings]]
+name       = "ROOMS"
+class_name = "GroupRoom"
+
+# SQLite-backed Durable Objects are the only kind available on the Workers Free plan.
+[[migrations]]
+tag                = "v1"
+new_sqlite_classes = ["GroupRoom"]
