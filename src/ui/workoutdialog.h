@@ -466,6 +466,7 @@ private:
 
     //not doing average for now
     QVector<double> avgRightPedal1sec;
+    bool powerBalanceDataSeen = false; ///< a balance-capable power meter has reported
     QVector<double> avgLeftTorqueEff;
     QVector<double> avgRightTorqueEff;
     QVector<double> avgLeftPedalSmooth;
