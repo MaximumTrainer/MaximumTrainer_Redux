@@ -881,8 +881,9 @@ Decode::RETURN Decode::ReadByte(FIT_UINT8 data)
             if (fieldIndex >= localMesgDefs[localMesgIndex].GetFields().size())
             {
                 // Now that the entire message is decoded we may evaluate subfields and expand components
-                for (FIT_UINT16 i=0; i<mesg.GetNumFields(); i++)
+                for (int fieldIndex=0; fieldIndex<mesg.GetNumFields(); fieldIndex++)
                 {
+                    const FIT_UINT16 i = static_cast<FIT_UINT16>(fieldIndex);
                     FIT_UINT16 activeSubField = mesg.GetActiveSubFieldIndexByFieldIndex(i);
                     if( !suppressComponentExpansion )
                     {
@@ -1020,9 +1021,9 @@ void Decode::ExpandComponents(Field *containingField, const Profile::FIELD_COMPO
             if (componentField.GetNumComponents() == 1)
             {
                 if (componentField.IsSignedInteger())
-                    value = (((signedBitsValue / (FIT_FLOAT64)component->scale) - component->offset) + componentField.GetComponent(0)->offset) * componentField.GetComponent(0)->scale;
+                    value = (((static_cast<FIT_FLOAT64>(signedBitsValue) / (FIT_FLOAT64)component->scale) - component->offset) + componentField.GetComponent(0)->offset) * componentField.GetComponent(0)->scale;
                 else
-                    value = (((bitsValue / (FIT_FLOAT64)component->scale) - component->offset) + componentField.GetComponent(0)->offset) * componentField.GetComponent(0)->scale;
+                    value = (((static_cast<FIT_FLOAT64>(bitsValue) / (FIT_FLOAT64)component->scale) - component->offset) + componentField.GetComponent(0)->offset) * componentField.GetComponent(0)->scale;
                 if (mesg.HasField(componentField.GetNum()))
                 {
                     fit::Field *currentField = mesg.GetField(componentField.GetNum());
@@ -1047,11 +1048,11 @@ void Decode::ExpandComponents(Field *containingField, const Profile::FIELD_COMPO
                     if (mesg.HasField(componentField.GetNum()))
                     {
                         Field *field = mesg.GetField(componentField.GetNum());
-                        field->AddValue(bitsValue & mask, field->GetNumValues());
+                        field->AddValue(static_cast<FIT_FLOAT64>(bitsValue & mask), field->GetNumValues());
                     }
                     else
                     {
-                        componentField.AddValue(bitsValue & mask, componentField.GetNumValues());
+                        componentField.AddValue(static_cast<FIT_FLOAT64>(bitsValue & mask), componentField.GetNumValues());
                         mesg.AddField(componentField);
                     }
                     bitsValue >>= baseTypeSizes[componentField.GetType() & FIT_BASE_TYPE_NUM_MASK];
@@ -1062,9 +1063,9 @@ void Decode::ExpandComponents(Field *containingField, const Profile::FIELD_COMPO
             else
             {
                 if (componentField.IsSignedInteger())
-                    value = (((signedBitsValue / (FIT_FLOAT64)component->scale) - component->offset) + componentField.GetOffset(subfieldIndex)) * componentField.GetScale(subfieldIndex);
+                    value = (((static_cast<FIT_FLOAT64>(signedBitsValue) / (FIT_FLOAT64)component->scale) - component->offset) + componentField.GetOffset(subfieldIndex)) * componentField.GetScale(subfieldIndex);
                 else
-                    value = (((bitsValue / (FIT_FLOAT64)component->scale) - component->offset) + componentField.GetOffset(subfieldIndex)) * componentField.GetScale(subfieldIndex);
+                    value = (((static_cast<FIT_FLOAT64>(bitsValue) / (FIT_FLOAT64)component->scale) - component->offset) + componentField.GetOffset(subfieldIndex)) * componentField.GetScale(subfieldIndex);
                 if (mesg.HasField(componentField.GetNum()))
                 {
                     fit::Field *currentField = mesg.GetField(componentField.GetNum());

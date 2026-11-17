@@ -195,7 +195,7 @@ Field* Mesg::AddField(const FIT_UINT8 fieldNum)
 
 void Mesg::AddDeveloperField(const DeveloperField& field)
 {
-    for (FIT_UINT16 i = 0; i < devFields.size(); ++i)
+    for (size_t i = 0; i < devFields.size(); ++i)
     {
         if (devFields[i].GetDefinition() == field.GetDefinition())
         {

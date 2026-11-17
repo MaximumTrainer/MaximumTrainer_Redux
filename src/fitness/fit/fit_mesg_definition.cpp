@@ -261,7 +261,7 @@ int MesgDefinition::Write(std::ostream &file) const
     }
     file.put((FIT_UINT8)fields.size());
 
-    for (FIT_UINT8 i=0; i<fields.size(); i++)
+    for (size_t i=0; i<fields.size(); i++)
     {
         int fieldSize = fields[i].Write(file);
 
@@ -276,7 +276,7 @@ int MesgDefinition::Write(std::ostream &file) const
         file.put( ( FIT_UINT8 )devFields.size() );
         mesgSize += 1;
     }
-    for ( FIT_UINT8 i = 0; i < devFields.size(); i++ )
+    for ( size_t i = 0; i < devFields.size(); i++ )
     {
         int fieldSize = devFields[i].Write( file );
         mesgSize += fieldSize;

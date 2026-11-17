@@ -56,9 +56,9 @@ bool fit::V1Validator::ValidateMesg( const Mesg& mesg )
         return false;
     }
 
-    for ( FIT_UINT16 i = 0; i < mesg.GetNumFields(); i++ )
+    for ( int i = 0; i < mesg.GetNumFields(); i++ )
     {
-        const Field* fld = mesg.GetFieldByIndex( i );
+        const Field* fld = mesg.GetFieldByIndex( static_cast<FIT_UINT16>( i ) );
         FIT_UINT8 typeNum = fld->GetType() & FIT_BASE_TYPE_NUM_MASK;
 
         // V2 introduces 64 bit types.
