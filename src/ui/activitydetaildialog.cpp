@@ -1,4 +1,5 @@
 #include "activitydetaildialog.h"
+#include "setting_keys.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -20,7 +21,6 @@
 
 namespace {
 
-const char *kGeometryKey = "activityDetailDialog/geometry";
 
 QString fmtDuration(int sec)
 {
@@ -103,7 +103,7 @@ ActivityDetailDialog::ActivityDetailDialog(const WorkoutHistorySummary &summary,
 
     // Reopen in the same state the user last left (maximised or a given size).
     // First ever open defaults to maximised.
-    const QByteArray geom = QSettings().value(kGeometryKey).toByteArray();
+    const QByteArray geom = AppSettings::read(SettingKeys::ActivityDetailDialog::Geometry);
     if (geom.isEmpty())
         setWindowState(windowState() | Qt::WindowMaximized);
     else
@@ -114,7 +114,7 @@ void ActivityDetailDialog::saveDialogGeometry()
 {
     // saveGeometry() captures both the window state (maximised/normal) and the
     // restored size, so restoreGeometry() round-trips the user's last choice.
-    QSettings().setValue(kGeometryKey, saveGeometry());
+    AppSettings::write(SettingKeys::ActivityDetailDialog::Geometry, saveGeometry());
 }
 
 void ActivityDetailDialog::done(int result)

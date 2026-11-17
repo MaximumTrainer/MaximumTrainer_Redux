@@ -1,4 +1,5 @@
 #include "util.h"
+#include "setting_keys.h"
 #include <memory>
 #include <QDebug>
 #include <QDir>
@@ -868,10 +869,9 @@ QList<Radio> Util::loadLocalRadioList() {
                 QCryptographicHash::hash(bundled.readAll(),
                                          QCryptographicHash::Sha256).toHex());
             QSettings settings;
-            const QString seenHash =
-                settings.value(QStringLiteral("radios/defaultsHash")).toString();
+            const QString seenHash = AppSettings::read(settings, SettingKeys::Media::RadioDefaultsHash);
             if (seenHash != bundledHash) {
-                settings.setValue(QStringLiteral("radios/defaultsHash"), bundledHash);
+                AppSettings::write(settings, SettingKeys::Media::RadioDefaultsHash, bundledHash);
                 return fallbackToDefaults();
             }
         }

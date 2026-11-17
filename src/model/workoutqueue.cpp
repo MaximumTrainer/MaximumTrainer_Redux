@@ -1,4 +1,5 @@
 #include "workoutqueue.h"
+#include "setting_keys.h"
 
 #include <QSettings>
 #include <utility>
@@ -73,20 +74,16 @@ QString WorkoutQueue::dequeueName()
 
 void WorkoutQueue::save() const
 {
-    QSettings s;
-    s.beginGroup("workoutQueue");
-    s.setValue("filePaths", m_filePaths);
-    s.setValue("names",     m_names);
-    s.endGroup();
+    QSettings settings;
+    AppSettings::write(settings, SettingKeys::WorkoutQueue::FilePaths, m_filePaths);
+    AppSettings::write(settings, SettingKeys::WorkoutQueue::Names,     m_names);
 }
 
 void WorkoutQueue::load()
 {
-    QSettings s;
-    s.beginGroup("workoutQueue");
-    m_filePaths = s.value("filePaths").toStringList();
-    m_names     = s.value("names").toStringList();
-    s.endGroup();
+    const QSettings settings;
+    m_filePaths = AppSettings::read(settings, SettingKeys::WorkoutQueue::FilePaths);
+    m_names     = AppSettings::read(settings, SettingKeys::WorkoutQueue::Names);
     // Defensive: keep lists in sync
     while (m_names.size() < m_filePaths.size()) m_names.append(QString());
     while (m_names.size() > m_filePaths.size()) m_names.removeLast();

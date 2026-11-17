@@ -1,4 +1,5 @@
 #include "mycreatorplot.h"
+#include "setting_keys.h"
 
 #include <QPen>
 
@@ -470,20 +471,10 @@ void myCreatorPlot::addShapeFromPoints(const QString &title, const QColor &color
 QString myCreatorPlot::getSavePathExport() {
 
 
-    QSettings settings;
-
-    settings.beginGroup("reports");
-    QString path = settings.value("savePathExport", QDir::homePath() ).toString();
-    settings.endGroup();
-
-    return path;
+    return AppSettings::read(SettingKeys::LastPath::ReportExport, QDir::homePath());
 }
 void myCreatorPlot::savePathExport(QString path) {
 
-    QSettings settings;
-
-    settings.beginGroup("reports");
-    settings.setValue("savePathExport", path);
-    settings.endGroup();
+    AppSettings::write(SettingKeys::LastPath::ReportExport, path);
 }
 
