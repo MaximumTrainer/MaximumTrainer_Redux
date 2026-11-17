@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<workout_file>
+    <name>Intervals T Test</name>
+    <author>Test</author>
+    <description>5x3-minute intervals at 110% / 55% FTP</description>
+    <workout>
+        <IntervalsT Repeat="5" OnDuration="180" OffDuration="180" OnPower="1.10" OffPower="0.55"/>
+    </workout>
+</workout_file>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<workout_file>
+    <name>Ramp Test</name>
+    <author>Test</author>
+    <description>A single ramp from 50% to 100% FTP</description>
+    <workout>
+        <Ramp Duration="600" PowerLow="0.50" PowerHigh="1.00"/>
+    </workout>
+</workout_file>

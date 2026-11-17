@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<workout_file>
+    <name>Steady State Test</name>
+    <author>Test</author>
+    <description>One steady-state interval at 75% FTP</description>
+    <workout>
+        <SteadyState Duration="1800" Power="0.75"/>
+    </workout>
+</workout_file>
