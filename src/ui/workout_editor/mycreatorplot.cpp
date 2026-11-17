@@ -207,7 +207,7 @@ void myCreatorPlot::pointClicked(QPointF pt) {
 QwtPlotShapeItem* myCreatorPlot::itemAt(const QPointF pos) {
 
 
-    foreach(QwtPlotShapeItem *shapeItem, lstBackgroundShape)
+    for (QwtPlotShapeItem *shapeItem : std::as_const(lstBackgroundShape))
     {
         if ( shapeItem->boundingRect().contains( pos ) && shapeItem->shape().contains( pos ) ) {
             return shapeItem;
@@ -226,7 +226,7 @@ void myCreatorPlot::updateBackgroundHighlight(QSet<QString> setIntervalToHightli
         return;
     }
 
-    foreach(QwtPlotShapeItem *item, lstBackgroundShape) {
+    for (QwtPlotShapeItem *item : std::as_const(lstBackgroundShape)) {
         if (setIntervalToHightlight.contains(item->title().text()))
             item->setVisible(true);
         else
@@ -241,7 +241,7 @@ void myCreatorPlot::removeHightlight() {
 
     setSelectedInterval.clear();
 
-    foreach(QwtPlotShapeItem *item, lstBackgroundShape) {
+    for (QwtPlotShapeItem *item : std::as_const(lstBackgroundShape)) {
         item->setVisible(false);
     }
     replot();
@@ -290,7 +290,7 @@ void myCreatorPlot::drawGraphIntervals() {
     int i=0;
     Interval lastVal;
 
-    foreach (Interval val, workout.getLstInterval()) {
+    for (const Interval &val : workout.getLstInterval()) {
 
 
         int secInterval = Util::convertQTimeToSecD(val.getDurationQTime());

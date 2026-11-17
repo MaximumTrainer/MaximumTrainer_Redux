@@ -21,7 +21,7 @@ bool AchievementChecker::checkTargetManiac(Workout workout) {
     bool cadenceTarget = false;
     bool heartRateTarget = false;
 
-    foreach (Interval interval, workout.getLstInterval()) {
+    for (const Interval &interval : workout.getLstInterval()) {
 
 
         if (interval.getPowerStepType() != Interval::NONE)

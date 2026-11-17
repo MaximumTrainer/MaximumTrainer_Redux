@@ -264,7 +264,7 @@ void WorkoutPlotZoomer::drawGraphIntervalsCadence() {
     int i=0;
     Interval lastVal;
 
-    foreach (Interval val, workout.getLstInterval()) {
+    for (const Interval &val : workout.getLstInterval()) {
 
 
         double secInterval = Util::convertQTimeToSecD(val.getDurationQTime());
@@ -351,7 +351,7 @@ void WorkoutPlotZoomer::drawGraphIntervalsPower() {
     Interval lastVal;
 
 
-    foreach (Interval val, workout.getLstInterval()) {
+    for (const Interval &val : workout.getLstInterval()) {
 
 
         double secInterval = Util::convertQTimeToSecD(val.getDurationQTime());
@@ -436,7 +436,7 @@ void WorkoutPlotZoomer::drawGraphIntervalsHeartrate() {
     int i=0;
     Interval lastVal;
 
-    foreach (Interval val, workout.getLstInterval()) {
+    for (const Interval &val : workout.getLstInterval()) {
 
 
         double secInterval = Util::convertQTimeToSecD(val.getDurationQTime());

@@ -14,7 +14,7 @@ void SortFilterProxyModel::setFilterKeyColumns(const QList<qint32> &filterColumn
 {
     m_columnPatterns.clear();
 
-    foreach(qint32 column, filterColumns)
+    for (qint32 column : std::as_const(filterColumns))
         m_columnPatterns.insert(column, QString());
 }
 

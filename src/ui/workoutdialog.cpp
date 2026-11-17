@@ -1237,7 +1237,7 @@ void WorkoutDialog::adjustWorkoutDifficulty(int percentageIncrease) {
     // Compute new workout
     QList<Interval> lstIntervalAdjusted;
 
-    foreach (Interval interval, workout.getLstInterval()) {
+    for (Interval interval : workout.getLstInterval()) {
 
         if (interval.getPowerStepType() != Interval::NONE) {
             //do not check negative, could change progressive interval to flat if so..

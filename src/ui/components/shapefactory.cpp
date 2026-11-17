@@ -10,7 +10,7 @@ QPainterPath ShapeFactory::path( QList<QPointF> lstPoints ) {
     QPainterPath path;
     QPolygonF para;
 
-    foreach(QPointF pt, lstPoints) {
+    for (QPointF pt : std::as_const(lstPoints)) {
         para+= pt;
     }
 
