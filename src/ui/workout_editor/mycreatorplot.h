@@ -29,8 +29,8 @@ class myCreatorPlot : public QwtPlot
     Q_OBJECT
 
 public:
-    explicit myCreatorPlot(QWidget *parent = 0);
-    ~myCreatorPlot();
+    explicit myCreatorPlot(QWidget *parent = nullptr);
+    ~myCreatorPlot() override;
 
     QString getSavePathExport();
     void savePathExport(QString path);

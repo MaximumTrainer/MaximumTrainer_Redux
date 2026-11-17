@@ -81,22 +81,22 @@ public:
 
 
     void setFilePath(QString filePath) {
-        this->filePath = filePath;
+        this->filePath = std::move(filePath);
     }
     void setWorkout_name_enum(Workout::WORKOUT_NAME workout_name_enum) {
         this->workout_name_enum = workout_name_enum;
     }
     void setName(QString name) {
-        this->name = name;
+        this->name = std::move(name);
     }
     void setCreator(QString createdBy) {
-        this->createdBy = createdBy;
+        this->createdBy = std::move(createdBy);
     }
     void setDescription(QString description) {
-        this->description = description;
+        this->description = std::move(description);
     }
     void setPlan(QString plan) {
-        this->plan = plan;
+        this->plan = std::move(plan);
     }
     void setType(Type type) {
         this->type = type;

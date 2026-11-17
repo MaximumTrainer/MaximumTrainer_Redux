@@ -12,8 +12,8 @@ class BalanceWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit BalanceWidget(QWidget *parent = 0);
-    ~BalanceWidget();
+    explicit BalanceWidget(QWidget *parent = nullptr);
+    ~BalanceWidget() override;
 
     void setZone(int target, int range);
     void removeZone();

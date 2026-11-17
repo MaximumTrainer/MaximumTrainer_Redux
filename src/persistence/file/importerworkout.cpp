@@ -92,7 +92,6 @@ Workout ImporterWorkout::parseMrcErgFile(QString filename, int userFTP) {
     bool targetInPerc = false;
 
     bool parsingCourseDataNow = false;
-    bool parsingOver = false;
 
     static const QRegularExpression whitespaceRegex("\\s");
 
@@ -110,7 +109,7 @@ Workout ImporterWorkout::parseMrcErgFile(QString filename, int userFTP) {
     if (inputFile.open(QIODevice::ReadOnly | QIODevice::Text))
     {
         QTextStream in(&inputFile);
-        while ( !in.atEnd() && !parsingOver )
+        while ( !in.atEnd() )
         {
             QString line = in.readLine();
 
@@ -141,7 +140,6 @@ Workout ImporterWorkout::parseMrcErgFile(QString filename, int userFTP) {
             }
             else if (parsingCourseDataNow) {
                 if (line.contains("END COURSE DATA", Qt::CaseInsensitive)) {
-                    parsingOver = true;
                     break;
                 }
                 else {

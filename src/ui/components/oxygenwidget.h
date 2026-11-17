@@ -12,8 +12,8 @@ class OxygenWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit OxygenWidget(QWidget *parent = 0);
-    ~OxygenWidget();
+    explicit OxygenWidget(QWidget *parent = nullptr);
+    ~OxygenWidget() override;
 
 
 public slots:

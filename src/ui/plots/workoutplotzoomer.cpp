@@ -32,7 +32,7 @@ public:
     {
     }
 
-    virtual QwtText label( double v ) const {
+    QwtText label( double v ) const override {
         QTime upTime = baseTime.addSecs( static_cast<int>( v ) );
         return upTime.toString();
     }
@@ -93,7 +93,7 @@ void WorkoutPlotZoomer::setUserData(double FTP, double LTHR) {
 
 void WorkoutPlotZoomer::setWorkoutData(Workout workout, GRAPH_TYPE graph, bool firstInit) {
 
-    this->workout = workout;
+    this->workout = std::move(workout);
     this->type = graph;
 
 
@@ -194,7 +194,7 @@ void WorkoutPlotZoomer::init(GRAPH_TYPE graph, bool firstInit) {
         icon->attach(this);
         icon->setZ(12);
         // Let the icon measure the value number so it can sit just left of it.
-        icon->valueFont = fontBig;
+        icon->valueFont = std::move(fontBig);
         icon->valueText = "0";
 
 

@@ -17,7 +17,7 @@ public:
         baseTime( base )
     {
     }
-    virtual QwtText label( double v ) const {
+    QwtText label( double v ) const override {
         QTime upTime = baseTime.addSecs( static_cast<int>( v ) );
         return Util::showQTimeAsString(upTime);
     }
@@ -37,7 +37,7 @@ WorkoutPlotList::WorkoutPlotList(QWidget *parent) : QwtPlot(parent) {
 /// setWorkoutData
 void WorkoutPlotList::setWorkoutData(Workout workout) {
 
-    this->workout = workout;
+    this->workout = std::move(workout);
     init();
 }
 

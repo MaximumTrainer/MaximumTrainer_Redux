@@ -27,7 +27,7 @@ class QtMediaPlayer : public QWidget
     Q_OBJECT
 public:
     explicit QtMediaPlayer(QWidget *parent = nullptr);
-    ~QtMediaPlayer();
+    ~QtMediaPlayer() override;
 
     void setRadio(bool isRadio) { this->isRadio = isRadio; }
 

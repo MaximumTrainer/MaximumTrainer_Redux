@@ -245,7 +245,7 @@ QGroupBox *StudioWidget::buildRiderCard(int riderIndex)
             this, [this, riderIndex]() { onErgChanged(riderIndex); });
 
     card.box = box;
-    m_cards[riderIndex - 1] = card;
+    m_cards[riderIndex - 1] = std::move(card);
     return box;
 }
 
@@ -609,7 +609,7 @@ void StudioWidget::applyImportedStudioJson(const QByteArray &json)
     const QJsonObject root = doc.object();
     const QJsonArray ridersArr = root.value(QStringLiteral("riders")).toArray();
 
-    for (const QJsonValue &riderValue : ridersArr) {
+    for (const QJsonValue riderValue : ridersArr) {
         const QJsonObject ro = riderValue.toObject();
         const int rider = ro.value(QStringLiteral("index")).toInt();
         if (rider < 1 || rider > kMaxRiders)

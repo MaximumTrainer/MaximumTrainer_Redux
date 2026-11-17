@@ -13,7 +13,7 @@ class FaderFrame : public QFrame
     Q_OBJECT
 
 public:
-    explicit FaderFrame(QWidget *parent = 0);
+    explicit FaderFrame(QWidget *parent = nullptr);
 
     void fadeIn(int durationMs);
     void fadeOut(int durationMs);

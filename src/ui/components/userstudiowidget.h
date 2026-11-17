@@ -13,8 +13,8 @@ class UserStudioWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit UserStudioWidget(int userID, QString displayName, double FTP, double LTHR, QWidget *parent = 0);
-    ~UserStudioWidget();
+    explicit UserStudioWidget(int userID, QString displayName, double FTP, double LTHR, QWidget *parent = nullptr);
+    ~UserStudioWidget() override;
 
     void setStopped(bool b);
 

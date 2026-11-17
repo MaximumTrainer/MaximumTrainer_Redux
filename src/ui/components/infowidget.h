@@ -23,8 +23,8 @@ public:
         //        SPEED_MPH,
     };
 
-    explicit InfoWidget(QWidget *parent = 0);
-    ~InfoWidget();
+    explicit InfoWidget(QWidget *parent = nullptr);
+    ~InfoWidget() override;
     void setTypeInfoBox(TypeInfoBox type);
     /// Rowing (Beta): CADENCE boxes read as Stroke Rate (spm) and SPEED boxes
     /// format their km/h input as Pace per 500 m (m:ss).

@@ -27,7 +27,7 @@ public:
     ///                  ready" state.  Only use this in unit/integration tests.
     explicit DialogLogin(QWidget *parent = nullptr, bool testMode = false);
 
-    void changeEvent(QEvent *event);
+    void changeEvent(QEvent *event) override;
 
     bool getGotUpdate() {
         return this->gotUpdateDialog;

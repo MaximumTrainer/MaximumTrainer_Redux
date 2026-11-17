@@ -12,7 +12,7 @@ class FaderLabel : public QLabel
     Q_OBJECT
 
 public:
-    explicit FaderLabel(QWidget *parent = 0);
+    explicit FaderLabel(QWidget *parent = nullptr);
 
     void fadeIn(int durationMs);
     void fadeOut(int durationMs);
@@ -25,7 +25,7 @@ public:
 signals:
     void clicked(bool stateClicked);
 protected:
-    void mousePressEvent ( QMouseEvent * event ) ;
+    void mousePressEvent ( QMouseEvent * event ) override ;
 
 
 private slots:  //Used to connect with timer

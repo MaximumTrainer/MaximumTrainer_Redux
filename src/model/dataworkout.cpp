@@ -20,7 +20,7 @@ DataWorkout::~DataWorkout() {
 
 DataWorkout::DataWorkout(Workout workout, int userftp, QObject *parent) : QObject(parent)  {
 
-    this->workout = workout;
+    this->workout = std::move(workout);
     this->ftp = userftp;
     startTimeWorkout.setTimeZone(QTimeZone::UTC);
 
@@ -116,7 +116,7 @@ DataWorkout::DataWorkout(Workout workout, int userftp, QObject *parent) : QObjec
 
 void DataWorkout::setStartTimeWorkout(QDateTime dt) {
 
-    this->startTimeWorkout = dt;
+    this->startTimeWorkout = std::move(dt);
 }
 
 void DataWorkout::initFitFile(bool createDir, QString username, QString nameWorkout, QDateTime timeStarted, bool rowing) {
@@ -608,7 +608,7 @@ int DataWorkout::getFTP() {
 int DataWorkout::getFTP_normal() {
 
     double moyenne = meanPowerTest.first() * 0.95;
-    return ((int)(moyenne + 0.5));
+    return qRound(moyenne);
 }
 
 int DataWorkout::getFTP_8min() {
@@ -618,7 +618,7 @@ int DataWorkout::getFTP_8min() {
     double avg = ((moyenne + moyenne2)/2) * 0.90;
 
 
-    return ((int)(avg + 0.5));
+    return qRound(avg);
 }
 
 
@@ -634,6 +634,6 @@ int DataWorkout::getLTHR() {
     }
     moyenne = (moyenne/nbElement) * 0.95;
 
-    return ((int)(moyenne + 0.5));
+    return qRound(moyenne);
 }
 

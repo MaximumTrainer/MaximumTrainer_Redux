@@ -12,10 +12,10 @@ public:
     const DataSpeed &values() const;
     DataSpeed &values();
 
-    virtual QPointF sample( size_t i ) const;
-    virtual size_t size() const;
+    QPointF sample( size_t i ) const override;
+    size_t size() const override;
 
-    virtual QRectF boundingRect() const;
+    QRectF boundingRect() const override;
 };
 
 #endif // CURVEDATASPEED_H

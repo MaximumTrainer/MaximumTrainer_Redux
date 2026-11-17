@@ -681,9 +681,9 @@ bool Util::parseJsonIntervalsIcuSettings(const QString &data)
         return false;
 
     auto findByType = [&sports](const QString &type) -> QJsonObject {
-        for (const QJsonValue &sv : sports) {
+        for (const QJsonValue sv : sports) {
             const QJsonObject s = sv.toObject();
-            for (const QJsonValue &tv : s.value(QStringLiteral("types")).toArray())
+            for (const QJsonValue tv : s.value(QStringLiteral("types")).toArray())
                 if (tv.toString() == type)
                     return s;
         }
@@ -716,7 +716,7 @@ bool Util::parseJsonIntervalsIcuSettings(const QString &data)
     const QJsonValue hrZonesVal = ride.value(QStringLiteral("hr_zones"));
     if (hrZonesVal.isArray()) {
         QList<int> zones;
-        for (const QJsonValue &zv : hrZonesVal.toArray())
+        for (const QJsonValue zv : hrZonesVal.toArray())
             if (zv.toInt(0) > 0)
                 zones.append(zv.toInt());
         if (!zones.isEmpty())
@@ -727,11 +727,11 @@ bool Util::parseJsonIntervalsIcuSettings(const QString &data)
     const QJsonValue pwrZonesVal = ride.value(QStringLiteral("power_zones"));
     if (pwrZonesVal.isArray() && ftp > 0) {
         QList<int> zones;
-        for (const QJsonValue &zv : pwrZonesVal.toArray())
+        for (const QJsonValue zv : pwrZonesVal.toArray())
             if (zv.toInt(0) > 0)
                 zones.append(qRound(zv.toInt() * ftp / 100.0));
         if (!zones.isEmpty())
-            account->power_zones = zones;
+            account->power_zones = std::move(zones);
     }
 
     return applied;

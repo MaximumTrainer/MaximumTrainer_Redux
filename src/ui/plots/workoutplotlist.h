@@ -22,7 +22,7 @@ class WorkoutPlotList : public QwtPlot
 public:
 
 
-    WorkoutPlotList(QWidget *parent = 0);
+    WorkoutPlotList(QWidget *parent = nullptr);
     void setWorkoutData(Workout workout);
 
 private :

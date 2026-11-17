@@ -27,14 +27,14 @@ Workout::Workout() {
 Workout::Workout(QString filePath, WORKOUT_NAME workout_name_enum, QList<Interval> lstIntervalSource, QList<RepeatData> lstRepeatData,
                  QString name, QString createdBy, QString description, QString plan, Type type) {
 
-    this->filePath = filePath;
+    this->filePath = std::move(filePath);
     this->workout_name_enum = workout_name_enum;
-    this->lstIntervalSource = lstIntervalSource;
-    this->lstRepeatData = lstRepeatData;
-    this->name = name;
-    this->createdBy = createdBy;
-    this->description = description;
-    this->plan = plan;
+    this->lstIntervalSource = std::move(lstIntervalSource);
+    this->lstRepeatData = std::move(lstRepeatData);
+    this->name = std::move(name);
+    this->createdBy = std::move(createdBy);
+    this->description = std::move(description);
+    this->plan = std::move(plan);
     this->type = type;
     this->maxPowerPourcent = 0.0;
     this->durationQTime = QTime(0,0,0);
@@ -51,14 +51,14 @@ Workout::Workout(QString filePath, WORKOUT_NAME workout_name_enum, QList<Interva
 Workout::Workout(QString filePath, WORKOUT_NAME workout_name_enum, QList<Interval> lstInterval,
                  QString name, QString createdBy, QString description, QString plan, Type type) {
 
-    this->filePath = filePath;
+    this->filePath = std::move(filePath);
     this->workout_name_enum = workout_name_enum;
     this->lstInterval = lstInterval;
-    this->lstIntervalSource = lstInterval;
-    this->name = name;
-    this->createdBy = createdBy;
-    this->description = description;
-    this->plan = plan;
+    this->lstIntervalSource = std::move(lstInterval);
+    this->name = std::move(name);
+    this->createdBy = std::move(createdBy);
+    this->description = std::move(description);
+    this->plan = std::move(plan);
     this->type = type;
     this->maxPowerPourcent = 0.0;
     this->durationQTime = QTime(0,0,0);
@@ -241,7 +241,7 @@ void Workout::initializeArrayFTP() {
 
 
     /// 2 - Create array for average %FTP on 30secs -----------------------------
-    const int sizeArray2 = (int) (totalSec/30.0 + 0.5);
+    const int sizeArray2 = qRound(totalSec/30.0);
     const double initValueArray30secFTP = 0.0;
     this->vecFtp30sec = QVector<double>(sizeArray2, initValueArray30secFTP);
 
@@ -395,25 +395,25 @@ QList<RepeatData> Workout::getLstRepeat() const {
 QString Workout::getTypeToString() const {
 
     if (type == Workout::T_ENDURANCE ) {
-        return QApplication::translate("Workout", "Endurance", 0);
+        return QApplication::translate("Workout", "Endurance", nullptr);
     }
     else if (type == Workout::T_INTERVAL) {
-        return QApplication::translate("Workout", "Interval", 0);
+        return QApplication::translate("Workout", "Interval", nullptr);
     }
     else if (type == Workout::T_TEMPO) {
-        return QApplication::translate("Workout", "Tempo", 0);
+        return QApplication::translate("Workout", "Tempo", nullptr);
     }
     else if (type == Workout::T_TEST) {
-        return QApplication::translate("Workout", "Test", 0);
+        return QApplication::translate("Workout", "Test", nullptr);
     }
     else if (type == Workout::T_OTHERS) {
-        return QApplication::translate("Workout", "Other", 0);
+        return QApplication::translate("Workout", "Other", nullptr);
     }
     else if (type == Workout::T_THRESHOLD) {
-        return QApplication::translate("Workout", "Threshold", 0);
+        return QApplication::translate("Workout", "Threshold", nullptr);
     }
     else {
-        return QApplication::translate("Workout", "Workout type not defined", 0);
+        return QApplication::translate("Workout", "Workout type not defined", nullptr);
     }
 
 }

@@ -10,8 +10,8 @@ class IntervalViewStyle : public QProxyStyle
 {
 
 public:
-    IntervalViewStyle(QStyle* style = 0);
-    void drawPrimitive(PrimitiveElement element, const QStyleOption * option, QPainter * painter, const QWidget * widget = 0) const;
+    IntervalViewStyle(QStyle* style = nullptr);
+    void drawPrimitive(PrimitiveElement element, const QStyleOption * option, QPainter * painter, const QWidget * widget = nullptr) const override;
 };
 
 #endif // INTERVALVIEWSTYLE_H

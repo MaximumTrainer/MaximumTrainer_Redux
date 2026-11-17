@@ -134,6 +134,12 @@ verify step.
   in the commit message, not the source).
 - Prefer verbose, descriptive variable names; include type info where the
   language allows.
+- **clang-tidy is a CI gate** (`.clang-tidy`, job `clang_tidy` in
+  `sanitizers.yml`): every enabled check must report zero findings. Locally:
+  `pip install clang-tidy==23.1.4 compiledb`, then in a shadow build dir
+  `compiledb -o compile_commands.json make -j$(nproc)` and
+  `clang-tidy -p . <file.cpp>`. Settings keys go through `SettingKeys`
+  (`src/app/setting_keys.h`), never string literals.
 
 ---
 

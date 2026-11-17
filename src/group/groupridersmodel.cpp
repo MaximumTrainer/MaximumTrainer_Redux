@@ -42,7 +42,7 @@ void GroupRidersModel::setRoster(const QList<RosterEntry> &roster, const QString
         else rows.append(row);
     }
     beginResetModel();
-    m_rows = rows;
+    m_rows = std::move(rows);
     endResetModel();
 }
 
@@ -76,8 +76,10 @@ int GroupRidersModel::rowOf(const QString &riderId) const {
 
 std::optional<double> GroupRidersModel::ownElapsedSeconds() const {
     const int row = rowOf(m_yourRiderId);
-    if (row < 0 || !m_rows.at(row).telemetry) return std::nullopt;
-    return m_rows.at(row).telemetry->elapsedWorkoutSeconds;
+    if (row < 0) return std::nullopt;
+    const std::optional<GroupProtocol::RiderTelemetry> &telemetry = m_rows.at(row).telemetry;
+    if (!telemetry) return std::nullopt;
+    return telemetry->elapsedWorkoutSeconds;
 }
 
 GroupRidersModel::RowState GroupRidersModel::stateOf(const RiderRow &row, qint64 nowLocalMs) const {
@@ -102,6 +104,7 @@ QString GroupRidersModel::detailLine(const RiderRow &row, qint64 nowLocalMs) con
     case RowState::Finished:   return tr("finished");
     default: break;
     }
+    if (!row.telemetry) return QString();
 
     const RiderTelemetry &telemetry = *row.telemetry;
     QStringList parts;

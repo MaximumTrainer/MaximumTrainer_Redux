@@ -49,7 +49,7 @@ void UserStudio::saveStudioConfig(const QVector<UserStudio> &riders)
 UserStudio::UserStudio(QString displayName, int FTP, int LTHR, int hrID, int powerID, int cadenceID, int speedID, int fecID,
                        int wheelCircMM, int companyID, int brandID) {
 
-    this->displayName = displayName;
+    this->displayName = std::move(displayName);
     this->FTP = FTP;
     this->LTHR = LTHR;
 

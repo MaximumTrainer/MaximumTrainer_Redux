@@ -7,7 +7,7 @@ class PlanObject : public QObject
 {
     Q_OBJECT
 public:
-    explicit PlanObject(QObject *parent = 0);
+    explicit PlanObject(QObject *parent = nullptr);
 
 
 

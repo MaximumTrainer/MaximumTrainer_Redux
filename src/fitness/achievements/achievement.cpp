@@ -13,9 +13,9 @@ Achievement::~Achievement() {
 Achievement::Achievement(int idDB, QString name, QString description, QString iconUrl) {
 
     this->idDB = idDB;
-    this->name = name;
-    this->description = description;
-    this->iconUrl = iconUrl;
+    this->name = std::move(name);
+    this->description = std::move(description);
+    this->iconUrl = std::move(iconUrl);
     this->completed = false;
 
 }

@@ -25,15 +25,15 @@ class Main_WorkoutPage : public QWidget
     Q_OBJECT
 
 public:
-    explicit Main_WorkoutPage(QWidget *parent = 0);
-    ~Main_WorkoutPage();
+    explicit Main_WorkoutPage(QWidget *parent = nullptr);
+    ~Main_WorkoutPage() override;
 
 
     void parseIncludedWorkouts();
     void parseMapWorkout(int userFTP);
     void parseUserWorkouts();
 
-    void paintEvent(QPaintEvent *);
+    void paintEvent(QPaintEvent *) override;
 
 
 

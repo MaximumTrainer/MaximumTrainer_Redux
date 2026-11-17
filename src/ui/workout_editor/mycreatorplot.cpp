@@ -18,7 +18,7 @@ public:
         baseTime( base )
     {
     }
-    virtual QwtText label( double v ) const {
+    QwtText label( double v ) const override {
         QTime upTime = baseTime.addSecs( static_cast<int>( v ) );
         return Util::showQTimeAsString(upTime);
     }
@@ -68,7 +68,7 @@ void myCreatorPlot::init() {
 void myCreatorPlot::updateWorkout(Workout workout) {
 
 
-    this->workout = workout;
+    this->workout = std::move(workout);
 
 
     ajustScales();
@@ -214,7 +214,7 @@ QwtPlotShapeItem* myCreatorPlot::itemAt(const QPointF pos) {
             return shapeItem;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 

@@ -151,7 +151,7 @@ void StyleHelper::drawIconWithShadow(const QIcon &icon, const QRect &rect,
         qt_blurImage(&blurPainter, tmp, deviceRadius, false, true);
         blurPainter.end();
 
-        tmp = blurred;
+        tmp = std::move(blurred);
 
         // blacken the image...
         tmpPainter.begin(&tmp);

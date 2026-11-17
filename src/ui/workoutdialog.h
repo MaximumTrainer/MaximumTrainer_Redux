@@ -54,8 +54,8 @@ class WorkoutDialog : public QDialog
 
 public:
     explicit WorkoutDialog(Workout workout,
-                           QList<Radio> lstRadio, QVector<UserStudio> vecUserStudio, QWidget *parent = 0);
-    ~WorkoutDialog();
+                           QList<Radio> lstRadio, QVector<UserStudio> vecUserStudio, QWidget *parent = nullptr);
+    ~WorkoutDialog() override;
 
     void reject() override;
 

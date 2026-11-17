@@ -13,8 +13,8 @@ class RepeatIncreaseEditor : public QWidget
     Q_OBJECT
 
 public:
-    explicit RepeatIncreaseEditor(QWidget *parent = 0);
-    ~RepeatIncreaseEditor();
+    explicit RepeatIncreaseEditor(QWidget *parent = nullptr);
+    ~RepeatIncreaseEditor() override;
 
     void setInterval(const Interval &interval);
     Interval getInterval() { return myInterval; }

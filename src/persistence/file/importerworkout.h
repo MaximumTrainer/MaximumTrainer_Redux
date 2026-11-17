@@ -9,8 +9,8 @@ class ImporterWorkout : public QObject
 {
     Q_OBJECT
 public:
-    explicit ImporterWorkout(QObject *parent = 0);
-    ~ImporterWorkout();
+    explicit ImporterWorkout(QObject *parent = nullptr);
+    ~ImporterWorkout() override;
 
 
     static Workout importWorkoutFromFile(QString filename, int userFTP);

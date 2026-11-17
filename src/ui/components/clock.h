@@ -12,7 +12,7 @@ class Clock : public QObject
 
 
 public:
-    explicit Clock(QString objectName, QObject *parent = 0);
+    explicit Clock(QString objectName, QObject *parent = nullptr);
 
 
 

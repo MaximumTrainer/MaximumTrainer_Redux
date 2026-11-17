@@ -25,7 +25,7 @@ bool TableViewHover::eventFilter(QObject *watched, QEvent *event) {
     ///Check if mouse is on the scroll bar, remove hover effect on the rows
     QScrollBar *ptrScroll = qobject_cast<QScrollBar*>(watched);
 
-    if (ptrScroll != NULL && (event->type() == QEvent::HoverEnter || event->type() == QEvent::HoverMove) ) {
+    if (ptrScroll != nullptr && (event->type() == QEvent::HoverEnter || event->type() == QEvent::HoverMove) ) {
         bandHover->setVisible(false);
         curr_row_hovered = -1;
     }

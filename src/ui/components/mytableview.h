@@ -12,12 +12,12 @@ class MyTableView : public QTableView
     Q_OBJECT
 
 public:
-    explicit MyTableView(QWidget *parent = 0);
+    explicit MyTableView(QWidget *parent = nullptr);
 
 
 private :
-    void mouseMoveEvent(QMouseEvent* event);
-    void leaveEvent(QEvent *event);
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void leaveEvent(QEvent *event) override;
 
 
     delegateRowHover *m_background_delegate_hover;

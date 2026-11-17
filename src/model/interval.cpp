@@ -117,7 +117,7 @@ Interval::Interval(QTime duration, QString displayMessage,
 
 
     this->duration = duration;
-    this->displayMessage = displayMessage;
+    this->displayMessage = std::move(displayMessage);
 
     /// POWER
     this->powerStepType = powerStepType;
@@ -158,16 +158,16 @@ QString Interval::getDisplayMessage() const {
 
 QString Interval::getStepTypeToString(StepType type) {
     if (type == Interval::NONE) {
-        return QApplication::translate("Interval", "None", 0);
+        return QApplication::translate("Interval", "None", nullptr);
     }
     else if (type == Interval::PROGRESSIVE) {
-        return QApplication::translate("Interval", "Progressive", 0);
+        return QApplication::translate("Interval", "Progressive", nullptr);
     }
     else if (type == Interval::FLAT) {
-        return QApplication::translate("Interval", "Flat", 0);
+        return QApplication::translate("Interval", "Flat", nullptr);
     }
     else {
-        return QApplication::translate("Interval", "Interval type not defined", 0);
+        return QApplication::translate("Interval", "Interval type not defined", nullptr);
     }
 }
 

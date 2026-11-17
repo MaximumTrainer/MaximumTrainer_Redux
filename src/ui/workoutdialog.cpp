@@ -1256,7 +1256,7 @@ void WorkoutDialog::adjustWorkoutDifficulty(int percentageIncrease) {
 
     Workout workoutEdited(workout.getFilePath(), workout.getWorkoutNameEnum(), lstIntervalAdjusted,
                           workout.getName(), workout.getCreatedBy(), workout.getDescription(), workout.getPlan(), workout.getType());
-    this->workout = workoutEdited;
+    this->workout = std::move(workoutEdited);
 
     // refresh view
     ui->widget_workoutPlot->setWorkoutData(workout, false);
@@ -1313,7 +1313,7 @@ void WorkoutDialog::insertInterval() {
 
     Workout workoutEdited(workout.getFilePath(), workout.getWorkoutNameEnum(), lstIntervalModified,
                           workout.getName(), workout.getCreatedBy(), workout.getDescription(), workout.getPlan(), workout.getType());
-    this->workout = workoutEdited;
+    this->workout = std::move(workoutEdited);
 
     // refresh view
     ui->widget_workoutPlot->setWorkoutData(workout, false);

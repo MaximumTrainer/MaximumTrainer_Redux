@@ -4,10 +4,10 @@
 
 Radio::Radio(QString name, QString genre, bool gotAds, int bitrate, QString language, QString url) {
 
-    this->name = name;
-    this->genre = genre;
+    this->name = std::move(name);
+    this->genre = std::move(genre);
     this->gotAds = gotAds;
     this->bitrate = bitrate;
-    this->language = language;
-    this->url = url;
+    this->language = std::move(language);
+    this->url = std::move(url);
 }

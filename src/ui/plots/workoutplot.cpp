@@ -28,7 +28,7 @@ public:
         baseTime( base )
     {
     }
-    virtual QwtText label( double v ) const {
+    QwtText label( double v ) const override {
         QTime upTime = baseTime.addSecs( static_cast<int>( v ) );
         return Util::showQTimeAsString(upTime);
     }
@@ -112,7 +112,7 @@ void WorkoutPlot::setUserData(double FTP, double LTHR) {
 
 void WorkoutPlot::setWorkoutData(Workout workout, bool firstInit) {
 
-    this->workout = workout;
+    this->workout = std::move(workout);
 
     if (!firstInit) {
         clearPlot();

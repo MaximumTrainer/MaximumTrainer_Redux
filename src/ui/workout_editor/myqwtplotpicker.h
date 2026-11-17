@@ -19,7 +19,7 @@ signals:
 public slots:
 
 protected :
-    virtual QwtText trackerTextF( const QPointF & ) const;
+    QwtText trackerTextF( const QPointF & ) const override;
 
 
 };

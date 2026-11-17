@@ -23,10 +23,10 @@ class DialogConfig : public QDialog
 
 public:
     DialogConfig(QList<Radio> lstRadio, QWidget *parent, WorkoutDialog *ptrParent);
-    ~DialogConfig();
+    ~DialogConfig() override;
 
-    void accept();
-    void reject();
+    void accept() override;
+    void reject() override;
 
 
     void saveSettings();

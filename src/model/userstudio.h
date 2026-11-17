@@ -73,7 +73,7 @@ public:
 
     //Setters
     void setDisplayName(QString displayName) {
-        this->displayName = displayName;
+        this->displayName = std::move(displayName);
     }
     void setFTP(int ftp) {
         this->FTP = ftp;

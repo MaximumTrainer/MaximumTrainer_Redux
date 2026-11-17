@@ -353,5 +353,5 @@ Q_NEVER_INLINE void StartupTrace::crashForTesting()
 {
     LOG_WARN("Startup", QStringLiteral("MT_CRASH_TEST set: crashing on purpose"));
     volatile int *invalid = nullptr;
-    *invalid = 1;
+    *invalid = 1; // NOLINT(clang-analyzer-core.NullDereference): deliberate crash for the crash-report tooling
 }

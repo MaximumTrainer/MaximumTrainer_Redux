@@ -13,8 +13,8 @@ class Account : public QObject
     Q_OBJECT
 
 public:
-    ~Account();
-    Account(QObject *parent = 0);
+    ~Account() override;
+    Account(QObject *parent = nullptr);
 
     void saveNbSecShowInterval(int nbSec);
     void saveNbSecShowIntervalBefore(int nbSec);

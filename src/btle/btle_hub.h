@@ -29,7 +29,7 @@ class BtleHub : public QObject
 
 public:
     explicit BtleHub(QObject *parent = nullptr);
-    ~BtleHub();
+    ~BtleHub() override;
 
     // Connect to the selected BLE device. Call after the scanner dialog has
     // chosen a device.

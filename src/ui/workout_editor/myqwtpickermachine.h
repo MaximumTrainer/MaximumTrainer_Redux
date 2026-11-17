@@ -8,8 +8,8 @@ class MyQwtPickerMachine : public QwtPickerMachine
 public:
     MyQwtPickerMachine();
 
-    virtual QList<Command> transition(
-        const QwtEventPattern &, const QEvent * );
+    QList<Command> transition(
+        const QwtEventPattern &, const QEvent * ) override;
 
     bool rightClickPressed;
 };

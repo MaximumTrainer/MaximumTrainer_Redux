@@ -14,12 +14,12 @@ class RepeatWidget : public QWidget
     Q_OBJECT
 
 public:
-    RepeatWidget(RepeatData *data, QWidget *parent = 0);
-    ~RepeatWidget();
+    RepeatWidget(RepeatData *data, QWidget *parent = nullptr);
+    ~RepeatWidget() override;
 
 
     void setRightWidth(int width);
-    bool eventFilter(QObject *watched, QEvent *event);
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 
     static bool myLessThan(RepeatWidget* p1, RepeatWidget* p2);
