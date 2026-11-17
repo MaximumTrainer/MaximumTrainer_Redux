@@ -1,6 +1,7 @@
 name: Sanitizers
 
-# Runs the headless test suites under AddressSanitizer + UndefinedBehaviorSanitizer.
+# Runs the headless test suites under AddressSanitizer + UndefinedBehaviorSanitizer,
+# and clang-tidy (.clang-tidy) over the app sources.
 # Standalone (not called from build.yml), so it never gates or slows a release.
 on:
   push:
@@ -18,6 +19,8 @@ concurrency:
 
 env:
   QT_VERSION: '6.11.3'
+  QWT_DIR: /tmp/qwt6
+  CLANG_TIDY_VERSION: '23.1.4'
   AQT_CONFIG: ${{ github.workspace }}/.github/aqt-settings.ini
 
 jobs:
@@ -108,3 +111,85 @@ jobs:
         name: sanitizer-logs
         path: sanitizer-logs/
         retention-days: 14
+
+  clang_tidy:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Point apt at a reachable Ubuntu mirror
+      run: |
+        for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
+            echo "Using http://$host/ubuntu/"
+            echo "http://$host/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
+            sudo grep -rl 'azure\.archive\.ubuntu\.com\|//archive\.ubuntu\.com\|//security\.ubuntu\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
+              | xargs -r sudo sed -i -E "s#https?://(azure\.archive|archive|security)\.ubuntu\.com/ubuntu/?#http://$host/ubuntu/#g" || true
+            break
+          fi
+        done
+        printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99-ci-timeouts
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'linux_gcc_64'
+        modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia qtwebsockets'
+        cache: true
+        cache-key-prefix: qt-linux
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y libusb-1.0-0-dev libssl-dev libgl1-mesa-dev build-essential
+
+    - name: Restore QWT cache
+      id: qwt-cache
+      uses: actions/cache@v6
+      with:
+        path: ${{ env.QWT_DIR }}
+        key: qwt-6.3.0-qt-${{ env.QT_VERSION }}-linux
+
+    - name: Build and install QWT
+      if: steps.qwt-cache.outputs.cache-hit != 'true'
+      run: |
+        cd /tmp
+        curl -L -o qwt.tar.bz2 "https://sourceforge.net/projects/qwt/files/qwt/6.3.0/qwt-6.3.0.tar.bz2/download"
+        tar xf qwt.tar.bz2
+        cd qwt-6.3.0
+        qmake qwt.pro
+        make -j$(nproc)
+        make install INSTALL_ROOT=/tmp/qwt6-stage
+        mkdir -p "$QWT_DIR"
+        mv /tmp/qwt6-stage/usr/local/qwt-6.3.0/* "$QWT_DIR"/
+
+    - name: Install clang-tidy and compiledb
+      run: pip install "clang-tidy==${CLANG_TIDY_VERSION}" compiledb
+
+    # A real build (no ccache: a launcher prefix confuses clang-tidy's driver
+    # detection) records compile_commands.json and generates the moc/uic headers.
+    - name: Build and record compile commands
+      run: |
+        qmake MaximumTrainer.pro "QWT_INSTALL=$QWT_DIR"
+        compiledb -o compile_commands.json make -j$(nproc)
+
+    - name: clang-tidy
+      run: |
+        python3 - <<'PY' > tidy-files.txt
+        import json
+        files = {e["file"] for e in json.load(open("compile_commands.json"))}
+        print("\n".join(sorted(f for f in files
+                               if "/src/" in f and "/src/fitness/fit/" not in f
+                               and "/moc_" not in f and f.endswith(".cpp"))))
+        PY
+        echo "Checking $(wc -l < tidy-files.txt) files with $(clang-tidy --version | grep -o 'version [0-9.]*')"
+        xargs -P "$(nproc)" -n 4 clang-tidy -p . --quiet < tidy-files.txt

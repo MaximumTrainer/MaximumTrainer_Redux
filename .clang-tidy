@@ -1,0 +1,31 @@
+# Enforced in CI (clang-tidy job in sanitizers.yml): every enabled check must
+# report zero findings. Disabled checks were judged noise for this codebase:
+#   bugprone-easily-swappable-parameters, bugprone-narrowing-conversions: pervasive, low signal
+#   bugprone-signed-bitwise: BLE byte assembly on promoted uint8 values
+#   bugprone-branch-clone: intentional parallel branches in UI and level maps
+#   bugprone-throwing-static-initialization: global QString constants (Qt idiom)
+#   bugprone-switch-missing-default-case, bugprone-unhandled-code-paths: switches that fall through to a return
+#   performance-unnecessary-value-param: implicitly shared Qt types are cheap to copy
+#   performance-enum-size: shrinking enum storage is not worth the churn
+Checks: >
+  -*,
+  clang-analyzer-*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-signed-bitwise,
+  -bugprone-branch-clone,
+  -bugprone-throwing-static-initialization,
+  -bugprone-switch-missing-default-case,
+  -bugprone-unhandled-code-paths,
+  performance-*,
+  -performance-unnecessary-value-param,
+  -performance-enum-size,
+  modernize-use-nullptr,
+  modernize-use-override
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*/src/.*'
+ExcludeHeaderFilterRegex: '.*/src/fitness/fit/.*'
+CheckOptions:
+  # FIT decoding deliberately keeps a partial result when the file is truncated.
+  bugprone-empty-catch.AllowEmptyCatchForExceptions: 'fit::RuntimeException'
