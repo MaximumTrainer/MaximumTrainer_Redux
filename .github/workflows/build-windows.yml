@@ -80,7 +80,7 @@ jobs:
         "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
     - name: Set up sccache
-      uses: hendrikmuhs/ccache-action@v1.2.24
+      uses: hendrikmuhs/ccache-action@v1.2.25
       with:
         variant: sccache
         key: windows-qt${{ env.QT_VERSION }}
