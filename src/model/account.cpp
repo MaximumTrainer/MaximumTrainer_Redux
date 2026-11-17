@@ -76,30 +76,8 @@ Account::Account(QObject *parent) : QObject(parent)  {
         strava_refresh_token        = CredentialStore::load("strava",        "refresh_token");
     }
 
-
-    // -----------------------------------  Settings ----------------------------------------------------------------------
-    nb_user_studio = 3;
-    enable_studio_mode = false;
-    use_pm_for_cadence = false;
-    use_pm_for_speed = false;
-
-
-    force_workout_window_on_top = false;
-    show_included_workout = true;
-    rowing_mode = false;
-    distance_in_km = true;
-    strava_auto_upload = false;
-    strava_token_expires_at = 0;
-    // intervals_icu_auto_upload is loaded from QSettings above; don't reset it here
-    control_trainer_resistance = true;
-    virtual_shifting = false;   // opt-in; off keeps real-gear / free-ride behaviour
-    use_zwift_click  = false;   // opt-in; read the Zwift Click v2 right controller (direct BLE)
-    // Clamp the loaded value to the valid range (0–30 s)
     erg_smoothing_duration_s = qBound(0, erg_smoothing_duration_s, 30);
-    /* ----- */
 
-    last_index_selected_config_workout = 0;
-    last_tab_sub_config_selected = 0;
     tab_display[0] = "Timer";
     tab_display[1] = "Power";
     tab_display[2] = "Cadence";
@@ -109,63 +87,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     tab_display[6] = "InfoWorkout";
     tab_display[7] = "Oxygen";
 
-
-    start_trigger = 0;
-    value_cadence_start = 40;
-    value_power_start = 120;
-    value_speed_start = 20;
-
-
-    show_hr_widget = true;
-    show_power_widget = true;
-    show_power_balance_widget = true;
-    show_cadence_widget = true;
-    show_speed_widget = true;
-    show_calories_widget = true;
-    show_oxygen_widget = true;
-    show_trainer_speed = true;
-
-    display_hr = 1;
-    display_power = 2;
-    display_power_balance = 1;
-    display_cadence = 1;
-    display_video = 0;
-
-    show_timer_on_top = false;
-    show_interval_remaining = true;
-    show_workout_remaining = false;
-    show_elapsed = true;
-    show_current_target = true;
-
-    offset_power = 0;
-
-
-    show_seperator_interval = true;
-    show_grid = false;
-    show_hr_target = true;
-    show_power_target = true;
-    show_cadence_target = true;
-    show_speed_target = true;
-    show_hr_curve = true;
-    show_power_curve = true;
-    show_cadence_curve = true;
-    show_speed_curve = true;
-
-    /* ----- */
-    sound_player_vol = 100;
-    enable_sound = true;
-    sound_interval = true;
-    sound_pause_resume_workout = true;
-    sound_achievement = true;
-    sound_end_workout = true;
-
-    sound_alert_power_under_target = false;
-    sound_alert_power_above_target = false;
-    sound_alert_cadence_under_target = false;
-    sound_alert_cadence_above_target = false;
-
-    interval_summary_enabled    = true;
-    interval_summary_duration_s = 5;
     interval_summary_enabled    = AppSettings::read(settings, Keys::IntervalSummaryEnabled);
     interval_summary_duration_s = qBound(2, AppSettings::read(settings, Keys::IntervalSummaryDurationS), 15);
     app_theme = qBound(0, AppSettings::read(settings, Keys::AppTheme), 2);
@@ -195,9 +116,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
     email_clean = "user1";
     hashWorkoutDone = QSet<QString>();
 
-    // Override the display/sound defaults above with any locally-persisted
-    // values (the server-side putAccount endpoint is defunct, so these are the
-    // authoritative store now).
+    // Display, sound and trainer preferences (defaults in SettingKeys::DisplayPrefs).
     loadDisplayPrefs();
 }
 
@@ -239,24 +158,24 @@ void Account::saveProfileFields(int ftp, int lthr, double weightKg)
 // Kept distinct from the legacy server fields so it is self-contained.
 void Account::loadDisplayPrefs() {
 
+    namespace Keys = SettingKeys::DisplayPrefs;
     QSettings settings;
-    settings.beginGroup("displayPrefs");
 
     // Widget visibility
-    show_hr_widget            = settings.value("show_hr_widget",            show_hr_widget).toBool();
-    show_power_widget         = settings.value("show_power_widget",         show_power_widget).toBool();
-    show_power_balance_widget = settings.value("show_power_balance_widget", show_power_balance_widget).toBool();
-    show_cadence_widget       = settings.value("show_cadence_widget",       show_cadence_widget).toBool();
-    show_speed_widget         = settings.value("show_speed_widget",         show_speed_widget).toBool();
-    show_calories_widget      = settings.value("show_calories_widget",      show_calories_widget).toBool();
-    show_oxygen_widget        = settings.value("show_oxygen_widget",        show_oxygen_widget).toBool();
-    show_trainer_speed        = settings.value("show_trainer_speed",        show_trainer_speed).toBool();
+    show_hr_widget            = AppSettings::read(settings, Keys::ShowHrWidget);
+    show_power_widget         = AppSettings::read(settings, Keys::ShowPowerWidget);
+    show_power_balance_widget = AppSettings::read(settings, Keys::ShowPowerBalanceWidget);
+    show_cadence_widget       = AppSettings::read(settings, Keys::ShowCadenceWidget);
+    show_speed_widget         = AppSettings::read(settings, Keys::ShowSpeedWidget);
+    show_calories_widget      = AppSettings::read(settings, Keys::ShowCaloriesWidget);
+    show_oxygen_widget        = AppSettings::read(settings, Keys::ShowOxygenWidget);
+    show_trainer_speed        = AppSettings::read(settings, Keys::ShowTrainerSpeed);
 
     // Per-metric display mode
-    display_hr            = settings.value("display_hr",            display_hr).toInt();
-    display_power         = settings.value("display_power",         display_power).toInt();
-    display_power_balance = settings.value("display_power_balance", display_power_balance).toInt();
-    display_cadence       = settings.value("display_cadence",       display_cadence).toInt();
+    display_hr            = AppSettings::read(settings, Keys::DisplayHr);
+    display_power         = AppSettings::read(settings, Keys::DisplayPower);
+    display_power_balance = AppSettings::read(settings, Keys::DisplayPowerBalance);
+    display_cadence       = AppSettings::read(settings, Keys::DisplayCadence);
 
     // The "Minimalist" display mode (value 0) was removed; migrate any saved
     // Minimalist preference to Detailed (value 1). Idempotent: the editor only
@@ -264,149 +183,147 @@ void Account::loadDisplayPrefs() {
     if (display_hr == 0)      display_hr = 1;
     if (display_power == 0)   display_power = 1;
     if (display_cadence == 0) display_cadence = 1;
-    display_video         = settings.value("display_video",         display_video).toInt();
-    offset_power          = settings.value("offset_power",          offset_power).toInt();
+    display_video         = AppSettings::read(settings, Keys::DisplayVideo);
+    offset_power          = AppSettings::read(settings, Keys::OffsetPower);
 
     // Start-workout trigger and its per-mode threshold values.
-    start_trigger       = settings.value("start_trigger",       start_trigger).toInt();
-    value_cadence_start = settings.value("value_cadence_start", value_cadence_start).toInt();
-    value_power_start   = settings.value("value_power_start",   value_power_start).toInt();
-    value_speed_start   = settings.value("value_speed_start",   value_speed_start).toInt();
+    start_trigger       = AppSettings::read(settings, Keys::StartTrigger);
+    value_cadence_start = AppSettings::read(settings, Keys::ValueCadenceStart);
+    value_power_start   = AppSettings::read(settings, Keys::ValuePowerStart);
+    value_speed_start   = AppSettings::read(settings, Keys::ValueSpeedStart);
 
     // The last-selected config tab/sub-tab.
-    last_index_selected_config_workout = settings.value("last_index_selected_config_workout", last_index_selected_config_workout).toInt();
-    last_tab_sub_config_selected       = settings.value("last_tab_sub_config_selected",       last_tab_sub_config_selected).toInt();
+    last_index_selected_config_workout = AppSettings::read(settings, Keys::LastIndexSelectedConfigWorkout);
+    last_tab_sub_config_selected       = AppSettings::read(settings, Keys::LastTabSubConfigSelected);
 
     // General / trainer / pairing / upload preferences.
-    control_trainer_resistance   = settings.value("control_trainer_resistance",   control_trainer_resistance).toBool();
-    virtual_shifting             = settings.value("virtual_shifting",             virtual_shifting).toBool();
-    use_zwift_click              = settings.value("use_zwift_click",              use_zwift_click).toBool();
-    enable_studio_mode           = settings.value("enable_studio_mode",           enable_studio_mode).toBool();
-    distance_in_km               = settings.value("distance_in_km",               distance_in_km).toBool();
-    force_workout_window_on_top  = settings.value("force_workout_window_on_top",  force_workout_window_on_top).toBool();
-    strava_auto_upload           = settings.value("strava_auto_upload",           strava_auto_upload).toBool();
+    control_trainer_resistance   = AppSettings::read(settings, Keys::ControlTrainerResistance);
+    virtual_shifting             = AppSettings::read(settings, Keys::VirtualShifting);
+    use_zwift_click              = AppSettings::read(settings, Keys::UseZwiftClick);
+    enable_studio_mode           = AppSettings::read(settings, Keys::EnableStudioMode);
+    distance_in_km               = AppSettings::read(settings, Keys::DistanceInKm);
+    force_workout_window_on_top  = AppSettings::read(settings, Keys::ForceWorkoutWindowOnTop);
+    strava_auto_upload           = AppSettings::read(settings, Keys::StravaAutoUpload);
 
     // Studio / power-meter / virtual-speed / included-content preferences.
-    nb_user_studio        = settings.value("nb_user_studio",        nb_user_studio).toInt();
-    use_pm_for_cadence    = settings.value("use_pm_for_cadence",    use_pm_for_cadence).toBool();
-    use_pm_for_speed      = settings.value("use_pm_for_speed",      use_pm_for_speed).toBool();
-    show_included_workout = settings.value("show_included_workout", show_included_workout).toBool();
-    rowing_mode = settings.value("rowing_mode", rowing_mode).toBool();
+    nb_user_studio        = AppSettings::read(settings, Keys::NbUserStudio);
+    use_pm_for_cadence    = AppSettings::read(settings, Keys::UsePmForCadence);
+    use_pm_for_speed      = AppSettings::read(settings, Keys::UsePmForSpeed);
+    show_included_workout = AppSettings::read(settings, Keys::ShowIncludedWorkout);
+    rowing_mode = AppSettings::read(settings, Keys::RowingMode);
 
     // Timer display
-    show_timer_on_top       = settings.value("show_timer_on_top",       show_timer_on_top).toBool();
-    show_interval_remaining = settings.value("show_interval_remaining", show_interval_remaining).toBool();
-    show_workout_remaining  = settings.value("show_workout_remaining",  show_workout_remaining).toBool();
-    show_elapsed            = settings.value("show_elapsed",            show_elapsed).toBool();
-    show_current_target     = settings.value("show_current_target",     show_current_target).toBool();
+    show_timer_on_top       = AppSettings::read(settings, Keys::ShowTimerOnTop);
+    show_interval_remaining = AppSettings::read(settings, Keys::ShowIntervalRemaining);
+    show_workout_remaining  = AppSettings::read(settings, Keys::ShowWorkoutRemaining);
+    show_elapsed            = AppSettings::read(settings, Keys::ShowElapsed);
+    show_current_target     = AppSettings::read(settings, Keys::ShowCurrentTarget);
 
     // Plot target/curve toggles
-    show_seperator_interval = settings.value("show_seperator_interval", show_seperator_interval).toBool();
-    show_grid               = settings.value("show_grid",               show_grid).toBool();
-    show_hr_target          = settings.value("show_hr_target",          show_hr_target).toBool();
-    show_power_target       = settings.value("show_power_target",       show_power_target).toBool();
-    show_cadence_target     = settings.value("show_cadence_target",     show_cadence_target).toBool();
-    show_speed_target       = settings.value("show_speed_target",       show_speed_target).toBool();
-    show_hr_curve           = settings.value("show_hr_curve",           show_hr_curve).toBool();
-    show_power_curve        = settings.value("show_power_curve",        show_power_curve).toBool();
-    show_cadence_curve      = settings.value("show_cadence_curve",      show_cadence_curve).toBool();
-    show_speed_curve        = settings.value("show_speed_curve",        show_speed_curve).toBool();
+    show_seperator_interval = AppSettings::read(settings, Keys::ShowSeperatorInterval);
+    show_grid               = AppSettings::read(settings, Keys::ShowGrid);
+    show_hr_target          = AppSettings::read(settings, Keys::ShowHrTarget);
+    show_power_target       = AppSettings::read(settings, Keys::ShowPowerTarget);
+    show_cadence_target     = AppSettings::read(settings, Keys::ShowCadenceTarget);
+    show_speed_target       = AppSettings::read(settings, Keys::ShowSpeedTarget);
+    show_hr_curve           = AppSettings::read(settings, Keys::ShowHrCurve);
+    show_power_curve        = AppSettings::read(settings, Keys::ShowPowerCurve);
+    show_cadence_curve      = AppSettings::read(settings, Keys::ShowCadenceCurve);
+    show_speed_curve        = AppSettings::read(settings, Keys::ShowSpeedCurve);
 
     // Sound
-    sound_player_vol               = settings.value("sound_player_vol",               sound_player_vol).toInt();
-    enable_sound                   = settings.value("enable_sound",                   enable_sound).toBool();
-    sound_interval                 = settings.value("sound_interval",                 sound_interval).toBool();
-    sound_pause_resume_workout     = settings.value("sound_pause_resume_workout",     sound_pause_resume_workout).toBool();
-    sound_achievement              = settings.value("sound_achievement",              sound_achievement).toBool();
-    sound_end_workout              = settings.value("sound_end_workout",              sound_end_workout).toBool();
-    sound_alert_power_under_target = settings.value("sound_alert_power_under_target", sound_alert_power_under_target).toBool();
-    sound_alert_power_above_target = settings.value("sound_alert_power_above_target", sound_alert_power_above_target).toBool();
-    sound_alert_cadence_under_target = settings.value("sound_alert_cadence_under_target", sound_alert_cadence_under_target).toBool();
-    sound_alert_cadence_above_target = settings.value("sound_alert_cadence_above_target", sound_alert_cadence_above_target).toBool();
+    sound_player_vol               = AppSettings::read(settings, Keys::SoundPlayerVol);
+    enable_sound                   = AppSettings::read(settings, Keys::EnableSound);
+    sound_interval                 = AppSettings::read(settings, Keys::SoundInterval);
+    sound_pause_resume_workout     = AppSettings::read(settings, Keys::SoundPauseResumeWorkout);
+    sound_achievement              = AppSettings::read(settings, Keys::SoundAchievement);
+    sound_end_workout              = AppSettings::read(settings, Keys::SoundEndWorkout);
+    sound_alert_power_under_target = AppSettings::read(settings, Keys::SoundAlertPowerUnderTarget);
+    sound_alert_power_above_target = AppSettings::read(settings, Keys::SoundAlertPowerAboveTarget);
+    sound_alert_cadence_under_target = AppSettings::read(settings, Keys::SoundAlertCadenceUnderTarget);
+    sound_alert_cadence_above_target = AppSettings::read(settings, Keys::SoundAlertCadenceAboveTarget);
 
-    settings.endGroup();
 }
 
 void Account::saveDisplayPrefs() {
 
+    namespace Keys = SettingKeys::DisplayPrefs;
     QSettings settings;
-    settings.beginGroup("displayPrefs");
 
-    settings.setValue("show_hr_widget",            show_hr_widget);
-    settings.setValue("show_power_widget",         show_power_widget);
-    settings.setValue("show_power_balance_widget", show_power_balance_widget);
-    settings.setValue("show_cadence_widget",       show_cadence_widget);
-    settings.setValue("show_speed_widget",         show_speed_widget);
-    settings.setValue("show_calories_widget",      show_calories_widget);
-    settings.setValue("show_oxygen_widget",        show_oxygen_widget);
-    settings.setValue("show_trainer_speed",        show_trainer_speed);
+    AppSettings::write(settings, Keys::ShowHrWidget, show_hr_widget);
+    AppSettings::write(settings, Keys::ShowPowerWidget, show_power_widget);
+    AppSettings::write(settings, Keys::ShowPowerBalanceWidget, show_power_balance_widget);
+    AppSettings::write(settings, Keys::ShowCadenceWidget, show_cadence_widget);
+    AppSettings::write(settings, Keys::ShowSpeedWidget, show_speed_widget);
+    AppSettings::write(settings, Keys::ShowCaloriesWidget, show_calories_widget);
+    AppSettings::write(settings, Keys::ShowOxygenWidget, show_oxygen_widget);
+    AppSettings::write(settings, Keys::ShowTrainerSpeed, show_trainer_speed);
 
-    settings.setValue("display_hr",            display_hr);
-    settings.setValue("display_power",         display_power);
-    settings.setValue("display_power_balance", display_power_balance);
-    settings.setValue("display_cadence",       display_cadence);
-    settings.setValue("display_video",         display_video);
-    settings.setValue("offset_power",          offset_power);
+    AppSettings::write(settings, Keys::DisplayHr, display_hr);
+    AppSettings::write(settings, Keys::DisplayPower, display_power);
+    AppSettings::write(settings, Keys::DisplayPowerBalance, display_power_balance);
+    AppSettings::write(settings, Keys::DisplayCadence, display_cadence);
+    AppSettings::write(settings, Keys::DisplayVideo, display_video);
+    AppSettings::write(settings, Keys::OffsetPower, offset_power);
 
     // Start-workout trigger and its per-mode threshold values. Formerly loaded
     // from the (now-defunct) server account endpoint; persisted locally so the
     // choice survives a restart.
-    settings.setValue("start_trigger",       start_trigger);
-    settings.setValue("value_cadence_start", value_cadence_start);
-    settings.setValue("value_power_start",   value_power_start);
-    settings.setValue("value_speed_start",   value_speed_start);
+    AppSettings::write(settings, Keys::StartTrigger, start_trigger);
+    AppSettings::write(settings, Keys::ValueCadenceStart, value_cadence_start);
+    AppSettings::write(settings, Keys::ValuePowerStart, value_power_start);
+    AppSettings::write(settings, Keys::ValueSpeedStart, value_speed_start);
 
     // The last-selected config tab/sub-tab.
-    settings.setValue("last_index_selected_config_workout", last_index_selected_config_workout);
-    settings.setValue("last_tab_sub_config_selected",       last_tab_sub_config_selected);
+    AppSettings::write(settings, Keys::LastIndexSelectedConfigWorkout, last_index_selected_config_workout);
+    AppSettings::write(settings, Keys::LastTabSubConfigSelected, last_tab_sub_config_selected);
 
     // General / trainer / pairing / upload preferences. Formerly server-saved;
     // persisted locally so they survive a restart.
-    settings.setValue("control_trainer_resistance",  control_trainer_resistance);
-    settings.setValue("virtual_shifting",            virtual_shifting);
-    settings.setValue("use_zwift_click",             use_zwift_click);
-    settings.setValue("enable_studio_mode",          enable_studio_mode);
-    settings.setValue("distance_in_km",              distance_in_km);
-    settings.setValue("force_workout_window_on_top", force_workout_window_on_top);
-    settings.setValue("strava_auto_upload",          strava_auto_upload);
+    AppSettings::write(settings, Keys::ControlTrainerResistance, control_trainer_resistance);
+    AppSettings::write(settings, Keys::VirtualShifting, virtual_shifting);
+    AppSettings::write(settings, Keys::UseZwiftClick, use_zwift_click);
+    AppSettings::write(settings, Keys::EnableStudioMode, enable_studio_mode);
+    AppSettings::write(settings, Keys::DistanceInKm, distance_in_km);
+    AppSettings::write(settings, Keys::ForceWorkoutWindowOnTop, force_workout_window_on_top);
+    AppSettings::write(settings, Keys::StravaAutoUpload, strava_auto_upload);
 
     // Studio / power-meter / virtual-speed / included-content preferences.
     // Formerly server-saved; persisted locally so they survive a restart.
-    settings.setValue("nb_user_studio",        nb_user_studio);
-    settings.setValue("use_pm_for_cadence",    use_pm_for_cadence);
-    settings.setValue("use_pm_for_speed",      use_pm_for_speed);
-    settings.setValue("show_included_workout", show_included_workout);
-    settings.setValue("rowing_mode", rowing_mode);
+    AppSettings::write(settings, Keys::NbUserStudio, nb_user_studio);
+    AppSettings::write(settings, Keys::UsePmForCadence, use_pm_for_cadence);
+    AppSettings::write(settings, Keys::UsePmForSpeed, use_pm_for_speed);
+    AppSettings::write(settings, Keys::ShowIncludedWorkout, show_included_workout);
+    AppSettings::write(settings, Keys::RowingMode, rowing_mode);
 
-    settings.setValue("show_timer_on_top",       show_timer_on_top);
-    settings.setValue("show_interval_remaining", show_interval_remaining);
-    settings.setValue("show_workout_remaining",  show_workout_remaining);
-    settings.setValue("show_elapsed",            show_elapsed);
-    settings.setValue("show_current_target",     show_current_target);
+    AppSettings::write(settings, Keys::ShowTimerOnTop, show_timer_on_top);
+    AppSettings::write(settings, Keys::ShowIntervalRemaining, show_interval_remaining);
+    AppSettings::write(settings, Keys::ShowWorkoutRemaining, show_workout_remaining);
+    AppSettings::write(settings, Keys::ShowElapsed, show_elapsed);
+    AppSettings::write(settings, Keys::ShowCurrentTarget, show_current_target);
 
-    settings.setValue("show_seperator_interval", show_seperator_interval);
-    settings.setValue("show_grid",               show_grid);
-    settings.setValue("show_hr_target",          show_hr_target);
-    settings.setValue("show_power_target",       show_power_target);
-    settings.setValue("show_cadence_target",     show_cadence_target);
-    settings.setValue("show_speed_target",       show_speed_target);
-    settings.setValue("show_hr_curve",           show_hr_curve);
-    settings.setValue("show_power_curve",        show_power_curve);
-    settings.setValue("show_cadence_curve",      show_cadence_curve);
-    settings.setValue("show_speed_curve",        show_speed_curve);
+    AppSettings::write(settings, Keys::ShowSeperatorInterval, show_seperator_interval);
+    AppSettings::write(settings, Keys::ShowGrid, show_grid);
+    AppSettings::write(settings, Keys::ShowHrTarget, show_hr_target);
+    AppSettings::write(settings, Keys::ShowPowerTarget, show_power_target);
+    AppSettings::write(settings, Keys::ShowCadenceTarget, show_cadence_target);
+    AppSettings::write(settings, Keys::ShowSpeedTarget, show_speed_target);
+    AppSettings::write(settings, Keys::ShowHrCurve, show_hr_curve);
+    AppSettings::write(settings, Keys::ShowPowerCurve, show_power_curve);
+    AppSettings::write(settings, Keys::ShowCadenceCurve, show_cadence_curve);
+    AppSettings::write(settings, Keys::ShowSpeedCurve, show_speed_curve);
 
-    settings.setValue("sound_player_vol",               sound_player_vol);
-    settings.setValue("enable_sound",                   enable_sound);
-    settings.setValue("sound_interval",                 sound_interval);
-    settings.setValue("sound_pause_resume_workout",     sound_pause_resume_workout);
-    settings.setValue("sound_achievement",              sound_achievement);
-    settings.setValue("sound_end_workout",              sound_end_workout);
-    settings.setValue("sound_alert_power_under_target", sound_alert_power_under_target);
-    settings.setValue("sound_alert_power_above_target", sound_alert_power_above_target);
-    settings.setValue("sound_alert_cadence_under_target", sound_alert_cadence_under_target);
-    settings.setValue("sound_alert_cadence_above_target", sound_alert_cadence_above_target);
+    AppSettings::write(settings, Keys::SoundPlayerVol, sound_player_vol);
+    AppSettings::write(settings, Keys::EnableSound, enable_sound);
+    AppSettings::write(settings, Keys::SoundInterval, sound_interval);
+    AppSettings::write(settings, Keys::SoundPauseResumeWorkout, sound_pause_resume_workout);
+    AppSettings::write(settings, Keys::SoundAchievement, sound_achievement);
+    AppSettings::write(settings, Keys::SoundEndWorkout, sound_end_workout);
+    AppSettings::write(settings, Keys::SoundAlertPowerUnderTarget, sound_alert_power_under_target);
+    AppSettings::write(settings, Keys::SoundAlertPowerAboveTarget, sound_alert_power_above_target);
+    AppSettings::write(settings, Keys::SoundAlertCadenceUnderTarget, sound_alert_cadence_under_target);
+    AppSettings::write(settings, Keys::SoundAlertCadenceAboveTarget, sound_alert_cadence_above_target);
 
-    settings.endGroup();
 }
 
 void Account::saveIntervalsIcuCredentials() {

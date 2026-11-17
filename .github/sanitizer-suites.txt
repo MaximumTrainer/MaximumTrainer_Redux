@@ -10,6 +10,7 @@ strava/strava_tests
 group/group_tests
 credential_store/credential_store_tests
 config_bootstrap/config_bootstrap_tests
+settings/settings_tests
 webengine_safe_mode/webengine_safe_mode_tests
 plan_adherence/plan_adherence_tests
 history/history_tests
