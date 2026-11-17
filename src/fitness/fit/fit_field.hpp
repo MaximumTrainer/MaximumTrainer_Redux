@@ -30,6 +30,7 @@ class Field
 public:
     Field(void);
     Field(const Field &field);
+    Field& operator=(const Field&) = default;
     Field(const Profile::MESG_INDEX mesgIndex, const FIT_UINT16 fieldIndex);
     Field(const FIT_UINT16 mesgNum, const FIT_UINT8 fieldNum);
     Field(const std::string& mesgName, const std::string& fieldName);

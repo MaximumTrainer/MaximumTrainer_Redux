@@ -22,6 +22,7 @@
 #endif
 
 #include <string>
+#include <cstddef>
 #include <cstring>
 
 #if !defined(FIT_CPP_INCLUDE_C)
@@ -283,7 +284,7 @@ typedef struct
 // Macros
 ///////////////////////////////////////////////////////////////////////
 
-#define FIT_STRUCT_OFFSET(MEMBER, STRUCT_TYPE)                                 ( ((FIT_UINT8 *) &(((STRUCT_TYPE *) FIT_NULL)->MEMBER)) - ((FIT_UINT8 *) (FIT_NULL)) ) // Computes the byte offset of a member in a file.  Compiles to a constant.
+#define FIT_STRUCT_OFFSET(MEMBER, STRUCT_TYPE)                                 offsetof(STRUCT_TYPE, MEMBER) // Computes the byte offset of a member in a file.  Compiles to a constant.
 
 // Offset of message in file, not including file header.
 #define FIT_MESG_OFFSET(MESG_MEMBER, MESG_INDEX, MESG_SIZE, FILE)              (FIT_STRUCT_OFFSET(MESG_MEMBER, FILE) + MESG_INDEX * (FIT_HDR_SIZE + MESG_SIZE) + FIT_HDR_SIZE) // Computes the byte offset of a message in a file structure.  Compiles to a constant.

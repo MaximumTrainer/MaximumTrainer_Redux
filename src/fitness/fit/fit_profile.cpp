@@ -3746,7 +3746,7 @@ const Profile::MESG* Profile::GetMesg(const std::string& name)
     return NULL;
 }
 
-const FIT_UINT16 Profile::GetFieldIndex(const FIT_UINT16 mesgNum, const FIT_UINT8 fieldNum)
+FIT_UINT16 Profile::GetFieldIndex(const FIT_UINT16 mesgNum, const FIT_UINT8 fieldNum)
 {
     const MESG *mesg = GetMesg(mesgNum);
 
@@ -3762,7 +3762,7 @@ const FIT_UINT16 Profile::GetFieldIndex(const FIT_UINT16 mesgNum, const FIT_UINT
     return FIT_UINT16_INVALID;
 }
 
-const FIT_UINT16 Profile::GetFieldIndex(const std::string& mesgName, const std::string& fieldName)
+FIT_UINT16 Profile::GetFieldIndex(const std::string& mesgName, const std::string& fieldName)
 {
     const MESG *mesg = GetMesg(mesgName);
 
@@ -3814,7 +3814,7 @@ const Profile::FIELD* Profile::GetField(const std::string& mesgName, const std::
     return &(mesg->fields[fieldIndex]);
 }
 
-const FIT_UINT16 Profile::GetSubFieldIndex(const std::string& mesgName, const std::string& fieldName, const std::string& subFieldName)
+FIT_UINT16 Profile::GetSubFieldIndex(const std::string& mesgName, const std::string& fieldName, const std::string& subFieldName)
 {
     const FIELD *field = GetField(mesgName, fieldName);
 

@@ -9,7 +9,6 @@
 // Tag = production/release/21.222.0-0-g71fae187
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-
 #include <cmath>
 #include <sstream>
 #include <type_traits>
@@ -454,6 +453,9 @@ FIT_WSTRING FieldBase::GetSTRINGValue(const FIT_UINT8 fieldArrayIndex, const FIT
         if (numStrings == 0)
             return FIT_WSTRING_INVALID;
 
+        if (fieldArrayIndex >= numStrings)
+            return FIT_WSTRING_INVALID;
+
         FIT_UINT8 i = 0;
         // Get the start position of the string in the byte array
         FIT_UINT8 index = stringIndexes[fieldArrayIndex];
@@ -463,6 +465,8 @@ FIT_WSTRING FieldBase::GetSTRINGValue(const FIT_UINT8 fieldArrayIndex, const FIT
         // by its start position.
         if (fieldArrayIndex + 1 == numStrings)
         {
+            if (static_cast<size_t>(index) >= values.size())
+                return FIT_WSTRING_INVALID;
             length = (FIT_UINT8)(values.size() - index);
         }
         // Otherwise it is the distance between its start position and the start
@@ -472,7 +476,7 @@ FIT_WSTRING FieldBase::GetSTRINGValue(const FIT_UINT8 fieldArrayIndex, const FIT
             length = stringIndexes[fieldArrayIndex + 1] - index;
         }
 
-        while ((i < length) && (values[index + i] != 0))
+        while ((i < length) && (static_cast<FIT_UINT32>(index) + i < values.size()) && (values[index + i] != 0))
         {
             value += static_cast<Unicode::UTF8_STRING::value_type>(values[index + i]);
             i++;
@@ -535,14 +539,15 @@ FIT_FLOAT64 FieldBase::GetRawValue(const FIT_UINT8 fieldArrayIndex) const
 FIT_BOOL FieldBase::GetMemoryValue( const FIT_UINT8 fieldArrayIndex, FIT_UINT8* buffer, const FIT_UINT8 bufferSize ) const
 {
     FIT_UINT8 baseTypeSize = baseTypeSizes[GetType() & FIT_BASE_TYPE_NUM_MASK];
-    FIT_UINT8 offsetIndex = baseTypeSize * fieldArrayIndex;
+    // Use FIT_UINT32 to prevent 8-bit overflow when baseTypeSize * fieldArrayIndex > 255
+    FIT_UINT32 offsetIndex = static_cast<FIT_UINT32>(baseTypeSize) * fieldArrayIndex;
     if ( bufferSize < baseTypeSize )
     {
         // Buffer is not large enough
         return FIT_FALSE;
     }
 
-    if ( static_cast<FIT_UINT32>(offsetIndex + baseTypeSize) > values.size() )
+    if ( (offsetIndex + baseTypeSize) > values.size() )
     {
         // Values do not contain valid Data
         return FIT_FALSE;
@@ -1116,7 +1121,6 @@ void FieldBase::SetSTRINGValue(const FIT_WSTRING& value, const FIT_UINT8 fieldAr
     FIT_UINT8 idx = 0;
     FIT_UINT8 nextIdx = 0;
     FIT_UINT8 numStrings = (FIT_UINT8)stringIndexes.size();
-    FIT_UINT8 dif = 0;
 
     if ( fieldArrayIndex < numStrings )
     {
@@ -1124,7 +1128,6 @@ void FieldBase::SetSTRINGValue(const FIT_WSTRING& value, const FIT_UINT8 fieldAr
         if (fieldArrayIndex + 1 < numStrings)
         {
             nextIdx = stringIndexes[fieldArrayIndex + 1];
-            dif = (FIT_UINT8)( (value.length() + 1) - (nextIdx - idx) );
             values.erase(values.begin() + idx, values.begin() + nextIdx);
         }
         else
@@ -1345,7 +1348,10 @@ TSigned FieldBase::GetBitsSignedValueT(const FIT_UINT16 offset, const FIT_UINT8 
     if (value == FitInvalid<TUnsigned>::value)
         return FitInvalid<TSigned>::value;
 
-    signedValue = (TSigned)1 << (bits - 1);
+    if (bits == 0 || bits >= sizeof(TSigned) * 8)
+        return FitInvalid<TSigned>::value;
+
+    signedValue = static_cast<TSigned>(static_cast<TUnsigned>(1) << (bits - 1u));
 
     if ((value & signedValue) != 0) // sign bit set
         signedValue = -signedValue + (value & (signedValue - 1));
@@ -1388,8 +1394,9 @@ T FieldBase::GetBitsValueT(const FIT_UINT16 offset, const FIT_UINT8 bits) const
             if (numDataBitsUsed > (bits - numValueBits))
                 numDataBitsUsed = bits - numValueBits;
 
-            mask = (1 << numDataBitsUsed) - 1;
-            value |= (T)(data & mask) << numValueBits;
+            mask = (FIT_UINT8)((1u << numDataBitsUsed) - 1u);
+            if (numValueBits < sizeof(T) * 8)
+                value |= (T)(data & mask) << numValueBits;
             numValueBits += numDataBitsUsed;
         }
         index++;

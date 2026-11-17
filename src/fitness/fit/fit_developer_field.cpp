@@ -32,6 +32,21 @@ DeveloperField::DeveloperField(const DeveloperField& other)
     }
 }
 
+// The implicit assignment would copy the owned mDefinition pointer and
+// double-delete it; deep-copy it the same way the copy constructor does.
+DeveloperField& DeveloperField::operator=(const DeveloperField& other)
+{
+    if (this != &other)
+    {
+        FieldBase::operator=(other);
+        DeveloperFieldDefinition* definition =
+            (nullptr != other.mDefinition) ? new DeveloperFieldDefinition(*other.mDefinition) : nullptr;
+        delete mDefinition;
+        mDefinition = definition;
+    }
+    return *this;
+}
+
 DeveloperField::DeveloperField(const DeveloperFieldDefinition& definition)
     : FieldBase()
     , mDefinition(new DeveloperFieldDefinition(definition))

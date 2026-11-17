@@ -31,6 +31,7 @@ class Mesg
 public:
     Mesg(void);
     Mesg(const Mesg &mesg);
+    Mesg& operator=(const Mesg&) = default;
     Mesg(const Profile::MESG_INDEX index);
     Mesg(const std::string& name);
     Mesg(const FIT_UINT16 num);

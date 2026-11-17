@@ -8839,11 +8839,11 @@ public:
 
     static const Profile::MESG* GetMesg(const FIT_UINT16 num);
     static const Profile::MESG* GetMesg(const std::string& name);
-    static const FIT_UINT16 GetFieldIndex(const FIT_UINT16 mesgNum, const FIT_UINT8 fieldNum);
-    static const FIT_UINT16 GetFieldIndex(const std::string& mesgName, const std::string& fieldName);
+    static FIT_UINT16 GetFieldIndex(const FIT_UINT16 mesgNum, const FIT_UINT8 fieldNum);
+    static FIT_UINT16 GetFieldIndex(const std::string& mesgName, const std::string& fieldName);
     static const Profile::FIELD* GetField(const FIT_UINT16 mesgNum, const FIT_UINT8 fieldNum);
     static const Profile::FIELD* GetField(const std::string& mesgName, const std::string& fieldName);
-    static const FIT_UINT16 GetSubFieldIndex(const std::string& mesgName, const std::string& fieldName, const std::string& subFieldName);
+    static FIT_UINT16 GetSubFieldIndex(const std::string& mesgName, const std::string& fieldName, const std::string& subFieldName);
     static const Profile::SUBFIELD* GetSubField(const FIT_UINT16 mesgNum, const FIT_UINT8 fieldNum, const FIT_UINT16 subFieldIndex);
     static const Profile::SUBFIELD* GetSubField(const std::string& mesgName, const std::string& fieldName, const std::string& subFieldName);
 };

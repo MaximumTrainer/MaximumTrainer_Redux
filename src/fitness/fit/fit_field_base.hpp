@@ -28,6 +28,7 @@ class FieldBase
 public:
     FieldBase(void);
     FieldBase(const FieldBase& other);
+    FieldBase& operator=(const FieldBase&) = default;
     virtual ~FieldBase();
 
     std::string GetName(const FIT_UINT16 subFieldIndex) const;

@@ -135,6 +135,8 @@ public:
     {
     }
 
+    FIT_STRING_CONVERSION_ERROR GetErrorCode() const { return errorCode; }
+
 private:
     FIT_STRING_CONVERSION_ERROR errorCode;
 };

@@ -27,6 +27,7 @@ class DeveloperField
 public:
     DeveloperField(void);
     DeveloperField(const DeveloperField &field);
+    DeveloperField& operator=(const DeveloperField& other);
     DeveloperField(const FieldDescriptionMesg& definition, const DeveloperDataIdMesg& developer);
     explicit DeveloperField(const DeveloperFieldDefinition& definition);
     virtual ~DeveloperField();

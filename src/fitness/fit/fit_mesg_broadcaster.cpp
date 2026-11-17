@@ -25,14 +25,10 @@ FIT_BOOL MesgBroadcaster::Run(std::istream& file)
 {
     Decode decode;
     FIT_BOOL status = FIT_TRUE;
-    FIT_UINT32 fileSize = 0;
 
     // We can't guarantee that the file stream was reset
     file.seekg(0, file.beg);
     file.clear();
-    // Read out the size of the file
-    file.seekg(0, file.end);
-    fileSize = (FIT_UINT32)file.tellg();
     // Ensure the read starts at the beginning of the file
     file.seekg(0, file.beg);
     file.clear();

@@ -7,6 +7,10 @@
 #include "fit_mesg_broadcaster.hpp"
 #include "fit_file_id_mesg.hpp"
 
+// An 8-byte FIT_UINT32 makes the encoder declare 32-bit fields 8 bytes wide,
+// producing files strict decoders (Garmin's own SDK) reject.
+static_assert(sizeof(FIT_UINT32) == 4, "FIT SDK must be built with FIT_USE_STDINT_H");
+
 
 //#include <cstdlib>
 
