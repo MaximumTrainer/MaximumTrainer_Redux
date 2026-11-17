@@ -1,0 +1,19 @@
+# Test suites built and run by sanitizers.yml under ASan + UBSan.
+# <tests/ subdirectory>/<.pro name without extension>; all must run headless.
+logger/logger_tests
+apptheme/apptheme_tests
+intervals_icu/intervals_icu_tests
+intervals_icu/importer_workout_zwo_tests
+intervals_icu/intervals_icu_dao_bearer_tests
+intervals_icu/intervals_icu_oauth_exchange_tests
+strava/strava_tests
+group/group_tests
+credential_store/credential_store_tests
+config_bootstrap/config_bootstrap_tests
+webengine_safe_mode/webengine_safe_mode_tests
+plan_adherence/plan_adherence_tests
+history/history_tests
+btle/btle_tests
+integration/btle_api_tests
+integration/workout_parsing_tests
+integration/workout_creator_tests
