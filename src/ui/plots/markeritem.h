@@ -8,7 +8,7 @@ class MarkerItem : public QwtPlotItem
 {
 public:
     MarkerItem();
-    void draw( QPainter *painter, const QwtScaleMap &, const QwtScaleMap &, const QRectF &canvasRect ) const;
+    void draw( QPainter *painter, const QwtScaleMap &, const QwtScaleMap &, const QRectF &canvasRect ) const override;
 
 };
 

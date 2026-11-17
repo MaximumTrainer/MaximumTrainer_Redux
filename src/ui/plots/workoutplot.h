@@ -33,8 +33,8 @@ class WorkoutPlot : public QwtPlot
 
 public:
 
-    ~WorkoutPlot();
-    WorkoutPlot(QWidget *parent = 0);
+    ~WorkoutPlot() override;
+    WorkoutPlot(QWidget *parent = nullptr);
     void setWorkoutData(Workout workout, bool firstInit);
     void setUserData(double FTP, double LTHR);
 
@@ -66,7 +66,7 @@ public:
 
     void addMarkerInterval(double time);
 
-    bool eventFilter(QObject *watched, QEvent *event);
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 
 signals:

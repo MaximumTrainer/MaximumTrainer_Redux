@@ -47,25 +47,25 @@ class FancyTabBar : public QWidget
 public:
     enum struct TabBarPosition { Above, Below, Left, Right };
 
-    FancyTabBar(const TabBarPosition position, QWidget *parent = 0);
-    ~FancyTabBar();
+    FancyTabBar(const TabBarPosition position, QWidget *parent = nullptr);
+    ~FancyTabBar() override;
 
     int getNumberOfTabs() { return mAttachedTabs.size(); }
 
 
-    bool event(QEvent *event);
+    bool event(QEvent *event) override;
 
-    void paintEvent(QPaintEvent *event);
+    void paintEvent(QPaintEvent *event) override;
     void paintTab(QPainter *painter, int tabIndex) const;
-    void mousePressEvent(QMouseEvent *);
-    void mouseMoveEvent(QMouseEvent *);
-    void enterEvent(QEnterEvent *);
-    void leaveEvent(QEvent *);
+    void mousePressEvent(QMouseEvent *) override;
+    void mouseMoveEvent(QMouseEvent *) override;
+    void enterEvent(QEnterEvent *) override;
+    void leaveEvent(QEvent *) override;
     bool validIndex(int index) const { return index >= 0 && index < mAttachedTabs.count(); }
 
     void setOrientation(const TabBarPosition p) {mPosition = p;}
-    QSize sizeHint() const;
-    QSize minimumSizeHint() const;
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
 
     void setTabEnabled(int index, bool enable);
     bool isTabEnabled(int index) const;
@@ -84,7 +84,7 @@ public:
     void setCurrentIndex(int index);
     int currentIndex() const { return mCurrentIndex; }
 
-    void setTabToolTip(int index, QString toolTip) { mAttachedTabs[index]->toolTip = toolTip; }
+    void setTabToolTip(int index, QString toolTip) { mAttachedTabs[index]->toolTip = std::move(toolTip); }
     QString tabToolTip(int index) const { return mAttachedTabs.at(index)->toolTip; }
 
     QIcon tabIcon(int index) const { return mAttachedTabs.at(index)->icon; }

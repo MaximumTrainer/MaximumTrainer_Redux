@@ -17,8 +17,8 @@ class DataWorkout : public QObject
 
 
 public:
-    DataWorkout(Workout workout, int userftp, QObject *parent = 0);
-    ~DataWorkout(); // closeFitFile
+    DataWorkout(Workout workout, int userftp, QObject *parent = nullptr);
+    ~DataWorkout() override; // closeFitFile
 
 
     void updateData(bool studioMode, int secReceived,

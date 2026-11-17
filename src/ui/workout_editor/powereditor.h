@@ -14,8 +14,8 @@ class PowerEditor : public QWidget
     Q_OBJECT
 
 public:
-    explicit PowerEditor(QWidget *parent = 0);
-    ~PowerEditor();
+    explicit PowerEditor(QWidget *parent = nullptr);
+    ~PowerEditor() override;
 
 
     void setInterval(const Interval &interval);

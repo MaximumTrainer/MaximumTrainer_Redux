@@ -24,7 +24,7 @@ public slots:
 
 
 protected:
-    void mousePressEvent ( QMouseEvent * event ) ;
+    void mousePressEvent ( QMouseEvent * event ) override ;
 
 private:
     bool stateClicked;

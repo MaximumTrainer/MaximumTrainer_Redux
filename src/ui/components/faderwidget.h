@@ -12,7 +12,7 @@ class FaderWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit FaderWidget(QWidget *parent = 0);
+    explicit FaderWidget(QWidget *parent = nullptr);
 
     void fadeIn(int durationMs);
     void fadeOut(int durationMs);

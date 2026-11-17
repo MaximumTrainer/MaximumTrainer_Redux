@@ -10,7 +10,7 @@ class RadioTableModel : public QAbstractTableModel {
     Q_OBJECT
 
 public:
-    RadioTableModel(QObject *parent = 0);
+    RadioTableModel(QObject *parent = nullptr);
 
 
     void addListRadio(QList<Radio> lstRadio);
@@ -24,11 +24,11 @@ public:
     void removeRadioAtRow(int row);
     QList<Radio> getAllRadios() const;
 
-    int rowCount(const QModelIndex &parent = QModelIndex()) const;
-    int columnCount(const QModelIndex &parent = QModelIndex()) const;
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
 
-    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const;
-    QVariant data(const QModelIndex &index, int role) const;
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+    QVariant data(const QModelIndex &index, int role) const override;
 
 
 

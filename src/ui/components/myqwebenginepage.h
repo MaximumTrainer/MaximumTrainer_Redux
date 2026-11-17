@@ -10,7 +10,7 @@ class MyQWebEnginePage : public QWebEnginePage
     Q_OBJECT
 
 public:
-    MyQWebEnginePage(QObject* parent = 0) : QWebEnginePage(parent){}
+    MyQWebEnginePage(QObject* parent = nullptr) : QWebEnginePage(parent){}
 
 //    QWebEnginePage(QWebEngineProfile *profile, QObject *parent = Q_NULLPTR)
     using QWebEnginePage::QWebEnginePage;

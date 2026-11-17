@@ -24,7 +24,7 @@ void IntervalTableModel::updateRowSourceInterval() {
 void IntervalTableModel::setListInterval(QList<Interval> lstInterval) {
 
     beginResetModel();
-    this->lstInterval = lstInterval;
+    this->lstInterval = std::move(lstInterval);
 
     updateRowSourceInterval();
     endResetModel();

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <algorithm>
 
+#include <QDebug>
 #include <QtGlobal>
 
 #include "fit_decode.hpp"
@@ -63,6 +64,7 @@ GhostReplay GhostReplay::fromFitFile(const QString &filePath)
     } catch (const fit::RuntimeException &) {
         // partial decode — keep whatever we collected
     } catch (...) {
+        qWarning() << "[GhostReplay] Unexpected exception decoding" << filePath;
     }
 
     replay.m_samples = collector.samples;

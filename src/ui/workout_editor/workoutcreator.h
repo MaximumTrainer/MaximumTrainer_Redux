@@ -20,8 +20,8 @@ class WorkoutCreator : public QWidget
     Q_OBJECT
 
 public:
-    explicit WorkoutCreator(QWidget *parent = 0);
-    ~WorkoutCreator();
+    explicit WorkoutCreator(QWidget *parent = nullptr);
+    ~WorkoutCreator() override;
 
     void paintEvent(QPaintEvent *) override;
 

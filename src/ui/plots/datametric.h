@@ -78,11 +78,14 @@ public:
         m_lock.unlock();
     }
 
-protected:
+private:
+    friend Derived;
     DataMetricSingleton() : m_boundingRect( 1.0, 1.0, -2.0, -2.0 ) // invalid
     {
         m_values.reserve( 1000 );
     }
+
+protected:
     virtual ~DataMetricSingleton() {}
 
 private:

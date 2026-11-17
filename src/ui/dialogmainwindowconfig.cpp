@@ -228,15 +228,9 @@ void DialogMainWindowConfig::unlinkStravaClicked() {
 void DialogMainWindowConfig::stravaUnlinkFinished() {
 
 
-    //success, process data
-    if (replyStravaDeauthorization->error() == QNetworkReply::NoError) {
-        account->strava_access_token = "";
-        stravaLinked(false);
-    }
-    else {
-        account->strava_access_token = "";
-        stravaLinked(false);
-    }
+    // Unlink locally whether or not Strava acknowledged the deauthorization.
+    account->strava_access_token = "";
+    stravaLinked(false);
     replyStravaDeauthorization->deleteLater();
 
 

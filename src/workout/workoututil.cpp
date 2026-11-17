@@ -42,8 +42,8 @@ Workout WorkoutUtil::MAP(int userFTP) {
     // Echec = Si l'utilisateur est en bas de la zone pendant plus de 15'' dans le 3min, test terminé (aller au cooldown de 5min)
     // Affiche des messages après 5secondes total en bas de la cible (à 5sec: 10sec restant en dehors de la zone avant la fin du test!)
 
-    QString name = QApplication::translate("WorkoutUtil", "MAP Test", 0);
-    QString description = QApplication::translate("WorkoutUtil", "Test that let you find your MAP (Maximal Aerobic Power). Main Protocol: 30W increase each 3' until you can keep up. End of Test happens after 20'' total or 10'' consecutive below the target zone, you will go to the cooldown directly (last interval). Test Intervals will be added automatically after you complete one. The duration of the test depends on your performance! Your FTP is calculated from the result (75% of MAP) and saved to your profile.", 0);
+    QString name = QApplication::translate("WorkoutUtil", "MAP Test", nullptr);
+    QString description = QApplication::translate("WorkoutUtil", "Test that let you find your MAP (Maximal Aerobic Power). Main Protocol: 30W increase each 3' until you can keep up. End of Test happens after 20'' total or 10'' consecutive below the target zone, you will go to the cooldown directly (last interval). Test Intervals will be added automatically after you complete one. The duration of the test depends on your performance! Your FTP is calculated from the result (75% of MAP) and saved to your profile.", nullptr);
     QList<Interval> lstInterval;
     QList<RepeatData> lstRepeat;
 
@@ -63,57 +63,57 @@ Workout WorkoutUtil::MAP(int userFTP) {
         startValueWatts = 180;
 
 
-    Interval intervalW1(QTime::fromString( "00:05:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Warm up", 0),
+    Interval intervalW1(QTime::fromString( "00:05:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Warm up", nullptr),
                         Interval::PROGRESSIVE,  0.45, 0.60, 15, -1,
                         Interval::NONE, 0, 0, 0,
                         Interval::NONE, 0, 0, 0,
                         false, 0, 0, 0);
 
 
-    Interval intervalW2(QTime::fromString( "00:00:15", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "95 rpm", 0),
+    Interval intervalW2(QTime::fromString( "00:00:15", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "95 rpm", nullptr),
                         Interval::NONE,  0, 0, 0, -1,
                         Interval::FLAT, 95, 0, 5,
                         Interval::NONE, 0, 0, 0,
                         false, 0, 0, 0);
-    Interval intervalW3(QTime::fromString( "00:00:15", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "105 rpm", 0),
+    Interval intervalW3(QTime::fromString( "00:00:15", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "105 rpm", nullptr),
                         Interval::NONE,  0, 0, 0, -1,
                         Interval::FLAT, 105, 0, 5,
                         Interval::NONE, 0, 0, 0,
                         false, 0, 0, 0);
-    Interval intervalW4(QTime::fromString( "00:00:15", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "115 rpm", 0),
+    Interval intervalW4(QTime::fromString( "00:00:15", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "115 rpm", nullptr),
                         Interval::NONE,  0, 0, 0, -1,
                         Interval::FLAT, 115, 0, 5,
                         Interval::NONE, 0, 0, 0,
                         false, 0, 0, 0);
 
 
-    Interval intervalW5(QTime::fromString( "00:01:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "1' Easy", 0),
+    Interval intervalW5(QTime::fromString( "00:01:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "1' Easy", nullptr),
                         Interval::FLAT,  0.5, 0, 15, -1,
                         Interval::NONE, 0, 0, 0,
                         Interval::NONE, 0, 0, 0,
                         false, 0, 0, 0);
 
 
-    Interval intervalW6(QTime::fromString( "00:00:20", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Progressive acceleration", 0),
+    Interval intervalW6(QTime::fromString( "00:00:20", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Progressive acceleration", nullptr),
                         Interval::PROGRESSIVE,  0.7, 1.17, 15, -1,
                         Interval::NONE, 0, 0, 0,
                         Interval::NONE, 0, 0, 0,
                         false, 0, 0, 0);
-    Interval intervalW6_1(QTime::fromString( "00:00:40", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Easy", 0),
+    Interval intervalW6_1(QTime::fromString( "00:00:40", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Easy", nullptr),
                           Interval::FLAT,  0.5, 0, 15, -1,
                           Interval::NONE, 0, 0, 0,
                           Interval::NONE, 0, 0, 0,
                           false, 0, 0, 0);
 
 
-    Interval intervalW7(QTime::fromString( "00:02:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "2' Easy", 0),
+    Interval intervalW7(QTime::fromString( "00:02:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "2' Easy", nullptr),
                         Interval::FLAT,  0.5, 0, 15, -1,
                         Interval::NONE, 0, 0, 0,
                         Interval::NONE, 0, 0, 0,
                         false, 0, 0, 0);
 
 
-    Interval intervalCd(QTime::fromString( "00:10:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Cooldown", 0),
+    Interval intervalCd(QTime::fromString( "00:10:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Cooldown", nullptr),
                         Interval::FLAT, 0.5, 0, 30, -1,
                         Interval::NONE, 0, 0, 0,
                         Interval::NONE, 0, 0, 0,
@@ -140,7 +140,7 @@ Workout WorkoutUtil::MAP(int userFTP) {
     // main test protocol ------------
     int currentWatts = startValueWatts;
 
-    QString firstInterval = QApplication::translate("WorkoutUtil", "Starting MAP Test at ", 0);
+    QString firstInterval = QApplication::translate("WorkoutUtil", "Starting MAP Test at ", nullptr);
     QString msg = firstInterval + QString::number(currentWatts) + " watts";
     Interval intervalt1(QTime::fromString( "00:03:00", "hh:mm:ss"), msg,   //3min
                         Interval::FLAT, currentWatts/userFTP_d, 0, 15, -1,
@@ -184,42 +184,42 @@ Workout WorkoutUtil::FTP() {
 
 
     QList<Interval> lstInterval;
-    Interval interval1(QTime::fromString( "00:10:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Easy warm up", 0),
+    Interval interval1(QTime::fromString( "00:10:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Easy warm up", nullptr),
                        Interval::PROGRESSIVE,  0.50, 0.65, 15, -1,
                        Interval::NONE, 0, 0, 0,
                        Interval::NONE, 0, 0, 0,
                        false, 0, 0, 0);
-    Interval interval2(QTime::fromString( "00:01:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Wind up", 0),
+    Interval interval2(QTime::fromString( "00:01:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Wind up", nullptr),
                        Interval::FLAT, 0.9, 0, 15, -1,
                        Interval::FLAT, 90, 0, 10,
                        Interval::NONE, 0, 0, 0,
                        false, 0, 0, 0);
-    Interval interval3(QTime::fromString( "00:01:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Rest", 0),
+    Interval interval3(QTime::fromString( "00:01:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Rest", nullptr),
                        Interval::FLAT, 0.5, 0, 30, -1,
                        Interval::NONE, 0, 0, 0,
                        Interval::NONE, 0, 0, 0,
                        false, 0, 0, 0);
-    Interval interval4(QTime::fromString( "00:05:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Easy", 0),
+    Interval interval4(QTime::fromString( "00:05:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Easy", nullptr),
                        Interval::FLAT, 0.5, 0, 30, -1,
                        Interval::NONE, 0, 0, 0,
                        Interval::NONE, 0, 0, 0,
                        false, 0, 0, 0);
-    Interval interval5(QTime::fromString( "00:05:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Hard effort", 0),
+    Interval interval5(QTime::fromString( "00:05:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Hard effort", nullptr),
                        Interval::FLAT, 1.00, 0, 20, -1,
                        Interval::FLAT, 90, 0, 10,
                        Interval::NONE, 0, 0, 0,
                        false, 0, 0, 0);
-    Interval interval6(QTime::fromString( "00:05:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "5min Easy", 0),
+    Interval interval6(QTime::fromString( "00:05:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "5min Easy", nullptr),
                        Interval::FLAT, 0.5, 0, 30, -1,
                        Interval::NONE, 0, 0, 0,
                        Interval::NONE, 0, 0, 0,
                        false, 0, 0, 0);
-    Interval interval7(QTime::fromString( "00:20:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "20' Test Interval - GO!", 0),
+    Interval interval7(QTime::fromString( "00:20:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "20' Test Interval - GO!", nullptr),
                        Interval::FLAT, 1.05, 0, 20, -1,
                        Interval::FLAT, 90, 0, 10,
                        Interval::NONE, 0, 0, 0,
                        true, 0, 0, 0);
-    Interval interval8(QTime::fromString( "00:10:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Cooldown", 0),
+    Interval interval8(QTime::fromString( "00:10:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Cooldown", nullptr),
                        Interval::FLAT, 0.5, 0, 30, -1,
                        Interval::NONE, 0, 0, 0,
                        Interval::NONE, 0, 0, 0,
@@ -238,8 +238,8 @@ Workout WorkoutUtil::FTP() {
     lstInterval.append(interval8);
 
     Workout workout("", Workout::FTP_TEST, lstInterval,
-                    QApplication::translate("WorkoutUtil", "FTP Test", 0) , "MaximumTrainer",
-                    QApplication::translate("WorkoutUtil", "Test that lets you find your FTP and LTHR: after the warm up, ride the 20 minute test interval as hard as you can sustain. FTP is 95% of your average test power; the result is shown as soon as the test interval ends.", 0),
+                    QApplication::translate("WorkoutUtil", "FTP Test", nullptr) , "MaximumTrainer",
+                    QApplication::translate("WorkoutUtil", "Test that lets you find your FTP and LTHR: after the warm up, ride the 20 minute test interval as hard as you can sustain. FTP is 95% of your average test power; the result is shown as soon as the test interval ends.", nullptr),
                     "-", Workout::T_TEST);
     return workout;
 }
@@ -248,18 +248,18 @@ Workout WorkoutUtil::FTP() {
 Workout WorkoutUtil::FTP_8min() {
 
 
-    QString name = QApplication::translate("WorkoutUtil", "FTP_8min Test", 0);
-    QString description = QApplication::translate("WorkoutUtil", "Test that let you find your FTP", 0);
+    QString name = QApplication::translate("WorkoutUtil", "FTP_8min Test", nullptr);
+    QString description = QApplication::translate("WorkoutUtil", "Test that let you find your FTP", nullptr);
     QList<Interval> lstIntervalSource;
     QList<RepeatData> lstRepeat;
 
 
-    Interval intervalW1(QTime::fromString( "00:10:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Warm up", 0),
+    Interval intervalW1(QTime::fromString( "00:10:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Warm up", nullptr),
                         Interval::PROGRESSIVE,  0.50, 0.65, 20, -1,
                         Interval::NONE, 0, 0, 0,
                         Interval::NONE, 0, 0, 0,
                         false, 0, 0, 0);
-    Interval intervalW2(QTime::fromString( "00:00:20", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Warm up Interval", 0),
+    Interval intervalW2(QTime::fromString( "00:00:20", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Warm up Interval", nullptr),
                         Interval::FLAT,  1.10, 0, 10, -1,
                         Interval::NONE, 0, 0, 0,
                         Interval::NONE, 0, 0, 0,
@@ -269,22 +269,22 @@ Workout WorkoutUtil::FTP_8min() {
                         Interval::NONE, 0, 0, 0,
                         Interval::NONE, 0, 0, 0,
                         false, 0, 0, 0);
-    Interval intervalW4(QTime::fromString( "00:05:00", "hh:mm:ss"),  QApplication::translate("WorkoutUtil", "Warm up Steady", 0),
+    Interval intervalW4(QTime::fromString( "00:05:00", "hh:mm:ss"),  QApplication::translate("WorkoutUtil", "Warm up Steady", nullptr),
                         Interval::FLAT,  0.75, 0, 20, -1,
                         Interval::NONE, 0, 0, 0,
                         Interval::NONE, 0, 0, 0,
                         false, 0, 0, 0);
-    Interval intervalTest(QTime::fromString( "00:08:00", "hh:mm:ss"),  QApplication::translate("WorkoutUtil", "8' Test Interval - GO!", 0),
+    Interval intervalTest(QTime::fromString( "00:08:00", "hh:mm:ss"),  QApplication::translate("WorkoutUtil", "8' Test Interval - GO!", nullptr),
                           Interval::FLAT,  1.15, 0, 20, -1,
                           Interval::NONE, 0, 0, 0,
                           Interval::NONE, 0, 0, 0,
                           true, 0, 0, 0);
-    Interval intervalRest(QTime::fromString( "00:10:00", "hh:mm:ss"),  QApplication::translate("WorkoutUtil", "Rest", 0),
+    Interval intervalRest(QTime::fromString( "00:10:00", "hh:mm:ss"),  QApplication::translate("WorkoutUtil", "Rest", nullptr),
                           Interval::FLAT,  0.55, 0, 20, -1,
                           Interval::NONE, 0, 0, 0,
                           Interval::NONE, 0, 0, 0,
                           false, 0, 0, 0);
-    Interval intervalCd(QTime::fromString( "00:10:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Cooldown", 0),
+    Interval intervalCd(QTime::fromString( "00:10:00", "hh:mm:ss"), QApplication::translate("WorkoutUtil", "Cooldown", nullptr),
                         Interval::FLAT, 0.5, 0, 30, -1,
                         Interval::NONE, 0, 0, 0,
                         Interval::NONE, 0, 0, 0,

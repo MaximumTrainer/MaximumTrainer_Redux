@@ -19,8 +19,8 @@ class SoundPlayer : public QObject
     Q_OBJECT
 
 public:
-    ~SoundPlayer();
-    SoundPlayer(QObject *parent = 0);
+    ~SoundPlayer() override;
+    SoundPlayer(QObject *parent = nullptr);
 
 
 

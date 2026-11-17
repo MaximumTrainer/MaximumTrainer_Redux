@@ -176,9 +176,9 @@ void PlanAdherenceWidget::updateSummary()
         tr("Total: %1   ✓ Completed: %2   ✗ Skipped: %3   ~ Substituted: %4")
             .arg(total).arg(completed).arg(skipped).arg(substituted));
 
-    m_progressBar->setValue(static_cast<int>(pct30d + 0.5));
+    m_progressBar->setValue(qRound(pct30d));
     m_progressBar->setFormat(
-        tr("%1% completion (last 30 days)").arg(static_cast<int>(pct30d + 0.5)));
+        tr("%1% completion (last 30 days)").arg(qRound(pct30d)));
 }
 
 void PlanAdherenceWidget::showContextMenu(const QPoint &pos)

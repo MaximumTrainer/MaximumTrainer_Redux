@@ -32,7 +32,7 @@ class BtleScannerDialog : public QDialog
 public:
     explicit BtleScannerDialog(QWidget *parent = nullptr);
     explicit BtleScannerDialog(BtleSensorRole role, QWidget *parent = nullptr);
-    ~BtleScannerDialog();
+    ~BtleScannerDialog() override;
 
     QBluetoothDeviceInfo selectedDevice() const { return m_selectedDevice; }
     bool hasSelection() const { return m_selectedDevice.isValid(); }

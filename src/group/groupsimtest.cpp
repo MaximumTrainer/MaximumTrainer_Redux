@@ -31,7 +31,7 @@ QTextStream &out() {
 qint64 percentile(QList<qint64> values, double fraction) {
     if (values.isEmpty()) return -1;
     std::sort(values.begin(), values.end());
-    const int index = qBound(0, int(fraction * (values.size() - 1) + 0.5), int(values.size() - 1));
+    const int index = qBound(0, qRound(fraction * (values.size() - 1)), int(values.size() - 1));
     return values.at(index);
 }
 

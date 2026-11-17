@@ -15,8 +15,8 @@ class infosWorkout : public QWidget
 
 
 public:
-    explicit infosWorkout(QWidget *parent = 0);
-    ~infosWorkout();
+    explicit infosWorkout(QWidget *parent = nullptr);
+    ~infosWorkout() override;
 
     void setStopped(bool b);
     void setDistanceVisible(bool b);

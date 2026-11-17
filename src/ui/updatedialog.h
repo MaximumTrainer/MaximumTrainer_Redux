@@ -12,9 +12,9 @@ class UpdateDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit UpdateDialog(const QString &latestVersion, QWidget *parent = 0);
-    ~UpdateDialog();
-    void accept();
+    explicit UpdateDialog(const QString &latestVersion, QWidget *parent = nullptr);
+    ~UpdateDialog() override;
+    void accept() override;
 
 
 private:

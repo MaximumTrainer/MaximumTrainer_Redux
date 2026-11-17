@@ -179,7 +179,7 @@ IntervalsIcuService::parseEvents(const QByteArray &data)
         return events;
     }
 
-    for (const QJsonValue &val : doc.array()) {
+    for (const QJsonValue val : doc.array()) {
         if (!val.isObject())
             continue;
         const QJsonObject obj = val.toObject();

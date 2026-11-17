@@ -12,8 +12,8 @@ class Z_StyleSheet : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit Z_StyleSheet(QWidget *parent = 0);
-    ~Z_StyleSheet();
+    explicit Z_StyleSheet(QWidget *parent = nullptr);
+    ~Z_StyleSheet() override;
 
 private:
     Ui::Z_StyleSheet *ui;

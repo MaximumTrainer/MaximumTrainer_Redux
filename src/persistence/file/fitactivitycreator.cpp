@@ -296,11 +296,11 @@ void FitActivityCreator::writeRecord(int timeNow,
 
 
     if (averageHr1sec != -1) {
-        recordMesg.SetHeartRate((int)(averageHr1sec + 0.5));
+        recordMesg.SetHeartRate(qRound(averageHr1sec));
     }
 
     if (averageCadence1sec != -1) {
-        recordMesg.SetCadence((int)(averageCadence1sec + 0.5));
+        recordMesg.SetCadence(qRound(averageCadence1sec));
     }
 
     if (averageSpeed1sec != -1) {
@@ -324,7 +324,7 @@ void FitActivityCreator::writeRecord(int timeNow,
 
 
     if (averagePower1sec != -1) {
-        recordMesg.SetPower((int)(averagePower1sec + 0.5));
+        recordMesg.SetPower(qRound(averagePower1sec));
     }
 
     if (rightPedal != -1) {

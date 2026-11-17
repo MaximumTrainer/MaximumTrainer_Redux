@@ -10,8 +10,8 @@ class delegateRowHover : public QStyledItemDelegate
     Q_OBJECT
 
 public:
-    explicit delegateRowHover( bool hoverer, QObject *parent = 0);
-    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
+    explicit delegateRowHover( bool hoverer, QObject *parent = nullptr);
+    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
 
 
 

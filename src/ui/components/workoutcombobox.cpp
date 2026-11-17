@@ -27,7 +27,7 @@ void WorkoutComboBox::changeEvent(QEvent *event) {
         updateUi();
     }
     else {
-        QWidget::changeEvent(event);
+        QComboBox::changeEvent(event);
     }
 }
 

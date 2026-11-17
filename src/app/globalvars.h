@@ -13,7 +13,7 @@ class GlobalVars : public QObject
 {
     Q_OBJECT
 public:
-    explicit GlobalVars(QObject *parent = 0);
+    explicit GlobalVars(QObject *parent = nullptr);
 
 signals:
 

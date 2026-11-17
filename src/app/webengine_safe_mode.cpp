@@ -67,7 +67,7 @@ Decision decide(QSettings &settings, const QStringList &args, const QByteArray &
 
 QByteArray chromiumFlags(const Decision &decision, const QByteArray &existingFlags)
 {
-    const QByteArray existing = existingFlags.trimmed();
+    QByteArray existing = existingFlags.trimmed();
     if (!decision.enabled || existing.contains("--disable-gpu"))
         return existing;
     return existing.isEmpty() ? QByteArray(ChromiumFlags)
@@ -83,7 +83,7 @@ bool wantsChromiumLog(const Decision &decision, const QByteArray &logEnvValue)
 
 QByteArray withChromiumLogging(const QByteArray &existingFlags)
 {
-    const QByteArray existing = existingFlags.trimmed();
+    QByteArray existing = existingFlags.trimmed();
     if (existing.contains("--enable-logging"))
         return existing;
     return existing.isEmpty() ? QByteArray(ChromiumLogFlags)

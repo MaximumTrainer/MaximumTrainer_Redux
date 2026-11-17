@@ -8,18 +8,18 @@ class IntervalDelegate : public QStyledItemDelegate
     Q_OBJECT
 
 public:
-    IntervalDelegate(QWidget *parent = 0) : QStyledItemDelegate(parent) {}
+    IntervalDelegate(QWidget *parent = nullptr) : QStyledItemDelegate(parent) {}
 
 
     QSize sizeHint(const QStyleOptionViewItem &option,
-                   const QModelIndex &index) const;
+                   const QModelIndex &index) const override;
     QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option,
-                          const QModelIndex &index) const;
-    void setEditorData(QWidget *editor, const QModelIndex &index) const;
+                          const QModelIndex &index) const override;
+    void setEditorData(QWidget *editor, const QModelIndex &index) const override;
     void setModelData(QWidget *editor, QAbstractItemModel *model,
-                      const QModelIndex &index) const;
+                      const QModelIndex &index) const override;
 
-    void updateEditorGeometry(QWidget *editor,  const QStyleOptionViewItem &option, const QModelIndex &/* index */) const;
+    void updateEditorGeometry(QWidget *editor,  const QStyleOptionViewItem &option, const QModelIndex &/* index */) const override;
 
     void setParentWidget(QWidget *parent);
 

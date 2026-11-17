@@ -12,8 +12,8 @@ class BottomBar : public QWidget
     Q_OBJECT
 
 public:
-    explicit BottomBar(QWidget *parent = 0);
-    ~BottomBar();
+    explicit BottomBar(QWidget *parent = nullptr);
+    ~BottomBar() override;
 
 
 

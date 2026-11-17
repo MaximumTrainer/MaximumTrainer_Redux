@@ -15,8 +15,8 @@ class TopMenuWorkout : public QWidget
     Q_OBJECT
 
 public:
-    explicit TopMenuWorkout(QWidget *parent = 0);
-    ~TopMenuWorkout();
+    explicit TopMenuWorkout(QWidget *parent = nullptr);
+    ~TopMenuWorkout() override;
 
     void setMinExpandExitVisible(bool visible);
 
@@ -114,7 +114,7 @@ private slots:
     void on_pushButton_nextRadio_clicked();
 
 private :
-    bool eventFilter(QObject *watched, QEvent *event);
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 
 private:

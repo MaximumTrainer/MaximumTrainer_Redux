@@ -25,7 +25,7 @@ class TabIntervalsIcu : public QWidget
 
 public:
     explicit TabIntervalsIcu(QWidget *parent = nullptr);
-    ~TabIntervalsIcu();
+    ~TabIntervalsIcu() override;
 
     /// Call this once the Account credentials are available (or after they
     /// change in the preferences dialog).

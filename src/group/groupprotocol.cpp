@@ -161,7 +161,7 @@ IncomingMessage decode(const QByteArray &frame) {
         message.type = MessageType::Roster;
         message.hostRiderId = object.value(QStringLiteral("hostId")).toString();
         const QJsonArray riders = object.value(QStringLiteral("riders")).toArray();
-        for (const QJsonValue &value : riders) {
+        for (const QJsonValue value : riders) {
             const QJsonObject rider = value.toObject();
             RosterEntry entry;
             entry.riderId = rider.value(QStringLiteral("id")).toString();

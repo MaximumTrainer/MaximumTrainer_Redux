@@ -812,8 +812,8 @@ void DialogConfig::moveElement(QString widgetIdentifier, bool moveRight) {
     widgetToSwitch = account->tab_display[posToSwitch];
 
     // permute
-    account->tab_display[posToSwitch] = widgetIdentifier;
-    account->tab_display[positionWidget] = widgetToSwitch;
+    account->tab_display[posToSwitch] = std::move(widgetIdentifier);
+    account->tab_display[positionWidget] = std::move(widgetToSwitch);
 
 
     //redraw

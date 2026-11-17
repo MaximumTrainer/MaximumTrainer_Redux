@@ -23,8 +23,8 @@ class DialogMainWindowConfig : public QDialog
     Q_OBJECT
 
 public:
-    explicit DialogMainWindowConfig(QWidget *parent = 0);
-    ~DialogMainWindowConfig();
+    explicit DialogMainWindowConfig(QWidget *parent = nullptr);
+    ~DialogMainWindowConfig() override;
 
     void accept() override;
     void reject() override;

@@ -10,7 +10,7 @@ class IconItem : public QwtPlotItem
 {
 public:
     IconItem();
-    void draw( QPainter *painter, const QwtScaleMap &, const QwtScaleMap &, const QRectF &canvasRect ) const;
+    void draw( QPainter *painter, const QwtScaleMap &, const QwtScaleMap &, const QRectF &canvasRect ) const override;
     QString iconType;
 
     // The live value drawn beside the icon (the big centred number) and its

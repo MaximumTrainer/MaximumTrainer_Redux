@@ -14,7 +14,7 @@ class ManagerAchievement : public QObject
     Q_OBJECT
 
 public:
-    explicit ManagerAchievement(QObject *parent = 0);
+    explicit ManagerAchievement(QObject *parent = nullptr);
 
 
 

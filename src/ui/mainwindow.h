@@ -49,9 +49,9 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = 0);
-    ~MainWindow();
-    void closeEvent(QCloseEvent *event);
+    explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow() override;
+    void closeEvent(QCloseEvent *event) override;
 
 
 signals :

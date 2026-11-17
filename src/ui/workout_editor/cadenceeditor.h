@@ -13,8 +13,8 @@ class CadenceEditor : public QWidget
     Q_OBJECT
 
 public:
-    explicit CadenceEditor(QWidget *parent = 0);
-    ~CadenceEditor();
+    explicit CadenceEditor(QWidget *parent = nullptr);
+    ~CadenceEditor() override;
 //    void setRow(int row) { this->row = row; }
 //    int getRow() { return this->row; }
 

@@ -19,7 +19,7 @@ class XmlUtil: public QObject
     Q_OBJECT
 
 public:
-    XmlUtil(QObject *parent = 0);
+    XmlUtil(QObject *parent = nullptr);
 
 
     QList<Workout> parseWorkoutLstPath(QStringList lstPath, Workout::WORKOUT_NAME workoutType);

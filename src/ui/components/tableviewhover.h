@@ -12,17 +12,17 @@ class TableViewHover : public QTableView
     Q_OBJECT
 
 public:
-    explicit TableViewHover(QWidget *parent = 0);
+    explicit TableViewHover(QWidget *parent = nullptr);
 
 
 private :
-    void mouseMoveEvent(QMouseEvent* event);
-    void leaveEvent(QEvent *event);
-    void focusOutEvent(QFocusEvent* event);
-    bool eventFilter(QObject *watched, QEvent *event);
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void leaveEvent(QEvent *event) override;
+    void focusOutEvent(QFocusEvent* event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 
-    void selectionChanged (const QItemSelection & selected, const QItemSelection & deselected );
+    void selectionChanged (const QItemSelection & selected, const QItemSelection & deselected ) override;
 
 
     int curr_row_hovered;

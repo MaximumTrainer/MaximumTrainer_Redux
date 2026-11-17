@@ -40,8 +40,8 @@ public:
         CADENCE,
         HEART_RATE,
     };
-    ~WorkoutPlotZoomer();
-    WorkoutPlotZoomer(QWidget *parent = 0);
+    ~WorkoutPlotZoomer() override;
+    WorkoutPlotZoomer(QWidget *parent = nullptr);
     void setWorkoutData(Workout workout, GRAPH_TYPE graph, bool firstInit);
     void setUserData(double FTP, double LTHR);
     void setStopped(bool b);

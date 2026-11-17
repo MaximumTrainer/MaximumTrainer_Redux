@@ -12,8 +12,8 @@ class TimeWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit TimeWidget(QWidget *parent = 0);
-    ~TimeWidget();
+    explicit TimeWidget(QWidget *parent = nullptr);
+    ~TimeWidget() override;
 
     void showIntervalRemaining(bool);
     void showWorkoutRemaining(bool);

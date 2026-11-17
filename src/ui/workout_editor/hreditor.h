@@ -14,8 +14,8 @@ class HrEditor : public QWidget
     Q_OBJECT
 
 public:
-    explicit HrEditor(QWidget *parent = 0);
-    ~HrEditor();
+    explicit HrEditor(QWidget *parent = nullptr);
+    ~HrEditor() override;
 
     void setInterval(const Interval &interval);
     Interval getInterval() { return myInterval; }

@@ -23,7 +23,7 @@ class DurationScaleDraw : public QwtScaleDraw
 public:
     QwtText label(double value) const override
     {
-        int sec = static_cast<int>(value + 0.5);
+        int sec = qRound(value);
         if (sec < 60)
             return QwtText(QString::number(sec) + QStringLiteral("s"));
         if (sec < 3600) {

@@ -10,7 +10,7 @@ class TableViewInterval : public QTableView
     Q_OBJECT
 
 public:
-    explicit TableViewInterval(QWidget *parent = 0);
+    explicit TableViewInterval(QWidget *parent = nullptr);
 
 
 signals:
@@ -19,9 +19,9 @@ public slots:
 
 
 private :
-    void mouseMoveEvent(QMouseEvent* event);
-    void leaveEvent(QEvent *event);
-    bool eventFilter(QObject *watched, QEvent *event);
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void leaveEvent(QEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 
 };

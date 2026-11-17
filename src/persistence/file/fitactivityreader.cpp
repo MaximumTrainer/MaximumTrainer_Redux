@@ -53,9 +53,9 @@ WorkoutHistorySummary FitActivityReader::readFile(const QString &filePath)
             if (dash >= 0)
                 reader.m_summary.workoutName = rest.mid(dash + 1);
             else
-                reader.m_summary.workoutName = rest;
+                reader.m_summary.workoutName = std::move(rest);
         } else {
-            reader.m_summary.workoutName = base;
+            reader.m_summary.workoutName = std::move(base);
         }
     }
 

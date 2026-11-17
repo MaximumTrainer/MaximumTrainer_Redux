@@ -10,8 +10,8 @@ class Settings : public QObject
     Q_OBJECT
 
 public:
-    ~Settings();
-    Settings(QObject *parent = 0);
+    ~Settings() override;
+    Settings(QObject *parent = nullptr);
     void saveGeneralSettings();
 
 
