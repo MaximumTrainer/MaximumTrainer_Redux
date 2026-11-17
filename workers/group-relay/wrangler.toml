@@ -1,6 +1,6 @@
 name               = "mt-group-relay"
 main               = "worker.js"
-compatibility_date = "2025-06-01"
+compatibility_date = "2026-11-17"
 
 [[durable_objects.bindings]]
 name       = "ROOMS"
