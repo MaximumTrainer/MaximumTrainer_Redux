@@ -1,4 +1,5 @@
 #include "dialogmainwindowconfig.h"
+#include "setting_keys.h"
 #include "ui_dialogmainwindowconfig.h"
 #include "asyncdialogs.h"
 
@@ -275,8 +276,7 @@ void DialogMainWindowConfig::showEvent(QShowEvent *event) {
 /// them (the stamp is cleared when the user edits the values manually).
 void DialogMainWindowConfig::updateProfileSyncLabel() {
 
-    const QString syncedAt =
-        QSettings().value(QStringLiteral("intervalsIcu/profileSyncedAt")).toString();
+    const QString syncedAt = AppSettings::read(SettingKeys::Login::IntervalsIcuProfileSyncedAt);
     const QDateTime when = QDateTime::fromString(syncedAt, Qt::ISODate);
     ui->label_profileSyncSource->setVisible(when.isValid());
     if (when.isValid())
@@ -317,7 +317,7 @@ void DialogMainWindowConfig::accept() {
     // sync stamp so the Preferences label doesn't claim otherwise (the next
     // login sync re-stamps it).
     if (profileChangedNow)
-        QSettings().remove(QStringLiteral("intervalsIcu/profileSyncedAt"));
+        AppSettings::remove(SettingKeys::Login::IntervalsIcuProfileSyncedAt);
 
     // Persist the theme choice but apply it on next launch only. Live
     // re-styling via qApp->setStyleSheet() does not reliably repolish widgets

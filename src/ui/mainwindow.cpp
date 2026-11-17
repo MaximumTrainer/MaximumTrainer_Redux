@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "setting_keys.h"
 #include "ui_mainwindow.h"
 
 #include <QDebug>
@@ -398,8 +399,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Wire batch sync feedback
     connect(ui->tab_intervals_icu, &TabIntervalsIcu::syncFinished,
             this, [this](int count) {
-                QSettings().setValue(QStringLiteral("intervalsIcu/lastSync"),
-                                     QDateTime::currentDateTime().toString(Qt::ISODate));
                 ui->tab_workout1->refreshUserWorkout();
                 ui->widget_bottomMenu->setGeneralMessage(
                     count > 0
@@ -1064,14 +1063,10 @@ void MainWindow::showWorkoutList() {
 void MainWindow::loadSettings() {
 
 
-    QSettings settings;
-
-
-    settings.beginGroup("MainWindow");
-    resize(settings.value("size", QSize(1150, 700)).toSize());
-    move(settings.value("pos", QPoint(200, 200)).toPoint());
-    bool wasMaximized = settings.value("maximized", false).toBool();
-    settings.endGroup();
+    const QSettings settings;
+    resize(AppSettings::read(settings, SettingKeys::MainWindow::Size));
+    move(AppSettings::read(settings, SettingKeys::MainWindow::Pos));
+    const bool wasMaximized = AppSettings::read(settings, SettingKeys::MainWindow::Maximized);
 
 
     if (wasMaximized) {
@@ -1087,19 +1082,9 @@ void MainWindow::saveSettings() {
 
 
     QSettings settings;
-
-    settings.beginGroup("MainWindow");
-    settings.setValue("size", size());
-    settings.setValue("pos", pos());
-
-    if (this->isMaximized()) {
-        settings.setValue("maximized", true);
-    }
-    else {
-        settings.setValue("maximized", false);
-    }
-
-    settings.endGroup();
+    AppSettings::write(settings, SettingKeys::MainWindow::Size, size());
+    AppSettings::write(settings, SettingKeys::MainWindow::Pos, pos());
+    AppSettings::write(settings, SettingKeys::MainWindow::Maximized, isMaximized());
 
 
 }
@@ -1816,22 +1801,12 @@ void MainWindow::startWorkoutWithStudioHubs(const Workout &workout,
 
 QString MainWindow::loadPathImport() const {
 
-    QSettings settings;
-
-    settings.beginGroup("Importer");
-    QString path = settings.value("loadPath", QDir::homePath() ).toString();
-    settings.endGroup();
-
-    return path;
+    return AppSettings::read(SettingKeys::LastPath::WorkoutImport, QDir::homePath());
 
 }
 void MainWindow::savePathImport(const QString& filepath) {
 
-    QSettings settings;
-
-    settings.beginGroup("Importer");
-    settings.setValue("loadPath", filepath);
-    settings.endGroup();
+    AppSettings::write(SettingKeys::LastPath::WorkoutImport, filepath);
 }
 
 

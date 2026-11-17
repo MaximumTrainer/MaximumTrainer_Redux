@@ -1,4 +1,5 @@
 #include "qtmediaplayer.h"
+#include "setting_keys.h"
 
 #ifdef GC_HAVE_QTMULTIMEDIA
 
@@ -225,39 +226,24 @@ void QtMediaPlayer::updateAudioDevice()
     m_audio->setDevice(defaultDevice);
 }
 
-// ── QSettings persistence (same keys as the VLC implementation) ──────────────
 QString QtMediaPlayer::loadPath()
 {
-    QSettings settings;
-    settings.beginGroup("videoPlayer");
-    const QString path = settings.value("loadPath", QDir::homePath()).toString();
-    settings.endGroup();
-    return path;
+    return AppSettings::read(SettingKeys::LastPath::Video, QDir::homePath());
 }
 
 void QtMediaPlayer::savePath(QString path)
 {
-    QSettings settings;
-    settings.beginGroup("videoPlayer");
-    settings.setValue("loadPath", path);
-    settings.endGroup();
+    AppSettings::write(SettingKeys::LastPath::Video, path);
 }
 
 int QtMediaPlayer::loadSoundVolume()
 {
-    QSettings settings;
-    settings.beginGroup("videoPlayer");
-    const int volume = settings.value("soundVolume", 100).toInt();
-    settings.endGroup();
-    return volume;
+    return AppSettings::read(SettingKeys::Media::VideoVolume);
 }
 
 void QtMediaPlayer::saveSoundVolume(int vol)
 {
-    QSettings settings;
-    settings.beginGroup("videoPlayer");
-    settings.setValue("soundVolume", vol);
-    settings.endGroup();
+    AppSettings::write(SettingKeys::Media::VideoVolume, vol);
 }
 
 #endif // GC_HAVE_QTMULTIMEDIA

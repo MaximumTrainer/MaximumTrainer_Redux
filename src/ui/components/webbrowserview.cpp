@@ -1,4 +1,5 @@
 #include "webbrowserview.h"
+#include "setting_keys.h"
 
 #include <QWebEngineView>
 #include <QWebEnginePage>
@@ -14,7 +15,6 @@
 
 namespace {
 constexpr int kToolbarHideMs = 7000;
-const char *kDefaultHomePage = "https://www.youtube.com";
 }
 
 WebBrowserView::WebBrowserView(QWidget *parent) : QWidget(parent)
@@ -77,21 +77,7 @@ void WebBrowserView::loadHomePageIfNeeded()
     if (homePageLoaded)
         return;
 
-    QSettings settings;
-    settings.beginGroup(QStringLiteral("webBrowserWorkout"));
-    // One-time reset: clear any previously saved home page and force YouTube.
-    // The old Netflix default needs Widevine DRM, which this embedded view
-    // cannot bundle, so it never played. Guarded so the user can set their own
-    // URL afterwards.
-    if (!settings.value(QStringLiteral("youtubeResetDone"), false).toBool()) {
-        settings.setValue(QStringLiteral("defaultUrl"), QString::fromLatin1(kDefaultHomePage));
-        settings.setValue(QStringLiteral("youtubeResetDone"), true);
-    }
-    const QString urlSaved = settings.value(QStringLiteral("defaultUrl"),
-                                            QString::fromLatin1(kDefaultHomePage)).toString();
-    settings.endGroup();
-
-    webEngineView->load(QUrl::fromUserInput(urlSaved));
+    webEngineView->load(QUrl::fromUserInput(AppSettings::readWorkoutBrowserHomePage()));
     homePageLoaded = true;
 }
 

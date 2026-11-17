@@ -1,4 +1,5 @@
 #include "dialogconfig.h"
+#include "setting_keys.h"
 #include "ui_dialogconfig.h"
 
 #include <QVBoxLayout>
@@ -18,11 +19,7 @@
 DialogConfig::~DialogConfig() {
 
 
-    //Save volume radio
-    QSettings settings;
-    settings.beginGroup("radioPlayer");
-    settings.setValue("volume", ui->slider_volumeRadio->value());
-    settings.endGroup();
+    AppSettings::write(SettingKeys::Media::RadioVolume, ui->slider_volumeRadio->value());
 
 
     delete ui;
@@ -103,11 +100,7 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     // Preselect the station from the last session (falls back to the first
     // row), so play resumes on the same radio after reopening the workout.
     {
-        QSettings radioSettings;
-        radioSettings.beginGroup(QStringLiteral("radioPlayer"));
-        const QString lastStation =
-            radioSettings.value(QStringLiteral("lastStation")).toString();
-        radioSettings.endGroup();
+        const QString lastStation = AppSettings::read(SettingKeys::Media::LastRadioStation);
 
         int lastRow = 0;
         for (int row = 0; row < lstRadio.size(); ++row) {
@@ -129,12 +122,7 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     ui->tableView_radio->horizontalHeader()->setStretchLastSection(true);
 
 
-    //-- restore last used volume
-    QSettings settings;
-    settings.beginGroup("radioPlayer");
-    int volume = settings.value("volume", 100 ).toInt();
-    settings.endGroup();
-    ui->slider_volumeRadio->setValue(volume);
+    ui->slider_volumeRadio->setValue(AppSettings::read(SettingKeys::Media::RadioVolume));
 
 
     connect(ui->tableView_radio, &TableViewHover::doubleClicked, this, &DialogConfig::RadioDoubleClicked);
@@ -218,12 +206,7 @@ void DialogConfig::RadioDoubleClicked(QModelIndex index) {
     currentRadioName = radio.getName();
 
     // Remember the station so the next workout session starts on the same one.
-    {
-        QSettings radioSettings;
-        radioSettings.beginGroup(QStringLiteral("radioPlayer"));
-        radioSettings.setValue(QStringLiteral("lastStation"), currentRadioName);
-        radioSettings.endGroup();
-    }
+    AppSettings::write(SettingKeys::Media::LastRadioStation, currentRadioName);
 
 
     isConnecting = true;
@@ -440,19 +423,7 @@ void DialogConfig::initUi() {
     ui->label_homePage->setVisible(account->display_video == 1);
     ui->lineEdit_homePage->setVisible(account->display_video == 1);
 
-    QSettings settings;
-    settings.beginGroup("webBrowserWorkout");
-    // One-time reset: clear any previously saved home page and force YouTube.
-    // DRM services (e.g. the old Netflix default) need Widevine, which the
-    // embedded QWebEngineView cannot bundle, so they never played. Guarded by a
-    // flag so the user can still set their own URL afterwards.
-    if (!settings.value("youtubeResetDone", false).toBool()) {
-        settings.setValue("defaultUrl", "https://www.youtube.com");
-        settings.setValue("youtubeResetDone", true);
-    }
-    QString urlSaved = settings.value("defaultUrl", "https://www.youtube.com" ).toString();
-    settings.endGroup();
-    ui->lineEdit_homePage->setText(urlSaved);
+    ui->lineEdit_homePage->setText(AppSettings::readWorkoutBrowserHomePage());
 
     ui->checkBox_seperator->setChecked(account->show_seperator_interval);
     ui->checkBox_showGrid->setChecked(account->show_grid);
@@ -804,11 +775,7 @@ void DialogConfig::saveSettings() {
     account->sound_alert_cadence_above_target = ui->checkBox_aboveTargetCadence->isChecked();
 
 
-    // WebBrowser settings, save Url
-    QSettings settings;
-    settings.beginGroup("webBrowserWorkout");
-    settings.setValue("defaultUrl", ui->lineEdit_homePage->text());
-    settings.endGroup();
+    AppSettings::write(SettingKeys::Media::WorkoutBrowserHomePage, ui->lineEdit_homePage->text());
 
     // Persist display & sound prefs locally (the server putAccount endpoint is
     // defunct), so the user's choices — including the video player — survive a

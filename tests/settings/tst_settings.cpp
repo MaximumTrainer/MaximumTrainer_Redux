@@ -9,6 +9,7 @@
 #include <QTemporaryDir>
 
 #include "account.h"
+#include "setting_keys.h"
 
 class TstSettings : public QObject
 {
@@ -20,6 +21,9 @@ private slots:
     void testDisplayPrefs_freshStoreGivesDefaults();
     void testDisplayPrefs_saveUsesOnDiskKeyNames();
     void testDisplayPrefs_roundTripsEveryField();
+    void testUiStateKeys_onDiskNamesAndDefaults();
+    void testUiStateKeys_roundTripValueTypes();
+    void testWorkoutBrowserHomePage_resetsOnceThenKeepsUserChoice();
 
 private:
     QTemporaryDir m_dir;
@@ -293,6 +297,82 @@ void TstSettings::testDisplayPrefs_roundTripsEveryField()
         QCOMPARE(reader.sound_alert_power_above_target, true);
         QCOMPARE(reader.sound_alert_cadence_under_target, true);
         QCOMPARE(reader.sound_alert_cadence_above_target, true);
+}
+
+template <typename T>
+static void checkKey(const SettingKey<T> &key, const char *expectedPath, const T &expectedDefault)
+{
+    QCOMPARE(QString::fromLatin1(key.path), QString::fromLatin1(expectedPath));
+    QCOMPARE(key.defaultValue, expectedDefault);
+}
+
+void TstSettings::testUiStateKeys_onDiskNamesAndDefaults()
+{
+    using namespace SettingKeys;
+    checkKey(MainWindow::Size,      "MainWindow/size",      QSize(1150, 700));
+    checkKey(MainWindow::Pos,       "MainWindow/pos",       QPoint(200, 200));
+    checkKey(MainWindow::Maximized, "MainWindow/maximized", false);
+    checkKey(WorkoutDialog::Size,       "WorkoutDialog/size",       QSize(1350, 800));
+    checkKey(WorkoutDialog::Pos,        "WorkoutDialog/pos",        QPoint(100, 100));
+    checkKey(WorkoutDialog::Splitter0,  "WorkoutDialog/splitter0",  2);
+    checkKey(WorkoutDialog::Splitter1,  "WorkoutDialog/splitter1",  35);
+    checkKey(WorkoutDialog::Splitter2,  "WorkoutDialog/splitter2",  39);
+    checkKey(WorkoutDialog::Splitter3,  "WorkoutDialog/splitter3",  24);
+    checkKey(WorkoutDialog::Fullscreen, "WorkoutDialog/fullscreen", false);
+    checkKey(ActivityDetailDialog::Geometry, "activityDetailDialog/geometry", QByteArray());
+    checkKey(WorkoutFilter::Name,    "Filter/nameFilter",    QString());
+    checkKey(WorkoutFilter::Plan,    "Filter/planFilter",    QString());
+    checkKey(WorkoutFilter::Creator, "Filter/creatorFilter", QString());
+    checkKey(WorkoutFilter::Type,    "Filter/typeFilter",    -1);
+    checkKey(WorkoutQueue::FilePaths, "workoutQueue/filePaths", QStringList());
+    checkKey(WorkoutQueue::Names,     "workoutQueue/names",     QStringList());
+    checkKey(LastPath::WorkoutImport, "Importer/loadPath",      QString());
+    checkKey(LastPath::Video,         "videoPlayer/loadPath",   QString());
+    checkKey(LastPath::ReportExport,  "reports/savePathExport", QString());
+    checkKey(Media::VideoVolume,      "videoPlayer/soundVolume", 100);
+    checkKey(Media::RadioVolume,      "radioPlayer/volume",      100);
+    checkKey(Media::LastRadioStation, "radioPlayer/lastStation", QString());
+    checkKey(Media::RadioDefaultsHash, "radios/defaultsHash",    QString());
+    checkKey(Media::WorkoutBrowserHomePage, "webBrowserWorkout/defaultUrl", QStringLiteral("https://www.youtube.com"));
+    checkKey(Media::WorkoutBrowserYoutubeResetDone, "webBrowserWorkout/youtubeResetDone", false);
+    checkKey(Login::WorkOffline,        "login/workOffline", false);
+    checkKey(Login::LastLoggedUsername, "SettingsGeneral/lastLoggedUsername", QString());
+    checkKey(Login::LastLoggedKey,      "SettingsGeneral/lastLoggedKey",      QString());
+    checkKey(Login::IntervalsIcuProfileSyncedAt, "intervalsIcu/profileSyncedAt", QString());
+    checkKey(Group::RelayUrl, "group_relay_url", QString());
+}
+
+void TstSettings::testUiStateKeys_roundTripValueTypes()
+{
+    {
+        QSettings settings;
+        AppSettings::write(settings, SettingKeys::MainWindow::Size, QSize(1600, 900));
+        AppSettings::write(settings, SettingKeys::MainWindow::Pos, QPoint(12, 34));
+        AppSettings::write(settings, SettingKeys::WorkoutQueue::FilePaths, QStringList{QStringLiteral("/a.workout"), QStringLiteral("/b.workout")});
+        AppSettings::write(settings, SettingKeys::ActivityDetailDialog::Geometry, QByteArray("\x01\x02geometry", 10));
+    }
+    const QSettings settings;
+    QCOMPARE(settings.value(QStringLiteral("MainWindow/size")).toSize(), QSize(1600, 900));
+    QCOMPARE(AppSettings::read(settings, SettingKeys::MainWindow::Size), QSize(1600, 900));
+    QCOMPARE(AppSettings::read(settings, SettingKeys::MainWindow::Pos), QPoint(12, 34));
+    QCOMPARE(settings.value(QStringLiteral("workoutQueue/filePaths")).toStringList(),
+             (QStringList{QStringLiteral("/a.workout"), QStringLiteral("/b.workout")}));
+    QCOMPARE(AppSettings::read(settings, SettingKeys::WorkoutQueue::FilePaths).size(), 2);
+    QCOMPARE(AppSettings::read(settings, SettingKeys::ActivityDetailDialog::Geometry), QByteArray("\x01\x02geometry", 10));
+    QCOMPARE(AppSettings::read(settings, SettingKeys::LastPath::WorkoutImport, QStringLiteral("/home/x")), QStringLiteral("/home/x"));
+}
+
+void TstSettings::testWorkoutBrowserHomePage_resetsOnceThenKeepsUserChoice()
+{
+    {
+        QSettings settings;
+        settings.setValue(QStringLiteral("webBrowserWorkout/defaultUrl"), QStringLiteral("https://www.netflix.com"));
+    }
+    QCOMPARE(AppSettings::readWorkoutBrowserHomePage(), QStringLiteral("https://www.youtube.com"));
+    QVERIFY(QSettings().value(QStringLiteral("webBrowserWorkout/youtubeResetDone")).toBool());
+
+    AppSettings::write(SettingKeys::Media::WorkoutBrowserHomePage, QStringLiteral("https://example.org"));
+    QCOMPARE(AppSettings::readWorkoutBrowserHomePage(), QStringLiteral("https://example.org"));
 }
 
 QTEST_GUILESS_MAIN(TstSettings)
