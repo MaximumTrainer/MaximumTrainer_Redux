@@ -59,7 +59,7 @@ void TstSettings::testDisplayPrefs_freshStoreGivesDefaults()
         QCOMPARE(account.show_trainer_speed, true);
         QCOMPARE(account.display_hr, 1);
         QCOMPARE(account.display_power, 2);
-        QCOMPARE(account.display_power_balance, 1);
+        QCOMPARE(account.display_power_balance, 0);
         QCOMPARE(account.display_cadence, 1);
         QCOMPARE(account.display_video, 0);
         QCOMPARE(account.offset_power, 0);

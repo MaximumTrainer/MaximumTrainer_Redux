@@ -828,7 +828,7 @@ QLabel#label_imageCalories {
                   </property>
                   <item>
                    <property name="text">
-                    <string>Always</string>
+                    <string>When balance data is available</string>
                    </property>
                   </item>
                   <item>

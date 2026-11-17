@@ -49,7 +49,7 @@ inline constexpr SettingKey<bool> ShowOxygenWidget               {"displayPrefs/
 inline constexpr SettingKey<bool> ShowTrainerSpeed               {"displayPrefs/show_trainer_speed",                  true};
 inline constexpr SettingKey<int>  DisplayHr                      {"displayPrefs/display_hr",                          1};
 inline constexpr SettingKey<int>  DisplayPower                   {"displayPrefs/display_power",                       2};
-inline constexpr SettingKey<int>  DisplayPowerBalance            {"displayPrefs/display_power_balance",               1};
+inline constexpr SettingKey<int>  DisplayPowerBalance            {"displayPrefs/display_power_balance",               0}; // 0: when balance data is available, 1: only for intervals with a balance target
 inline constexpr SettingKey<int>  DisplayCadence                 {"displayPrefs/display_cadence",                     1};
 inline constexpr SettingKey<int>  DisplayVideo                   {"displayPrefs/display_video",                       0};
 inline constexpr SettingKey<int>  OffsetPower                    {"displayPrefs/offset_power",                        0};

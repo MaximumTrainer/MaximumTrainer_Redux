@@ -2110,6 +2110,7 @@ void MainWindow::sensorCheckNextStep()
         break;
     case 5:   // L/R balance + pedal metrics (now decoded + wired)
         m_ssWorkoutDlg->PowerBalanceDataReceived(1, 53);
+        grab(QStringLiteral("balance_only"));  // what a Bluetooth power meter provides
         m_ssWorkoutDlg->pedalMetricReceived(1, 95.0, 92.0, 0.62, 0.55, 0.58);
         grab(QStringLiteral("balance_pedal"));
         m_scReport << QStringLiteral("BALANCE  : Right 53%% + torque/smoothness -> sensor_balance_pedal.png "

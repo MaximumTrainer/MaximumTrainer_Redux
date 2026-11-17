@@ -23,6 +23,12 @@ BalanceWidget::BalanceWidget(QWidget *parent) :
     ui->horizontalSlider->setMinimum(0);
     ui->horizontalSlider->setMaximum(100);
 
+    // The Bluetooth Cycling Power profile has no torque effectiveness or pedal
+    // smoothness fields, so these stay hidden until a source actually sends them
+    // rather than showing permanent "-" placeholders.
+    ui->groupBox->setVisible(false);
+    ui->groupBox_2->setVisible(false);
+
 
 }
 
@@ -114,6 +120,11 @@ void BalanceWidget::setZone(int target, int range) {
 void BalanceWidget::pedalMetricChanged(double leftTorqueEff, double rightTorqueEff,
                                        double leftPedalSmooth, double rightPedalSmooth, double combinedPedalSmooth) {
 
+
+    if (leftTorqueEff != -1 || rightTorqueEff != -1)
+        ui->groupBox->setVisible(true);
+    if (leftPedalSmooth != -1 || rightPedalSmooth != -1 || combinedPedalSmooth != -1)
+        ui->groupBox_2->setVisible(true);
 
     if (leftTorqueEff != -1) {
         ui->label_leftTorque->setText(QString::number(leftTorqueEff));

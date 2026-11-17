@@ -2131,6 +2131,11 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 
 void WorkoutDialog::PowerBalanceDataReceived(int userID, int rightPedalPercentage) {
 
+    if (!powerBalanceDataSeen) {
+        powerBalanceDataSeen = true;
+        if (!account->enable_studio_mode)
+            showPowerBalanceWidget(account->display_power_balance);
+    }
     ui->wid_2_balancePower->setValue(rightPedalPercentage);
     avgRightPedal1sec.replace(userID-1, rightPedalPercentage);
 }
@@ -2918,8 +2923,8 @@ void WorkoutDialog::showOxygenDisplayWidget() {
 void WorkoutDialog::showPowerBalanceWidget(int display) {
 
     if (account->show_power_balance_widget) {
-        if (display == 0) {  ///Always Show
-            ui->wid_2_balancePower->setVisible(true);
+        if (display == 0) {  /// Show once a balance-capable meter reports, never as an empty widget
+            ui->wid_2_balancePower->setVisible(powerBalanceDataSeen);
         }
         else if (display == 1 && workout.getWorkoutNameEnum() != Workout::OPEN_RIDE) { /// Show with target
             /// Check current interval has power balance ?

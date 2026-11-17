@@ -62,6 +62,11 @@ private slots:
     void testPower_zero();
     void testPower_negative();
     void testPower_tooShort_ignored();
+    void testPowerBalance_referenceLeft();
+    void testPowerBalance_referenceUnknownTreatedAsLeft();
+    void testPowerBalance_flagClear_noBalance();
+    void testPowerBalance_truncated_powerOnly();
+    void testPowerBalance_outOfRange_ignored();
 
     // ── FTMS Indoor Bike Data parsing ────────────────────────────────────────
     void testFtms_speedOnly();
@@ -353,6 +358,57 @@ void TstBtleHub::testPower_tooShort_ignored()
     hub->simulateNotification(BTLE_UUID_POWER_MEASUREMENT,
                               QByteArray::fromHex("0000FF")); // only 3 bytes
     QCOMPARE(spy.count(), 0);
+}
+
+// Cycling Power Measurement (0x2A63) pedal power balance. Packet layout:
+// flags (uint16 LE; bit 0 = balance present, bit 1 = reference is left),
+// instantaneous power (sint16 LE), then balance (uint8, 1/2 %, valid 0-200).
+// signal_balance carries the right pedal share.
+void TstBtleHub::testPowerBalance_referenceLeft()
+{
+    QSignalSpy power(hub, &BtleHub::signal_power);
+    QSignalSpy balance(hub, &BtleHub::signal_balance);
+    hub->simulateNotification(BTLE_UUID_POWER_MEASUREMENT, QByteArray::fromHex("0300FA0068")); // 52 % left
+    QCOMPARE(power.count(), 1);
+    QCOMPARE(power.at(0).at(1).toInt(), 250);
+    QCOMPARE(balance.count(), 1);
+    QCOMPARE(balance.at(0).at(1).toInt(), 48);
+}
+
+void TstBtleHub::testPowerBalance_referenceUnknownTreatedAsLeft()
+{
+    QSignalSpy balance(hub, &BtleHub::signal_balance);
+    hub->simulateNotification(BTLE_UUID_POWER_MEASUREMENT, QByteArray::fromHex("0100FA0058")); // 44 %
+    QCOMPARE(balance.count(), 1);
+    QCOMPARE(balance.at(0).at(1).toInt(), 56);
+}
+
+void TstBtleHub::testPowerBalance_flagClear_noBalance()
+{
+    QSignalSpy power(hub, &BtleHub::signal_power);
+    QSignalSpy balance(hub, &BtleHub::signal_balance);
+    hub->simulateNotification(BTLE_UUID_POWER_MEASUREMENT, QByteArray::fromHex("0000FA0068"));
+    QCOMPARE(power.count(), 1);
+    QCOMPARE(balance.count(), 0);
+}
+
+void TstBtleHub::testPowerBalance_truncated_powerOnly()
+{
+    QSignalSpy power(hub, &BtleHub::signal_power);
+    QSignalSpy balance(hub, &BtleHub::signal_balance);
+    hub->simulateNotification(BTLE_UUID_POWER_MEASUREMENT, QByteArray::fromHex("0100FA00"));
+    QCOMPARE(power.count(), 1);
+    QCOMPARE(balance.count(), 0);
+}
+
+void TstBtleHub::testPowerBalance_outOfRange_ignored()
+{
+    // 0xFF would decode to 128 % left / -28 % right.
+    QSignalSpy power(hub, &BtleHub::signal_power);
+    QSignalSpy balance(hub, &BtleHub::signal_balance);
+    hub->simulateNotification(BTLE_UUID_POWER_MEASUREMENT, QByteArray::fromHex("0300FA00FF"));
+    QCOMPARE(power.count(), 1);
+    QCOMPARE(balance.count(), 0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
