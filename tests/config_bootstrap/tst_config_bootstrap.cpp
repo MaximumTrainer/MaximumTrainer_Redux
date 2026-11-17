@@ -11,6 +11,8 @@
 
 #include <QtTest/QtTest>
 #include <QTemporaryDir>
+
+#include "setting_keys.h"
 #include <QSettings>
 #include <QStandardPaths>
 #include <QFile>
@@ -38,6 +40,10 @@ private slots:
     void testMigration_skippedWhenAlreadyMigrated();
     void testCorruptStore_fallsBackToDefaults();
     void testCredentialLoadFailure_loggedWithoutValue();
+    void testAppSettings_readReturnsDefaultWhenMissing();
+    void testAppSettings_roundTripsEachType();
+    void testAppSettings_writeDefaultIfMissingKeepsUserValue();
+    void testAppSettings_readWithFallbackPrefersCurrentKey();
 
 private:
     QString ini(const QString &name) const { return m_dir->filePath(name); }
@@ -256,6 +262,62 @@ void TstConfigBootstrap::testCredentialLoadFailure_loggedWithoutValue()
     QVERIFY(log.contains(QStringLiteral("strava/access_token")));
     QVERIFY(!log.contains(secret));
     QVERIFY(!log.contains(QStringLiteral("secret-token-value")));
+}
+
+// The key paths below are deliberately spelled out: they are the on-disk names
+// existing installs depend on, so a rename in setting_keys.h must fail here.
+void TstConfigBootstrap::testAppSettings_readReturnsDefaultWhenMissing()
+{
+    const QSettings settings(m_dir->filePath(QStringLiteral("typed.ini")), QSettings::IniFormat);
+    QCOMPARE(AppSettings::read(settings, SettingKeys::Account::Ftp), ConfigDefaults::FTP);
+    QCOMPARE(AppSettings::read(settings, SettingKeys::Account::AppTheme), 2);
+    QCOMPARE(AppSettings::read(settings, SettingKeys::Account::IntervalSummaryEnabled), true);
+    QCOMPARE(AppSettings::read(settings, SettingKeys::Account::StravaTokenExpiresAt), qlonglong(0));
+    QCOMPARE(AppSettings::read(settings, SettingKeys::Account::IntervalsIcuAthleteId), QString());
+}
+
+void TstConfigBootstrap::testAppSettings_roundTripsEachType()
+{
+    const QString path = m_dir->filePath(QStringLiteral("typed.ini"));
+    {
+        QSettings settings(path, QSettings::IniFormat);
+        AppSettings::write(settings, SettingKeys::Account::Ftp, 287);
+        AppSettings::write(settings, SettingKeys::Account::WeightKg, 71.5);
+        AppSettings::write(settings, SettingKeys::Account::SensorDropoutEnabled, false);
+        AppSettings::write(settings, SettingKeys::Account::StravaTokenExpiresAt, qlonglong(4102444800));
+        AppSettings::write(settings, SettingKeys::Account::IntervalsIcuAthleteId, QStringLiteral("i12345"));
+    }
+    const QSettings reread(path, QSettings::IniFormat);
+    QCOMPARE(reread.value(QStringLiteral("account/FTP")).toInt(), 287);
+    QCOMPARE(AppSettings::read(reread, SettingKeys::Account::Ftp), 287);
+    QCOMPARE(AppSettings::read(reread, SettingKeys::Account::WeightKg), 71.5);
+    QCOMPARE(AppSettings::read(reread, SettingKeys::Account::SensorDropoutEnabled), false);
+    QCOMPARE(reread.value(QStringLiteral("account/strava_token_expires_at")).toLongLong(), qlonglong(4102444800));
+    QCOMPARE(AppSettings::read(reread, SettingKeys::Account::StravaTokenExpiresAt), qlonglong(4102444800));
+    QCOMPARE(reread.value(QStringLiteral("account/intervals_icu_athlete_id")).toString(), QStringLiteral("i12345"));
+}
+
+void TstConfigBootstrap::testAppSettings_writeDefaultIfMissingKeepsUserValue()
+{
+    QSettings settings(m_dir->filePath(QStringLiteral("typed.ini")), QSettings::IniFormat);
+    settings.setValue(QStringLiteral("account/LTHR"), 172);
+    AppSettings::writeDefaultIfMissing(settings, SettingKeys::Account::Lthr);
+    AppSettings::writeDefaultIfMissing(settings, SettingKeys::Account::Ftp);
+    QCOMPARE(settings.value(QStringLiteral("account/LTHR")).toInt(), 172);
+    QCOMPARE(settings.value(QStringLiteral("account/FTP")).toInt(), ConfigDefaults::FTP);
+}
+
+void TstConfigBootstrap::testAppSettings_readWithFallbackPrefersCurrentKey()
+{
+    QSettings settings(m_dir->filePath(QStringLiteral("typed.ini")), QSettings::IniFormat);
+    const auto &current = SettingKeys::Account::StravaTokenExpiresAt;
+    const auto &legacy  = SettingKeys::Legacy::DisplayPrefsStravaTokenExpiresAt;
+
+    settings.setValue(QStringLiteral("displayPrefs/strava_token_expires_at"), qlonglong(1000));
+    QCOMPARE(AppSettings::readWithFallback(settings, current, legacy), qlonglong(1000));
+
+    settings.setValue(QStringLiteral("account/strava_token_expires_at"), qlonglong(2000));
+    QCOMPARE(AppSettings::readWithFallback(settings, current, legacy), qlonglong(2000));
 }
 
 QTEST_GUILESS_MAIN(TstConfigBootstrap)

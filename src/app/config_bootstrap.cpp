@@ -5,6 +5,7 @@
 #include <QSettings>
 
 #include "config_defaults.h"
+#include "setting_keys.h"
 #include "logger.h"
 
 namespace ConfigBootstrap {
@@ -80,30 +81,26 @@ static int migrateLegacy(QSettings &settings, QSettings *legacy)
     return keys.size();
 }
 
-static void setIfMissing(QSettings &settings, const QString &key, const QVariant &value)
-{
-    if (!settings.contains(key))
-        settings.setValue(key, value);
-}
-
 static void writeDefaults(QSettings &settings, const QString &logFilePath)
 {
-    using namespace ConfigDefaults;
-    setIfMissing(settings, QStringLiteral("logging/level"),        LogLevelValue);
-    setIfMissing(settings, QStringLiteral("logging/file_enabled"), LogFileEnabled);
-    setIfMissing(settings, QStringLiteral("logging/file_path"),    logFilePath);
+    namespace Account = SettingKeys::Account;
+    namespace Logging = SettingKeys::Logging;
+    AppSettings::writeDefaultIfMissing(settings, Logging::Level);
+    AppSettings::writeDefaultIfMissing(settings, Logging::FileEnabled);
+    if (!AppSettings::contains(settings, Logging::FilePath))
+        AppSettings::write(settings, Logging::FilePath, logFilePath);
 
-    setIfMissing(settings, QStringLiteral("account/FTP"),                         FTP);
-    setIfMissing(settings, QStringLiteral("account/LTHR"),                        LTHR);
-    setIfMissing(settings, QStringLiteral("account/weight_kg"),                   WeightKg);
-    setIfMissing(settings, QStringLiteral("account/nb_sec_show_interval"),        NbSecShowInterval);
-    setIfMissing(settings, QStringLiteral("account/nb_sec_show_interval_before"), NbSecShowIntervalBefore);
-    setIfMissing(settings, QStringLiteral("account/erg_smoothing_duration_s"),    ErgSmoothingDurationS);
-    setIfMissing(settings, QStringLiteral("account/sensor_dropout_enabled"),      SensorDropoutEnabled);
-    setIfMissing(settings, QStringLiteral("account/sensor_dropout_timeout_s"),    SensorDropoutTimeoutS);
-    setIfMissing(settings, QStringLiteral("account/battery_warning_threshold"),   BatteryWarningThreshold);
+    AppSettings::writeDefaultIfMissing(settings, Account::Ftp);
+    AppSettings::writeDefaultIfMissing(settings, Account::Lthr);
+    AppSettings::writeDefaultIfMissing(settings, Account::WeightKg);
+    AppSettings::writeDefaultIfMissing(settings, Account::NbSecShowInterval);
+    AppSettings::writeDefaultIfMissing(settings, Account::NbSecShowIntervalBefore);
+    AppSettings::writeDefaultIfMissing(settings, Account::ErgSmoothingDurationS);
+    AppSettings::writeDefaultIfMissing(settings, Account::SensorDropoutEnabled);
+    AppSettings::writeDefaultIfMissing(settings, Account::SensorDropoutTimeoutS);
+    AppSettings::writeDefaultIfMissing(settings, Account::BatteryWarningThreshold);
 
-    settings.setValue(QLatin1String(ConfigVersionKey), ConfigVersion);
+    settings.setValue(QLatin1String(ConfigVersionKey), ConfigDefaults::ConfigVersion);
 }
 
 Outcome run(QSettings &settings, QSettings *legacy, const QString &logFilePath)

@@ -1,6 +1,7 @@
 #include "account.h"
 #include "credential_store.h"
 #include "config_defaults.h"
+#include "setting_keys.h"
 #include "startup_trace.h"
 
 
@@ -33,21 +34,20 @@ Account::Account(QObject *parent) : QObject(parent)  {
 
     userCda = 0.35;
 
-    //-- no more DB settings, move them here later
+    namespace Keys = SettingKeys::Account;
     QSettings settings;
-    settings.beginGroup("account");
-    nb_sec_show_interval = settings.value("nb_sec_show_interval", ConfigDefaults::NbSecShowInterval).toInt();
-    nb_sec_show_interval_before = settings.value("nb_sec_show_interval_before", ConfigDefaults::NbSecShowIntervalBefore).toInt();
-    erg_smoothing_duration_s = settings.value("erg_smoothing_duration_s", ConfigDefaults::ErgSmoothingDurationS).toInt();
+    nb_sec_show_interval        = AppSettings::read(settings, Keys::NbSecShowInterval);
+    nb_sec_show_interval_before = AppSettings::read(settings, Keys::NbSecShowIntervalBefore);
+    erg_smoothing_duration_s    = AppSettings::read(settings, Keys::ErgSmoothingDurationS);
     // Athlete profile — edited in Preferences and persisted locally so FTP /
     // LTHR / weight survive a restart (and offline use), overriding the
     // hardcoded defaults above. A live server value may still override at runtime.
-    FTP       = settings.value("FTP",       FTP).toInt();
-    LTHR      = settings.value("LTHR",      LTHR).toInt();
-    weight_kg = settings.value("weight_kg", weight_kg).toDouble();
-    intervals_icu_api_key     = settings.value("intervals_icu_api_key", "").toString();
-    intervals_icu_athlete_id  = settings.value("intervals_icu_athlete_id", "").toString();
-    intervals_icu_auto_upload = settings.value("intervals_icu_auto_upload", false).toBool();
+    FTP       = AppSettings::read(settings, Keys::Ftp);
+    LTHR      = AppSettings::read(settings, Keys::Lthr);
+    weight_kg = AppSettings::read(settings, Keys::WeightKg);
+    intervals_icu_api_key     = AppSettings::read(settings, Keys::IntervalsIcuApiKey);
+    intervals_icu_athlete_id  = AppSettings::read(settings, Keys::IntervalsIcuAthleteId);
+    intervals_icu_auto_upload = AppSettings::read(settings, Keys::IntervalsIcuAutoUpload);
     // OAuth2 tokens — loaded from the platform credential store (encrypted).
     // Migration: if the CredentialStore is empty but an old plain-QSettings value
     // exists (written by a previous version), copy it to CredentialStore and
@@ -57,18 +57,17 @@ Account::Account(QObject *parent) : QObject(parent)  {
         intervals_icu_access_token  = CredentialStore::load("intervals_icu", "access_token");
     }
     if (intervals_icu_access_token.isEmpty()) {
-        const QString legacy = settings.value("intervals_icu_access_token", "").toString();
+        const QString legacy = AppSettings::read(settings, Keys::LegacyIntervalsIcuAccessToken);
         if (!legacy.isEmpty()) {
             intervals_icu_access_token = legacy;
             CredentialStore::store("intervals_icu", "access_token", legacy);
-            settings.remove("intervals_icu_access_token");
+            AppSettings::remove(settings, Keys::LegacyIntervalsIcuAccessToken);
         }
     }
     // Sensor dropout auto-pause
-    sensor_dropout_enabled   = settings.value("sensor_dropout_enabled",   ConfigDefaults::SensorDropoutEnabled).toBool();
-    sensor_dropout_timeout_s = qBound(2, settings.value("sensor_dropout_timeout_s", ConfigDefaults::SensorDropoutTimeoutS).toInt(), 30);
-    battery_warning_threshold = qBound(5, settings.value("battery_warning_threshold", ConfigDefaults::BatteryWarningThreshold).toInt(), 50);
-    settings.endGroup();
+    sensor_dropout_enabled    = AppSettings::read(settings, Keys::SensorDropoutEnabled);
+    sensor_dropout_timeout_s  = qBound(2, AppSettings::read(settings, Keys::SensorDropoutTimeoutS), 30);
+    battery_warning_threshold = qBound(5, AppSettings::read(settings, Keys::BatteryWarningThreshold), 50);
 
     // Load encrypted third-party service credentials from the platform credential store.
     {
@@ -167,24 +166,22 @@ Account::Account(QObject *parent) : QObject(parent)  {
 
     interval_summary_enabled    = true;
     interval_summary_duration_s = 5;
-    {
-        QSettings s;
-        s.beginGroup("account");
-        interval_summary_enabled    = s.value("interval_summary_enabled",    true).toBool();
-        interval_summary_duration_s = qBound(2, s.value("interval_summary_duration_s", 5).toInt(), 15);
-        app_theme = qBound(0, s.value("app_theme", 2).toInt(), 2); // default: System
+    interval_summary_enabled    = AppSettings::read(settings, Keys::IntervalSummaryEnabled);
+    interval_summary_duration_s = qBound(2, AppSettings::read(settings, Keys::IntervalSummaryDurationS), 15);
+    app_theme = qBound(0, AppSettings::read(settings, Keys::AppTheme), 2);
 
-        // One-time migration: force the Dark theme on the first launch of the
-        // release that introduces theming, to showcase the feature. The flag
-        // ensures this runs exactly once — afterwards the user's own choice
-        // (changed in Preferences) is always respected. AppTheme::Mode: Dark=1.
-        if (!s.value("forced_dark_default_applied", false).toBool()) {
-            app_theme = 1; // Dark
-            s.setValue("app_theme", app_theme);
-            s.setValue("forced_dark_default_applied", true);
-        }
-        s.endGroup();
+    // One-time migration: force the Dark theme on the first launch of the
+    // release that introduces theming, to showcase the feature. The flag
+    // ensures this runs exactly once — afterwards the user's own choice
+    // (changed in Preferences) is always respected. AppTheme::Mode: Dark=1.
+    if (!AppSettings::read(settings, Keys::ForcedDarkDefaultApplied)) {
+        app_theme = 1; // Dark
+        AppSettings::write(settings, Keys::AppTheme, app_theme);
+        AppSettings::write(settings, Keys::ForcedDarkDefaultApplied, true);
     }
+
+    strava_token_expires_at = AppSettings::readWithFallback(settings, Keys::StravaTokenExpiresAt,
+                                                            SettingKeys::Legacy::DisplayPrefsStravaTokenExpiresAt);
 
     //-------------------------- not in DB ----------------------
     isOffline = false;
@@ -209,34 +206,21 @@ void Account::saveNbSecShowInterval(int nbSec) {
 
     nb_sec_show_interval = nbSec;
 
-    QSettings settings;
-
-    settings.beginGroup("account");
-    settings.setValue("nb_sec_show_interval", nb_sec_show_interval);
-
-    settings.endGroup();
+    AppSettings::write(SettingKeys::Account::NbSecShowInterval, nb_sec_show_interval);
 }
 
 void Account::saveNbSecShowIntervalBefore(int nbSec) {
 
     nb_sec_show_interval_before = nbSec;
 
-    QSettings settings;
-
-    settings.beginGroup("account");
-    settings.setValue("nb_sec_show_interval_before", nb_sec_show_interval_before);
-
-    settings.endGroup();
+    AppSettings::write(SettingKeys::Account::NbSecShowIntervalBefore, nb_sec_show_interval_before);
 }
 
 void Account::saveErgSmoothingDuration(int seconds)
 {
     erg_smoothing_duration_s = qBound(0, seconds, 30);
 
-    QSettings settings;
-    settings.beginGroup("account");
-    settings.setValue("erg_smoothing_duration_s", erg_smoothing_duration_s);
-    settings.endGroup();
+    AppSettings::write(SettingKeys::Account::ErgSmoothingDurationS, erg_smoothing_duration_s);
 }
 
 void Account::saveProfileFields(int ftp, int lthr, double weightKg)
@@ -246,11 +230,9 @@ void Account::saveProfileFields(int ftp, int lthr, double weightKg)
     weight_kg = weightKg;
 
     QSettings settings;
-    settings.beginGroup("account");
-    settings.setValue("FTP",       FTP);
-    settings.setValue("LTHR",      LTHR);
-    settings.setValue("weight_kg", weight_kg);
-    settings.endGroup();
+    AppSettings::write(settings, SettingKeys::Account::Ftp,      FTP);
+    AppSettings::write(settings, SettingKeys::Account::Lthr,     LTHR);
+    AppSettings::write(settings, SettingKeys::Account::WeightKg, weight_kg);
 }
 
 // Group/key prefix for the locally-persisted display & sound preferences.
@@ -303,7 +285,6 @@ void Account::loadDisplayPrefs() {
     distance_in_km               = settings.value("distance_in_km",               distance_in_km).toBool();
     force_workout_window_on_top  = settings.value("force_workout_window_on_top",  force_workout_window_on_top).toBool();
     strava_auto_upload           = settings.value("strava_auto_upload",           strava_auto_upload).toBool();
-    strava_token_expires_at      = settings.value("strava_token_expires_at",      QVariant::fromValue<qlonglong>(strava_token_expires_at)).toLongLong();
 
     // Studio / power-meter / virtual-speed / included-content preferences.
     nb_user_studio        = settings.value("nb_user_studio",        nb_user_studio).toInt();
@@ -388,7 +369,6 @@ void Account::saveDisplayPrefs() {
     settings.setValue("distance_in_km",              distance_in_km);
     settings.setValue("force_workout_window_on_top", force_workout_window_on_top);
     settings.setValue("strava_auto_upload",          strava_auto_upload);
-    settings.setValue("strava_token_expires_at",     QVariant::fromValue<qlonglong>(strava_token_expires_at));
 
     // Studio / power-meter / virtual-speed / included-content preferences.
     // Formerly server-saved; persisted locally so they survive a restart.
@@ -432,12 +412,9 @@ void Account::saveDisplayPrefs() {
 void Account::saveIntervalsIcuCredentials() {
 
     QSettings settings;
-
-    settings.beginGroup("account");
-    settings.setValue("intervals_icu_api_key",    intervals_icu_api_key);
-    settings.setValue("intervals_icu_athlete_id", intervals_icu_athlete_id);
-    settings.setValue("intervals_icu_auto_upload", intervals_icu_auto_upload);
-    settings.endGroup();
+    AppSettings::write(settings, SettingKeys::Account::IntervalsIcuApiKey,     intervals_icu_api_key);
+    AppSettings::write(settings, SettingKeys::Account::IntervalsIcuAthleteId,  intervals_icu_athlete_id);
+    AppSettings::write(settings, SettingKeys::Account::IntervalsIcuAutoUpload, intervals_icu_auto_upload);
 
     // OAuth2 tokens — persisted in the platform credential store (encrypted).
     CredentialStore::store("intervals_icu", "access_token",  intervals_icu_access_token);
@@ -455,10 +432,8 @@ void Account::logout()
     intervals_icu_athlete_id.clear();
 
     QSettings settings;
-    settings.beginGroup("account");
-    settings.remove("intervals_icu_api_key");
-    settings.remove("intervals_icu_athlete_id");
-    settings.endGroup();
+    AppSettings::remove(settings, SettingKeys::Account::IntervalsIcuApiKey);
+    AppSettings::remove(settings, SettingKeys::Account::IntervalsIcuAthleteId);
 }
 
 void Account::saveStravaCredentials()
@@ -466,44 +441,30 @@ void Account::saveStravaCredentials()
     CredentialStore::store("strava", "access_token",  strava_access_token);
     CredentialStore::store("strava", "refresh_token", strava_refresh_token);
     // Persist the expiry too so refresh-if-expired survives a restart.
-    QSettings settings;
-    settings.beginGroup("account");
-    settings.setValue("strava_token_expires_at",
-                      QVariant::fromValue<qlonglong>(strava_token_expires_at));
-    settings.endGroup();
+    AppSettings::write(SettingKeys::Account::StravaTokenExpiresAt, qlonglong(strava_token_expires_at));
 }
 
 void Account::saveSensorDropoutSettings()
 {
     QSettings settings;
-    settings.beginGroup("account");
-    settings.setValue("sensor_dropout_enabled",   sensor_dropout_enabled);
-    settings.setValue("sensor_dropout_timeout_s", qBound(2, sensor_dropout_timeout_s, 30));
-    settings.endGroup();
+    AppSettings::write(settings, SettingKeys::Account::SensorDropoutEnabled,  sensor_dropout_enabled);
+    AppSettings::write(settings, SettingKeys::Account::SensorDropoutTimeoutS, qBound(2, sensor_dropout_timeout_s, 30));
 }
 
 void Account::saveBatteryWarningThreshold()
 {
-    QSettings settings;
-    settings.beginGroup("account");
-    settings.setValue("battery_warning_threshold", qBound(5, battery_warning_threshold, 50));
-    settings.endGroup();
+    AppSettings::write(SettingKeys::Account::BatteryWarningThreshold, qBound(5, battery_warning_threshold, 50));
 }
 
 void Account::saveIntervalSummarySettings()
 {
     QSettings settings;
-    settings.beginGroup("account");
-    settings.setValue("interval_summary_enabled",    interval_summary_enabled);
-    settings.setValue("interval_summary_duration_s", qBound(2, interval_summary_duration_s, 15));
-    settings.endGroup();
+    AppSettings::write(settings, SettingKeys::Account::IntervalSummaryEnabled,   interval_summary_enabled);
+    AppSettings::write(settings, SettingKeys::Account::IntervalSummaryDurationS, qBound(2, interval_summary_duration_s, 15));
 }
 
 void Account::saveAppTheme()
 {
-    QSettings s;
-    s.beginGroup("account");
-    s.setValue("app_theme", qBound(0, app_theme, 2));
-    s.endGroup();
+    AppSettings::write(SettingKeys::Account::AppTheme, qBound(0, app_theme, 2));
 }
 
