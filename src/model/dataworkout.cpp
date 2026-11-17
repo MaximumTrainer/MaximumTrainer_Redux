@@ -563,7 +563,7 @@ void DataWorkout::updateWorkoutMetrics(int secReceived, double value) {
     normalizedPower = qPow(avgStep2, 1/4.);
 
     //    Intensity Factor = NP/FTP
-    intensityFactor = normalizedPower/ftp;
+    intensityFactor = (ftp > 0) ? normalizedPower/ftp : 0.0;
 
     // Training Stress Score  = (IF^2) * DurationHrs x 100
     trainingStressScore = (intensityFactor*intensityFactor) * (secReceived/36.0);
