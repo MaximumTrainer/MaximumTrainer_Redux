@@ -2,6 +2,7 @@
 #include <QTimeZone>
 #include <QTemporaryDir>
 #include <QDateTime>
+#include <QtEndian>
 
 #include <fstream>
 #include <cmath>
@@ -11,6 +12,10 @@
 #include "fit_session_mesg.hpp"
 #include "fit_lap_mesg.hpp"
 #include "fit_record_mesg.hpp"
+#include "fit_decode.hpp"
+#include "fit_mesg_broadcaster.hpp"
+#include "fit_record_mesg_listener.hpp"
+#include "fit_session_mesg_listener.hpp"
 
 #include "fitactivityreader.h"
 #include "fitactivitydetailreader.h"
@@ -84,7 +89,99 @@ private:
         return fitStart;
     }
 
+    // Declared size of every 32-bit-typed field in the file's definition
+    // messages, read straight from the bytes (independent of the SDK's types).
+    static QList<int> declaredUint32FieldSizes(const QByteArray &fit)
+    {
+        QList<int> sizes;
+        const int headerSize = quint8(fit[0]);
+        const int dataEnd = headerSize + int(qFromLittleEndian<quint32>(fit.constData() + 4));
+        QHash<int, int> dataSizeByLocal;
+        int i = headerSize;
+        while (i < dataEnd) {
+            const quint8 recordHeader = quint8(fit[i++]);
+            if (recordHeader & 0x80) {                     // compressed-timestamp data message
+                i += dataSizeByLocal.value((recordHeader >> 5) & 0x3);
+                continue;
+            }
+            const int local = recordHeader & 0x0F;
+            if (!(recordHeader & 0x40)) {                  // data message
+                i += dataSizeByLocal.value(local);
+                continue;
+            }
+            const int numFields = quint8(fit[i + 4]);
+            i += 5;
+            int total = 0;
+            for (int f = 0; f < numFields; ++f, i += 3) {
+                const int size = quint8(fit[i + 1]);
+                const quint8 baseType = quint8(fit[i + 2]);
+                if (baseType == FIT_BASE_TYPE_UINT32 || baseType == FIT_BASE_TYPE_SINT32 || baseType == FIT_BASE_TYPE_UINT32Z)
+                    sizes << size;
+                total += size;
+            }
+            if (recordHeader & 0x20) {                     // developer fields
+                const int numDevFields = quint8(fit[i++]);
+                for (int f = 0; f < numDevFields; ++f, i += 3)
+                    total += quint8(fit[i + 1]);
+            }
+            dataSizeByLocal[local] = total;
+        }
+        return sizes;
+    }
+
+    struct FirstRecordAndSession : fit::RecordMesgListener, fit::SessionMesgListener {
+        std::unique_ptr<fit::RecordMesg>  record;
+        std::unique_ptr<fit::SessionMesg> session;
+        void OnMesg(fit::RecordMesg &mesg) override  { if (!record) record = std::make_unique<fit::RecordMesg>(mesg); }
+        void OnMesg(fit::SessionMesg &mesg) override { session = std::make_unique<fit::SessionMesg>(mesg); }
+    };
+
 private slots:
+
+    // ── FIT encoding: 32-bit fields are declared 4 bytes wide ─────────────────
+    // With 8-byte FIT_UINT32 (no FIT_USE_STDINT_H on LP64) the encoder declared
+    // every uint32 field as 8 bytes: decoders saw a 2-element array and Garmin's
+    // own decoder rejected the file. Each such field must decode to one value.
+    void encodedUint32FieldsHoldOneValue()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString path = dir.filePath("activity.fit");
+        writeSampleFit(path, 10);
+
+        std::fstream file(path.toStdString(), std::ios::in | std::ios::binary);
+        QVERIFY(file.is_open());
+        char header[14];
+        file.read(header, sizeof(header));
+        QCOMPARE(int(header[0]), 14);
+        QCOMPARE(QByteArray(header + 8, 4), QByteArray(".FIT"));
+        file.seekg(0);
+
+        QFile raw(path);
+        QVERIFY(raw.open(QIODevice::ReadOnly));
+        const QList<int> uint32Sizes = declaredUint32FieldSizes(raw.readAll());
+        QVERIFY(!uint32Sizes.isEmpty());
+        for (int size : uint32Sizes)
+            QCOMPARE(size, 4);
+
+        fit::Decode decode;
+        fit::MesgBroadcaster broadcaster;
+        FirstRecordAndSession capture;
+        broadcaster.AddListener(static_cast<fit::RecordMesgListener &>(capture));
+        broadcaster.AddListener(static_cast<fit::SessionMesgListener &>(capture));
+        QVERIFY(decode.Read(&file, &broadcaster, &broadcaster, nullptr));
+        QVERIFY(capture.record);
+        QVERIFY(capture.session);
+
+        for (const auto &[mesg, fieldName] : { std::pair<fit::Mesg *, const char *>{capture.record.get(),  "timestamp"},
+                                               {capture.record.get(),  "distance"},
+                                               {capture.session.get(), "start_time"},
+                                               {capture.session.get(), "total_timer_time"} }) {
+            const fit::Field *field = mesg->GetField(std::string(fieldName));
+            QVERIFY2(field, fieldName);
+            QVERIFY2(field->GetNumValues() == 1, fieldName);
+        }
+    }
 
     // ── FIT indexing: session summary ────────────────────────────────────────
     void summaryReadsSessionFields()
