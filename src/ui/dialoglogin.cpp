@@ -1,4 +1,5 @@
 #include "dialoglogin.h"
+#include "setting_keys.h"
 #include "ui_dialoglogin.h"
 
 #include <QDateTime>
@@ -196,8 +197,7 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     // do not have to re-tick the box every launch.
 #ifndef Q_OS_WASM
     {
-        QSettings s;
-        const bool rememberOffline = s.value(QStringLiteral("login/workOffline"), false).toBool();
+        const bool rememberOffline = AppSettings::read(SettingKeys::Login::WorkOffline);
         ui->checkBox_workOffline->setChecked(rememberOffline);
         ui->pushButton_startOffline->setVisible(rememberOffline);
     }
@@ -379,8 +379,7 @@ void DialogLogin::on_checkBox_workOffline_clicked(bool checked)
     ui->pushButton_startOffline->setVisible(checked);
 
     // Remember the choice so it is pre-selected on the next launch.
-    QSettings s;
-    s.setValue(QStringLiteral("login/workOffline"), checked);
+    AppSettings::write(SettingKeys::Login::WorkOffline, checked);
 }
 
 
@@ -751,8 +750,8 @@ void DialogLogin::slotFinishedIntervalsIcuSettings()
             // FTP/LTHR pulled from the intervals.icu profile: persist them and
             // record the sync so Preferences can show where the values came from.
             account->saveProfileFields(account->FTP, account->LTHR, account->weight_kg);
-            QSettings().setValue(QStringLiteral("intervalsIcu/profileSyncedAt"),
-                                 QDateTime::currentDateTime().toString(Qt::ISODate));
+            AppSettings::write(SettingKeys::Login::IntervalsIcuProfileSyncedAt,
+                               QDateTime::currentDateTime().toString(Qt::ISODate));
             LOG_INFO("DialogLogin",
                      QStringLiteral("Profile synced from intervals.icu: FTP %1 W, LTHR %2 bpm")
                          .arg(account->FTP).arg(account->LTHR));

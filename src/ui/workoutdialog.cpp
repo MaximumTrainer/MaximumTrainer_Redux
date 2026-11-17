@@ -1,4 +1,5 @@
 #include "workoutdialog.h"
+#include "setting_keys.h"
 #include "asyncdialogs.h"
 #include "virtual_gear.h"
 #include "ui_workoutdialog.h"
@@ -3248,23 +3249,18 @@ void WorkoutDialog::sureYouWantToQuit() {
 
 void WorkoutDialog::loadInterface() {
 
-    QSettings settings;
+    namespace Keys = SettingKeys::WorkoutDialog;
+    const QSettings settings;
 
-    settings.beginGroup("WorkoutDialog");
+    resize(AppSettings::read(settings, Keys::Size));
+    move(AppSettings::read(settings, Keys::Pos));
 
-    resize(settings.value("size", QSize(1350, 800)).toSize());
-    move(settings.value("pos", QPoint(100, 100)).toPoint());
+    ui->splitter->setSizes({AppSettings::read(settings, Keys::Splitter0),
+                            AppSettings::read(settings, Keys::Splitter1),
+                            AppSettings::read(settings, Keys::Splitter2),
+                            AppSettings::read(settings, Keys::Splitter3)});
 
-    QList<int> mySize;
-    mySize.append( settings.value("splitter0", 2).toInt() );
-    mySize.append( settings.value("splitter1", 35).toInt() );
-    mySize.append( settings.value("splitter2", 39).toInt() );
-    mySize.append( settings.value("splitter3", 24).toInt() );
-    ui->splitter->setSizes(mySize);
-
-
-    bool wasFullscreen = settings.value("fullscreen", false).toBool();
-    settings.endGroup();
+    const bool wasFullscreen = AppSettings::read(settings, Keys::Fullscreen);
 
     if (wasFullscreen) {
         wasFullscreenOnOpen = true;
@@ -3280,26 +3276,17 @@ void WorkoutDialog::loadInterface() {
 }
 void WorkoutDialog::saveInterface() {
 
+    namespace Keys = SettingKeys::WorkoutDialog;
     QSettings settings;
+    AppSettings::write(settings, Keys::Size, size());
+    AppSettings::write(settings, Keys::Pos, pos());
 
-    settings.beginGroup("WorkoutDialog");
-    settings.setValue("size", size());
-    settings.setValue("pos", pos());
-
-    QList<int> sizeNow = ui->splitter->sizes();
-    settings.setValue("splitter0", sizeNow.at(0));
-    settings.setValue("splitter1", sizeNow.at(1));
-    settings.setValue("splitter2", sizeNow.at(2));
-    settings.setValue("splitter3", sizeNow.at(3));
-
-    if (this->isFullScreen()) {
-        settings.setValue("fullscreen", true);
-    }
-    else {
-        settings.setValue("fullscreen", false);
-    }
-
-    settings.endGroup();
+    const QList<int> sizeNow = ui->splitter->sizes();
+    AppSettings::write(settings, Keys::Splitter0, sizeNow.at(0));
+    AppSettings::write(settings, Keys::Splitter1, sizeNow.at(1));
+    AppSettings::write(settings, Keys::Splitter2, sizeNow.at(2));
+    AppSettings::write(settings, Keys::Splitter3, sizeNow.at(3));
+    AppSettings::write(settings, Keys::Fullscreen, isFullScreen());
 }
 
 

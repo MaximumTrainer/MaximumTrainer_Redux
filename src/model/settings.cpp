@@ -1,4 +1,5 @@
 #include "settings.h"
+#include "setting_keys.h"
 
 #include <QSettings>
 
@@ -12,11 +13,10 @@ Settings::Settings(QObject *parent) : QObject(parent)  {
 
 
     QSettings settings;
-
+    lastLoggedUsername = AppSettings::read(settings, SettingKeys::Login::LastLoggedUsername);
+    lastLoggedKey      = AppSettings::read(settings, SettingKeys::Login::LastLoggedKey);
 
     settings.beginGroup("SettingsGeneral");
-    lastLoggedUsername = settings.value("lastLoggedUsername", "").toString();
-    lastLoggedKey = settings.value("lastLoggedKey", "").toString();
     // Keys of the removed remembered-usernames list; "username"+i was pointer
     // arithmetic, hence the truncated names.
     for (const char *staleKey : {"rememberMyPassword", "username", "sername", "ername", "rname", "name"})
@@ -30,12 +30,8 @@ Settings::Settings(QObject *parent) : QObject(parent)  {
 void Settings::saveGeneralSettings() {
 
     QSettings settings;
-
-
-    settings.beginGroup("SettingsGeneral");
-    settings.setValue("lastLoggedUsername", lastLoggedUsername);
-    settings.setValue("lastLoggedKey", lastLoggedKey);
-    settings.endGroup();
+    AppSettings::write(settings, SettingKeys::Login::LastLoggedUsername, lastLoggedUsername);
+    AppSettings::write(settings, SettingKeys::Login::LastLoggedKey,      lastLoggedKey);
 
 
 }

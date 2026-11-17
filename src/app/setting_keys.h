@@ -4,7 +4,11 @@
 #include "app_settings.h"
 #include "config_defaults.h"
 
+#include <QByteArray>
+#include <QPoint>
+#include <QSize>
 #include <QString>
+#include <QStringList>
 
 ///
 /// Every persisted setting, by QSettings group. Paths are on-disk names: never
@@ -94,6 +98,69 @@ inline constexpr SettingKey<bool> SoundAlertCadenceUnderTarget   {"displayPrefs/
 inline constexpr SettingKey<bool> SoundAlertCadenceAboveTarget   {"displayPrefs/sound_alert_cadence_above_target",    false};
 } // namespace DisplayPrefs
 
+namespace MainWindow {
+inline constexpr SettingKey<QSize> Size      {"MainWindow/size",      QSize(1150, 700)};
+inline constexpr SettingKey<QPoint> Pos      {"MainWindow/pos",       QPoint(200, 200)};
+inline constexpr SettingKey<bool> Maximized  {"MainWindow/maximized", false};
+} // namespace MainWindow
+
+namespace WorkoutDialog {
+inline constexpr SettingKey<QSize> Size      {"WorkoutDialog/size",       QSize(1350, 800)};
+inline constexpr SettingKey<QPoint> Pos      {"WorkoutDialog/pos",        QPoint(100, 100)};
+inline constexpr SettingKey<int>  Splitter0  {"WorkoutDialog/splitter0",  2};
+inline constexpr SettingKey<int>  Splitter1  {"WorkoutDialog/splitter1",  35};
+inline constexpr SettingKey<int>  Splitter2  {"WorkoutDialog/splitter2",  39};
+inline constexpr SettingKey<int>  Splitter3  {"WorkoutDialog/splitter3",  24};
+inline constexpr SettingKey<bool> Fullscreen {"WorkoutDialog/fullscreen", false};
+} // namespace WorkoutDialog
+
+namespace ActivityDetailDialog {
+inline const SettingKey<QByteArray> Geometry {"activityDetailDialog/geometry", QByteArray()};
+} // namespace ActivityDetailDialog
+
+namespace WorkoutFilter {
+inline const SettingKey<QString> Name    {"Filter/nameFilter",    QString()};
+inline const SettingKey<QString> Plan    {"Filter/planFilter",    QString()};
+inline const SettingKey<QString> Creator {"Filter/creatorFilter", QString()};
+inline constexpr SettingKey<int> Type    {"Filter/typeFilter",    -1};
+} // namespace WorkoutFilter
+
+namespace WorkoutQueue {
+inline const SettingKey<QStringList> FilePaths {"workoutQueue/filePaths", QStringList()};
+inline const SettingKey<QStringList> Names     {"workoutQueue/names",     QStringList()};
+} // namespace WorkoutQueue
+
+/// Last directory used by a file dialog; read with the home directory as default.
+namespace LastPath {
+inline const SettingKey<QString> WorkoutImport {"Importer/loadPath",        QString()};
+inline const SettingKey<QString> Video         {"videoPlayer/loadPath",     QString()};
+inline const SettingKey<QString> ReportExport  {"reports/savePathExport",   QString()};
+} // namespace LastPath
+
+namespace Media {
+inline constexpr SettingKey<int> VideoVolume  {"videoPlayer/soundVolume", 100};
+inline constexpr SettingKey<int> RadioVolume  {"radioPlayer/volume",      100};
+inline const SettingKey<QString> LastRadioStation {"radioPlayer/lastStation", QString()};
+/// Hash of the bundled radio list last seen, to pick up a changed default list.
+inline const SettingKey<QString> RadioDefaultsHash {"radios/defaultsHash", QString()};
+inline const SettingKey<QString> WorkoutBrowserHomePage {"webBrowserWorkout/defaultUrl", QStringLiteral("https://www.youtube.com")};
+/// One-time reset of the home page away from DRM services (see readWorkoutBrowserHomePage).
+inline constexpr SettingKey<bool> WorkoutBrowserYoutubeResetDone {"webBrowserWorkout/youtubeResetDone", false};
+} // namespace Media
+
+namespace Login {
+inline constexpr SettingKey<bool> WorkOffline     {"login/workOffline", false};
+inline const SettingKey<QString> LastLoggedUsername {"SettingsGeneral/lastLoggedUsername", QString()};
+inline const SettingKey<QString> LastLoggedKey      {"SettingsGeneral/lastLoggedKey",      QString()};
+/// ISO-8601 time of the last FTP/LTHR/weight sync from intervals.icu.
+inline const SettingKey<QString> IntervalsIcuProfileSyncedAt {"intervalsIcu/profileSyncedAt", QString()};
+} // namespace Login
+
+namespace Group {
+/// Overrides the default group-workout relay (MT_GROUP_RELAY_URL wins over it).
+inline const SettingKey<QString> RelayUrl {"group_relay_url", QString()};
+} // namespace Group
+
 namespace Legacy {
 /// Strava token expiry was also written under displayPrefs/ (and only read from
 /// there); read as a fallback so the value survives the move to account/.
@@ -108,5 +175,20 @@ inline const SettingKey<QString>  FilePath    {"logging/file_path",    QString()
 } // namespace Logging
 
 } // namespace SettingKeys
+
+namespace AppSettings {
+/// The workout web browser's home page. The old Netflix default needs Widevine
+/// DRM, which the embedded view cannot bundle, so it never played; it is reset
+/// to YouTube once, after which the user's own choice is kept.
+inline QString readWorkoutBrowserHomePage()
+{
+    QSettings settings;
+    if (!read(settings, SettingKeys::Media::WorkoutBrowserYoutubeResetDone)) {
+        write(settings, SettingKeys::Media::WorkoutBrowserHomePage, SettingKeys::Media::WorkoutBrowserHomePage.defaultValue);
+        write(settings, SettingKeys::Media::WorkoutBrowserYoutubeResetDone, true);
+    }
+    return read(settings, SettingKeys::Media::WorkoutBrowserHomePage);
+}
+} // namespace AppSettings
 
 #endif // SETTING_KEYS_H

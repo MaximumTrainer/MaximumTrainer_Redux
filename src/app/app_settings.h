@@ -26,11 +26,25 @@ T read(const QSettings &settings, const SettingKey<T> &key)
     return settings.value(key.pathString(), QVariant::fromValue(key.defaultValue)).template value<T>();
 }
 
+/// For keys whose default is only known at runtime (e.g. the home directory).
+template <typename T>
+T read(const QSettings &settings, const SettingKey<T> &key, const T &runtimeDefault)
+{
+    return settings.value(key.pathString(), QVariant::fromValue(runtimeDefault)).template value<T>();
+}
+
 template <typename T>
 T read(const SettingKey<T> &key)
 {
     const QSettings settings;
     return read(settings, key);
+}
+
+template <typename T>
+T read(const SettingKey<T> &key, const T &runtimeDefault)
+{
+    const QSettings settings;
+    return read(settings, key, runtimeDefault);
 }
 
 template <typename T>
@@ -56,6 +70,13 @@ template <typename T>
 void remove(QSettings &settings, const SettingKey<T> &key)
 {
     settings.remove(key.pathString());
+}
+
+template <typename T>
+void remove(const SettingKey<T> &key)
+{
+    QSettings settings;
+    remove(settings, key);
 }
 
 /// Reads @p key, falling back to @p legacyKey (a previous location of the same

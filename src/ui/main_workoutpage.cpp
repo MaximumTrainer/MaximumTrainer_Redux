@@ -1,4 +1,5 @@
 #include "main_workoutpage.h"
+#include "setting_keys.h"
 #include "asyncdialogs.h"
 #include "ui_main_workoutpage.h"
 
@@ -450,28 +451,21 @@ void Main_WorkoutPage::setFilterWorkoutName(const QString& workoutName) {
 
 void Main_WorkoutPage::saveFilterFields() {
 
+    namespace Keys = SettingKeys::WorkoutFilter;
     QSettings settings;
-
-    // Save Filter fields
-    settings.beginGroup("Filter");
-    settings.setValue("nameFilter", nameFilter);
-    settings.setValue("planFilter", planFilter);
-    settings.setValue("creatorFilter", creatorFilter);
-    settings.setValue("typeFilter", typeFilter);
-    settings.endGroup();
+    AppSettings::write(settings, Keys::Name,    nameFilter);
+    AppSettings::write(settings, Keys::Plan,    planFilter);
+    AppSettings::write(settings, Keys::Creator, creatorFilter);
+    AppSettings::write(settings, Keys::Type,    typeFilter);
 }
 void Main_WorkoutPage::loadFilterFields() {
 
-    QSettings settings;
-
-    // Save Filter fields
-    settings.beginGroup("Filter");
-
-    nameFilter = settings.value("nameFilter", "").toString();
-    planFilter = settings.value("planFilter", "").toString();
-    creatorFilter = settings.value("creatorFilter", "").toString();
-    typeFilter = settings.value("typeFilter", -1).toInt();
-    settings.endGroup();
+    namespace Keys = SettingKeys::WorkoutFilter;
+    const QSettings settings;
+    nameFilter    = AppSettings::read(settings, Keys::Name);
+    planFilter    = AppSettings::read(settings, Keys::Plan);
+    creatorFilter = AppSettings::read(settings, Keys::Creator);
+    typeFilter    = AppSettings::read(settings, Keys::Type);
 
 
 }
