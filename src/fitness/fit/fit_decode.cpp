@@ -788,14 +788,22 @@ Decode::RETURN Decode::ReadByte(FIT_UINT8 data)
             if (fieldBytesLeft == 0)
             {
                 fieldDataIndex = 0;
-                fieldBytesLeft = localMesgDefs[localMesgIndex].GetFieldByIndex(fieldIndex)->GetSize();
+                const FieldDefinition *currentField = localMesgDefs[localMesgIndex].GetFieldByIndex(fieldIndex);
+                if (currentField == FIT_NULL)
+                    throw RuntimeException("FIT decode error: field index out of range");
+                fieldBytesLeft = currentField->GetSize();
 
                 if (fieldBytesLeft == 0)
                 {
-                    fieldBytesLeft = localMesgDefs[localMesgIndex].GetFieldByIndex(++fieldIndex)->GetSize();
+                    const FieldDefinition *nextField = localMesgDefs[localMesgIndex].GetFieldByIndex(++fieldIndex);
+                    if (nextField == FIT_NULL)
+                        throw RuntimeException("FIT decode error: field index out of range");
+                    fieldBytesLeft = nextField->GetSize();
                 }
             }
 
+            if (fieldDataIndex >= FIT_MAX_FIELD_SIZE)
+                throw RuntimeException("FIT decode error: field data exceeds the maximum field size");
             fieldData[fieldDataIndex++] = data;
             fieldBytesLeft--;
 
@@ -804,7 +812,8 @@ Decode::RETURN Decode::ReadByte(FIT_UINT8 data)
                 MesgDefinition defn = localMesgDefs[localMesgIndex];
                 FieldDefinition* fldDefn = defn.GetFieldByIndex(fieldIndex);
                 FIT_UINT8 baseType = fldDefn->GetType() & FIT_BASE_TYPE_NUM_MASK;
-                FIT_UINT8 typeSize = baseTypeSizes[baseType];
+                // baseType comes from the file; index the size table only when it is valid.
+                FIT_UINT8 typeSize = (baseType < FIT_BASE_TYPES) ? baseTypeSizes[baseType] : 0;
                 FIT_BOOL read = FIT_TRUE;
 
                 if (baseType < FIT_BASE_TYPES) // Ignore field if base type not supported.
@@ -865,7 +874,7 @@ Decode::RETURN Decode::ReadByte(FIT_UINT8 data)
                                         }
                                     }
                                 }
-                                accumulator.Set(mesg.GetNum(), field.GetNum(), (FIT_UINT32)value);
+                                accumulator.Set(mesg.GetNum(), field.GetNum(), SaturatingCast<FIT_UINT32>(value));
                             }
                         }
 
@@ -925,15 +934,22 @@ Decode::RETURN Decode::ReadByte(FIT_UINT8 data)
              if (fieldBytesLeft == 0)
              {
                  fieldDataIndex = 0;
+                 if (fieldDef == FIT_NULL)
+                     throw RuntimeException("FIT decode error: developer field index out of range");
                  fieldBytesLeft = fieldDef->GetSize();
 
                  if (fieldBytesLeft == 0)
                  {
-                     fieldBytesLeft = localMesgDefs->
-                         GetDevFieldByIndex(++fieldIndex)->GetSize();
+                     // Upstream read the next size from localMesgDefs[0], not this message's definition.
+                     const DeveloperFieldDefinition *nextField = localMesgDef.GetDevFieldByIndex(++fieldIndex);
+                     if (nextField == FIT_NULL)
+                         throw RuntimeException("FIT decode error: developer field index out of range");
+                     fieldBytesLeft = nextField->GetSize();
                  }
              }
 
+            if (fieldDataIndex >= FIT_MAX_FIELD_SIZE)
+                throw RuntimeException("FIT decode error: field data exceeds the maximum field size");
             fieldData[fieldDataIndex++] = data;
             fieldBytesLeft--;
 

@@ -9,6 +9,7 @@
 // Tag = production/release/21.222.0-0-g71fae187
 /////////////////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
 #include <cmath>
 #include <sstream>
 #include <type_traits>
@@ -803,29 +804,29 @@ void FieldBase::AddRawValue(const FIT_FLOAT64 rawValue, const FIT_UINT8 fieldArr
     case FIT_BASE_TYPE_ENUM:
     case FIT_BASE_TYPE_UINT8:
     case FIT_BASE_TYPE_UINT8Z:
-        SetUINT8Value(static_cast<FIT_UINT8>(roundedValue), fieldArrayIndex);
+        SetUINT8Value(SaturatingCast<FIT_UINT8>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_SINT8:
-        SetSINT8Value(static_cast<FIT_SINT8>(roundedValue), fieldArrayIndex);
+        SetSINT8Value(SaturatingCast<FIT_SINT8>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_UINT16:
     case FIT_BASE_TYPE_UINT16Z:
-        SetUINT16Value(static_cast<FIT_UINT16>(roundedValue), fieldArrayIndex);
+        SetUINT16Value(SaturatingCast<FIT_UINT16>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_SINT16:
-        SetSINT16Value(static_cast<FIT_SINT16>(roundedValue), fieldArrayIndex);
+        SetSINT16Value(SaturatingCast<FIT_SINT16>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_UINT32:
     case FIT_BASE_TYPE_UINT32Z:
-        SetUINT32Value(static_cast<FIT_UINT32>(roundedValue), fieldArrayIndex);
+        SetUINT32Value(SaturatingCast<FIT_UINT32>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_SINT32:
-        SetSINT32Value(static_cast<FIT_SINT32>(roundedValue), fieldArrayIndex);
+        SetSINT32Value(SaturatingCast<FIT_SINT32>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_FLOAT32:
@@ -852,12 +853,12 @@ void FieldBase::AddRawValue(const FIT_FLOAT64 rawValue, const FIT_UINT8 fieldArr
     }
 
     case FIT_BASE_TYPE_SINT64:
-        SetSINT64Value(static_cast<FIT_SINT64>(rawValue), fieldArrayIndex);
+        SetSINT64Value(SaturatingCast<FIT_SINT64>(rawValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_UINT64:
     case FIT_BASE_TYPE_UINT64Z:
-        SetUINT64Value(static_cast<FIT_UINT64>(rawValue), fieldArrayIndex);
+        SetUINT64Value(SaturatingCast<FIT_UINT64>(rawValue), fieldArrayIndex);
         break;
 
     default:
@@ -1049,38 +1050,38 @@ void FieldBase::SetFLOAT64Value(const FIT_FLOAT64 value, const FIT_UINT8 fieldAr
     case FIT_BASE_TYPE_ENUM:
     case FIT_BASE_TYPE_UINT8:
     case FIT_BASE_TYPE_UINT8Z:
-        SetUINT8Value(static_cast<FIT_UINT8>(roundedValue), fieldArrayIndex);
+        SetUINT8Value(SaturatingCast<FIT_UINT8>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_SINT8:
-        SetSINT8Value(static_cast<FIT_SINT8>(roundedValue), fieldArrayIndex);
+        SetSINT8Value(SaturatingCast<FIT_SINT8>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_UINT16:
     case FIT_BASE_TYPE_UINT16Z:
-        SetUINT16Value(static_cast<FIT_UINT16>(roundedValue), fieldArrayIndex);
+        SetUINT16Value(SaturatingCast<FIT_UINT16>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_SINT16:
-        SetSINT16Value(static_cast<FIT_SINT16>(roundedValue), fieldArrayIndex);
+        SetSINT16Value(SaturatingCast<FIT_SINT16>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_UINT32:
     case FIT_BASE_TYPE_UINT32Z:
-        SetUINT32Value(static_cast<FIT_UINT32>(roundedValue), fieldArrayIndex);
+        SetUINT32Value(SaturatingCast<FIT_UINT32>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_SINT32:
-        SetSINT32Value(static_cast<FIT_SINT32>(roundedValue), fieldArrayIndex);
+        SetSINT32Value(SaturatingCast<FIT_SINT32>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_UINT64:
     case FIT_BASE_TYPE_UINT64Z:
-        SetUINT64Value(static_cast<FIT_UINT64>(roundedValue), fieldArrayIndex);
+        SetUINT64Value(SaturatingCast<FIT_UINT64>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_SINT64:
-        SetSINT64Value(static_cast<FIT_SINT64>(roundedValue), fieldArrayIndex);
+        SetSINT64Value(SaturatingCast<FIT_SINT64>(roundedValue), fieldArrayIndex);
         break;
 
     case FIT_BASE_TYPE_FLOAT32:
@@ -1284,15 +1285,24 @@ FIT_FLOAT64 FieldBase::Round(FIT_FLOAT64 value)
 template <typename T>
 T FieldBase::GetValue(const FIT_UINT8 fieldArrayIndex) const
 {
-    FIT_UINT8 size = baseTypeSizes[GetType() & FIT_BASE_TYPE_NUM_MASK];
-    if (fieldArrayIndex >= (FIT_UINT8)values.size())
+    const FIT_UINT8 typeNum = GetType() & FIT_BASE_TYPE_NUM_MASK;
+    if (typeNum >= FIT_BASE_TYPES) // type byte read from the file
+        return (std::numeric_limits<T>::max)();
+    FIT_UINT8 size = baseTypeSizes[typeNum];
+    // A corrupt file can declare a field narrower or wider than T; never read
+    // or shift beyond either type. Valid files have size == sizeof(T).
+    const size_t bytesToRead = std::min(static_cast<size_t>(size), sizeof(T));
+    // fieldArrayIndex counts elements while values holds bytes.
+    if ((static_cast<size_t>(fieldArrayIndex) + 1) * size > values.size())
     {
-        return *reinterpret_cast<const T*>(baseTypeInvalids[GetType() & FIT_BASE_TYPE_NUM_MASK]);
+        T invalid = 0;
+        memcpy(&invalid, baseTypeInvalids[typeNum], bytesToRead);
+        return invalid;
     }
 
     T rv = 0;
 
-    for (int i = 0; i < size; i++)
+    for (size_t i = 0; i < bytesToRead; i++)
     {
         rv |= static_cast<T>(values[(fieldArrayIndex * size) + i]) << (i * 8);
     }

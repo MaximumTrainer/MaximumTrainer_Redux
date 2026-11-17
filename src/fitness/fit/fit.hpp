@@ -24,6 +24,8 @@
 #include <string>
 #include <cstddef>
 #include <cstring>
+#include <cmath>
+#include <limits>
 
 #if !defined(FIT_CPP_INCLUDE_C)
 
@@ -348,6 +350,22 @@ FIT_UINT8 GetArch(void);
 // Includes runtime check for little or big endian.
 // See FIT_MESG_DEF->arch and FIT_ARCH_*.
 ///////////////////////////////////////////////////////////////////////
+
+
+/// Converts a decoded double to an integer type, clamping to the type's range
+/// (NaN becomes 0). A plain cast of an out-of-range value is undefined behaviour,
+/// and corrupt files produce such values through scale/offset arithmetic.
+template <typename T>
+inline T SaturatingCast(const FIT_FLOAT64 value)
+{
+    if (std::isnan(value))
+        return T(0);
+    if (value <= static_cast<FIT_FLOAT64>((std::numeric_limits<T>::lowest)()))
+        return (std::numeric_limits<T>::lowest)();
+    if (value >= static_cast<FIT_FLOAT64>((std::numeric_limits<T>::max)()))
+        return (std::numeric_limits<T>::max)();
+    return static_cast<T>(value);
+}
 
 } // namespace fit
 
