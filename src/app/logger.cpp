@@ -6,6 +6,9 @@
  */
 
 #include "logger.h"
+#include "setting_keys.h"
+
+static_assert(ConfigDefaults::LogLevelValue == static_cast<int>(LogLevel::Info));
 
 #include <QDateTime>
 #include <QSettings>
@@ -299,16 +302,10 @@ void Logger::emergencyLog(const QString& message)
 
 void Logger::loadConfig()
 {
-    QSettings settings;
-    settings.beginGroup(QStringLiteral("logging"));
-
-    const int level = settings.value(QStringLiteral("level"),
-                                     static_cast<int>(LogLevel::Info)).toInt();
-    const bool fileOn = settings.value(QStringLiteral("file_enabled"),
-                                       true).toBool();
-    const QString fp  = settings.value(QStringLiteral("file_path"),
-                                       QString()).toString();
-    settings.endGroup();
+    const QSettings settings;
+    const int level     = AppSettings::read(settings, SettingKeys::Logging::Level);
+    const bool fileOn   = AppSettings::read(settings, SettingKeys::Logging::FileEnabled);
+    const QString fp    = AppSettings::read(settings, SettingKeys::Logging::FilePath);
 
     int clamped = qBound(static_cast<int>(LogLevel::Verbose),
                          level,
@@ -356,14 +353,11 @@ void Logger::loadConfig()
 void Logger::saveConfig() const
 {
     QSettings settings;
-    settings.beginGroup(QStringLiteral("logging"));
-    settings.setValue(QStringLiteral("level"),
-                      m_levelValue.loadAcquire());
+    AppSettings::write(settings, SettingKeys::Logging::Level, int(m_levelValue.loadAcquire()));
 
     QMutexLocker lock(&m_mutex);
-    settings.setValue(QStringLiteral("file_enabled"), m_fileEnabled);
-    settings.setValue(QStringLiteral("file_path"),    m_filePath);
-    settings.endGroup();
+    AppSettings::write(settings, SettingKeys::Logging::FileEnabled, bool(m_fileEnabled));
+    AppSettings::write(settings, SettingKeys::Logging::FilePath,    m_filePath);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
