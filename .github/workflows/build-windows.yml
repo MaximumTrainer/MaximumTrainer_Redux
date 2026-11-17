@@ -92,7 +92,7 @@ jobs:
       # (it wraps cl only, not link). no_batch stops nmake/jom batch rules from
       # passing several sources to one cl call, which sccache cannot cache.
       shell: powershell
-      run: Set-Content .qmake.conf "CONFIG += ccache no_batch`nQMAKE_CACHE_LAUNCHER_PREFIX = sccache"
+      run: Add-Content .qmake.conf "CONFIG += ccache no_batch`nQMAKE_CACHE_LAUNCHER_PREFIX = sccache"
 
     - name: Restore OpenSSL cache
       id: openssl-cache

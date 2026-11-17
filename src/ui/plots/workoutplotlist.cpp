@@ -108,7 +108,7 @@ void WorkoutPlotList::drawGraphIntervals() {
     double time = 0;
     Interval lastVal;
 
-    foreach (Interval val, workout.getLstInterval()) {
+    for (const Interval &val : workout.getLstInterval()) {
 
         int secInterval = Util::convertQTimeToSecD(val.getDurationQTime());
 

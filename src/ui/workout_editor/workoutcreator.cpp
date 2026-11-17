@@ -211,7 +211,7 @@ void WorkoutCreator::computeWorkout() {
 
     /// Get list RepeatData
     QList<RepeatData> lstRepData;
-    foreach (RepeatWidget *wid, lstRepeatWidget) {
+    for (RepeatWidget *wid : std::as_const(lstRepeatWidget)) {
         RepeatData *rep = wid->getRepeatData();
         lstRepData.append(*rep);
     }
@@ -259,7 +259,7 @@ void WorkoutCreator::editWorkout(Workout workoutToEdit) {
 
     /// Restore idRepeatWidget to latest repeatId
     int idMaxFound = 0;
-    foreach (RepeatData rep, lstRepeatData) {
+    for (const RepeatData &rep : std::as_const(lstRepeatData)) {
         if (rep.getId() > idMaxFound)
             idMaxFound = rep.getId();
     }
@@ -415,7 +415,7 @@ void WorkoutCreator::tableViewSelectionChanged(QItemSelection, QItemSelection) {
     }
 
     QSet<QString> setIntervalToHightlight;
-    foreach (QModelIndex index,  lstIndex) {
+    for (const QModelIndex &index : std::as_const(lstIndex)) {
         Interval interval = intervalModel->getIntervalAtRow(index);
         setIntervalToHightlight.insert(QString::number(interval.getSourceRowLstInterval()) );
     }
@@ -434,7 +434,7 @@ void WorkoutCreator::tableViewSelectionChanged(QItemSelection, QItemSelection) {
 
 
     /// --- Check All overlappign possibilities (see if we can enable repeat button)
-    foreach (RepeatWidget *wid, lstRepeatWidget) {
+    for (RepeatWidget *wid : std::as_const(lstRepeatWidget)) {
 
         if (firstIndex.row() >= wid->getRepeatData()->getFirstRow() && firstIndex.row() <= wid->getRepeatData()->getLastRow() )  {
             return;
@@ -472,7 +472,7 @@ void WorkoutCreator::on_pushButton_copy_clicked()
         return;
     }
 
-    foreach (QModelIndex index,  lstIndex) {
+    for (const QModelIndex &index : std::as_const(lstIndex)) {
         intervalModel->copyRows(index.row());
     }
     ajustRepeatWidgetPosition();
@@ -500,14 +500,16 @@ void WorkoutCreator::on_pushButton_delete_clicked()
     ////////////////////---------------------------------------------------------------
 
 
-    foreach (RepeatWidget *wid, lstRepeatWidget)
+    // Snapshot: the loop removes fully-deleted repeats from lstRepeatWidget.
+    const QList<RepeatWidget*> repeatWidgetsSnapshot = lstRepeatWidget;
+    for (RepeatWidget *wid : repeatWidgetsSnapshot)
     {
         int numberRowDeletedInRepeat = 0;
         int numberRowInRepeat = wid->getRepeatData()->getLastRow() - wid->getRepeatData()->getFirstRow() + 1;
         int numberRowBeforeRepeat = 0;
 
 
-        foreach (QModelIndex index,  lstIndex) {
+        for (const QModelIndex &index : std::as_const(lstIndex)) {
 
             /// included in repeat, delete it
             if ( (index.row() >=  wid->getRepeatData()->getFirstRow()) && (index.row() <= wid->getRepeatData()->getLastRow()) )
@@ -608,7 +610,7 @@ bool WorkoutCreator::eventFilter(QObject *watched, QEvent *event) {
 void WorkoutCreator::ajustRepeatWidgetPosition() {
 
 
-    foreach (RepeatWidget *wid, lstRepeatWidget)
+    for (RepeatWidget *wid : std::as_const(lstRepeatWidget))
     {
 
 
@@ -637,7 +639,7 @@ void WorkoutCreator::deletedRepeatWidget(int id) {
 
     RepeatWidget *widgetToDelete = nullptr;
     /// Better way to delete without iterating over QList? Array worth it? small data set..
-    foreach (RepeatWidget *wid, lstRepeatWidget) {
+    for (RepeatWidget *wid : std::as_const(lstRepeatWidget)) {
         if (wid->getRepeatData()->getId() == id) {
 
             //Delete Repeat Increase Data associated with theses interval..

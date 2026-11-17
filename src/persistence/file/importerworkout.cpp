@@ -35,7 +35,7 @@ bool ImporterWorkout::batchImportWorkoutFromFolder(QString folderName, int userF
 
 
     //2 loop on all file (.erg and .mrc) and save them to .workout format
-    foreach (QString file, lstWorkoutPaths)
+    for (const QString &file : std::as_const(lstWorkoutPaths))
     {
         Workout workout = ImporterWorkout::importWorkoutFromFile(file, userFTP);
         XmlUtil::createWorkoutXml(workout, outputPath + workout.getName() + ".workout");

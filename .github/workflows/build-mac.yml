@@ -59,7 +59,7 @@ jobs:
       # qmake's built-in ccache feature prefixes the compiler (after macOS
       # xcrun resolution). A root .qmake.conf reaches every .pro in the repo,
       # including the test projects, without touching each qmake call.
-      run: echo 'CONFIG += ccache' > .qmake.conf
+      run: echo 'CONFIG += ccache' >> .qmake.conf
 
     - name: Prepare QWT cache target
       # /usr/local is root-owned on the macOS runners, so actions/cache could

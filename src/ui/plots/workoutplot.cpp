@@ -594,7 +594,7 @@ void WorkoutPlot::drawGraphIntervals() {
     int i=0;
     Interval lastVal;
 
-    foreach (Interval val, workout.getLstInterval()) {
+    for (const Interval &val : workout.getLstInterval()) {
 
 
         double secInterval = Util::convertQTimeToSecD(val.getDurationQTime());
@@ -928,19 +928,19 @@ void WorkoutPlot::updateMarkerTimeNow(double timeNow_sec) {
 
 
 void WorkoutPlot::showHideTargetPower(bool show) {
-    foreach(QwtPlotShapeItem *item, lstTargetPower) {
+    for (QwtPlotShapeItem *item : std::as_const(lstTargetPower)) {
         item->setVisible(show);
     }
     replot();
 }
 void WorkoutPlot::showHideTargetCadence(bool show) {
-    foreach(QwtPlotShapeItem *item, lstTargetCadence) {
+    for (QwtPlotShapeItem *item : std::as_const(lstTargetCadence)) {
         item->setVisible(show);
     }
     replot();
 }
 void WorkoutPlot::showHideTargetHr(bool show) {
-    foreach(QwtPlotShapeItem *item, lstTargetHr) {
+    for (QwtPlotShapeItem *item : std::as_const(lstTargetHr)) {
         item->setVisible(show);
     }
     replot();

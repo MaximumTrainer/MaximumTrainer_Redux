@@ -21,7 +21,7 @@ public:
         Q_UNUSED(isMainFrame);
         if (type == QWebEnginePage::NavigationTypeLinkClicked)
         {
-            foreach (QString urlToCheck, listExternalLink) {
+            for (const QString &urlToCheck : std::as_const(listExternalLink)) {
                 if (url.toString().contains(urlToCheck)) {
                     QDesktopServices::openUrl(url);
                     return false;

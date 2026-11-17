@@ -492,7 +492,7 @@ QMimeData* IntervalTableModel::mimeData(const QModelIndexList &indexes) const
 
 
     QList<int> lstRow;
-    foreach (QModelIndex index, indexes)
+    for (const QModelIndex &index : std::as_const(indexes))
     {
         if (!lstRow.contains(index.row()) && index.isValid()) {
             lstRow.append(index.row());
@@ -541,7 +541,7 @@ bool IntervalTableModel::dropMimeData(const QMimeData *data, Qt::DropAction acti
     }
 
     insertRows(beginRow, rows, QModelIndex());
-    foreach (Interval interval, lstInterval) {
+    for (const Interval &interval : std::as_const(lstInterval)) {
         QModelIndex idx = index(beginRow, 0, QModelIndex());
         QVariant stored;
         stored.setValue(interval);

@@ -141,7 +141,7 @@ bool XmlUtil::saveLocalSaveFile(Account *account) {
         ///-------------------------------------------------------------------------------------------------------
         writer.writeStartElement("WorkoutDone");
 
-        foreach (const QString value, account->hashWorkoutDone) {
+        for (const QString &value : std::as_const(account->hashWorkoutDone)) {
             if (value.size() > 1)
                 writer.writeTextElement("Workout", value);
         }
@@ -196,7 +196,7 @@ QList<Workout> XmlUtil::parseWorkoutLstPath(QStringList lstPath, Workout::WORKOU
     QList<Workout> lstWorkout;
     Workout workout;
 
-    foreach (QString filePath, lstPath)
+    for (const QString &filePath : std::as_const(lstPath))
     {
         workout = parseSingleWorkoutXml(filePath);
 
@@ -629,7 +629,8 @@ bool XmlUtil::createWorkoutXml(Workout workout, QString destinationPath) {
 
         ///---------------------- INTERVALS -----------------------------
         stream.writeStartElement("Intervals");
-        foreach (Interval interval, workout.getLstIntervalSource())
+        const QList<Interval> lstIntervalSource = workout.getLstIntervalSource();
+        for (const Interval &interval : lstIntervalSource)
         {
             stream.writeStartElement("Interval");
             stream.writeTextElement("Duration", interval.getDurationQTime().toString(Qt::ISODate));
@@ -669,7 +670,8 @@ bool XmlUtil::createWorkoutXml(Workout workout, QString destinationPath) {
 
         ///---------------------- REPEAT --------------------------------
         stream.writeStartElement("Repeats");
-        foreach (RepeatData repeat, workout.getLstRepeat())
+        const QList<RepeatData> lstRepeat = workout.getLstRepeat();
+        for (const RepeatData &repeat : lstRepeat)
         {
             stream.writeStartElement("Repeat");
             stream.writeTextElement("Id", QString::number(repeat.getId()));

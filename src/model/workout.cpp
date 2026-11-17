@@ -185,7 +185,7 @@ void Workout::computeWorkoutTotalTime() {
     double msecTotal = 0;
 
     /// Compute stats
-    foreach(Interval val, this->lstInterval)
+    for (const Interval &val : std::as_const(this->lstInterval))
     {
         msecTotal += time.msecsTo(val.getDurationQTime());
 
@@ -214,7 +214,7 @@ void Workout::initializeArrayFTP() {
 
     /// Calculate %FTP value for every second of the workout
     int secNow = 0;
-    foreach (Interval interval, lstInterval)
+    for (const Interval &interval : std::as_const(lstInterval))
     {
         int durationSecInterval =  Util::convertQTimeToSecD(interval.getDurationQTime());
 
