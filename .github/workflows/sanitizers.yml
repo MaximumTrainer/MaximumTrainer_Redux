@@ -185,11 +185,14 @@ jobs:
     - name: clang-tidy
       run: |
         python3 - <<'PY' > tidy-files.txt
-        import json
-        files = {e["file"] for e in json.load(open("compile_commands.json"))}
+        import json, os
+        files = {os.path.normpath(os.path.join(e["directory"], e["file"]))
+                 for e in json.load(open("compile_commands.json"))}
         print("\n".join(sorted(f for f in files
                                if "/src/" in f and "/src/fitness/fit/" not in f
                                and "/moc_" not in f and f.endswith(".cpp"))))
         PY
-        echo "Checking $(wc -l < tidy-files.txt) files with $(clang-tidy --version | grep -o 'version [0-9.]*')"
+        count=$(grep -c . tidy-files.txt || true)
+        if [ "$count" -lt 100 ]; then echo "::error::only $count source files found in compile_commands.json"; exit 1; fi
+        echo "Checking $count files with $(clang-tidy --version | grep -o 'version [0-9.]*')"
         xargs -P "$(nproc)" -n 4 clang-tidy -p . --quiet < tidy-files.txt
