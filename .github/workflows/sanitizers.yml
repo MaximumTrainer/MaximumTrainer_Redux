@@ -1,0 +1,110 @@
+name: Sanitizers
+
+# Runs the headless test suites under AddressSanitizer + UndefinedBehaviorSanitizer.
+# Standalone (not called from build.yml), so it never gates or slows a release.
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["**"]
+    paths-ignore: ['docs/**']
+  # Same-repo branches already run via push; pull_request only does work for forks.
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: sanitizers-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+env:
+  QT_VERSION: '6.11.3'
+  AQT_CONFIG: ${{ github.workspace }}/.github/aqt-settings.ini
+
+jobs:
+  asan_ubsan:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      QT_QPA_PLATFORM: offscreen
+      ASAN_OPTIONS: detect_leaks=1:detect_stack_use_after_return=1:strict_string_checks=1:halt_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Point apt at a reachable Ubuntu mirror
+      run: |
+        for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
+            echo "Using http://$host/ubuntu/"
+            echo "http://$host/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
+            sudo grep -rl 'azure\.archive\.ubuntu\.com\|//archive\.ubuntu\.com\|//security\.ubuntu\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
+              | xargs -r sudo sed -i -E "s#https?://(azure\.archive|archive|security)\.ubuntu\.com/ubuntu/?#http://$host/ubuntu/#g" || true
+            break
+          fi
+        done
+        printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99-ci-timeouts
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'linux_gcc_64'
+        modules: 'qtwebsockets qtconnectivity'
+        cache: true
+        cache-key-prefix: qt-linux-san
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y libssl-dev
+
+    - name: Set up ccache
+      uses: hendrikmuhs/ccache-action@v1.2.25
+      with:
+        key: linux-asan-qt${{ env.QT_VERSION }}
+        max-size: 400M
+        evict-old-files: job
+        job-summary: ccache stats
+
+    - name: Enable ccache + sanitizers in qmake
+      # Appended, not overwritten: the repo .qmake.conf carries project DEFINES.
+      run: |
+        printf '%s\n' \
+          'CONFIG += ccache sanitizer sanitize_address sanitize_undefined' \
+          'QMAKE_CXXFLAGS += -fno-omit-frame-pointer -fno-sanitize-recover=undefined' \
+          >> .qmake.conf
+        cat .qmake.conf
+
+    - name: Build and run suites under ASan + UBSan
+      run: |
+        mkdir -p build/tests sanitizer-logs
+        failed=""
+        for suite in $(grep -vE '^\s*(#|$)' .github/sanitizer-suites.txt); do
+          dir="tests/$(dirname "$suite")"; name="$(basename "$suite")"
+          echo "::group::$name"
+          if ( cd "$dir" && qmake "$name.pro" && make -j"$(nproc)" ) \
+             && ./build/tests/"$name" -v1 > "sanitizer-logs/$name.log" 2>&1; then
+            echo "PASS $name"
+          else
+            echo "::error title=Sanitizer::$name failed (see sanitizer-logs/$name.log)"
+            tail -n 80 "sanitizer-logs/$name.log" || true
+            failed="$failed $name"
+          fi
+          echo "::endgroup::"
+        done
+        if [ -n "$failed" ]; then echo "Failed suites:$failed"; exit 1; fi
+
+    - name: Upload sanitizer logs
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: sanitizer-logs
+        path: sanitizer-logs/
+        retention-days: 14

@@ -40,6 +40,7 @@ class TstBtleHub : public QObject
 private slots:
     // ── Test initialisation ──────────────────────────────────────────────────
     void init();
+    void cleanup();
 
     // ── Heart Rate parsing ───────────────────────────────────────────────────
     void testHr_uint8();
@@ -137,6 +138,12 @@ void TstBtleHub::init()
 {
     delete hub;
     hub = new BtleHub();
+}
+
+void TstBtleHub::cleanup()
+{
+    delete hub;
+    hub = nullptr;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

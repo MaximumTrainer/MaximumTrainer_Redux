@@ -257,7 +257,8 @@ void Workout::initializeArrayFTP() {
                 counter30sec++;
             }
         }
-        vecFtp30sec[i] = vecFtp30sec[i] /counter30sec;      // Avg on 30sec
+        if (counter30sec > 0)
+            vecFtp30sec[i] = vecFtp30sec[i] /counter30sec;      // Avg on 30sec
         counter30sec = 0;
     }
 
@@ -291,7 +292,7 @@ void Workout::calculateWorkoutMetrics() {
             counter++;
         }
     }
-    this->averagePower = avgFTP/counter * ftp;
+    this->averagePower = (counter > 0) ? avgFTP/counter * ftp : 0.0;
     ///--------------------------------------------
 
 
@@ -307,7 +308,8 @@ void Workout::calculateWorkoutMetrics() {
         vecAvgPowerEvery30sec[i] = vecAvgPowerEvery30sec[i]*vecAvgPowerEvery30sec[i]*vecAvgPowerEvery30sec[i]*vecAvgPowerEvery30sec[i]; //^4
         avgStep += vecAvgPowerEvery30sec[i];
     }
-    avgStep = avgStep/vecAvgPowerEvery30sec.size();
+    if (!vecAvgPowerEvery30sec.isEmpty())
+        avgStep = avgStep/vecAvgPowerEvery30sec.size();
 
 
     this->normalizedPower = qPow(avgStep, 1/4.);
@@ -315,7 +317,7 @@ void Workout::calculateWorkoutMetrics() {
 
 
     ///    Intensity Factor = NP/FTP
-    this->intensityFactor = normalizedPower/ftp;
+    this->intensityFactor = (ftp > 0) ? normalizedPower/ftp : 0.0;
 
     /// Training Stress Score  = (IF^2) * DurationHrs x 100
     this->trainingStressScore = (intensityFactor*intensityFactor) * (Util::convertQTimeToSecD(this->durationQTime)/3600) * 100;

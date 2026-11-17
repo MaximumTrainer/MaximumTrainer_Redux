@@ -386,9 +386,12 @@ private slots:
 
         // The 8-parameter Workout constructor already calls
         // calculateWorkoutMetrics() internally; constructing it with FTP=0
-        // must not crash.
+        // must not crash, and must not produce NaN metrics (NP / 0).
         // Restore the original account for subsequent tests
         qApp->setProperty("Account", QVariant::fromValue<Account *>(m_account));
+
+        QCOMPARE(w.getIntensityFactor(), 0.0);
+        QCOMPARE(w.getTrainingStressScore(), 0.0);
 
         qDebug().noquote() << "[Metrics] FTP=0 did not crash — PASS";
     }
@@ -460,6 +463,8 @@ private slots:
         );
 
         QCOMPARE(w.getLstInterval().size(), 0);
+        QCOMPARE(w.getAveragePower(), 0.0);
+        QCOMPARE(w.getNormalizedPower(), 0.0);
         qDebug().noquote() << "[Creator] Empty interval list → count 0 — PASS";
     }
 
