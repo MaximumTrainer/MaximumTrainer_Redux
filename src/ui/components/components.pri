@@ -10,6 +10,7 @@ SOURCES +=\
     $$PWD/bottombar.cpp \
     $$PWD/topmenuworkout.cpp \
     $$PWD/balancewidget.cpp \
+    $$PWD/postworkoutpanel.cpp \
     $$PWD/clickablelabel.cpp \
     $$PWD/fancytab.cpp \
     $$PWD/fancytabbar.cpp \
@@ -36,6 +37,7 @@ HEADERS +=\
     $$PWD/bottombar.h \
     $$PWD/topmenuworkout.h \
     $$PWD/balancewidget.h \
+    $$PWD/postworkoutpanel.h \
     $$PWD/clickablelabel.h \
     $$PWD/fancytab.h \
     $$PWD/fancytabbar.h \

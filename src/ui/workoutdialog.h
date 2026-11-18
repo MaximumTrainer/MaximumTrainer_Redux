@@ -218,15 +218,6 @@ private slots:
     void adjustWorkoutDifficulty(int percentage);
 
     // Post-workout upload slots
-    void uploadToStrava();
-    void doStravaUpload();   ///< the actual upload, after any token refresh
-    void setStravaPostStatus(const QString &text, bool retryable);
-    void uploadToIntervalsIcu();
-    void setIntervalsIcuPostStatus(const QString &text, bool retryable);
-    void slotPostIntervalsIcuUploadDone();
-    void slotPostStravaUploadDone();
-    void slotPostStravaCheckStatus();
-    void slotPostStravaStatusDone();
 
 
 private:
@@ -377,16 +368,11 @@ private:
     QList<Achievement> earnedAchievements;
 
     // Post-workout upload panel and stored FIT file info
-    QWidget *widgetPostWorkout = nullptr;
+    class PostWorkoutPanel *widgetPostWorkout = nullptr;
     QString fitFilePath;
     QString fitFileName;
     QString fitFileDescription;
     bool    m_quitAfterSave = false;   // suppress panel when saving-and-quitting
-    QNetworkReply *replyPostStravaUpload   = nullptr;
-    QNetworkReply *replyPostStravaStatus   = nullptr;
-    QTimer        *timerPostStravaStatus   = nullptr;
-    qint64         stravaUploadID_post     = 0;
-    QNetworkReply *replyPostIntervalsIcuUpload = nullptr;
 
 
     QString msgPairingDone;
@@ -511,7 +497,6 @@ private:
     void sendGroupTelemetry();
     bool testResultShown;
     /// One automatic refresh-and-retry when a Strava upload answers 401.
-    bool m_stravaUpload401Retried = false;
 
 
     /// disable screen saver
