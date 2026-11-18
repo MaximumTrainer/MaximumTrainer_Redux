@@ -448,6 +448,22 @@ private slots:
     // -----------------------------------------------------------------------
     // 15. Empty interval list → zero interval count, no crash
     // -----------------------------------------------------------------------
+    // A workout longer than 24 h: durationQTime wraps, but the per-second FTP
+    // array must still cover every interval (heap overflow found by fuzzing).
+    void testWorkoutLongerThan24Hours()
+    {
+        QList<Interval> ivs;
+        for (int hour = 0; hour < 25; ++hour)
+            ivs.append(makeInterval(QTime(1, 0, 0), "Hour", Interval::FLAT, 0.60, 0.60));
+
+        const Workout w(QStringLiteral(""), Workout::USER_MADE, ivs,
+                        QStringLiteral("Very Long"), QStringLiteral("CI"),
+                        QStringLiteral("25 x 1 h"), QStringLiteral("Test"), Workout::T_ENDURANCE);
+
+        QCOMPARE(w.getLstInterval().size(), 25);
+        QVERIFY(w.getAveragePower() > 0.0);
+    }
+
     void testEmptyWorkout()
     {
         const QList<Interval> empty;

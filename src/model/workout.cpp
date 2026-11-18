@@ -206,8 +206,14 @@ void Workout::initializeArrayFTP() {
 
     int totalSec  = Util::convertQTimeToSecD(this->durationQTime);
 
+    // durationQTime wraps at 24 h, but the loop below walks every interval, so
+    // size the array from the intervals themselves when they add up to more.
+    qint64 intervalsTotalSec = 0;
+    for (const Interval &interval : std::as_const(lstInterval))
+        intervalsTotalSec += Util::convertQTimeToSecD(interval.getDurationQTime());
+
     /// 1 - Create array for expected FTP at every second -------------------------
-    const int sizeArray = totalSec + 30; //30 safety
+    const int sizeArray = int(qMax<qint64>(totalSec, intervalsTotalSec)) + 30; //30 safety
     const double initValueArrayFTP = -1.0;
     this->vecFtp1sec = QVector<double>(sizeArray, initValueArrayFTP);
 
