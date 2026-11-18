@@ -23,7 +23,7 @@ public:
 
     void updateData(bool studioMode, int secReceived,
                     double hr, double cadence, double speed, double power,
-                    double rightPedal, double avgLeftTorqueEff, double avgRightTorqueEff, double avgLeftPedalSmooth, double avgRightPedalSmooth, double avgCombinedPedalSmooth,
+                    double rightPedal,
                     double saturatedHemoglobinPercent, double totalHemoglobinConc);
     void checkUpdateMaxHr(int);
     void checkUpdateMaxCad(int);
@@ -186,11 +186,6 @@ private:
     double lastSpeed = -1;
     double lastPower = -1;
     double lastRightPedal = -1;
-    double  lastLeftTorqueEff = -1;
-    double lastRightTorqueEff = -1;
-    double lastLeftPedalSmooth = -1;
-    double lastRightPedalSmooth = -1;
-    double lastCombinedPedalSmooth = -1;
     double lastSaturatedHemoglobinPercent = -1;
     double lastTotalHemoglobinConc = -1;
 
@@ -199,7 +194,6 @@ private:
     int numberTimeUsedLastSpeed = 0;
     int numberTimeUsedLastPower = 0;
     int numberTimeUsedLastRightPedal = 0;
-    int numberTimeUsedLastLeftTorqueEff = 0;
     int numberTimeUsedLastSaturatedHemoglobinPercent = 0;
 
 

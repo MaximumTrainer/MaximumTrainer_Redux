@@ -284,7 +284,7 @@ void FitActivityCreator::writeLapMesg(double timeStarted, double timeNow, int ti
 
 void FitActivityCreator::writeRecord(int timeNow,
                                      double averageHr1sec, double averageCadence1sec, double averageSpeed1sec, double averagePower1sec,
-                                     double rightPedal, double avgLeftTorqueEff, double avgRightTorqueEff, double avgLeftPedalSmooth, double avgRightPedalSmooth, double avgCombinedPedalSmooth,
+                                     double rightPedal,
                                      double saturatedHemoglobinPercent, double totalHemoglobinConc) {
 
 
@@ -330,23 +330,6 @@ void FitActivityCreator::writeRecord(int timeNow,
     if (rightPedal != -1) {
         recordMesg.SetLeftRightBalance(128 + rightPedal);
     }
-    if (avgLeftTorqueEff != -1) {
-        recordMesg.SetLeftTorqueEffectiveness(avgLeftTorqueEff);
-    }
-    if (avgRightTorqueEff != -1) {
-        recordMesg.SetRightTorqueEffectiveness(avgRightTorqueEff);
-    }
-
-    if (avgLeftPedalSmooth != -1) {
-        recordMesg.SetLeftPedalSmoothness(avgLeftPedalSmooth);
-    }
-    if (avgRightPedalSmooth != -1) {
-        recordMesg.SetRightPedalSmoothness(avgRightPedalSmooth);
-    }
-    if (avgCombinedPedalSmooth != -1) {
-        recordMesg.SetCombinedPedalSmoothness(avgCombinedPedalSmooth);
-    }
-
     if (saturatedHemoglobinPercent != -1 && totalHemoglobinConc != -1) {
         recordMesg.SetSaturatedHemoglobinPercent(saturatedHemoglobinPercent);
         recordMesg.SetTotalHemoglobinConc(totalHemoglobinConc);

@@ -1485,7 +1485,6 @@ void MainWindow::startSimulatedWorkout(const Workout &workout)
         connect(simHub, &SimulatorHub::signal_speed, w, &WorkoutDialog::TrainerSpeedDataReceived);
         connect(simHub, &SimulatorHub::signal_power, w, &WorkoutDialog::PowerDataReceived);
         connect(simHub, &SimulatorHub::signal_balance, w, &WorkoutDialog::PowerBalanceDataReceived);
-        connect(simHub, &SimulatorHub::signal_pedal, w, &WorkoutDialog::pedalMetricReceived);
         connect(simHub, &SimulatorHub::signal_oxygen, w, &WorkoutDialog::OxygenValueChanged);
 
         connect(w, &WorkoutDialog::setLoad, simHub, &SimulatorHub::setLoad);
@@ -1580,9 +1579,8 @@ void MainWindow::startWorkoutWithConnectedHub(const Workout &workout, BtleHub *b
     connect(btleHub, &BtleHub::signal_speed, w, &WorkoutDialog::TrainerSpeedDataReceived);
     connect(btleHub, &BtleHub::signal_power, w, &WorkoutDialog::PowerDataReceived);
 #ifndef GC_WASM_BUILD
-    // The Web Bluetooth hub has no L/R balance or pedal-metric signals.
+    // The Web Bluetooth hub has no L/R balance signal.
     connect(btleHub, &BtleHub::signal_balance, w, &WorkoutDialog::PowerBalanceDataReceived);
-    connect(btleHub, &BtleHub::signal_pedal, w, &WorkoutDialog::pedalMetricReceived);
 #endif
     connect(btleHub, &BtleHub::signal_oxygen, w, &WorkoutDialog::OxygenValueChanged);
     connect(btleHub, &BtleHub::signal_battery, w, &WorkoutDialog::batteryStatusReceived);
@@ -1712,7 +1710,6 @@ void MainWindow::wireHubsToDialog(WorkoutDialog *w,
         powerHub = hub;
         connect(hub, &BtleHub::signal_power, w, &WorkoutDialog::PowerDataReceived);
         connect(hub, &BtleHub::signal_balance, w, &WorkoutDialog::PowerBalanceDataReceived);
-        connect(hub, &BtleHub::signal_pedal, w, &WorkoutDialog::pedalMetricReceived);
     };
     auto wireCadence = [&](BtleHub *hub) {
         if (cadenceHub == hub) return;
@@ -2006,7 +2003,6 @@ void MainWindow::launchDemoWorkout()
     connect(m_ssSimHub, &SimulatorHub::signal_speed, m_ssWorkoutDlg, &WorkoutDialog::TrainerSpeedDataReceived);
     connect(m_ssSimHub, &SimulatorHub::signal_power, m_ssWorkoutDlg, &WorkoutDialog::PowerDataReceived);
     connect(m_ssSimHub, &SimulatorHub::signal_balance, m_ssWorkoutDlg, &WorkoutDialog::PowerBalanceDataReceived);
-    connect(m_ssSimHub, &SimulatorHub::signal_pedal, m_ssWorkoutDlg, &WorkoutDialog::pedalMetricReceived);
     connect(m_ssSimHub, &SimulatorHub::signal_oxygen, m_ssWorkoutDlg, &WorkoutDialog::OxygenValueChanged);
 
     m_ssSimHub->start();
@@ -2111,11 +2107,7 @@ void MainWindow::sensorCheckNextStep()
     case 5:   // L/R balance + pedal metrics (now decoded + wired)
         m_ssWorkoutDlg->PowerBalanceDataReceived(1, 53);
         grab(QStringLiteral("balance_only"));  // what a Bluetooth power meter provides
-        m_ssWorkoutDlg->pedalMetricReceived(1, 95.0, 92.0, 0.62, 0.55, 0.58);
-        grab(QStringLiteral("balance_pedal"));
-        m_scReport << QStringLiteral("BALANCE  : Right 53%% + torque/smoothness -> sensor_balance_pedal.png "
-                                     "(balance now decoded from CPM 0x2A63 + wired; pedal metrics driven "
-                                     "by the simulator, real-sensor decode pending CP Vector 0x2A64)");
+        m_scReport << QStringLiteral("BALANCE  : Right 53%% -> sensor_balance_only.png (decoded from CPM 0x2A63)");
         break;
     case 6:   // ERG / trainer-control output captured since start
         grab(QStringLiteral("erg"));
@@ -2369,7 +2361,6 @@ void MainWindow::screenshotNextStep()
             connect(simHub, &SimulatorHub::signal_speed, m_ssWorkoutDlg, &WorkoutDialog::TrainerSpeedDataReceived);
             connect(simHub, &SimulatorHub::signal_power, m_ssWorkoutDlg, &WorkoutDialog::PowerDataReceived);
             connect(simHub, &SimulatorHub::signal_balance, m_ssWorkoutDlg, &WorkoutDialog::PowerBalanceDataReceived);
-            connect(simHub, &SimulatorHub::signal_pedal, m_ssWorkoutDlg, &WorkoutDialog::pedalMetricReceived);
             simHub->start();
             m_ssStudioHubs.append(simHub);
         }

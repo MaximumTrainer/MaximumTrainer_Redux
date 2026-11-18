@@ -94,11 +94,6 @@ DataWorkout::DataWorkout(Workout workout, int userftp, QObject *parent) : QObjec
     lastSpeed = -1;
     lastPower = -1;
     lastRightPedal = -1;
-    lastLeftTorqueEff = -1;
-    lastRightTorqueEff = -1;
-    lastLeftPedalSmooth = -1;
-    lastRightPedalSmooth = -1;
-    lastCombinedPedalSmooth = -1;
     lastSaturatedHemoglobinPercent = -1;
     lastTotalHemoglobinConc = -1;
 
@@ -107,7 +102,6 @@ DataWorkout::DataWorkout(Workout workout, int userftp, QObject *parent) : QObjec
     numberTimeUsedLastSpeed = 0;
     numberTimeUsedLastPower = 0;
     numberTimeUsedLastRightPedal = 0;
-    numberTimeUsedLastLeftTorqueEff = 0;
     numberTimeUsedLastSaturatedHemoglobinPercent = 0;
 
 
@@ -145,7 +139,7 @@ QString DataWorkout::getFitFilename() {
 
 void DataWorkout::updateData(bool studioMode, int secReceived,
                              double averageHr1sec, double averageCadence1sec, double averageSpeed1sec, double averagePower1sec,
-                             double rightPedal, double avgLeftTorqueEff, double avgRightTorqueEff, double avgLeftPedalSmooth, double avgRightPedalSmooth, double avgCombinedPedalSmooth,
+                             double rightPedal,
                              double saturatedHemoglobinPercent, double totalHemoglobinConc) {
 
 
@@ -230,27 +224,6 @@ void DataWorkout::updateData(bool studioMode, int secReceived,
             rightPedal = lastRightPedal;
             numberTimeUsedLastRightPedal++;      }
     }
-    // -- Pedal Metric ------------------------------------------------------------------
-    if (avgLeftTorqueEff != -1) {
-        writeRecord = true;
-        lastLeftTorqueEff = avgLeftTorqueEff;
-        lastRightTorqueEff = avgRightTorqueEff;
-        lastLeftPedalSmooth = avgLeftPedalSmooth;
-        lastRightPedalSmooth = avgRightPedalSmooth;
-        lastCombinedPedalSmooth = avgCombinedPedalSmooth;
-        numberTimeUsedLastLeftTorqueEff = 0;
-    }
-    else {
-        if (lastLeftTorqueEff != -1 && numberTimeUsedLastLeftTorqueEff < constants::nbMaxRepeatPointFitFile) {
-            writeRecord = true;
-            avgLeftTorqueEff = lastLeftTorqueEff;
-            avgRightTorqueEff = lastRightTorqueEff;
-            avgLeftPedalSmooth = lastLeftPedalSmooth;;
-            avgRightPedalSmooth = lastRightPedalSmooth;
-            avgCombinedPedalSmooth = lastCombinedPedalSmooth;
-            numberTimeUsedLastLeftTorqueEff++;
-        }
-    }
     // -- Muscle Oxygen ------------------------------------------------------------------
     if (saturatedHemoglobinPercent != -1 && totalHemoglobinConc!= -1) {
         writeRecord = true;
@@ -271,7 +244,7 @@ void DataWorkout::updateData(bool studioMode, int secReceived,
     if (writeRecord) {
         fitCreator.writeRecord(secReceived,
                                averageHr1sec, averageCadence1sec, averageSpeed1sec, averagePower1sec,
-                               rightPedal, avgLeftTorqueEff, avgRightTorqueEff, avgLeftPedalSmooth,avgRightPedalSmooth, avgCombinedPedalSmooth,
+                               rightPedal,
                                saturatedHemoglobinPercent, totalHemoglobinConc);
     }
 
