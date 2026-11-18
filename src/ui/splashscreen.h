@@ -44,6 +44,7 @@ public:
 
 protected:
     void drawContents(QPainter *painter) override;
+    bool event(QEvent *event) override;
 
 private:
     QProgressBar *m_progressBar { nullptr };
