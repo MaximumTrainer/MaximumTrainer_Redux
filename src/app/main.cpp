@@ -497,6 +497,18 @@ int main(int argc, char *argv[]) {
 
     // --sensor-check [dir]: bypass login, run the headless BLE sensor-validation
     // pass (inject each sensor type → screenshot + capture trainer-control), quit.
+    // --bench-workout [seconds]: CPU usage of a running simulated workout.
+    if (cliArgs.contains(QLatin1String("--bench-workout"), Qt::CaseInsensitive)) {
+        splash.hide();
+        MainWindow *w = launchMainWindow();
+        int seconds = 60;
+        const int idx = cliArgs.indexOf(QLatin1String("--bench-workout"));
+        if (idx >= 0 && idx + 1 < cliArgs.size() && cliArgs.at(idx + 1).toInt() > 0)
+            seconds = cliArgs.at(idx + 1).toInt();
+        QMetaObject::invokeMethod(w, "runWorkoutBenchmark", Qt::QueuedConnection, Q_ARG(int, seconds));
+        return app.exec();
+    }
+
     if (cliArgs.contains(QLatin1String("--sensor-check"), Qt::CaseInsensitive)) {
         splash.hide();
         MainWindow *w = launchMainWindow();
