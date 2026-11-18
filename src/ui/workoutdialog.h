@@ -39,6 +39,7 @@
 class DialogConfig;     // forward declaration
 class WebBrowserView;   // forward declaration (lazily created web video player)
 class QQuickWidget;
+class WorkoutRaceView;
 class RetroRaceController;   // retro ghost-race view
 class ZwiftClickManager;     // Zwift Click v2 (right) controller input, direct BLE
 class GroupSession;
@@ -323,10 +324,10 @@ private:
     // in the same slot as the video player. Opponent is this workout's most
     // recent past ride, or a computer pacer when there is no history yet; the
     // player is driven by live trainer power.
-    QQuickWidget        *raceView       = nullptr;
+    WorkoutRaceView     *m_raceView     = nullptr;
+    QQuickWidget        *raceView       = nullptr;   // m_raceView's view and controller
     RetroRaceController *raceController = nullptr;
-    QQuickWidget *ensureRaceView();
-    QVariantList buildWorkoutProfile() const;   // normalised target-power samples
+    WorkoutRaceView *ensureRaceView();
     void onToggleGameFullscreen();              // collapse/restore the data panes
     bool m_gameFullscreen = false;
     QList<int> m_savedSplitterSizes;
