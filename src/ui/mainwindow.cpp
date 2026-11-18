@@ -1,4 +1,6 @@
 #include "mainwindow.h"
+
+#include <functional>
 #include "setting_keys.h"
 #include "ui_mainwindow.h"
 
@@ -69,6 +71,47 @@
 #include "groupsession.h"
 #include "groupworkoutcodec.h"
 #include "joingroupdialog.h"
+
+namespace {
+/// Runs @p load the first time @p view is shown, so pages on tabs the user
+/// never opens do not start a Chromium renderer (memory, network, JS) at login.
+class LoadOnFirstShow : public QObject
+{
+public:
+    LoadOnFirstShow(QWidget *view, std::function<void()> load)
+        : QObject(view), m_load(std::move(load))
+    {
+        if (view->isVisible()) {
+            QTimer::singleShot(0, this, [this]() { fire(); });
+            return;
+        }
+        view->installEventFilter(this);
+    }
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override
+    {
+        if (event->type() == QEvent::Show) {
+            watched->removeEventFilter(this);
+            fire();
+        }
+        return false;
+    }
+
+private:
+    void fire()
+    {
+        if (!m_load)
+            return;
+        auto load = std::move(m_load);
+        m_load = nullptr;
+        deleteLater();
+        load();
+    }
+
+    std::function<void()> m_load;
+};
+} // namespace
 
 #ifdef GC_WASM_BUILD
 #include <emscripten.h>
@@ -181,7 +224,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Load Intervals.icu athlete calendar, or show a setup prompt if no credentials configured
     if (!account->intervals_icu_athlete_id.isEmpty()) {
-        ui->webView_plan->setUrl(QUrl(urlIntervalsIcuCalendar.arg(account->intervals_icu_athlete_id)));
+        new LoadOnFirstShow(ui->webView_plan, [this]() {
+            ui->webView_plan->setUrl(QUrl(urlIntervalsIcuCalendar.arg(account->intervals_icu_athlete_id)));
+        });
     } else {
         ui->webView_plan->setHtml(
             QStringLiteral(
@@ -196,10 +241,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     }
 
     // ── Trainerweb integration ────────────────────────────────────────────────
-    ui->webView_trainerweb_plans->setUrl(
-        QUrl(QStringLiteral("https://trainerdb-84bdb.firebaseapp.com/listplan")));
-    ui->webView_trainerweb_creator->setUrl(
-        QUrl(QStringLiteral("https://trainerdb-84bdb.firebaseapp.com/listworkoutcreator")));
+    new LoadOnFirstShow(ui->webView_trainerweb_plans, [this]() {
+        ui->webView_trainerweb_plans->setUrl(
+            QUrl(QStringLiteral("https://trainerdb-84bdb.firebaseapp.com/listplan")));
+    });
+    new LoadOnFirstShow(ui->webView_trainerweb_creator, [this]() {
+        ui->webView_trainerweb_creator->setUrl(
+            QUrl(QStringLiteral("https://trainerdb-84bdb.firebaseapp.com/listworkoutcreator")));
+    });
 #ifndef GC_WASM_BUILD
     {
         // Intercept workout file downloads from both Trainerweb sub-views.
