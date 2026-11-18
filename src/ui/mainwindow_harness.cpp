@@ -14,6 +14,7 @@
 #include <QDesktopServices>
 #include <QApplication>
 #include <QFileDialog>
+#include <QElapsedTimer>
 #include <QTimer>
 #include <QDir>
 #include <QFile>
@@ -567,3 +568,64 @@ void MainWindow::screenshotNextStep()
     else
         scheduleScreenshotQuit();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Workout benchmark (--bench-workout [seconds])
+//
+// Runs the simulated demo workout and reports the CPU the whole process used
+// while it ran, as a repeatable baseline for performance work. The first few
+// seconds (dialog construction, first layout) are excluded.
+// ─────────────────────────────────────────────────────────────────────────────
+#if !defined(Q_OS_WIN) && !defined(Q_OS_WASM)
+#include <sys/resource.h>
+
+static double processCpuSeconds()
+{
+    rusage usage{};
+    getrusage(RUSAGE_SELF, &usage);
+    return usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6
+         + usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6;
+}
+
+void MainWindow::runWorkoutBenchmark(int seconds)
+{
+    // Phase 1: the workout screen open but not started (what a rider sees
+    // before pedalling). Phase 2: the workout running.
+    struct Window { double cpu; qint64 wallMs; };
+    auto measure = [](const Window &start, const QElapsedTimer &wall, const char *label) {
+        const double cpu = processCpuSeconds() - start.cpu;
+        const double elapsed = (wall.elapsed() - start.wallMs) / 1000.0;
+        const QString line = QStringLiteral("BENCH %1: %2 s wall, %3 s CPU, %4 % of one core")
+                                 .arg(QLatin1String(label)).arg(elapsed, 0, 'f', 1).arg(cpu, 0, 'f', 2)
+                                 .arg(100.0 * cpu / elapsed, 0, 'f', 1);
+        fprintf(stderr, "%s\n", qPrintable(line));
+        LOG_INFO("Benchmark", line);
+        return elapsed;
+    };
+    launchDemoWorkout();
+    auto *wall = new QElapsedTimer;
+    wall->start();
+    QTimer::singleShot(3000, this, [this, seconds, wall, measure]() {
+        const Window idle{processCpuSeconds(), wall->elapsed()};
+        QTimer::singleShot(15000, this, [this, seconds, wall, measure, idle]() {
+            measure(idle, *wall, "idle (not started)");
+            QMetaObject::invokeMethod(m_ssWorkoutDlg, "start_or_pause_workout", Qt::DirectConnection);
+            QTimer::singleShot(3000, this, [this, seconds, wall, measure]() {
+                const Window running{processCpuSeconds(), wall->elapsed()};
+                QTimer::singleShot(seconds * 1000, this, [wall, measure, running]() {
+                    measure(running, *wall, "running");
+                    delete wall;
+                    QCoreApplication::quit();
+                });
+            });
+        });
+    });
+}
+#else
+void MainWindow::runWorkoutBenchmark(int seconds)
+{
+    Q_UNUSED(seconds)
+    fprintf(stderr, "--bench-workout is not supported on this platform\n");
+    QCoreApplication::quit();
+}
+#endif

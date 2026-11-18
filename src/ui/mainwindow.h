@@ -74,6 +74,9 @@ public slots:
     /// (setLoad/setSlope) to prove ERG actually drives the trainer. Writes a
     /// report then quits. Entry: --sensor-check [dir].
     void runSensorCheck(const QString &outDir);
+    /// --bench-workout: run the simulated demo workout headless for @p seconds,
+    /// then print the process CPU usage over that window and quit.
+    void runWorkoutBenchmark(int seconds);
 
     /// Launch the demo workout dialog (simulator-driven, non-modal) used by
     /// screenshot mode and, on WASM, by the `window.mt_startDemoWorkout` test
