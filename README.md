@@ -192,10 +192,21 @@ MaximumTrainer has a multi-tier test suite covering BLE parsing, service APIs, U
 | Logger tests | `tests/logger/` | Log level filtering, output format, file write enable/disable |
 | Studio tests | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling |
 | Group workout tests | `tests/group/` | Room-code parsing, message encode/decode, clock-offset estimate, rider-row states, group-ride start and telemetry; live relay test when `GROUP_RELAY_URL` is set |
+| Retro race tests | `tests/game/` | Race ambient clock vs replay speed, frame updates from per-second setters, native road rendering |
 | Login screen tests | `tests/integration/` | OAuth dialog state, offline login path, Intervals.icu OAuth URL generation |
 | Workout UI tests | `tests/integration/` | Full ERG session driven by SimulatorHub through WorkoutDialog; interval advancement; data accumulation |
 | Offline / BLE integration | `tests/integration/` | BLE adapter smoke test, offline mode screenshot, runtime validation |
 | Playwright (E2E) | `tests/playwright/` | WASM asset loading, Web Bluetooth API mock, login screen, landing page |
+
+### Sanitizers, static analysis and fuzzing
+
+`sanitizers.yml` runs the headless suites (`.github/sanitizer-suites.txt`) under
+AddressSanitizer + UndefinedBehaviorSanitizer, gates on clang-tidy, measures
+coverage, and runs the libFuzzer targets in `tests/fuzz` (FIT decoder, BLE
+notifications, `.zwo` import) for 60 s each on every push. `fuzz-nightly.yml`
+fuzzes them for 20 minutes each overnight with a corpus kept between runs, and
+opens a `fuzz` issue when it finds a crash. Inputs that once crashed live in
+`tests/fuzz/regressions/` and are replayed on every run.
 
 ### Running the BLE unit tests
 

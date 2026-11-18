@@ -280,9 +280,11 @@ void RetroRaceController::togglePause()
 
 void RetroRaceController::tick()
 {
-    const double dt = (m_clock.restart() / 1000.0) * m_timeScale;
+    const double wallDt = m_clock.restart() / 1000.0;
+    const double dt = wallDt * m_timeScale;
     if (dt <= 0.0)
         return;
+    m_animClock += wallDt;
 
     // Before the gun (incl. while still choosing an opponent): riders sit at the
     // start line, but the player's legs free-spin from live cadence so you can
