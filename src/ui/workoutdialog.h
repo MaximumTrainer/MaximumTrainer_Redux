@@ -43,6 +43,7 @@ class RetroRaceController;   // retro ghost-race view
 class ZwiftClickManager;     // Zwift Click v2 (right) controller input, direct BLE
 class GroupSession;
 class GroupPanel;
+class GroupRideCoordinator;
 
 namespace Ui {
 class WorkoutDialog;
@@ -481,20 +482,8 @@ private:
     bool isWorkoutOver;
     bool isWorkoutPaused;
 
-    QPointer<GroupSession> m_groupSession;
     GroupPanel *m_groupPanel = nullptr;
-    QTimer *m_groupStartTimer = nullptr;
-    QTimer *m_groupCountdownTimer = nullptr;
-    bool m_groupAwaitingStart = false;
-    qint64 m_groupStartLocalMs = 0;
-    QTimer *m_groupTelemetryTimer = nullptr;
-    struct GroupSample { int value = 0; qint64 atMs = 0; };
-    GroupSample m_groupLatestPower;
-    GroupSample m_groupLatestHr;
-    GroupSample m_groupLatestCadence;
-    void onGroupStartScheduled(qint64 localStartMs);
-    void beginGroupRide();
-    void sendGroupTelemetry();
+    GroupRideCoordinator *m_groupRide = nullptr;
     bool testResultShown;
     /// One automatic refresh-and-retry when a Strava upload answers 401.
 

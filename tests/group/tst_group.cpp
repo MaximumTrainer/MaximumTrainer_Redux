@@ -7,6 +7,7 @@
 #include "groupprotocol.h"
 #include "groupsession.h"
 #include "groupridersmodel.h"
+#include "groupridecoordinator.h"
 
 using namespace GroupProtocol;
 
@@ -29,6 +30,10 @@ private slots:
     void ridersModelStates();
     void ridersModelDetailShowsBehindAndAhead();
     void ridersModelKeepsTelemetryAcrossRosterChanges();
+    void coordinatorPastStartRidesAtOnceAndSendsTelemetry();
+    void coordinatorFutureStartCountsDownThenRides();
+    void coordinatorOmitsMissingSensorsAndStopsWhenDone();
+    void coordinatorIgnoresStartAfterRideBegan();
     void liveTwoRidersShareStartAndTelemetry();
     void liveHostReadyAfterDelaySurvivesJoins();
 
@@ -318,6 +323,95 @@ void TstGroup::liveHostReadyAfterDelaySurvivesJoins() {
         if (entry.riderId == host.riderId()) QVERIFY2(entry.isReady, "host lost its ready flag");
     for (GroupSession *rider : riders) { rider->leave(); rider->deleteLater(); }
     host.leave();
+}
+
+void TstGroup::coordinatorPastStartRidesAtOnceAndSendsTelemetry()
+{
+    GroupSession session(QUrl(QStringLiteral("ws://127.0.0.1:9")));
+    GroupRideCoordinator::RideSnapshot ride;
+    ride.elapsedSeconds = 12.5;
+    ride.intervalIndex = 3;
+    ride.targetPowerWatts = 220;
+    ride.ftpWatts = 200;
+    GroupRideCoordinator coordinator(&session, [&ride]() { return ride; });
+    QSignalSpy scheduled(&coordinator, &GroupRideCoordinator::startScheduled);
+    QSignalSpy started(&coordinator, &GroupRideCoordinator::rideStarted);
+    QSignalSpy sent(&coordinator, &GroupRideCoordinator::telemetrySent);
+    connect(&coordinator, &GroupRideCoordinator::rideStarted, this, [&ride]() { ride.started = true; });
+    coordinator.begin();
+    QVERIFY(coordinator.awaitingStart());
+
+    coordinator.recordPower(250);
+    coordinator.recordHeartRate(150);
+    const qint64 alreadyStarted = QDateTime::currentMSecsSinceEpoch() - 2000;
+    emit session.startScheduled(alreadyStarted);
+
+    QCOMPARE(scheduled.count(), 1);
+    QCOMPARE(scheduled.first().first().toLongLong(), alreadyStarted);
+    QCOMPARE(started.count(), 1);
+    QVERIFY(!coordinator.awaitingStart());
+    QCOMPARE(sent.count(), 1);
+    const auto telemetry = sent.first().first().value<RiderTelemetry>();
+    QCOMPARE(telemetry.elapsedWorkoutSeconds, 12.5);
+    QCOMPARE(telemetry.intervalIndex, 3);
+    QCOMPARE(telemetry.powerWatts, std::optional<int>(250));
+    QCOMPARE(telemetry.heartRateBpm, std::optional<int>(150));
+    QVERIFY(!telemetry.cadenceRpm);
+    QCOMPARE(telemetry.targetPowerWatts, std::optional<int>(220));
+    QCOMPARE(telemetry.percentFtp, std::optional<int>(125));
+    QCOMPARE(telemetry.status, RiderStatus::Riding);
+}
+
+void TstGroup::coordinatorFutureStartCountsDownThenRides()
+{
+    GroupSession session(QUrl(QStringLiteral("ws://127.0.0.1:9")));
+    GroupRideCoordinator::RideSnapshot ride;
+    GroupRideCoordinator coordinator(&session, [&ride]() { return ride; });
+    QSignalSpy started(&coordinator, &GroupRideCoordinator::rideStarted);
+    QSignalSpy status(&coordinator, &GroupRideCoordinator::statusChanged);
+    coordinator.begin();
+
+    const qint64 startAt = QDateTime::currentMSecsSinceEpoch() + 600;
+    emit session.startScheduled(startAt);
+    QCOMPARE(coordinator.scheduledStartLocalMs(), startAt);
+    QCOMPARE(started.count(), 0);
+    QTRY_VERIFY_WITH_TIMEOUT(status.count() >= 2, 2000);   // countdown ticks
+    QTRY_COMPARE_WITH_TIMEOUT(started.count(), 1, 3000);
+    QVERIFY(QDateTime::currentMSecsSinceEpoch() >= startAt - 20);
+}
+
+void TstGroup::coordinatorOmitsMissingSensorsAndStopsWhenDone()
+{
+    GroupSession session(QUrl(QStringLiteral("ws://127.0.0.1:9")));
+    GroupRideCoordinator::RideSnapshot ride;
+    ride.started = true;
+    ride.over = true;
+    ride.ftpWatts = 200;
+    GroupRideCoordinator coordinator(&session, [&ride]() { return ride; });
+    QSignalSpy sent(&coordinator, &GroupRideCoordinator::telemetrySent);
+    coordinator.begin();
+    emit session.startScheduled(QDateTime::currentMSecsSinceEpoch() - 1);
+
+    QCOMPARE(sent.count(), 1);
+    const auto telemetry = sent.first().first().value<RiderTelemetry>();
+    QVERIFY(!telemetry.powerWatts);
+    QVERIFY(!telemetry.percentFtp);
+    QVERIFY(!telemetry.targetPowerWatts);
+    QCOMPARE(telemetry.status, RiderStatus::Done);
+    // Done: the 1 s telemetry timer is stopped, so nothing more is sent.
+    QTest::qWait(GroupProtocol::kTelemetryIntervalMs + 300);
+    QCOMPARE(sent.count(), 1);
+}
+
+void TstGroup::coordinatorIgnoresStartAfterRideBegan()
+{
+    GroupSession session(QUrl(QStringLiteral("ws://127.0.0.1:9")));
+    GroupRideCoordinator coordinator(&session, []() { return GroupRideCoordinator::RideSnapshot{}; });
+    QSignalSpy started(&coordinator, &GroupRideCoordinator::rideStarted);
+    coordinator.begin();
+    emit session.startScheduled(QDateTime::currentMSecsSinceEpoch() - 1);
+    emit session.startScheduled(QDateTime::currentMSecsSinceEpoch() - 1);
+    QCOMPARE(started.count(), 1);
 }
 
 QTEST_MAIN(TstGroup)

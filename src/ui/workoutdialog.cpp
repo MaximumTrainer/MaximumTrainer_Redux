@@ -54,10 +54,9 @@
 #include "postworkoutpanel.h"
 #include "groupsession.h"
 #include "grouppanel.h"
+#include "groupridecoordinator.h"
 
 namespace {
-constexpr int kGroupStartDelayMs = 10000;
-constexpr qint64 kGroupSensorFreshMs = 3000;
 }
 
 
@@ -1642,9 +1641,9 @@ void WorkoutDialog::start_or_pause_workout() {
 
     // In a group workout nobody starts alone: the host's Enter/Start schedules
     // the shared start, and pedalling triggers wait for it.
-    if (!isWorkoutStarted && m_groupAwaitingStart) {
-        if (m_groupSession && m_groupSession->isHost() && m_groupStartLocalMs == 0)
-            m_groupSession->startIn(kGroupStartDelayMs);
+    if (!isWorkoutStarted && m_groupRide && m_groupRide->awaitingStart()) {
+        if (m_groupRide->isHost())
+            m_groupRide->requestStart();
         return;
     }
 
@@ -1776,7 +1775,7 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
         m_lastHrMs = QDateTime::currentMSecsSinceEpoch();
 
 
-    if (userID == 1) m_groupLatestHr = {value, QDateTime::currentMSecsSinceEpoch()};
+    if (userID == 1 && m_groupRide) m_groupRide->recordHeartRate(value);
 
     // Mark pairing as done
     if (!account->enable_studio_mode && !hrPairingDone) {
@@ -1835,7 +1834,7 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
         return;
 
 
-    if (userID == 1) m_groupLatestCadence = {value, QDateTime::currentMSecsSinceEpoch()};
+    if (userID == 1 && m_groupRide) m_groupRide->recordCadence(value);
 
     // Mark pairing as done
     if (!account->enable_studio_mode && !cadencePairingDone) {
@@ -2031,7 +2030,7 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
     if (value < 0)
         return;
 
-    if (userID == 1) m_groupLatestPower = {value, QDateTime::currentMSecsSinceEpoch()};
+    if (userID == 1 && m_groupRide) m_groupRide->recordPower(value);
 
     // Drive the player in the retro race with live (solo) power.
     if (raceController && userID == 1)
@@ -2925,12 +2924,12 @@ void WorkoutDialog::showPowerBalanceWidget(int display) {
 
 void WorkoutDialog::setMessagePlot() {
 
-    if (!isWorkoutStarted && m_groupAwaitingStart) {
+    if (!isWorkoutStarted && m_groupRide && m_groupRide->awaitingStart()) {
         QString groupMessage;
-        if (m_groupStartLocalMs > 0) {
-            const qint64 remainingMs = m_groupStartLocalMs - QDateTime::currentMSecsSinceEpoch();
+        if (m_groupRide->scheduledStartLocalMs() > 0) {
+            const qint64 remainingMs = m_groupRide->scheduledStartLocalMs() - QDateTime::currentMSecsSinceEpoch();
             groupMessage = tr("Group ride starts in %1 s").arg((qMax<qint64>(0, remainingMs) + 999) / 1000);
-        } else if (m_groupSession && m_groupSession->isHost()) {
+        } else if (m_groupRide->isHost()) {
             groupMessage = tr("When everyone is ready, press Enter or Start group ride");
         } else {
             groupMessage = tr("Waiting for the host to start the group ride");
@@ -3762,90 +3761,30 @@ void WorkoutDialog::showNormalWin() {
 
 
 void WorkoutDialog::setGroupSession(GroupSession *session) {
-    m_groupSession = session;
     if (!session) return;
 
-    m_groupAwaitingStart = true;
     m_groupPanel = new GroupPanel(session, this);
     ui->gridLayout->addWidget(m_groupPanel, 0, 1);
-    connect(m_groupPanel, &GroupPanel::startRequested, this, [this] {
-        if (m_groupSession && m_groupStartLocalMs == 0) m_groupSession->startIn(kGroupStartDelayMs);
+
+    m_groupRide = new GroupRideCoordinator(session, [this]() {
+        GroupRideCoordinator::RideSnapshot ride;
+        ride.started = isWorkoutStarted;
+        ride.paused = isWorkoutPaused;
+        ride.over = isWorkoutOver;
+        ride.elapsedSeconds = timeElapsed_sec;
+        ride.intervalIndex = currentInterval;
+        ride.targetPowerWatts = currentTargetPower;
+        ride.ftpWatts = account->FTP;
+        return ride;
+    }, this);
+    connect(m_groupPanel, &GroupPanel::startRequested, m_groupRide, &GroupRideCoordinator::requestStart);
+    connect(m_groupRide, &GroupRideCoordinator::startScheduled, m_groupPanel, &GroupPanel::setScheduledStart);
+    connect(m_groupRide, &GroupRideCoordinator::rideStarted, this, [this]() {
+        m_groupPanel->setRideStarted();
+        if (!isWorkoutStarted) start_or_pause_workout();
     });
-
-    m_groupStartTimer = new QTimer(this);
-    m_groupStartTimer->setSingleShot(true);
-    m_groupStartTimer->setTimerType(Qt::PreciseTimer);
-    connect(m_groupStartTimer, &QTimer::timeout, this, &WorkoutDialog::beginGroupRide);
-
-    m_groupCountdownTimer = new QTimer(this);
-    m_groupCountdownTimer->setInterval(250);
-    connect(m_groupCountdownTimer, &QTimer::timeout, this, &WorkoutDialog::setMessagePlot);
-
-    connect(session, &GroupSession::startScheduled, this, &WorkoutDialog::onGroupStartScheduled);
-    connect(session, &GroupSession::rosterChanged, this, &WorkoutDialog::setMessagePlot);
-    connect(session, &GroupSession::relayError, this, [](const QString &errorCode) {
-        LOG_WARN("WorkoutDialog", QStringLiteral("Group relay error: ") + errorCode);
-    });
-
-    m_groupTelemetryTimer = new QTimer(this);
-    m_groupTelemetryTimer->setInterval(GroupProtocol::kTelemetryIntervalMs);
-    connect(m_groupTelemetryTimer, &QTimer::timeout, this, &WorkoutDialog::sendGroupTelemetry);
-
-    session->setReady(true, GroupProtocol::SharedSensors{true, true, true});
-    if (const std::optional<qint64> alreadyScheduled = session->scheduledStartLocalMs())
-        onGroupStartScheduled(*alreadyScheduled);
+    connect(m_groupRide, &GroupRideCoordinator::telemetrySent, m_groupPanel, &GroupPanel::setOwnTelemetry);
+    connect(m_groupRide, &GroupRideCoordinator::statusChanged, this, &WorkoutDialog::setMessagePlot);
+    m_groupRide->begin();
     setMessagePlot();
-}
-
-void WorkoutDialog::onGroupStartScheduled(qint64 localStartMs) {
-    if (!m_groupAwaitingStart) return;
-    m_groupStartLocalMs = localStartMs;
-    if (m_groupPanel) m_groupPanel->setScheduledStart(localStartMs);
-
-    const qint64 delayMs = localStartMs - QDateTime::currentMSecsSinceEpoch();
-    if (delayMs <= 0) {
-        // Joined after the start: ride from the beginning of the workout.
-        beginGroupRide();
-        return;
-    }
-    m_groupStartTimer->start(int(delayMs));
-    m_groupCountdownTimer->start();
-    setMessagePlot();
-}
-
-void WorkoutDialog::beginGroupRide() {
-    if (!m_groupAwaitingStart) return;
-    m_groupAwaitingStart = false;
-    m_groupStartTimer->stop();
-    m_groupCountdownTimer->stop();
-    if (m_groupPanel) m_groupPanel->setRideStarted();
-    if (!isWorkoutStarted) start_or_pause_workout();
-    m_groupTelemetryTimer->start();
-    sendGroupTelemetry();
-}
-
-void WorkoutDialog::sendGroupTelemetry() {
-    if (!isWorkoutStarted) return;
-    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-    const auto fresh = [nowMs](const GroupSample &sample) -> std::optional<int> {
-        if (sample.atMs == 0 || nowMs - sample.atMs > kGroupSensorFreshMs) return std::nullopt;
-        return sample.value;
-    };
-
-    GroupProtocol::RiderTelemetry telemetry;
-    telemetry.elapsedWorkoutSeconds = timeElapsed_sec;
-    telemetry.intervalIndex = currentInterval;
-    telemetry.status = isWorkoutOver ? GroupProtocol::RiderStatus::Done
-                     : isWorkoutPaused ? GroupProtocol::RiderStatus::Paused
-                                       : GroupProtocol::RiderStatus::Riding;
-    telemetry.powerWatts = fresh(m_groupLatestPower);
-    telemetry.heartRateBpm = fresh(m_groupLatestHr);
-    telemetry.cadenceRpm = fresh(m_groupLatestCadence);
-    if (currentTargetPower > 0) telemetry.targetPowerWatts = currentTargetPower;
-    if (telemetry.powerWatts && account->FTP > 0)
-        telemetry.percentFtp = qRound(100.0 * *telemetry.powerWatts / account->FTP);
-
-    if (m_groupPanel) m_groupPanel->setOwnTelemetry(telemetry);
-    if (m_groupSession) m_groupSession->sendTelemetry(telemetry);
-    if (isWorkoutOver) m_groupTelemetryTimer->stop();
 }
