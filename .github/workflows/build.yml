@@ -253,7 +253,8 @@ jobs:
     - name: Build MaximumTrainer (Wasm)
       run: |
         source "$EMSDK/emsdk_env.sh"
-        "$QT_ROOT_DIR/bin/qt-cmake" -S . -B build-wasm -G Ninja \
+        cmake -S . -B build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_TOOLCHAIN_FILE="$QT_ROOT_DIR/lib/cmake/Qt6/qt.toolchain.cmake" \
           -DQWT_INSTALL="$HOME/qwt-wasm" -DMT_WERROR=ON -DMT_BUILD_TESTS=OFF
         cmake --build build-wasm
         ls -la build-wasm/release

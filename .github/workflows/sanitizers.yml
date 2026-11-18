@@ -79,7 +79,7 @@ jobs:
     - name: Build suites under ASan + UBSan
       run: |
         suites=$(grep -vE '^\s*(#|$)' .github/sanitizer-suites.txt | xargs -n1 basename)
-        cmake -S . -B build -G Ninja -DMT_BUILD_APP=OFF -DMT_SANITIZE="address;undefined" \
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DMT_BUILD_APP=OFF -DMT_SANITIZE="address;undefined" \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
         cmake --build build --target $suites
 
@@ -175,7 +175,7 @@ jobs:
     # Building the app generates the moc/uic/qmlcachegen sources it includes.
     - name: Build and record compile commands
       run: |
-        cmake -S . -B build -G Ninja -DQWT_INSTALL="$QWT_DIR" -DMT_BUILD_TESTS=OFF
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DQWT_INSTALL="$QWT_DIR" -DMT_BUILD_TESTS=OFF
         cmake --build build
 
     - name: clang-tidy

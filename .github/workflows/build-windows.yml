@@ -191,7 +191,7 @@ jobs:
       run: |
         $qwtInstallDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
         $env:INTERVALS_OAUTH_CLIENT_ID = "${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}"
-        cmake -S . -B build -G Ninja `
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
           -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl `
           "-DQWT_INSTALL=$qwtInstallDirFwd" -DMT_WERROR=ON `
           -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache

@@ -179,10 +179,8 @@ if(WIN32)
         "${CMAKE_CURRENT_BINARY_DIR}/MaximumTrainer.rc" @ONLY)
     target_sources(MaximumTrainer PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/MaximumTrainer.rc")
     if(MSVC)
-        # /Z7 keeps debug info inside each .obj so a compiler cache (sccache in
-        # CI) can store every object; the linker still writes the PDB.
-        set_property(TARGET MaximumTrainer mt_core mt_fit mt_game mt_gameplugin
-            PROPERTY MSVC_DEBUG_INFORMATION_FORMAT Embedded)
+        # Release builds keep a PDB for crash reports (#382); objects carry
+        # /Z7 debug info (CMAKE_MSVC_DEBUG_INFORMATION_FORMAT in the root).
         target_link_options(MaximumTrainer PRIVATE /DEBUG)
     endif()
 elseif(APPLE)

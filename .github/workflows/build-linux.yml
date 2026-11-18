@@ -134,7 +134,7 @@ jobs:
 
     - name: Configure
       run: |
-        cmake -S . -B build -G Ninja \
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
           -DQWT_INSTALL="$QWT_DIR" -DMT_WERROR=ON \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       env:
@@ -236,7 +236,7 @@ jobs:
       # Suites only (no app): this runner has no QWT/WebEngine/Bluetooth, so
       # the suites needing them are skipped here and run from build_linux.
       run: |
-        cmake -S . -B build -G Ninja -DMT_BUILD_APP=OFF \
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DMT_BUILD_APP=OFF \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
         cmake --build build --target \
           logger_tests apptheme_tests intervals_icu_tests importer_workout_zwo_tests \

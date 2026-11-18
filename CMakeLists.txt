@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.25)
 
+# Before project(): the MSVC toolchain otherwise initialises it to Debug.
+if(NOT DEFINED CMAKE_BUILD_TYPE AND NOT DEFINED ENV{CMAKE_BUILD_TYPE})
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type")
+endif()
+# Debug info inside each .obj (/Z7): no shared PDB for parallel compiles to
+# fight over, and every object is cacheable by sccache.
+set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT Embedded)
+
 include(cmake/AppVersion.cmake)
 mt_detect_app_version()
 
@@ -21,9 +29,6 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
-endif()
 
 # With "cmake -B build" this keeps the familiar layout: build/release/MaximumTrainer
 # and build/tests/<suite>, which scripts, CI artifacts and test docs rely on.

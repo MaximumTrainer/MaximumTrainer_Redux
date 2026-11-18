@@ -137,7 +137,7 @@ jobs:
 
     - name: Configure
       run: |
-        cmake -S . -B build -G Ninja \
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
           -DQWT_INSTALL=/usr/local/qwt-6.3.0 -DMT_WERROR=ON \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -DCMAKE_OBJCXX_COMPILER_LAUNCHER=ccache
