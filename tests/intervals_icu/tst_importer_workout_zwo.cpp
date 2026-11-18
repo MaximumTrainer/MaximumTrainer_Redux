@@ -74,6 +74,8 @@ private slots:
     // ── Empty / invalid input ────────────────────────────────────────────────
     void testEmptyData_returnsEmptyWorkout();
     void testMalformedXml_returnsEmptyWorkout();
+    void testHugeRepeat_isCapped();
+    void testHugeTotalDuration_isCapped();
 
     // ── Power conversion edge cases ──────────────────────────────────────────
     void testPowerZero();
@@ -264,6 +266,36 @@ void TstImporterWorkoutZwo::testMalformedXml_returnsEmptyWorkout()
 {
     Workout w = ImporterWorkoutZwo::importFromByteArray("<not valid xml<<<<", "test");
     QVERIFY(w.getLstInterval().isEmpty());
+}
+
+void TstImporterWorkoutZwo::testHugeRepeat_isCapped()
+{
+    // Found by zwo_import_fuzz: expanding this used to allocate over 2 GB.
+    const QByteArray xml = R"(
+<workout_file>
+  <workout>
+    <IntervalsT Repeat="8628620" OnDuration="1" OffDuration="1" OnPower="1.1" OffPower="0.5"/>
+  </workout>
+</workout_file>)";
+    Workout w = ImporterWorkoutZwo::importFromByteArray(xml, "test");
+    QCOMPARE(w.getLstInterval().size(), 1000);
+}
+
+void TstImporterWorkoutZwo::testHugeTotalDuration_isCapped()
+{
+    const QByteArray xml = R"(
+<workout_file>
+  <workout>
+    <IntervalsT Repeat="50" OnDuration="3600" OffDuration="600" OnPower="0.9" OffPower="0.5"/>
+    <SteadyState Duration="600" Power="0.6"/>
+  </workout>
+</workout_file>)";
+    Workout w = ImporterWorkoutZwo::importFromByteArray(xml, "test");
+    int totalSeconds = 0;
+    for (const Interval &interval : w.getLstInterval())
+        totalSeconds += QTime(0, 0).secsTo(interval.getDurationQTime());
+    QVERIFY(totalSeconds < 24 * 3600);
+    QCOMPARE(w.getLstInterval().size(), 40);   // 20 on/off pairs; the rest is dropped
 }
 
 void TstImporterWorkoutZwo::testPowerZero()
