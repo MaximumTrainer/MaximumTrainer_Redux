@@ -2,6 +2,7 @@
 #define ROADSURFACE_H
 
 #include <QQuickItem>
+#include <QtQml/qqmlregistration.h>
 
 /// The retro race's pseudo-3D road: horizontal slices of grass, asphalt,
 /// rumble strips, edge lines and centre dashes whose colours alternate with a
@@ -12,6 +13,7 @@
 class RoadSurface : public QQuickItem
 {
     Q_OBJECT
+    QML_ELEMENT
     Q_PROPERTY(double visualDist READ visualDist WRITE setVisualDist NOTIFY visualDistChanged)
     Q_PROPERTY(double maxHalfWidth READ maxHalfWidth WRITE setMaxHalfWidth NOTIFY maxHalfWidthChanged)
     Q_PROPERTY(int slices READ slices WRITE setSlices NOTIFY slicesChanged)

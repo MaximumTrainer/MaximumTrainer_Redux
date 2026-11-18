@@ -185,8 +185,3 @@ QSGNode *RoadSurface::updateRectangleNodes(QSGNode *oldNode)
     return root;
 }
 
-static void registerRoadSurfaceType()
-{
-    qmlRegisterType<RoadSurface>("MaximumTrainer.Game", 1, 0, "RoadSurface");
-}
-Q_COREAPP_STARTUP_FUNCTION(registerRoadSurfaceType)

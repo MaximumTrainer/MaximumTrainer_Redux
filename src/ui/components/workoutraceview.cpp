@@ -1,7 +1,6 @@
 #include "workoutraceview.h"
 
 #include <QLayout>
-#include <QQmlContext>
 #include <QQuickWidget>
 #include <QVector>
 
@@ -33,8 +32,8 @@ WorkoutRaceView::WorkoutRaceView(const Workout &workout, const Setup &setup, QLa
     // mid-workout switch.
     m_view->setAttribute(Qt::WA_DontCreateNativeAncestors, true);
     m_view->setResizeMode(QQuickWidget::SizeRootObjectToView);
-    m_view->rootContext()->setContextProperty(QStringLiteral("race"), m_controller);
-    m_view->setSource(QUrl(QStringLiteral("qrc:/game/qml/RetroRace.qml")));
+    m_view->setInitialProperties({{QStringLiteral("race"), QVariant::fromValue(m_controller)}});
+    m_view->loadFromModule("MaximumTrainer.Game", "RetroRace");
     // Share the content slot with the video / web players.
     if (contentLayout)
         contentLayout->addWidget(m_view);

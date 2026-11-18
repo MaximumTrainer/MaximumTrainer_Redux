@@ -14,4 +14,4 @@ SOURCES += \
     $$PWD/retroracecontroller.cpp \
     $$PWD/roadsurface.cpp
 
-RESOURCES += $$PWD/game.qrc
+

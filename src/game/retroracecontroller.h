@@ -2,6 +2,7 @@
 #define RETRORACECONTROLLER_H
 
 #include <QObject>
+#include <QtQml/qqmlregistration.h>
 #include <QString>
 #include <QTimer>
 #include <QElapsedTimer>
@@ -24,11 +25,13 @@
  *   - player:   live trainer power via setLivePowerWatts(); with no hardware the
  *     spike synthesises a pace a bit stronger than the opponent.
  *
- * Exposed to QML as the context property `race`.
+ * RetroRace.qml takes it as its required `race` property.
  */
 class RetroRaceController : public QObject
 {
     Q_OBJECT
+    QML_ELEMENT
+    QML_UNCREATABLE("Created by the host and passed in as RetroRace.race")
     /// False while the race view is hidden: the simulation keeps running at a low
     /// rate but QML is not refreshed and ambient animations stop.
     Q_PROPERTY(bool    visualActive    READ visualActive    NOTIFY visualActiveChanged)
