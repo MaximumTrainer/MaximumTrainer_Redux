@@ -332,6 +332,7 @@ int main(int argc, char *argv[]) {
             fitPath = cliArgs.at(raceIdx + 1);
 
         auto *controller = new RetroRaceController(&app);
+        controller->setVisualActive(true);   // the race is the only thing on screen
         // --bot [watts] forces a computer pacer; otherwise load your last ride
         // and fall back to a pacer when there is no history to race.
         const int botIdx = cliArgs.indexOf(QLatin1String("--bot"));

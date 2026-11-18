@@ -18,7 +18,7 @@ Item {
     // Free-running wall clock (≈ seconds) that drives ambient motion (clouds,
     // birds) independently of the race physics tick.
     property real animT: 0
-    NumberAnimation on animT { from: 0; to: 100000; duration: 100000000; loops: Animation.Infinite; running: true }
+    NumberAnimation on animT { from: 0; to: 100000; duration: 100000000; loops: Animation.Infinite; running: race.visualActive }
 
     // Effort vs target → a screen-edge glow (gamifies holding the target):
     // red when over, blue when under, nothing when in the zone (calm = reward).

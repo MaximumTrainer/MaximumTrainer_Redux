@@ -59,8 +59,27 @@ QString ghostHistoryDir()
 RetroRaceController::RetroRaceController(QObject *parent)
     : QObject(parent)
 {
-    m_timer.setInterval(33);   // ~30 fps
+    m_timer.setInterval(kVisibleTickMs);
     connect(&m_timer, &QTimer::timeout, this, &RetroRaceController::tick);
+}
+
+void RetroRaceController::setVisualActive(bool active)
+{
+    if (m_visualActive == active)
+        return;
+    m_visualActive = active;
+    // tick() integrates real elapsed time, so the race stays correct at the
+    // slower hidden rate; only the per-frame QML refresh is skipped.
+    m_timer.setInterval(active ? kVisibleTickMs : kHiddenTickMs);
+    emit visualActiveChanged();
+    if (active)
+        emit updated();   // show the current state immediately
+}
+
+void RetroRaceController::emitFrameUpdate()
+{
+    if (m_visualActive)
+        emit updated();
 }
 
 bool RetroRaceController::loadGhost(const QString &fitPath)
@@ -273,11 +292,11 @@ void RetroRaceController::tick()
             m_playerCadence = m_liveCadenceRpm;
             m_playerCrankRev += (m_playerCadence / 60.0) * dt;
         }
-        emit updated();
+        emitFrameUpdate();
         return;
     }
     if (!m_opponent) {
-        emit updated();
+        emitFrameUpdate();
         return;
     }
 
@@ -373,7 +392,7 @@ void RetroRaceController::tick()
     recordTrace(m_playerTrace, m_playerDistM, m_elapsedSec);
     recordTrace(m_oppTrace,    m_oppDistM,    m_elapsedSec);
 
-    emit updated();
+    emitFrameUpdate();
 
     const double total = m_opponent->totalTimeSec();
     if (total > 1.0 && m_elapsedSec >= total)
