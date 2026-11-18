@@ -198,6 +198,16 @@ MaximumTrainer has a multi-tier test suite covering BLE parsing, service APIs, U
 | Offline / BLE integration | `tests/integration/` | BLE adapter smoke test, offline mode screenshot, runtime validation |
 | Playwright (E2E) | `tests/playwright/` | WASM asset loading, Web Bluetooth API mock, login screen, landing page |
 
+### Sanitizers, static analysis and fuzzing
+
+`sanitizers.yml` runs the headless suites (`.github/sanitizer-suites.txt`) under
+AddressSanitizer + UndefinedBehaviorSanitizer, gates on clang-tidy, measures
+coverage, and runs the libFuzzer targets in `tests/fuzz` (FIT decoder, BLE
+notifications, `.zwo` import) for 60 s each on every push. `fuzz-nightly.yml`
+fuzzes them for 20 minutes each overnight with a corpus kept between runs, and
+opens a `fuzz` issue when it finds a crash. Inputs that once crashed live in
+`tests/fuzz/regressions/` and are replayed on every run.
+
 ### Running the BLE unit tests
 
 ```bash
