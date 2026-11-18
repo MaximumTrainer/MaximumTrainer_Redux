@@ -29,6 +29,9 @@
 class RetroRaceController : public QObject
 {
     Q_OBJECT
+    /// False while the race view is hidden: the simulation keeps running at a low
+    /// rate but QML is not refreshed and ambient animations stop.
+    Q_PROPERTY(bool    visualActive    READ visualActive    NOTIFY visualActiveChanged)
     Q_PROPERTY(double  elapsedSec      READ elapsedSec      NOTIFY updated)
     Q_PROPERTY(double  playerDistanceM READ playerDistanceM NOTIFY updated)
     // The distance shown to the rider — fed from the workout's real ride distance
@@ -98,6 +101,7 @@ class RetroRaceController : public QObject
     Q_PROPERTY(bool    partnerEasing   READ partnerEasing   NOTIFY updated)  // partner soft-pedalling to wait for you
 
 public:
+    bool visualActive() const { return m_visualActive; }
     explicit RetroRaceController(QObject *parent = nullptr);
 
     /// Load the opponent from a past ride (.fit). Empty path → most recent ride
@@ -191,6 +195,7 @@ public:
     bool    partnerEasing() const   { return m_partnerEasing; }
 
 public slots:
+    void setVisualActive(bool active);
     void start();          // arm: riders idle at the start line, legs free-spin
     void beginRace();      // the gun — riders start moving (call on workout start)
     void finishRace();     // freeze + trigger the finish/celebration overlay
@@ -238,6 +243,7 @@ public slots:
     }
 
 signals:
+    void visualActiveChanged();
     void updated();
     void opponentChanged();
     void raceStateChanged();
@@ -252,6 +258,10 @@ signals:
     void ergModeChanged();
 
 private:
+    static constexpr int kVisibleTickMs = 33;   // ~30 fps
+    static constexpr int kHiddenTickMs  = 250;  // simulation only
+    void emitFrameUpdate();
+    bool m_visualActive = false;
     void tick();
 
     std::unique_ptr<PowerSource> m_opponent;

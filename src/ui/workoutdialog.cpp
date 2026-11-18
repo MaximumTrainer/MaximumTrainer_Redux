@@ -2766,6 +2766,7 @@ void WorkoutDialog::showVideoPlayer(int choice) {
         choice = 0;
 
     if (raceView) raceView->setVisible(false);
+    if (raceController) raceController->setVisualActive(false);
 
     /// Game (retro race) — occupies the video slot.
     if (choice == 2) {
@@ -2773,6 +2774,7 @@ void WorkoutDialog::showVideoPlayer(int choice) {
         ui->widget_webPlayer->setVisible(false);
         ui->widgetVideo->setVisible(false);
         ensureRaceView()->setVisible(true);
+        raceController->setVisualActive(true);
         return;
     }
 
