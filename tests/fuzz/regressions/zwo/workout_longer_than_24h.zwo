@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<workout_file>
+    <name>Mixed Workout Test</name>
+    <author>Test</author>
+    <description>Warmup, intervals, fde, cooldown</description>
+    <workout>
+        Power="0.75"/>
+        <IntervalsT Repeat="6433"  PowerLow="0.40" PowerHigh="0utf7/>
+   " OnDuration="120" OffDuration="60" h="0.40"/>
+    </workout>
+</workout_file>

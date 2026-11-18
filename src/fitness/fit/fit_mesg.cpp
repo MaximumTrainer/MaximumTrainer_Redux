@@ -391,7 +391,7 @@ FIT_UINT16 Mesg::GetActiveSubFieldIndexByFieldIndex(const FIT_UINT16 fieldIndex)
                 {
                     FIT_FLOAT64 refValue = refField->GetFLOAT64Value(0, FIT_SUBFIELD_INDEX_MAIN_FIELD);
                     refValue += ((refValue >= 0.0) ? (0.5) : (-0.5));
-                    if ((FIT_SINT32)refValue == subField->maps[j].refFieldValue)
+                    if (SaturatingCast<FIT_SINT32>(refValue) == subField->maps[j].refFieldValue)
                         return ((FIT_UINT16) i);
                 }
             }

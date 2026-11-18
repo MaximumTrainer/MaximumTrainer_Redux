@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<workout_file>
+    <name>Free Ride Test</name>
+    <author>Test</author>
+    <description>Unstructured free-ride block</description>
+    <workout>
+        <FreeRide Duration="3600"/>
+    </workout>
+</workout_file>
