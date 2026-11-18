@@ -2754,8 +2754,8 @@ void WorkoutDialog::onToggleGameFullscreen() {
 }
 
 /// 0 = Standard video, 1 = Web Browser, 2 = Game (retro race).
-// The web player is already built and loaded in the background (see showEvent),
-// so switching only toggles which player is shown.
+// The web player is built in the background (see showEvent); its page loads the
+// first time the Web Browser view is shown.
 void WorkoutDialog::showVideoPlayer(int choice) {
 
     // The game (retro race) is unavailable in multi-rider studio mode (no single
@@ -2790,6 +2790,7 @@ void WorkoutDialog::showVideoPlayer(int choice) {
     else {
         ui->widgetVideo->setVisible(false);
         ui->widget_webPlayer->setVisible(true);
+        if (webPlayer) webPlayer->loadHomePageIfNeeded();
     }
 }
 
@@ -3148,7 +3149,9 @@ void WorkoutDialog::showEvent(QShowEvent *event) {
     if (!webPlayerLoaded) {
         webPlayerLoaded = true;
         QTimer::singleShot(0, this, [this]() {
-            ensureWebPlayer()->loadHomePageIfNeeded();
+            // Build the web player now, but load its page only once the Web
+            // Browser view is picked: an idle view starts no Chromium renderer.
+            ensureWebPlayer();
             // Build the retro-race view now too, for the same reason: its native
             // OpenGL surface is realized once here while it can stay hidden, so
             // switching to it mid-workout never tears down and rebuilds the dialog

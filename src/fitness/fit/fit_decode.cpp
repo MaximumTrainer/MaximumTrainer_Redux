@@ -991,8 +991,12 @@ void Decode::SuppressComponentExpansion(void)
     suppressComponentExpansion = FIT_TRUE;
 }
 
-void Decode::ExpandComponents(Field *containingField, const Profile::FIELD_COMPONENT *components, FIT_UINT16 numComponents)
+void Decode::ExpandComponents(Field *containingFieldInMesg, const Profile::FIELD_COMPONENT *components, FIT_UINT16 numComponents)
 {
+    // The field lives in mesg's field vector, which mesg.AddField() below can
+    // reallocate; read the bits from a copy so they never come from freed memory.
+    const Field containingFieldCopy(*containingFieldInMesg);
+    const Field *containingField = &containingFieldCopy;
     FIT_UINT16 offset = 0;
     FIT_UINT16 i;
 
