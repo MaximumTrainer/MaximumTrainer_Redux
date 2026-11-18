@@ -40,6 +40,12 @@ static Interval makeProgressiveInterval(int durationSecs, double powerLow, doubl
                     false, 0.0, 0, 0.0);
 }
 
+// Far beyond any real workout; bounds memory for a corrupt or hostile file
+// (e.g. IntervalsT Repeat="8628620"). The workout clock is a QTime, so it
+// cannot represent more than a day anyway.
+static constexpr int kMaxZwoIntervals    = 1000;
+static constexpr int kMaxZwoTotalSeconds = 24 * 3600 - 1;
+
 // ───────────────────────────────────────────────────────────────────────────────
 Workout ImporterWorkoutZwo::importFromByteArray(const QByteArray &data,
                                                 const QString &workoutName)
@@ -50,6 +56,19 @@ Workout ImporterWorkoutZwo::importFromByteArray(const QByteArray &data,
     QString author;
     QString description;
     QList<Interval> intervals;
+    int totalSeconds = 0;
+    bool truncated = false;
+    // Appends unless a limit is reached; once full, every later step is dropped.
+    auto appendInterval = [&](int durationSecs, const Interval &interval) {
+        if (truncated || intervals.size() >= kMaxZwoIntervals
+            || durationSecs > kMaxZwoTotalSeconds - totalSeconds) {
+            truncated = true;
+            return false;
+        }
+        intervals.append(interval);
+        totalSeconds += durationSecs;
+        return true;
+    };
 
     bool insideWorkoutFile = false;
     bool insideWorkout     = false;
@@ -104,7 +123,7 @@ Workout ImporterWorkoutZwo::importFromByteArray(const QByteArray &data,
                         power = (lo + hi) / 2.0;
                     }
                     if (dur > 0)
-                        intervals.append(makeFlatInterval(dur, power));
+                        appendInterval(dur, makeFlatInterval(dur, power));
 
                 } else if (tag == QStringLiteral("Warmup")
                            || tag == QStringLiteral("Ramp")
@@ -113,7 +132,7 @@ Workout ImporterWorkoutZwo::importFromByteArray(const QByteArray &data,
                     double powerLow  = dblAttr("PowerLow");
                     double powerHigh = dblAttr("PowerHigh");
                     if (dur > 0)
-                        intervals.append(makeProgressiveInterval(dur, powerLow, powerHigh));
+                        appendInterval(dur, makeProgressiveInterval(dur, powerLow, powerHigh));
 
                 } else if (tag == QStringLiteral("IntervalsT")) {
                     int    repeat   = intAttr("Repeat", 1);
@@ -121,9 +140,9 @@ Workout ImporterWorkoutZwo::importFromByteArray(const QByteArray &data,
                     int    offDur   = intAttr("OffDuration");
                     double onPower  = dblAttr("OnPower");
                     double offPower = dblAttr("OffPower");
-                    for (int r = 0; r < repeat; ++r) {
-                        if (onDur  > 0) intervals.append(makeFlatInterval(onDur,  onPower));
-                        if (offDur > 0) intervals.append(makeFlatInterval(offDur, offPower));
+                    for (int r = 0; r < repeat && !truncated; ++r) {
+                        if (onDur  > 0) appendInterval(onDur,  makeFlatInterval(onDur,  onPower));
+                        if (offDur > 0) appendInterval(offDur, makeFlatInterval(offDur, offPower));
                     }
 
                 } else if (tag == QStringLiteral("FreeRide")) {
@@ -136,7 +155,7 @@ Workout ImporterWorkoutZwo::importFromByteArray(const QByteArray &data,
                                           Interval::NONE, 0, 0, 5,
                                           Interval::NONE, 0.0, 0.0, 15,
                                           false, 0.0, 0, 0.0);
-                        intervals.append(interval);
+                        appendInterval(dur, interval);
                     }
 
                 } else {
@@ -167,6 +186,10 @@ Workout ImporterWorkoutZwo::importFromByteArray(const QByteArray &data,
             }
         }
     }
+
+    if (truncated)
+        qWarning() << "ImporterWorkoutZwo: workout truncated at" << intervals.size()
+                   << "intervals /" << totalSeconds << "s";
 
     if (xml.hasError()) {
         qWarning() << "ImporterWorkoutZwo: XML parse error:" << xml.errorString()
