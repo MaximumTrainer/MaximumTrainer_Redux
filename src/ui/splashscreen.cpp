@@ -128,7 +128,7 @@ bool SplashScreen::event(QEvent *event)
     // wait always runs out and delays every launch by a full second. Startup
     // pumps events after show() and on every progress update, which paints it.
     if (event->type() == QEvent::Show)
-        return QWidget::event(event);
+        return QWidget::event(event); // NOLINT(bugprone-parent-virtual-call): skipping QSplashScreen::event is the point
     return QSplashScreen::event(event);
 }
 
