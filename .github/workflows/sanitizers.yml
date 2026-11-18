@@ -196,3 +196,78 @@ jobs:
         if [ "$count" -lt 100 ]; then echo "::error::only $count source files found in compile_commands.json"; exit 1; fi
         echo "Checking $count files with $(clang-tidy --version | grep -o 'version [0-9.]*')"
         xargs -P "$(nproc)" -n 4 clang-tidy -p . --quiet < tidy-files.txt
+
+  # Line/function coverage of the headless suites (report only, no threshold).
+  # Covers the sources those suites compile, not UI-only code.
+  coverage:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      QT_QPA_PLATFORM: offscreen
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Point apt at a reachable Ubuntu mirror
+      run: |
+        for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
+            echo "Using http://$host/ubuntu/"
+            echo "http://$host/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
+            sudo grep -rl 'azure\.archive\.ubuntu\.com\|//archive\.ubuntu\.com\|//security\.ubuntu\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
+              | xargs -r sudo sed -i -E "s#https?://(azure\.archive|archive|security)\.ubuntu\.com/ubuntu/?#http://$host/ubuntu/#g" || true
+            break
+          fi
+        done
+        printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99-ci-timeouts
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+        arch: 'linux_gcc_64'
+        modules: 'qtwebsockets qtconnectivity'
+        cache: true
+        cache-key-prefix: qt-linux-san
+
+    - name: Install build dependencies and gcovr
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y libssl-dev
+        pip install gcovr==8.8
+
+    - name: Build and run suites with coverage
+      run: |
+        printf '%s\n' 'QMAKE_CXXFLAGS += --coverage -O0' 'QMAKE_LFLAGS += --coverage' >> .qmake.conf
+        mkdir -p build/tests
+        for suite in $(grep -vE '^\s*(#|$)' .github/sanitizer-suites.txt); do
+          dir="tests/$(dirname "$suite")"; name="$(basename "$suite")"
+          ( cd "$dir" && qmake "$name.pro" && make -j"$(nproc)" )
+          ./build/tests/"$name" -silent || echo "::warning::$name reported failures (gated by the test jobs)"
+        done
+
+    - name: Coverage report
+      run: |
+        mkdir -p coverage
+        common=(--root . --filter 'src/' --exclude 'src/fitness/fit/' --exclude '.*/moc_.*'
+                --gcov-ignore-errors=no_working_dir_found
+                --gcov-ignore-parse-errors=negative_hits.warn_once_per_file)
+        gcovr "${common[@]}" --html-details coverage/index.html --markdown coverage/summary.md --print-summary
+        {
+          echo "Headless suites only (sources they compile; UI-only code is not measured)."
+          echo
+          cat coverage/summary.md
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v7
+      with:
+        name: coverage-report
+        path: coverage/
+        retention-days: 14
