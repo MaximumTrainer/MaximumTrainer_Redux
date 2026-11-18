@@ -37,8 +37,8 @@ Prefer to compile it yourself? See [Building](#building) below.
 |------|---------|
 | **Language** | C++20 (≈ 95 % C++) |
 | **Framework** | Qt 6 (6.11+) on all platforms |
-| **Build file** | `MaximumTrainer.pro` (qmake) |
-| **Qt modules** | core · gui · widgets · network · websockets · bluetooth · webenginewidgets · printsupport · concurrent |
+| **Build system** | CMake 3.25+ (`CMakeLists.txt`), Ninja recommended |
+| **Qt modules** | core · gui · widgets · network · websockets · bluetooth · webenginewidgets · printsupport · concurrent · multimedia · quick · qml (the retro race is a compiled QML module) |
 | **Trainer protocol** | Bluetooth LE Fitness Machine Service (FTMS / 0x1826) for ERG resistance control |
 | **Sensor profiles** | Heart Rate (0x180D) · Cycling Speed & Cadence (0x1816) · Cycling Power (0x1818) · Moxy Muscle Oxygen (0xAAB0) |
 | **Workout formats** | `.erg`, `.mrc`, `.zwo` (imported and converted to the native XML format) · Intervals.icu calendar sync · export as `.fit` |
@@ -77,7 +77,15 @@ For everything about **using** the app — pairing sensors, finding / importing 
 
 ## Building
 
-All three platforms are built and tested automatically via GitHub Actions CI (see `.github/workflows/build.yml`). Use `MaximumTrainer.pro` with `qmake` and a standard C++ compiler.
+All three platforms are built and tested automatically via GitHub Actions CI (see `.github/workflows/build.yml`). The build uses CMake (3.25+) with Ninja and a C++20 compiler. Point it at QWT with `-DQWT_INSTALL=...`; the app lands in `build/release/` and the test suites in `build/tests/`.
+
+| CMake option | Default | Purpose |
+|--------------|---------|---------|
+| `QWT_INSTALL` | (empty) | QWT 6.3 install prefix |
+| `MT_BUILD_TESTS` | `ON` | Build the Qt Test suites |
+| `MT_BUILD_APP` | `ON` | `OFF` builds only the test suites (no QWT or WebEngine needed) |
+| `MT_WERROR` | `OFF` | Warnings as errors (CI) |
+| `MT_SANITIZE` | (empty) | e.g. `address;undefined` |
 
 ### Dependencies
 
@@ -103,17 +111,11 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 **Required tools:** Qt 6.x (msvc2022_64, with the `qtwebengine`, `qtconnectivity`,
 `qtmultimedia`, `qtwebchannel`, `qtpositioning`, `qtwebsockets` modules), Visual Studio 2022+ (MSVC; Qt 6.11 ships msvc2022 builds only).
 
-**Environment variables** — set before running `qmake`:
+From a "x64 Native Tools" (MSVC) prompt, with Qt's `bin` on `PATH`:
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `QTDIR` | Qt installation root for the target arch | `C:\Qt\6.11.3\msvc2022_64` |
-| `QWT_INSTALL` | QWT installation root (built against Qt 6) | `C:/qwt` |
-
-**qmake invocation:**
 ```powershell
-qmake MaximumTrainer.pro `
-  "QWT_INSTALL=C:/qwt"
+cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=C:/Qt/6.11.3/msvc2022_64 -DQWT_INSTALL=C:/qwt
+cmake --build build
 ```
 
 > The Windows Kit libraries (`Gdi32`, `User32`) are resolved automatically by the MSVC linker.
@@ -131,7 +133,7 @@ exists), then build the app:
 sudo apt-get install -y \
   qt6-base-dev qt6-webengine-dev qt6-connectivity-dev \
   qt6-multimedia-dev qt6-webchannel-dev qt6-positioning-dev \
-  qt6-websockets-dev cmake build-essential
+  qt6-websockets-dev qt6-declarative-dev cmake ninja-build build-essential
 
 # Build QWT 6.3.0 from source against Qt 6 (installs to /tmp/qwt6 here)
 cd /tmp && curl -L -o qwt.tar.bz2 \
@@ -141,10 +143,12 @@ qmake6 qwt.pro && make -j$(nproc)
 make install INSTALL_ROOT=/tmp/qwt6-stage
 mkdir -p /tmp/qwt6 && mv /tmp/qwt6-stage/usr/local/qwt-6.3.0/* /tmp/qwt6/
 
-# Build MaximumTrainer
+# Build MaximumTrainer (and the test suites)
 cd /path/to/MaximumTrainer_Redux
-qmake6 MaximumTrainer.pro QWT_INSTALL=/tmp/qwt6
-make -j$(nproc)
+cmake -S . -B build -G Ninja -DQWT_INSTALL=/tmp/qwt6
+cmake --build build
+# Run the tests
+ctest --test-dir build -j$(nproc)
 # Run (QWT in a non-standard prefix needs LD_LIBRARY_PATH):
 LD_LIBRARY_PATH=/tmp/qwt6/lib ./build/release/MaximumTrainer
 ```
@@ -170,9 +174,8 @@ qmake qwt.pro && make -j$(sysctl -n hw.logicalcpu) && sudo make install
 
 # Build MaximumTrainer
 cd /path/to/MaximumTrainer_Redux
-qmake MaximumTrainer.pro \
-  "QWT_INSTALL=/usr/local/qwt-6.3.0"
-make
+cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DQWT_INSTALL=/usr/local/qwt-6.3.0
+cmake --build build
 ```
 
 ## Testing
@@ -207,11 +210,11 @@ coverage.
 ### Running the BLE unit tests
 
 ```bash
-cd tests/btle
-qmake btle_tests.pro
-make -j$(nproc)
-../../build/tests/btle_tests -v2
+cmake --build build --target btle_tests
+./build/tests/btle_tests -v2
 ```
+
+Every suite is a CMake target of the same name; `ctest --test-dir build -R btle` runs it through CTest.
 
 The BLE suite has **51 test cases** across HR parsing, CSC, Power, FTMS, trainer simulations, SimulatorHub, battery, and interval summary. See the [CI run status](https://github.com/MaximumTrainer/MaximumTrainer_Redux/actions) for pass/fail counts on Linux, Windows, and macOS.
 

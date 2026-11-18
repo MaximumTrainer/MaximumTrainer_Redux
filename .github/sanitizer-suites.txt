@@ -1,5 +1,5 @@
 # Test suites built and run by sanitizers.yml under ASan + UBSan.
-# <tests/ subdirectory>/<.pro name without extension>; all must run headless.
+# <tests/ subdirectory>/<CMake test target>; all must run headless.
 logger/logger_tests
 apptheme/apptheme_tests
 intervals_icu/intervals_icu_tests

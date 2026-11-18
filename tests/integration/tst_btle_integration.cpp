@@ -17,7 +17,7 @@
  * of a "running activity" with Bluetooth sensor data flowing.
  *
  * Build:
- *   qmake btle_integration_tests.pro && make
+ *   cmake --build build --target btle_integration_tests
  * Run headless (Linux CI):
  *   Xvfb :99 -screen 0 1280x800x24 & export DISPLAY=:99
  *   ../../build/tests/btle_integration_tests -v2

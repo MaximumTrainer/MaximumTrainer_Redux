@@ -40,7 +40,7 @@
  *   build/tests/online-mode-{platform}-{YYYY-MM-DDTHH-MM-SS}Z.png
  *
  * Build:
- *   qmake online_mode_tests.pro && make
+ *   cmake --build build --target online_mode_tests
  * Run headless (Linux CI):
  *   Xvfb :99 -screen 0 1280x800x24 & export DISPLAY=:99
  *   ../../build/tests/online_mode_tests -v2

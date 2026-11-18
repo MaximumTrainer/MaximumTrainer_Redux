@@ -45,7 +45,7 @@
  *   18. testTestInterval_flag            — testInterval flag survives round-trip
  *
  * Build:
- *   qmake workout_creator_tests.pro && make
+ *   cmake --build build --target workout_creator_tests
  * Run:
  *   ../../build/tests/workout_creator_tests -v2
  */

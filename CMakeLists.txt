@@ -25,10 +25,10 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-# Keep the qmake-era output layout: scripts, CI artifacts and test docs all
-# point at build/release/MaximumTrainer and build/tests/<suite>.
-set(MT_APP_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/build/release" CACHE PATH "App binary output directory")
-set(MT_TEST_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/build/tests" CACHE PATH "Test binary output directory")
+# With "cmake -B build" this keeps the familiar layout: build/release/MaximumTrainer
+# and build/tests/<suite>, which scripts, CI artifacts and test docs rely on.
+set(MT_APP_OUTPUT_DIR "${CMAKE_BINARY_DIR}/release" CACHE PATH "App binary output directory")
+set(MT_TEST_OUTPUT_DIR "${CMAKE_BINARY_DIR}/tests" CACHE PATH "Test binary output directory")
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets Network Quick Qml)
 if(MT_BUILD_APP)
@@ -47,5 +47,6 @@ add_subdirectory(src)
 
 if(MT_BUILD_TESTS AND TARGET Qt6::Test AND NOT EMSCRIPTEN)
     enable_testing()
-    add_subdirectory(tests)
+    # Its own binary dir, so build/tests holds only the suite executables.
+    add_subdirectory(tests "${CMAKE_BINARY_DIR}/test-suites")
 endif()

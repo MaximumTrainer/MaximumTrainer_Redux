@@ -253,21 +253,21 @@ jobs:
     - name: Build MaximumTrainer (Wasm)
       run: |
         source "$EMSDK/emsdk_env.sh"
-        export QMAKEFEATURES="$HOME/qwt-wasm/features"
-        mkdir -p build-wasm && cd build-wasm
-        qmake ../MaximumTrainer.pro \
-          "QWT_INSTALL=$HOME/qwt-wasm" CONFIG+=werror
-        emmake make -j$(nproc)
+        "$QT_ROOT_DIR/bin/qt-cmake" -S . -B build-wasm -G Ninja \
+          -DQWT_INSTALL="$HOME/qwt-wasm" -DMT_WERROR=ON -DMT_BUILD_TESTS=OFF
+        cmake --build build-wasm
+        ls -la build-wasm/release
 
     - name: Upload Wasm artifact
       uses: actions/upload-artifact@v7
       with:
         name: wasm
+        if-no-files-found: error
         path: |
-          build-wasm/build/release/MaximumTrainer.wasm
-          build-wasm/build/release/MaximumTrainer.js
-          build-wasm/build/release/qtloader.js
-          build-wasm/build/release/qtlogo.svg
+          build-wasm/release/MaximumTrainer.wasm
+          build-wasm/release/MaximumTrainer.js
+          build-wasm/release/qtloader.js
+          build-wasm/release/qtlogo.svg
 
   # ──────────────────────────────────────────────────────────────────────────
   # Playwright E2E Tests — served locally from docs/ using the freshly built

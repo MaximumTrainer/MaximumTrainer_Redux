@@ -66,7 +66,7 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y libssl-dev
+        sudo apt-get install -y libssl-dev ninja-build
 
     - name: Set up ccache
       uses: hendrikmuhs/ccache-action@v1.2.25
@@ -76,24 +76,20 @@ jobs:
         evict-old-files: job
         job-summary: ccache stats
 
-    - name: Enable ccache + sanitizers in qmake
-      # Appended, not overwritten: the repo .qmake.conf carries project DEFINES.
+    - name: Build suites under ASan + UBSan
       run: |
-        printf '%s\n' \
-          'CONFIG += ccache sanitizer sanitize_address sanitize_undefined' \
-          'QMAKE_CXXFLAGS += -fno-omit-frame-pointer -fno-sanitize-recover=undefined' \
-          >> .qmake.conf
-        cat .qmake.conf
+        suites=$(grep -vE '^\s*(#|$)' .github/sanitizer-suites.txt | xargs -n1 basename)
+        cmake -S . -B build -G Ninja -DMT_BUILD_APP=OFF -DMT_SANITIZE="address;undefined" \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        cmake --build build --target $suites
 
-    - name: Build and run suites under ASan + UBSan
+    - name: Run suites under ASan + UBSan
       run: |
-        mkdir -p build/tests sanitizer-logs
+        mkdir -p sanitizer-logs
         failed=""
-        for suite in $(grep -vE '^\s*(#|$)' .github/sanitizer-suites.txt); do
-          dir="tests/$(dirname "$suite")"; name="$(basename "$suite")"
+        for name in $(grep -vE '^\s*(#|$)' .github/sanitizer-suites.txt | xargs -n1 basename); do
           echo "::group::$name"
-          if ( cd "$dir" && qmake "$name.pro" && make -j"$(nproc)" ) \
-             && ./build/tests/"$name" -v1 > "sanitizer-logs/$name.log" 2>&1; then
+          if ./build/tests/"$name" -v1 > "sanitizer-logs/$name.log" 2>&1; then
             echo "PASS $name"
           else
             echo "::error title=Sanitizer::$name failed (see sanitizer-logs/$name.log)"
@@ -150,7 +146,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y libusb-1.0-0-dev libssl-dev libgl1-mesa-dev build-essential
+        sudo apt-get install -y libusb-1.0-0-dev libssl-dev libgl1-mesa-dev build-essential ninja-build
 
     - name: Restore QWT cache
       id: qwt-cache
@@ -172,30 +168,31 @@ jobs:
         mkdir -p "$QWT_DIR"
         mv /tmp/qwt6-stage/usr/local/qwt-6.3.0/* "$QWT_DIR"/
 
-    - name: Install clang-tidy and compiledb
-      run: pip install "clang-tidy==${CLANG_TIDY_VERSION}" compiledb
+    - name: Install clang-tidy
+      run: pip install "clang-tidy==${CLANG_TIDY_VERSION}"
 
-    # A real build (no ccache: a launcher prefix confuses clang-tidy's driver
-    # detection) records compile_commands.json and generates the moc/uic headers.
+    # No ccache: a launcher prefix confuses clang-tidy's driver detection.
+    # Building the app generates the moc/uic/qmlcachegen sources it includes.
     - name: Build and record compile commands
       run: |
-        qmake MaximumTrainer.pro "QWT_INSTALL=$QWT_DIR"
-        compiledb -o compile_commands.json make -j$(nproc)
+        cmake -S . -B build -G Ninja -DQWT_INSTALL="$QWT_DIR" -DMT_BUILD_TESTS=OFF
+        cmake --build build
 
     - name: clang-tidy
       run: |
         python3 - <<'PY' > tidy-files.txt
         import json, os
+        root = os.getcwd() + "/src/"
         files = {os.path.normpath(os.path.join(e["directory"], e["file"]))
-                 for e in json.load(open("compile_commands.json"))}
+                 for e in json.load(open("build/compile_commands.json"))}
         print("\n".join(sorted(f for f in files
-                               if "/src/" in f and "/src/fitness/fit/" not in f
-                               and "/moc_" not in f and f.endswith(".cpp"))))
+                               if f.startswith(root) and "/src/fitness/fit/" not in f
+                               and f.endswith(".cpp"))))
         PY
         count=$(grep -c . tidy-files.txt || true)
         if [ "$count" -lt 100 ]; then echo "::error::only $count source files found in compile_commands.json"; exit 1; fi
         echo "Checking $count files with $(clang-tidy --version | grep -o 'version [0-9.]*')"
-        xargs -P "$(nproc)" -n 4 clang-tidy -p . --quiet < tidy-files.txt
+        xargs -P "$(nproc)" -n 4 clang-tidy -p build --quiet < tidy-files.txt
 
   # Line/function coverage of the headless suites (report only, no threshold).
   # Covers the sources those suites compile, not UI-only code.
@@ -239,23 +236,23 @@ jobs:
     - name: Install build dependencies and gcovr
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y libssl-dev
+        sudo apt-get install -y libssl-dev ninja-build
         pip install gcovr==8.8
 
     - name: Build and run suites with coverage
       run: |
-        printf '%s\n' 'QMAKE_CXXFLAGS += --coverage -O0' 'QMAKE_LFLAGS += --coverage' >> .qmake.conf
-        mkdir -p build/tests
-        for suite in $(grep -vE '^\s*(#|$)' .github/sanitizer-suites.txt); do
-          dir="tests/$(dirname "$suite")"; name="$(basename "$suite")"
-          ( cd "$dir" && qmake "$name.pro" && make -j"$(nproc)" )
+        suites=$(grep -vE '^\s*(#|$)' .github/sanitizer-suites.txt | xargs -n1 basename)
+        cmake -S . -B build -G Ninja -DMT_BUILD_APP=OFF -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_CXX_FLAGS="--coverage -O0" -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+        cmake --build build --target $suites
+        for name in $suites; do
           ./build/tests/"$name" -silent || echo "::warning::$name reported failures (gated by the test jobs)"
         done
 
     - name: Coverage report
       run: |
         mkdir -p coverage
-        common=(--root . --filter 'src/' --exclude 'src/fitness/fit/' --exclude '.*/moc_.*'
+        common=(--root . --filter 'src/' --exclude 'src/fitness/fit/' --exclude 'build/'
                 --gcov-ignore-errors=no_working_dir_found
                 --gcov-ignore-parse-errors=negative_hits.warn_once_per_file)
         gcovr "${common[@]}" --html-details coverage/index.html --markdown coverage/summary.md --print-summary

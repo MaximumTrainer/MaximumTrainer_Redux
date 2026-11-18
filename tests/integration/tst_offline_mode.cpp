@@ -30,7 +30,7 @@
  * No network module is linked.  All data originates from SimulatorHub.
  *
  * Build:
- *   qmake offline_mode_tests.pro && make
+ *   cmake --build build --target offline_mode_tests
  * Run headless (Linux CI):
  *   Xvfb :99 -screen 0 1280x800x24 & export DISPLAY=:99
  *   ../../build/tests/offline_mode_tests -v2

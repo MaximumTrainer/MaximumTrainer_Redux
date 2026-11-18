@@ -40,7 +40,7 @@ const static QString intervalsIcuOAuthScope =
     QStringLiteral("ACTIVITY:WRITE,WELLNESS:READ,SETTINGS:WRITE,CALENDAR:WRITE,LIBRARY:READ");
 
 /// Intervals.icu OAuth2 client_id, injected at build time via the
-/// INTERVALS_OAUTH_CLIENT_ID environment variable (see MaximumTrainer.pro);
+/// INTERVALS_OAUTH_CLIENT_ID environment variable (see CMakeLists.txt);
 /// defaults to "259" (existing public client).  The client_secret is
 /// deliberately NOT in the app: the token Worker injects it server-side
 /// (see URL_TOKEN_ICV).
