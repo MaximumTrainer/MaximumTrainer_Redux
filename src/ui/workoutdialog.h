@@ -327,7 +327,7 @@ private:
     WorkoutRaceView     *m_raceView     = nullptr;
     QQuickWidget        *raceView       = nullptr;   // m_raceView's view and controller
     RetroRaceController *raceController = nullptr;
-    QQuickWidget *ensureRaceView();
+    WorkoutRaceView *ensureRaceView();
     void onToggleGameFullscreen();              // collapse/restore the data panes
     bool m_gameFullscreen = false;
     QList<int> m_savedSplitterSizes;

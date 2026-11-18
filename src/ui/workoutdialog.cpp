@@ -2626,7 +2626,7 @@ WebBrowserView *WorkoutDialog::ensureWebPlayer() {
 }
 
 
-QQuickWidget *WorkoutDialog::ensureRaceView() {
+WorkoutRaceView *WorkoutDialog::ensureRaceView() {
     if (!m_raceView) {
         WorkoutRaceView::Setup setup;
         setup.riderMassKg = account->bike_weight_kg + account->weight_kg;
@@ -2646,7 +2646,7 @@ QQuickWidget *WorkoutDialog::ensureRaceView() {
         connect(raceController, &RetroRaceController::fullscreenToggleRequested,
                 this, &WorkoutDialog::onToggleGameFullscreen);
     }
-    return raceView;
+    return m_raceView;
 }
 
 void WorkoutDialog::onToggleGameFullscreen() {
@@ -2691,8 +2691,9 @@ void WorkoutDialog::showVideoPlayer(int choice) {
         if (webPlayer) webPlayer->pauseVideo();
         ui->widget_webPlayer->setVisible(false);
         ui->widgetVideo->setVisible(false);
-        ensureRaceView()->setVisible(true);
-        raceController->setVisualActive(true);
+        WorkoutRaceView *race = ensureRaceView();
+        race->view()->setVisible(true);
+        race->controller()->setVisualActive(true);
         return;
     }
 
