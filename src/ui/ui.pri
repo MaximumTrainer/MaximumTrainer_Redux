@@ -6,6 +6,7 @@ include($$PWD/plots/plots.pri)
 include($$PWD/workout_editor/workout_editor.pri)
 
 SOURCES += $$PWD/mainwindow.cpp\
+    $$PWD/mainwindow_harness.cpp\
 $$PWD/workoutdialog.cpp \
     $$PWD/main_workoutpage.cpp \
     $$PWD/dialogconfig.cpp \
