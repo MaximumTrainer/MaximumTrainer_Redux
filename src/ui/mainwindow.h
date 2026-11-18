@@ -108,6 +108,7 @@ public slots:
 private:
     /// Simulator-fed workout launch (the "Simulation" connection method).
     /// Shared by the desktop synchronous flow and the WASM async chain.
+    void connectSimulatorHub(class SimulatorHub *hub, WorkoutDialog *dialog);
     void startSimulatedWorkout(const Workout &workout);
 
     /// Wire a single already-connected hub to a new WorkoutDialog and show it
