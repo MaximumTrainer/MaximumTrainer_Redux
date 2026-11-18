@@ -40,7 +40,7 @@ public:
                       double lapCalories);
     void writeRecord(int timeNow,
                      double averageHr1sec, double averageCadence1sec, double averageSpeed1sec, double averagePower1sec,
-                     double rightPedal, double avgLeftTorqueEff, double avgRightTorqueEff, double avgLeftPedalSmooth, double avgRightPedalSmooth, double avgCombinedPedalSmooth,
+                     double rightPedal,
                      double saturatedHemoglobinPercent, double totalHemoglobinConc);
 
 

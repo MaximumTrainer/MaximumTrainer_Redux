@@ -174,7 +174,6 @@ public slots:
     void CadenceDataReceived(int userID, int value);
     void PowerDataReceived(int userID, int value);
     void PowerBalanceDataReceived(int userID, int rightPedalPercentage);
-    void pedalMetricReceived(int userID, double,double,double,double,double);
     void TrainerSpeedDataReceived(int userID, double value);
     void VirtualSpeedDataReceived(int userID, double value, double timeAtThisSpeedSec);
     void OxygenValueChanged(int userID, double, double);
@@ -467,11 +466,6 @@ private:
     //not doing average for now
     QVector<double> avgRightPedal1sec;
     bool powerBalanceDataSeen = false; ///< a balance-capable power meter has reported
-    QVector<double> avgLeftTorqueEff;
-    QVector<double> avgRightTorqueEff;
-    QVector<double> avgLeftPedalSmooth;
-    QVector<double> avgRightPedalSmooth;
-    QVector<double> avgCombinedPedalSmooth;
     QVector<double> avgSaturatedHemoglobinPercent1sec;
     QVector<double> avgTotalHemoglobinConc1sec;
 

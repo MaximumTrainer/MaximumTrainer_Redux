@@ -161,11 +161,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     averagePower1sec = QVector<double>(constants::nbMaxUserStudio, -1);
 
     avgRightPedal1sec = QVector<double>(constants::nbMaxUserStudio, -1);
-    avgLeftTorqueEff = QVector<double>(constants::nbMaxUserStudio, -1);
-    avgRightTorqueEff = QVector<double>(constants::nbMaxUserStudio, -1);
-    avgLeftPedalSmooth = QVector<double>(constants::nbMaxUserStudio, -1);
-    avgRightPedalSmooth = QVector<double>(constants::nbMaxUserStudio, -1);
-    avgCombinedPedalSmooth = QVector<double>(constants::nbMaxUserStudio, -1);
     avgSaturatedHemoglobinPercent1sec = QVector<double>(constants::nbMaxUserStudio, -1);
     avgTotalHemoglobinConc1sec = QVector<double>(constants::nbMaxUserStudio, -1);
 
@@ -1054,11 +1049,6 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
 
 
     avgRightPedal1sec.fill(-1);
-    avgLeftTorqueEff.fill(-1);
-    avgRightTorqueEff.fill(-1);
-    avgLeftPedalSmooth.fill(-1);
-    avgRightPedalSmooth.fill(-1);
-    avgCombinedPedalSmooth.fill(-1);
     avgSaturatedHemoglobinPercent1sec.fill(-1);
     avgTotalHemoglobinConc1sec.fill(-1);
 
@@ -1744,13 +1734,13 @@ void WorkoutDialog::sendLastSecondData(int seconds) {
     if (account->enable_studio_mode) {
         for (int i=0; i<account->nb_user_studio; i++) {
             arrDataWorkout[i]->updateData(account->enable_studio_mode, seconds, averageHr1sec.at(i), averageCadence1sec.at(i), averageSpeed1sec.at(i), averagePower1sec.at(i),
-                                          avgRightPedal1sec.at(i), avgLeftTorqueEff.at(i), avgRightTorqueEff.at(i), avgLeftPedalSmooth.at(i), avgRightPedalSmooth.at(i), avgCombinedPedalSmooth.at(i),
+                                          avgRightPedal1sec.at(i),
                                           avgSaturatedHemoglobinPercent1sec.at(i), avgTotalHemoglobinConc1sec.at(i));
         }
     }
     else {
         arrDataWorkout[0]->updateData(account->enable_studio_mode, seconds, averageHr1sec.at(0), averageCadence1sec.at(0), averageSpeed1sec.at(0), averagePower1sec.at(0),
-                                      avgRightPedal1sec.at(0), avgLeftTorqueEff.at(0), avgRightTorqueEff.at(0), avgLeftPedalSmooth.at(0), avgRightPedalSmooth.at(0), avgCombinedPedalSmooth.at(0),
+                                      avgRightPedal1sec.at(0),
                                       avgSaturatedHemoglobinPercent1sec.at(0), avgTotalHemoglobinConc1sec.at(0));
     }
 
@@ -2138,21 +2128,6 @@ void WorkoutDialog::PowerBalanceDataReceived(int userID, int rightPedalPercentag
     }
     ui->wid_2_balancePower->setValue(rightPedalPercentage);
     avgRightPedal1sec.replace(userID-1, rightPedalPercentage);
-}
-
-
-void WorkoutDialog::pedalMetricReceived(int userID, double leftTorqueEff, double rightTorqueEff,
-                                        double leftPedalSmooth, double rightPedalSmooth, double combinedPedalSmooth) {
-
-
-    ui->wid_2_balancePower->pedalMetricChanged(leftTorqueEff, rightTorqueEff, leftPedalSmooth, rightPedalSmooth, combinedPedalSmooth);
-
-    avgLeftTorqueEff.replace(userID-1, leftTorqueEff);
-    avgRightTorqueEff.replace(userID-1, rightTorqueEff);
-    avgLeftPedalSmooth.replace(userID-1, leftPedalSmooth);
-    avgRightPedalSmooth.replace(userID-1, rightPedalSmooth);
-    avgCombinedPedalSmooth.replace(userID-1, combinedPedalSmooth);
-
 }
 
 
