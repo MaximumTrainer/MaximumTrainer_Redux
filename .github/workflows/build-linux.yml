@@ -330,6 +330,14 @@ jobs:
         cd ../..
         ./build/tests/group_tests -v2
 
+    - name: Retro race tests
+      run: |
+        cd tests/game
+        qmake game_tests.pro
+        make -j$(nproc)
+        cd ../..
+        QT_QPA_PLATFORM=offscreen ./build/tests/game_tests -v2
+
     - name: CredentialStore tests
       run: |
         cd tests/credential_store

@@ -82,6 +82,7 @@ class RetroRaceController : public QObject
     // Warped scroll distance for scenery: advances faster than real distance as
     // speed rises, so the world rushes by harder at 30+ km/h (pure visual feel).
     Q_PROPERTY(double  visualDist      READ visualDist      NOTIFY updated)
+    Q_PROPERTY(double  animClock       READ animClock       NOTIFY updated)
     Q_PROPERTY(double  visualSpeed     READ visualSpeed     NOTIFY updated)
     Q_PROPERTY(bool    running         READ running         NOTIFY updated)
     Q_PROPERTY(bool    started         READ started         NOTIFY raceStateChanged)
@@ -179,6 +180,7 @@ public:
     double  playerCrankRev() const  { return m_playerCrankRev; }
     double  oppCrankRev() const     { return m_oppCrankRev; }
     double  visualDist() const      { return m_visualDist; }
+    double  animClock() const       { return m_animClock; }
     double  visualSpeed() const     { return m_visualSpeed; }
     bool    running() const         { return m_timer.isActive(); }
     bool    started() const         { return m_started; }
@@ -212,14 +214,14 @@ public slots:
     /// when behind, and the partner is leashed so it never drops you (see tick()).
     void setErgMode(bool erg) { if (m_ergMode != erg) { m_ergMode = erg; emit ergModeChanged(); } }
     /// Feed live heart rate (bpm) for the HUD.
-    void setLiveHr(double bpm) { m_playerHr = bpm; emit updated(); }
+    void setLiveHr(double bpm) { m_playerHr = bpm; refreshIfIdle(); }
     /// Push the current workout targets (value ± range; <=0 = no target).
     void setTargetPower(double watts, double range)   { m_tPower = watts; m_tPowerRange = range; emit targetsChanged(); }
     void setTargetCadence(double rpm, double range)   { m_tCadence = rpm; m_tCadenceRange = range; emit targetsChanged(); }
     void setTargetHr(double bpm, double range)        { m_tHr = bpm; m_tHrRange = range; emit targetsChanged(); }
     void setWorkoutProfile(const QVariantList &p)     { m_workoutProfile = p; emit profileChanged(); }
-    void setWorkoutProgress(double frac)              { m_workoutProgress = frac; emit updated(); }
-    void setWorkoutElapsedSec(int s)                  { m_workoutElapsedSec = s; emit updated(); }
+    void setWorkoutProgress(double frac)              { m_workoutProgress = frac; refreshIfIdle(); }
+    void setWorkoutElapsedSec(int s)                  { m_workoutElapsedSec = s; refreshIfIdle(); }
     void setGameFullscreen(bool fs)                   { if (m_gameFullscreen != fs) { m_gameFullscreen = fs; emit fullscreenChanged(); } }
     /// QML asks the host (workout dialog) to collapse/restore the data panes.
     Q_INVOKABLE void requestFullscreenToggle()        { emit fullscreenToggleRequested(); }
@@ -261,6 +263,9 @@ private:
     static constexpr int kVisibleTickMs = 33;   // ~30 fps
     static constexpr int kHiddenTickMs  = 250;  // simulation only
     void emitFrameUpdate();
+    // `updated` re-evaluates the whole scene; while the tick runs it already
+    // fires ~30 times a second, so only push values through when it is idle.
+    void refreshIfIdle() { if (!m_timer.isActive()) emitFrameUpdate(); }
     bool m_visualActive = false;
     void tick();
 
@@ -313,6 +318,7 @@ private:
     double m_playerCrankRev = 0.0;
     double m_oppCrankRev    = 0.0;
     double m_visualDist     = 0.0;   // warped scroll distance (speed-amplified)
+    double m_animClock      = 0.0;   // seconds; drives ambient motion at the tick rate
     double m_visualSpeed    = 0.0;   // d(visualDist)/dt, for the sign prediction
     double m_liveCadenceRpm = -1.0; // <0 = derive cadence from the opponent
     double m_playerHr       = 0.0;
