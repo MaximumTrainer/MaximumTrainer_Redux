@@ -14,9 +14,9 @@ class RoadSurface : public QQuickItem
 {
     Q_OBJECT
     QML_ELEMENT
-    Q_PROPERTY(double visualDist READ visualDist WRITE setVisualDist NOTIFY visualDistChanged)
-    Q_PROPERTY(double maxHalfWidth READ maxHalfWidth WRITE setMaxHalfWidth NOTIFY maxHalfWidthChanged)
-    Q_PROPERTY(int slices READ slices WRITE setSlices NOTIFY slicesChanged)
+    Q_PROPERTY(double visualDist READ visualDist WRITE setVisualDist NOTIFY visualDistChanged FINAL)
+    Q_PROPERTY(double maxHalfWidth READ maxHalfWidth WRITE setMaxHalfWidth NOTIFY maxHalfWidthChanged FINAL)
+    Q_PROPERTY(int slices READ slices WRITE setSlices NOTIFY slicesChanged FINAL)
 
 public:
     explicit RoadSurface(QQuickItem *parent = nullptr);

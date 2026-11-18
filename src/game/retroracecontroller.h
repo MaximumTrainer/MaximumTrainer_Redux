@@ -34,75 +34,75 @@ class RetroRaceController : public QObject
     QML_UNCREATABLE("Created by the host and passed in as RetroRace.race")
     /// False while the race view is hidden: the simulation keeps running at a low
     /// rate but QML is not refreshed and ambient animations stop.
-    Q_PROPERTY(bool    visualActive    READ visualActive    NOTIFY visualActiveChanged)
-    Q_PROPERTY(double  elapsedSec      READ elapsedSec      NOTIFY updated)
-    Q_PROPERTY(double  playerDistanceM READ playerDistanceM NOTIFY updated)
+    Q_PROPERTY(bool    visualActive    READ visualActive    NOTIFY visualActiveChanged FINAL)
+    Q_PROPERTY(double  elapsedSec      READ elapsedSec      NOTIFY updated FINAL)
+    Q_PROPERTY(double  playerDistanceM READ playerDistanceM NOTIFY updated FINAL)
     // The distance shown to the rider — fed from the workout's real ride distance
     // so the race HUD matches the session widget. Falls back to the internal
     // power-model distance (used for the opponent gap) until the workout feeds one.
-    Q_PROPERTY(double  displayDistanceM READ displayDistanceM NOTIFY updated)
-    Q_PROPERTY(double  oppDistanceM    READ oppDistanceM    NOTIFY updated)
-    Q_PROPERTY(double  gapMeters       READ gapMeters       NOTIFY updated)
+    Q_PROPERTY(double  displayDistanceM READ displayDistanceM NOTIFY updated FINAL)
+    Q_PROPERTY(double  oppDistanceM    READ oppDistanceM    NOTIFY updated FINAL)
+    Q_PROPERTY(double  gapMeters       READ gapMeters       NOTIFY updated FINAL)
     // Leaderboard rows, leader-first. Each is a map: name, rank, gapSec, gapText
     // ("Leader" / "+12s" / "+1:05"), isPlayer. Built from the player + opponent;
     // the same shape will carry N Studio riders later (one scene, one panel).
-    Q_PROPERTY(QVariantList standings  READ standings       NOTIFY updated)
-    Q_PROPERTY(double  playerSpeedKmh  READ playerSpeedKmh  NOTIFY updated)
-    Q_PROPERTY(double  oppSpeedKmh     READ oppSpeedKmh     NOTIFY updated)
-    Q_PROPERTY(double  playerPowerW    READ playerPowerW    NOTIFY updated)
-    Q_PROPERTY(double  oppPowerW       READ oppPowerW       NOTIFY updated)
-    Q_PROPERTY(double  playerCadence   READ playerCadence   NOTIFY updated)
-    Q_PROPERTY(double  oppCadence      READ oppCadence      NOTIFY updated)
-    Q_PROPERTY(double  playerHr        READ playerHr        NOTIFY updated)
+    Q_PROPERTY(QVariantList standings  READ standings       NOTIFY updated FINAL)
+    Q_PROPERTY(double  playerSpeedKmh  READ playerSpeedKmh  NOTIFY updated FINAL)
+    Q_PROPERTY(double  oppSpeedKmh     READ oppSpeedKmh     NOTIFY updated FINAL)
+    Q_PROPERTY(double  playerPowerW    READ playerPowerW    NOTIFY updated FINAL)
+    Q_PROPERTY(double  oppPowerW       READ oppPowerW       NOTIFY updated FINAL)
+    Q_PROPERTY(double  playerCadence   READ playerCadence   NOTIFY updated FINAL)
+    Q_PROPERTY(double  oppCadence      READ oppCadence      NOTIFY updated FINAL)
+    Q_PROPERTY(double  playerHr        READ playerHr        NOTIFY updated FINAL)
     // Workout targets (value ± range); <=0 target means "no target set".
-    Q_PROPERTY(double  targetPower        READ targetPower        NOTIFY targetsChanged)
-    Q_PROPERTY(double  targetPowerRange   READ targetPowerRange   NOTIFY targetsChanged)
-    Q_PROPERTY(double  targetCadence      READ targetCadence      NOTIFY targetsChanged)
-    Q_PROPERTY(double  targetCadenceRange READ targetCadenceRange NOTIFY targetsChanged)
-    Q_PROPERTY(double  targetHr           READ targetHr           NOTIFY targetsChanged)
-    Q_PROPERTY(double  targetHrRange      READ targetHrRange      NOTIFY targetsChanged)
+    Q_PROPERTY(double  targetPower        READ targetPower        NOTIFY targetsChanged FINAL)
+    Q_PROPERTY(double  targetPowerRange   READ targetPowerRange   NOTIFY targetsChanged FINAL)
+    Q_PROPERTY(double  targetCadence      READ targetCadence      NOTIFY targetsChanged FINAL)
+    Q_PROPERTY(double  targetCadenceRange READ targetCadenceRange NOTIFY targetsChanged FINAL)
+    Q_PROPERTY(double  targetHr           READ targetHr           NOTIFY targetsChanged FINAL)
+    Q_PROPERTY(double  targetHrRange      READ targetHrRange      NOTIFY targetsChanged FINAL)
     // Workout profile (normalised 0..1 target-power samples) + time progress, so
     // the game can show a built-in "what's next" strip and stand alone.
-    Q_PROPERTY(QVariantList workoutProfile  READ workoutProfile  NOTIFY profileChanged)
-    Q_PROPERTY(double       workoutProgress READ workoutProgress NOTIFY updated)
-    Q_PROPERTY(int          workoutElapsedSec READ workoutElapsedSec NOTIFY updated)
-    Q_PROPERTY(bool         gameFullscreen  READ gameFullscreen  NOTIFY fullscreenChanged)
+    Q_PROPERTY(QVariantList workoutProfile  READ workoutProfile  NOTIFY profileChanged FINAL)
+    Q_PROPERTY(double       workoutProgress READ workoutProgress NOTIFY updated FINAL)
+    Q_PROPERTY(int          workoutElapsedSec READ workoutElapsedSec NOTIFY updated FINAL)
+    Q_PROPERTY(bool         gameFullscreen  READ gameFullscreen  NOTIFY fullscreenChanged FINAL)
     // The upcoming interval's targets + seconds until it starts (road preview).
-    Q_PROPERTY(double nextTargetW   READ nextTargetW   NOTIFY nextChanged)
-    Q_PROPERTY(double nextTargetCad READ nextTargetCad NOTIFY nextChanged)
-    Q_PROPERTY(double nextSecs      READ nextSecs      NOTIFY nextChanged)
-    Q_PROPERTY(double nextSignZ     READ nextSignZ     NOTIFY nextChanged)  // world dist of the sign
-    Q_PROPERTY(QString intervalMessage READ intervalMessage NOTIFY nextChanged)
+    Q_PROPERTY(double nextTargetW   READ nextTargetW   NOTIFY nextChanged FINAL)
+    Q_PROPERTY(double nextTargetCad READ nextTargetCad NOTIFY nextChanged FINAL)
+    Q_PROPERTY(double nextSecs      READ nextSecs      NOTIFY nextChanged FINAL)
+    Q_PROPERTY(double nextSignZ     READ nextSignZ     NOTIFY nextChanged FINAL)  // world dist of the sign
+    Q_PROPERTY(QString intervalMessage READ intervalMessage NOTIFY nextChanged FINAL)
     // Seconds until the workout ends (drives the approaching finish line).
-    Q_PROPERTY(double finishSecs    READ finishSecs    NOTIFY finishChanged)
+    Q_PROPERTY(double finishSecs    READ finishSecs    NOTIFY finishChanged FINAL)
     // Whole-ride metrics (from DataWorkout) for the info panel.
-    Q_PROPERTY(double np      READ np      NOTIFY metricsChanged)
-    Q_PROPERTY(double ifactor READ ifactor NOTIFY metricsChanged)
-    Q_PROPERTY(double tss     READ tss     NOTIFY metricsChanged)
+    Q_PROPERTY(double np      READ np      NOTIFY metricsChanged FINAL)
+    Q_PROPERTY(double ifactor READ ifactor NOTIFY metricsChanged FINAL)
+    Q_PROPERTY(double tss     READ tss     NOTIFY metricsChanged FINAL)
     // Accumulated crank revolutions — drives the pedalling animation at real rpm.
-    Q_PROPERTY(double  playerCrankRev  READ playerCrankRev  NOTIFY updated)
-    Q_PROPERTY(double  oppCrankRev     READ oppCrankRev     NOTIFY updated)
+    Q_PROPERTY(double  playerCrankRev  READ playerCrankRev  NOTIFY updated FINAL)
+    Q_PROPERTY(double  oppCrankRev     READ oppCrankRev     NOTIFY updated FINAL)
     // Warped scroll distance for scenery: advances faster than real distance as
     // speed rises, so the world rushes by harder at 30+ km/h (pure visual feel).
-    Q_PROPERTY(double  visualDist      READ visualDist      NOTIFY updated)
-    Q_PROPERTY(double  animClock       READ animClock       NOTIFY updated)
-    Q_PROPERTY(double  visualSpeed     READ visualSpeed     NOTIFY updated)
-    Q_PROPERTY(bool    running         READ running         NOTIFY updated)
-    Q_PROPERTY(bool    started         READ started         NOTIFY raceStateChanged)
-    Q_PROPERTY(bool    finished        READ finished        NOTIFY raceStateChanged)
+    Q_PROPERTY(double  visualDist      READ visualDist      NOTIFY updated FINAL)
+    Q_PROPERTY(double  animClock       READ animClock       NOTIFY updated FINAL)
+    Q_PROPERTY(double  visualSpeed     READ visualSpeed     NOTIFY updated FINAL)
+    Q_PROPERTY(bool    running         READ running         NOTIFY updated FINAL)
+    Q_PROPERTY(bool    started         READ started         NOTIFY raceStateChanged FINAL)
+    Q_PROPERTY(bool    finished        READ finished        NOTIFY raceStateChanged FINAL)
     // Player distances at which a new workout interval began (road markers).
-    Q_PROPERTY(QVariantList intervalMarks READ intervalMarks NOTIFY intervalMarksChanged)
-    Q_PROPERTY(QString oppName         READ oppName         NOTIFY opponentChanged)
-    Q_PROPERTY(bool    oppIsBot        READ oppIsBot        NOTIFY opponentChanged)
-    Q_PROPERTY(double  routeLengthM    READ routeLengthM    NOTIFY opponentChanged)
-    Q_PROPERTY(bool    oppChosen       READ oppChosen       NOTIFY opponentChanged)
-    Q_PROPERTY(bool    hasLastRide     READ hasLastRide     NOTIFY opponentChanged)
+    Q_PROPERTY(QVariantList intervalMarks READ intervalMarks NOTIFY intervalMarksChanged FINAL)
+    Q_PROPERTY(QString oppName         READ oppName         NOTIFY opponentChanged FINAL)
+    Q_PROPERTY(bool    oppIsBot        READ oppIsBot        NOTIFY opponentChanged FINAL)
+    Q_PROPERTY(double  routeLengthM    READ routeLengthM    NOTIFY opponentChanged FINAL)
+    Q_PROPERTY(bool    oppChosen       READ oppChosen       NOTIFY opponentChanged FINAL)
+    Q_PROPERTY(bool    hasLastRide     READ hasLastRide     NOTIFY opponentChanged FINAL)
     // ERG team-race state (only meaningful when the workout is in ERG mode and
     // the opponent is the cooperative pace partner — see setErgMode()).
-    Q_PROPERTY(bool    ergMode         READ ergMode         NOTIFY ergModeChanged)
-    Q_PROPERTY(bool    drafting        READ drafting        NOTIFY updated)  // you're in the partner's slipstream
-    Q_PROPERTY(double  draftFactor     READ draftFactor     NOTIFY updated)  // 0..1 slipstream strength
-    Q_PROPERTY(bool    partnerEasing   READ partnerEasing   NOTIFY updated)  // partner soft-pedalling to wait for you
+    Q_PROPERTY(bool    ergMode         READ ergMode         NOTIFY ergModeChanged FINAL)
+    Q_PROPERTY(bool    drafting        READ drafting        NOTIFY updated FINAL)  // you're in the partner's slipstream
+    Q_PROPERTY(double  draftFactor     READ draftFactor     NOTIFY updated FINAL)  // 0..1 slipstream strength
+    Q_PROPERTY(bool    partnerEasing   READ partnerEasing   NOTIFY updated FINAL)  // partner soft-pedalling to wait for you
 
 public:
     bool visualActive() const { return m_visualActive; }

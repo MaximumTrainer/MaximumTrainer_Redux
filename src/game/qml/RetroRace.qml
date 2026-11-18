@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Shapes
 import MaximumTrainer.Game
@@ -111,30 +113,29 @@ Item {
             }
         }
     }
-    function fmtTime(s) { var m = Math.floor(s / 60); var ss = Math.floor(s % 60); return m + ":" + (ss < 10 ? "0" : "") + ss; }
+    function fmtTime(s: real): string { var m = Math.floor(s / 60); var ss = Math.floor(s % 60); return m + ":" + (ss < 10 ? "0" : "") + ss; }
     // Golden hour: 0 for the first 60% of the workout, then ramps to 1 at the
     // finish — the sky warms and the sun sinks, so a long ride visibly ends at
     // sunset (a quiet "almost there" cue).
     readonly property real dusk: Math.max(0, (root.race.workoutProgress - 0.6) / 0.4)
-    function mixCol(a, b, t) {
-        var c1 = Qt.color(a), c2 = Qt.color(b)
-        return Qt.rgba(c1.r + (c2.r - c1.r) * t, c1.g + (c2.g - c1.g) * t, c1.b + (c2.b - c1.b) * t, 1)
+    function mixCol(a: color, b: color, t: real): color {
+        return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1)
     }
     // Ghost names can be whole history filenames — keep HUD chips readable.
-    function shortName(n, max) { return n.length > max ? n.substring(0, max - 1) + "…" : n }
+    function shortName(n: string, max: int): string { return n.length > max ? n.substring(0, max - 1) + "…" : n }
     // Deterministic pseudo-random in [0,1) from an index (stable per object).
-    function rnd(n) { var x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); }
+    function rnd(n: real): real { var x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); }
 
     // Curves disabled for now (straight road) — the winding look fought the
     // sprite. Restore the sine sum below to re-enable bends later.
-    function curveAt(z) { return 0.0; }
-    function roadCx(p, z) { return width / 2 + curveAt(z) * (1 - p) * width * 0.62; }
+    function curveAt(z: real): real { return 0.0; }
+    function roadCx(p: real, z: real): real { return width / 2 + curveAt(z) * (1 - p) * width * 0.62; }
     readonly property real nearCurve: curveAt(38 * 2.2 + root.race.visualDist)
     readonly property real leanDeg: nearCurve * 13
 
     // Slope disabled for now (flat road) while we get the graphics right.
     // Restore: 34 * (1 - p) * Math.sin(p * 9.0 + vd * 0.018)
-    function hillYAt(p, vd) { return 0; }
+    function hillYAt(p: real, vd: real): real { return 0; }
 
     // ---------------------------------------------------------------- components
     // Cyclist seen from behind, scalable, with pumping legs driven by cadence.
@@ -240,6 +241,7 @@ Item {
     Repeater {
         model: 5
         Item {
+            required property int index
             id: cloud
             readonly property real px:    [110, 360, 600, 840, 200][index] / 960 * root.width
             readonly property real py:    [60, 118, 48, 140, 92][index]
@@ -259,6 +261,7 @@ Item {
     Repeater {
         model: 3
         Item {
+            required property int index
             id: bird
             readonly property real py:    [118, 134, 98][index]
             readonly property real bs:    [1.0, 0.8, 1.15][index]
@@ -347,6 +350,7 @@ Item {
     Repeater {
         model: 156
         Item {
+            required property int index
             id: ob
             readonly property real span: 13 * 156
             readonly property real az: ((index * 13 - root.race.visualDist) % span + span) % span + 8  // distance ahead
@@ -527,6 +531,7 @@ Item {
         Repeater {
             model: finishLine.cols * 2
             Rectangle {
+                required property int index
                 readonly property int col:  index % finishLine.cols
                 readonly property int rowi: Math.floor(index / finishLine.cols)
                 x: col * (finishLine.roadW / finishLine.cols)
@@ -560,6 +565,7 @@ Item {
         Repeater {
             model: 14
             Rectangle {
+                required property int index
                 readonly property int  side: index % 2 === 0 ? -1 : 1
                 readonly property int  seed: Math.floor(index / 2)            // 0..6
                 readonly property real spread: 0.13 + 0.075 * (seed % 3)      // how far it fans out
@@ -924,6 +930,7 @@ Item {
                 // and a new model would rebuild these rows 30 times a second.
                 model: root.race.standings.length
                 Item {
+                    required property int index
                     width: lbCol.width; height: 18
                     readonly property var row: root.race.standings[index] || ({})
                     readonly property bool me: row.isPlayer === true
@@ -1013,6 +1020,7 @@ Item {
         Repeater {
             model: root.race.workoutProfile.length
             Rectangle {
+                required property int index
                 readonly property int n: root.race.workoutProfile.length
                 readonly property real bw: profileStrip.width / Math.max(1, n)
                 readonly property real val: root.race.workoutProfile[index]
@@ -1062,6 +1070,7 @@ Item {
     Repeater {   // confetti — a reward, so it only rains when you actually won
         model: 28
         Rectangle {
+            required property int index
             // Finishing with your partner is a win too — celebrate the team finish.
             readonly property bool celebrate: root.race.finished && (root.race.gapMeters >= 0 || root.teamMode)
             visible: celebrate
