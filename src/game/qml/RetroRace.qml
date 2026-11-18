@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import MaximumTrainer.Game
 
 // Pseudo-3D (OutRun-style) retro ghost race. The road recedes to a vanishing
 // point (slice-based perspective — still 2D, no real 3D), the opponent appears
@@ -15,10 +16,10 @@ Item {
     readonly property real roadH:    height - horizonY
     readonly property real maxHalfW: width * 0.60
 
-    // Free-running wall clock (≈ seconds) that drives ambient motion (clouds,
-    // birds) independently of the race physics tick.
-    property real animT: 0
-    NumberAnimation on animT { from: 0; to: 100000; duration: 100000000; loops: Animation.Infinite; running: race.visualActive }
+    // Wall clock (seconds) for ambient motion (clouds, birds, pulses). It
+    // advances with the controller's ~30 Hz tick, which caps the frame rate:
+    // a free-running animation would redraw this heavy scene as fast as it can.
+    readonly property real animT: race.animClock
 
     // Effort vs target → a screen-edge glow (gamifies holding the target):
     // red when over, blue when under, nothing when in the zone (calm = reward).
@@ -311,44 +312,17 @@ Item {
         y: root.horizonY - 2; height: root.height - root.horizonY + 2; color: "#3c7548" }
 
     // ---------------------------------------------------------------- road
-    // Classic pseudo-3D road built from horizontal slices. Each slice colours its
-    // grass / asphalt / rumble / centre-dash by a world-segment parity that
-    // scrolls with visualDist — so the red-and-white rumble strips and grass
-    // bands rush toward you (the signature OutRun sense of speed).
-    readonly property int slices: 120
-    Repeater {
-        model: root.slices
-        Item {
-            readonly property real p:    (index + 1) / root.slices            // 0 horizon .. 1 near
-            readonly property int  seg:  Math.floor((1.0 / p) * 1.5 + race.visualDist * 0.22)
-            readonly property bool even: ((seg % 2) + 2) % 2 === 0
-            readonly property real hw:   root.maxHalfW * p                     // road half-width
-            readonly property real cx:   root.width / 2
-            readonly property real rW:   Math.max(2, hw * 0.16 + 3)           // rumble width
-            readonly property real eW:   Math.max(1, hw * 0.028 + 1)          // edge-line width
-            readonly property real cdW:  Math.max(1.5, hw * 0.032)            // centre-dash width (thin)
-            readonly property bool haze: p < 0.18                             // far field: no flicker
-            x: 0; width: root.width
-            y: root.horizonY + (index / root.slices) * root.roadH
-            height: root.roadH / root.slices + 1.4
-            // grass verge
-            Rectangle { anchors.fill: parent
-                color: parent.haze ? "#3c7548" : (parent.even ? "#47935b" : "#3a8050") }
-            // asphalt
-            Rectangle { x: parent.cx - parent.hw; width: 2 * parent.hw; height: parent.height
-                color: parent.even ? "#5b5b66" : "#55555f" }
-            // rumble strips (red / white, alternating per segment)
-            Rectangle { x: parent.cx - parent.hw - parent.rW; width: parent.rW; height: parent.height
-                color: parent.even ? "#d83a3a" : "#f2f2f2" }
-            Rectangle { x: parent.cx + parent.hw;             width: parent.rW; height: parent.height
-                color: parent.even ? "#d83a3a" : "#f2f2f2" }
-            // white edge lines
-            Rectangle { x: parent.cx - parent.hw;             width: parent.eW; height: parent.height; color: "#f4f4f4" }
-            Rectangle { x: parent.cx + parent.hw - parent.eW; width: parent.eW; height: parent.height; color: "#f4f4f4" }
-            // centre dash (alternate segments only) — runs from near the horizon
-            Rectangle { visible: parent.even && parent.p > 0.05
-                x: parent.cx - parent.cdW / 2; width: parent.cdW; height: parent.height; color: "#f3f1d6" }
-        }
+    // Classic pseudo-3D road built from horizontal slices: grass / asphalt /
+    // rumble / centre-dash colours follow a world-segment parity that scrolls
+    // with visualDist, so the red-and-white rumble strips and grass bands rush
+    // toward you (the signature OutRun sense of speed). Drawn natively as one
+    // geometry node (RoadSurface).
+    RoadSurface {
+        x: 0; y: root.horizonY
+        width: root.width; height: root.roadH
+        maxHalfWidth: root.maxHalfW
+        slices: 120
+        visualDist: race.visualDist
     }
 
     // Soft atmospheric haze at the horizon — blends the road and verge into the
@@ -406,7 +380,8 @@ Item {
             // distance haze: 0 near .. 1 far, fades the object into the horizon.
             // Baked into the colours (Qt.tint) rather than a square overlay, which
             // showed a faint box around distant trees.
-            readonly property real haz: Math.max(0, Math.min(1, (0.34 - p) / 0.20))
+            // Quantised so the tinted colours only change a few times per pass.
+            readonly property real haz: Math.round(Math.max(0, Math.min(1, (0.34 - p) / 0.20)) * 6) / 6
             readonly property color foliage: Qt.tint(baseFoliage, Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
             readonly property color barkCol: Qt.tint("#5a3a1f", Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
             readonly property color birchBark: Qt.tint("#e8e4da", Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
@@ -416,50 +391,54 @@ Item {
                                                      Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
             readonly property color petal: ["#ff7bb1", "#ffd84a", "#ff5a5a", "#f2f2f2"][Math.floor(root.rnd(index+23)*4)]
             visible: race.started && p > 0.14
+            // Drawn once at base size and scaled: only x/y/scale change per frame,
+            // so the parts below keep static geometry and never re-evaluate.
             x: root.width/2 + side * p * latWorld - tw/2
             y: cy - th
-            width: tw; height: th
+            width: baseW; height: baseH
+            transformOrigin: Item.TopLeft
+            scale: p
 
             // ground shadow at the base
-            Rectangle { x: ob.tw*0.06; y: ob.th*0.93; width: ob.tw*0.88; height: ob.th*0.06
-                        radius: ob.th*0.03; color: "#000000"; opacity: 0.22 }
+            Rectangle { x: ob.baseW*0.06; y: ob.baseH*0.93; width: ob.baseW*0.88; height: ob.baseH*0.06
+                        radius: ob.baseH*0.03; color: "#000000"; opacity: 0.22 }
             // bush: low rounded clump (two blobs)
-            Rectangle { visible: ob.kind===2; x: 0;          y: ob.th*0.22; width: ob.tw;      height: ob.th*0.78; radius: ob.tw*0.40; color: ob.foliage }
-            Rectangle { visible: ob.kind===2; x: ob.tw*0.18; y: 0;          width: ob.tw*0.64; height: ob.th*0.50; radius: ob.tw*0.34; color: Qt.lighter(ob.foliage,1.16) }
+            Rectangle { visible: ob.kind===2; x: 0;          y: ob.baseH*0.22; width: ob.baseW;      height: ob.baseH*0.78; radius: ob.baseW*0.40; color: ob.foliage }
+            Rectangle { visible: ob.kind===2; x: ob.baseW*0.18; y: 0;          width: ob.baseW*0.64; height: ob.baseH*0.50; radius: ob.baseW*0.34; color: Qt.lighter(ob.foliage,1.16) }
 
             // trunk (pine + leafy)
-            Rectangle { visible: ob.kind===0 || ob.kind===1; x: ob.tw*0.44; y: ob.th*0.66; width: ob.tw*0.12; height: ob.th*0.36; color: ob.barkCol }
+            Rectangle { visible: ob.kind===0 || ob.kind===1; x: ob.baseW*0.44; y: ob.baseH*0.66; width: ob.baseW*0.12; height: ob.baseH*0.36; color: ob.barkCol }
 
             // pine: three tiers narrowing upward (conical)
-            Rectangle { visible: ob.kind===0; x: ob.tw*0.10; y: ob.th*0.40; width: ob.tw*0.80; height: ob.th*0.32; radius: ob.tw*0.10; color: ob.foliage }
-            Rectangle { visible: ob.kind===0; x: ob.tw*0.18; y: ob.th*0.20; width: ob.tw*0.64; height: ob.th*0.28; radius: ob.tw*0.10; color: Qt.lighter(ob.foliage,1.10) }
-            Rectangle { visible: ob.kind===0; x: ob.tw*0.30; y: 0;          width: ob.tw*0.40; height: ob.th*0.26; radius: ob.tw*0.10; color: Qt.lighter(ob.foliage,1.20) }
+            Rectangle { visible: ob.kind===0; x: ob.baseW*0.10; y: ob.baseH*0.40; width: ob.baseW*0.80; height: ob.baseH*0.32; radius: ob.baseW*0.10; color: ob.foliage }
+            Rectangle { visible: ob.kind===0; x: ob.baseW*0.18; y: ob.baseH*0.20; width: ob.baseW*0.64; height: ob.baseH*0.28; radius: ob.baseW*0.10; color: Qt.lighter(ob.foliage,1.10) }
+            Rectangle { visible: ob.kind===0; x: ob.baseW*0.30; y: 0;          width: ob.baseW*0.40; height: ob.baseH*0.26; radius: ob.baseW*0.10; color: Qt.lighter(ob.foliage,1.20) }
 
             // leafy tree: full round canopy (base blob + two lighter highlights)
-            Rectangle { visible: ob.kind===1; x: 0;          y: ob.th*0.24; width: ob.tw;      height: ob.th*0.50; radius: ob.tw*0.42; color: ob.foliage }
-            Rectangle { visible: ob.kind===1; x: ob.tw*0.10; y: ob.th*0.06; width: ob.tw*0.62; height: ob.th*0.44; radius: ob.tw*0.34; color: Qt.lighter(ob.foliage,1.12) }
-            Rectangle { visible: ob.kind===1; x: ob.tw*0.40; y: 0;          width: ob.tw*0.46; height: ob.th*0.34; radius: ob.tw*0.26; color: Qt.lighter(ob.foliage,1.22) }
+            Rectangle { visible: ob.kind===1; x: 0;          y: ob.baseH*0.24; width: ob.baseW;      height: ob.baseH*0.50; radius: ob.baseW*0.42; color: ob.foliage }
+            Rectangle { visible: ob.kind===1; x: ob.baseW*0.10; y: ob.baseH*0.06; width: ob.baseW*0.62; height: ob.baseH*0.44; radius: ob.baseW*0.34; color: Qt.lighter(ob.foliage,1.12) }
+            Rectangle { visible: ob.kind===1; x: ob.baseW*0.40; y: 0;          width: ob.baseW*0.46; height: ob.baseH*0.34; radius: ob.baseW*0.26; color: Qt.lighter(ob.foliage,1.22) }
 
             // birch: slim pale trunk with dark bark dashes, airy light canopy
-            Rectangle { visible: ob.kind===3; x: ob.tw*0.45; y: ob.th*0.24; width: ob.tw*0.10; height: ob.th*0.78; color: ob.birchBark }
-            Rectangle { visible: ob.kind===3; x: ob.tw*0.45; y: ob.th*0.46; width: ob.tw*0.06; height: ob.th*0.030; color: "#3c3a34" }
-            Rectangle { visible: ob.kind===3; x: ob.tw*0.49; y: ob.th*0.62; width: ob.tw*0.06; height: ob.th*0.030; color: "#3c3a34" }
-            Rectangle { visible: ob.kind===3; x: ob.tw*0.45; y: ob.th*0.80; width: ob.tw*0.06; height: ob.th*0.030; color: "#3c3a34" }
-            Rectangle { visible: ob.kind===3; x: ob.tw*0.08; y: ob.th*0.10; width: ob.tw*0.84; height: ob.th*0.26; radius: ob.tw*0.30; color: Qt.lighter(ob.foliage,1.28) }
-            Rectangle { visible: ob.kind===3; x: 0;          y: ob.th*0.02; width: ob.tw*0.60; height: ob.th*0.20; radius: ob.tw*0.24; color: Qt.lighter(ob.foliage,1.42) }
-            Rectangle { visible: ob.kind===3; x: ob.tw*0.42; y: 0;          width: ob.tw*0.55; height: ob.th*0.18; radius: ob.tw*0.22; color: Qt.lighter(ob.foliage,1.18) }
+            Rectangle { visible: ob.kind===3; x: ob.baseW*0.45; y: ob.baseH*0.24; width: ob.baseW*0.10; height: ob.baseH*0.78; color: ob.birchBark }
+            Rectangle { visible: ob.kind===3; x: ob.baseW*0.45; y: ob.baseH*0.46; width: ob.baseW*0.06; height: ob.baseH*0.030; color: "#3c3a34" }
+            Rectangle { visible: ob.kind===3; x: ob.baseW*0.49; y: ob.baseH*0.62; width: ob.baseW*0.06; height: ob.baseH*0.030; color: "#3c3a34" }
+            Rectangle { visible: ob.kind===3; x: ob.baseW*0.45; y: ob.baseH*0.80; width: ob.baseW*0.06; height: ob.baseH*0.030; color: "#3c3a34" }
+            Rectangle { visible: ob.kind===3; x: ob.baseW*0.08; y: ob.baseH*0.10; width: ob.baseW*0.84; height: ob.baseH*0.26; radius: ob.baseW*0.30; color: Qt.lighter(ob.foliage,1.28) }
+            Rectangle { visible: ob.kind===3; x: 0;          y: ob.baseH*0.02; width: ob.baseW*0.60; height: ob.baseH*0.20; radius: ob.baseW*0.24; color: Qt.lighter(ob.foliage,1.42) }
+            Rectangle { visible: ob.kind===3; x: ob.baseW*0.42; y: 0;          width: ob.baseW*0.55; height: ob.baseH*0.18; radius: ob.baseW*0.22; color: Qt.lighter(ob.foliage,1.18) }
 
             // rock: two grey boulders with a sunlit top facet
-            Rectangle { visible: ob.kind===4; x: 0;          y: ob.th*0.25; width: ob.tw*0.72; height: ob.th*0.75; radius: ob.th*0.30; color: ob.rockCol }
-            Rectangle { visible: ob.kind===4; x: ob.tw*0.40; y: 0;          width: ob.tw*0.60; height: ob.th*0.88; radius: ob.th*0.34; color: Qt.lighter(ob.rockCol,1.12) }
-            Rectangle { visible: ob.kind===4; x: ob.tw*0.50; y: ob.th*0.10; width: ob.tw*0.28; height: ob.th*0.24; radius: ob.th*0.12; color: Qt.lighter(ob.rockCol,1.30) }
+            Rectangle { visible: ob.kind===4; x: 0;          y: ob.baseH*0.25; width: ob.baseW*0.72; height: ob.baseH*0.75; radius: ob.baseH*0.30; color: ob.rockCol }
+            Rectangle { visible: ob.kind===4; x: ob.baseW*0.40; y: 0;          width: ob.baseW*0.60; height: ob.baseH*0.88; radius: ob.baseH*0.34; color: Qt.lighter(ob.rockCol,1.12) }
+            Rectangle { visible: ob.kind===4; x: ob.baseW*0.50; y: ob.baseH*0.10; width: ob.baseW*0.28; height: ob.baseH*0.24; radius: ob.baseH*0.12; color: Qt.lighter(ob.rockCol,1.30) }
 
             // flower patch: low green pad with bright blossoms poking out
-            Rectangle { visible: ob.kind===5; x: 0;          y: ob.th*0.35; width: ob.tw;      height: ob.th*0.65; radius: ob.th*0.32; color: ob.foliage }
-            Rectangle { visible: ob.kind===5; x: ob.tw*0.10; y: ob.th*0.18; width: ob.tw*0.14; height: ob.tw*0.14; radius: ob.tw*0.07; color: ob.petal }
-            Rectangle { visible: ob.kind===5; x: ob.tw*0.36; y: ob.th*0.02; width: ob.tw*0.14; height: ob.tw*0.14; radius: ob.tw*0.07; color: Qt.lighter(ob.petal,1.15) }
-            Rectangle { visible: ob.kind===5; x: ob.tw*0.62; y: ob.th*0.22; width: ob.tw*0.14; height: ob.tw*0.14; radius: ob.tw*0.07; color: ob.petal }
-            Rectangle { visible: ob.kind===5; x: ob.tw*0.80; y: ob.th*0.06; width: ob.tw*0.12; height: ob.tw*0.12; radius: ob.tw*0.06; color: Qt.lighter(ob.petal,1.25) }
+            Rectangle { visible: ob.kind===5; x: 0;          y: ob.baseH*0.35; width: ob.baseW;      height: ob.baseH*0.65; radius: ob.baseH*0.32; color: ob.foliage }
+            Rectangle { visible: ob.kind===5; x: ob.baseW*0.10; y: ob.baseH*0.18; width: ob.baseW*0.14; height: ob.baseW*0.14; radius: ob.baseW*0.07; color: ob.petal }
+            Rectangle { visible: ob.kind===5; x: ob.baseW*0.36; y: ob.baseH*0.02; width: ob.baseW*0.14; height: ob.baseW*0.14; radius: ob.baseW*0.07; color: Qt.lighter(ob.petal,1.15) }
+            Rectangle { visible: ob.kind===5; x: ob.baseW*0.62; y: ob.baseH*0.22; width: ob.baseW*0.14; height: ob.baseW*0.14; radius: ob.baseW*0.07; color: ob.petal }
+            Rectangle { visible: ob.kind===5; x: ob.baseW*0.80; y: ob.baseH*0.06; width: ob.baseW*0.12; height: ob.baseW*0.12; radius: ob.baseW*0.06; color: Qt.lighter(ob.petal,1.25) }
         }
     }
 
@@ -939,22 +918,25 @@ Item {
                    font.family: "monospace"; font.pixelSize: 11; font.bold: true }
             Repeater {
                 id: lbRepeater
-                model: race.standings
+                // A count, not the list itself: the list is re-sent every tick,
+                // and a new model would rebuild these rows 30 times a second.
+                model: race.standings.length
                 Item {
                     width: lbCol.width; height: 18
-                    readonly property bool me: modelData.isPlayer
+                    readonly property var row: race.standings[index] || ({})
+                    readonly property bool me: row.isPlayer === true
                     Text { id: rk; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                           text: modelData.rank + "."; color: me ? "#ffe24a" : "#dfe7ef"
+                           text: row.rank + "."; color: me ? "#ffe24a" : "#dfe7ef"
                            font.family: "monospace"; font.pixelSize: 13; font.bold: true }
                     Text { anchors.left: rk.right; anchors.leftMargin: 5
                            anchors.right: gp.left; anchors.rightMargin: 6
                            anchors.verticalCenter: parent.verticalCenter
-                           text: root.shortName(modelData.name, 12); elide: Text.ElideRight
+                           text: root.shortName(row.name, 12); elide: Text.ElideRight
                            color: me ? "#ffe24a" : "#ffffff"
                            font.family: "monospace"; font.pixelSize: 13; font.bold: me }
                     Text { id: gp; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                           text: modelData.gapText
-                           color: modelData.rank === 1 ? "#5dff5d" : "#ff9d6b"
+                           text: row.gapText
+                           color: row.rank === 1 ? "#5dff5d" : "#ff9d6b"
                            font.family: "monospace"; font.pixelSize: 13; font.bold: true }
                 }
             }

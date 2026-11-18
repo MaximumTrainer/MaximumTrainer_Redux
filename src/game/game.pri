@@ -6,10 +6,12 @@ INCLUDEPATH += $$PWD
 HEADERS += \
     $$PWD/ghostreplay.h \
     $$PWD/cyclingphysics.h \
-    $$PWD/retroracecontroller.h
+    $$PWD/retroracecontroller.h \
+    $$PWD/roadsurface.h
 
 SOURCES += \
     $$PWD/ghostreplay.cpp \
-    $$PWD/retroracecontroller.cpp
+    $$PWD/retroracecontroller.cpp \
+    $$PWD/roadsurface.cpp
 
 RESOURCES += $$PWD/game.qrc
