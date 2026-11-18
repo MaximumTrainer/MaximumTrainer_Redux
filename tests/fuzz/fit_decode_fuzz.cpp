@@ -14,8 +14,8 @@ namespace {
 struct ReadEveryField : fit::MesgListener {
     void OnMesg(fit::Mesg &mesg) override
     {
-        for (FIT_UINT16 fieldIndex = 0; fieldIndex < mesg.GetNumFields(); ++fieldIndex) {
-            const fit::Field *field = mesg.GetFieldByIndex(fieldIndex);
+        for (int fieldIndex = 0; fieldIndex < mesg.GetNumFields(); ++fieldIndex) {
+            const fit::Field *field = mesg.GetFieldByIndex(static_cast<FIT_UINT16>(fieldIndex));
             for (FIT_UINT8 valueIndex = 0; valueIndex < field->GetNumValues(); ++valueIndex) {
                 (void)field->GetFLOAT64Value(valueIndex);
                 (void)field->GetSTRINGValue(valueIndex);
