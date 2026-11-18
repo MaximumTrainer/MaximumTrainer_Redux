@@ -10,6 +10,8 @@ endif()
 
 option(MT_WERROR "Treat compiler warnings as errors (CI)" OFF)
 option(MT_BUILD_TESTS "Build the Qt Test suites under tests/" ON)
+option(MT_BUILD_APP "Build the MaximumTrainer application" ON)
+set(MT_SANITIZE "" CACHE STRING "Sanitizers for every target, e.g. address;undefined")
 set(QWT_INSTALL "" CACHE PATH "QWT 6.3 install prefix (contains include/ and lib/)")
 set(INTERVALS_OAUTH_CLIENT_ID "$ENV{INTERVALS_OAUTH_CLIENT_ID}" CACHE STRING "Intervals.icu OAuth client id")
 if(NOT INTERVALS_OAUTH_CLIENT_ID)
@@ -28,10 +30,13 @@ endif()
 set(MT_APP_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/build/release" CACHE PATH "App binary output directory")
 set(MT_TEST_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/build/tests" CACHE PATH "Test binary output directory")
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS
-    Core Gui Widgets Network PrintSupport Quick QuickWidgets Qml WebSockets)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets Network Quick Qml)
+if(MT_BUILD_APP)
+    find_package(Qt6 REQUIRED COMPONENTS PrintSupport QuickWidgets WebSockets)
+endif()
 find_package(Qt6 QUIET OPTIONAL_COMPONENTS
-    Concurrent Bluetooth WebEngineWidgets WebEngineCore Multimedia MultimediaWidgets UiTools Test)
+    PrintSupport QuickWidgets WebSockets Concurrent Bluetooth WebEngineWidgets WebEngineCore
+    Multimedia MultimediaWidgets UiTools Test)
 qt_standard_project_setup(REQUIRES 6.5)
 qt_policy(SET QTP0004 NEW)
 

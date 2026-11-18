@@ -1,9 +1,22 @@
+# ── Garmin FIT SDK ───────────────────────────────────────────────────────────
+add_library(mt_fit OBJECT)
+file(GLOB MT_FIT_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/fitness/fit/*.cpp")
+target_sources(mt_fit PRIVATE ${MT_FIT_SOURCES})
+target_include_directories(mt_fit PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/fitness/fit")
+set_target_properties(mt_fit PROPERTIES POSITION_INDEPENDENT_CODE ON AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+
 # ── Retro ghost race: compiled QML module (MaximumTrainer.Game) ──────────────
 add_subdirectory(game)
 
+mt_write_app_version_header("${CMAKE_CURRENT_BINARY_DIR}/generated")
+
+if(NOT MT_BUILD_APP)
+    return()
+endif()
+
 # ── Application code ─────────────────────────────────────────────────────────
-# Everything except main.cpp, as an object library so the test suites can link
-# the same compiled objects instead of rebuilding their own copies.
+# Everything except main.cpp. An object library rather than a static one, so
+# self-registering objects are never dropped by the linker.
 add_library(mt_core OBJECT)
 
 set(MT_SOURCE_DIRS
@@ -108,13 +121,6 @@ else()
     endif()
 endif()
 
-add_library(mt_fit OBJECT)
-file(GLOB MT_FIT_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/fitness/fit/*.cpp")
-target_sources(mt_fit PRIVATE ${MT_FIT_SOURCES})
-target_include_directories(mt_fit PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/fitness/fit")
-set_target_properties(mt_fit PROPERTIES POSITION_INDEPENDENT_CODE ON AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
-
-mt_write_app_version_header("${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_include_directories(mt_core PUBLIC ${MT_INCLUDE_DIRS} "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set_target_properties(mt_core PROPERTIES AUTORCC ON AUTOUIC_SEARCH_PATHS "${MT_INCLUDE_DIRS}")
 target_compile_definitions(mt_core PUBLIC

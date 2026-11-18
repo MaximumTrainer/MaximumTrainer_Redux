@@ -24,10 +24,18 @@ if(_qwt_debug_names)
 endif()
 
 if(NOT QWT_INCLUDE_DIR OR NOT QWT_LIBRARY)
-    message(FATAL_ERROR "QWT 6.3 not found. Build it from source and pass -DQWT_INSTALL=/path/to/qwt (see README).")
+    if(MT_BUILD_APP)
+        message(FATAL_ERROR "QWT 6.3 not found. Build it from source and pass -DQWT_INSTALL=/path/to/qwt (see README).")
+    endif()
+    message(STATUS "QWT not found: skipping the plot-based test suites")
+    return()
 endif()
 
-add_library(Qwt::Qwt UNKNOWN IMPORTED)
+if(WIN32)
+    add_library(Qwt::Qwt SHARED IMPORTED)
+else()
+    add_library(Qwt::Qwt UNKNOWN IMPORTED)
+endif()
 set_target_properties(Qwt::Qwt PROPERTIES
     IMPORTED_LOCATION "${QWT_LIBRARY}"
     INTERFACE_INCLUDE_DIRECTORIES "${QWT_INCLUDE_DIR}")
@@ -35,7 +43,7 @@ if(QWT_LIBRARY_DEBUG)
     set_target_properties(Qwt::Qwt PROPERTIES IMPORTED_LOCATION_DEBUG "${QWT_LIBRARY_DEBUG}")
 endif()
 if(WIN32)
-    # On Windows the import library sits in lib/ while qwt.dll is next to it.
+    # On Windows the import library and qwt.dll both sit in lib/.
     set_target_properties(Qwt::Qwt PROPERTIES IMPORTED_IMPLIB "${QWT_LIBRARY}")
     get_filename_component(_qwt_lib_dir "${QWT_LIBRARY}" DIRECTORY)
     set_target_properties(Qwt::Qwt PROPERTIES IMPORTED_LOCATION "${_qwt_lib_dir}/qwt.dll")

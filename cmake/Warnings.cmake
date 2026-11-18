@@ -16,3 +16,13 @@ function(mt_set_warnings target)
         endif()
     endif()
 endfunction()
+
+if(MT_SANITIZE)
+    list(JOIN MT_SANITIZE "," _mt_sanitizers)
+    add_compile_options(-fsanitize=${_mt_sanitizers} -fno-omit-frame-pointer)
+    if("undefined" IN_LIST MT_SANITIZE)
+        add_compile_options(-fno-sanitize-recover=undefined)
+    endif()
+    add_link_options(-fsanitize=${_mt_sanitizers})
+endif()
+
