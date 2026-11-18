@@ -157,8 +157,12 @@ QSGNode *RoadSurface::updateRectangleNodes(QSGNode *oldNode)
     QSGNode *root = oldNode;
     if (!root)
         root = new QSGNode;
-    while (root->childCount() > quadCount)
-        delete root->lastChild();
+    if (root->childCount() > quadCount) {
+        while (QSGNode *extra = root->lastChild()) {
+            root->removeChildNode(extra);
+            delete extra;
+        }
+    }
     while (root->childCount() < quadCount) {
         QSGRectangleNode *rectangle = window()->createRectangleNode();
         rectangle->setFlag(QSGNode::OwnedByParent);
