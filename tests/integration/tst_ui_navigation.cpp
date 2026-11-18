@@ -34,7 +34,6 @@
  *      • screenshot_settings.png
  *      • screenshot_studio_mode.png
  *      • screenshot_activity_history.png
- *      • screenshot_plan.png
  *      • screenshot_history.png
  *    Binary is located via the MT_APP_BINARY env-var override or the
  *    canonical peer path  build/release/MaximumTrainer{.app|.exe}.
@@ -257,7 +256,6 @@ private slots:
             QStringLiteral("screenshot_workout_running.png"),
             QStringLiteral("screenshot_studio_mode.png"),
             QStringLiteral("screenshot_activity_history.png"),
-            QStringLiteral("screenshot_plan.png"),
             QStringLiteral("screenshot_history.png"),
         };
 

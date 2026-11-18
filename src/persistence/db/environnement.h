@@ -21,12 +21,6 @@ const static QString urlGitHubReleasesPage = "https://github.com/MaximumTrainer/
 const static QString urlIntervalsIcuApi = "https://intervals.icu/api/v1/athlete/";
 const static QString urlIntervalsIcu = "https://intervals.icu/";
 
-/// Intervals.icu athlete calendar web URL.
-/// Use QString::arg(athleteId) to substitute the athlete ID placeholder.
-/// Example: urlIntervalsIcuCalendar.arg("i12345")
-///   → "https://intervals.icu/athlete/i12345/calendar"
-const static QString urlIntervalsIcuCalendar = "https://intervals.icu/athlete/%1/calendar";
-
 /// Intervals.icu OAuth2 Authorization Code Flow
 /// Client ID 259 is registered for MaximumTrainer.
 ///

@@ -7,10 +7,8 @@
 #include <QThread>
 #include <QDockWidget>
 #ifndef GC_WASM_BUILD
-#include <QtWebEngineCore/QWebEngineDownloadRequest>
 #endif
 
-#include "planobject.h"
 #include "fancytabbar.h"
 #include "radio.h"
 #include "workout.h"
@@ -138,7 +136,6 @@ public slots:
     QVector<UserStudio> prepareStudioRiders(bool simulator);
     void leftMenuChanged(int tabSelected);
 
-    void goToWorkoutPlanFilter(const QString& plan);
     void goToWorkoutNameFilterFromIntervals(const QString &workoutName);
 
 
@@ -186,15 +183,8 @@ private slots:
 
     void onNetworkOnlineChanged(bool isOnline);
 
-    void createWebChannelPlan();
 
-    void reloadPlanWebView();
-    void onIntervalsIcuWorkoutDownloaded();
-    void showPlanContextMenu(const QPoint &pos);
 
-#ifndef GC_WASM_BUILD
-    void onTrainerwebDownloadRequested(QWebEngineDownloadRequest *download);
-#endif
 
     // Screenshot mode — captures a sequence of PNG files then quits the app.
     void screenshotNextStep();
@@ -216,7 +206,6 @@ private:
     void savePathImport(const QString& filepath);
     QString loadPathImport() const;
 
-    void saveAndNavigateToWorkout(const Workout &workout, const QString &subFolder);
 
     void tryAdvanceWorkoutQueue();
     void startWorkoutQueue();
@@ -239,7 +228,6 @@ private:
 
     QList<Radio> lstRadio;
 
-    PlanObject *planObject;
 
 
     Settings *settings;
@@ -263,8 +251,6 @@ private:
 
     QString lastWorkoutNameDownloaded;
 
-    QNetworkReply *replyIntervalsIcuZwo;
-    QString        m_pendingIntervalsWorkoutId;
 
     QString        m_ssOutputDir;
     int            m_ssStep       = 0;
