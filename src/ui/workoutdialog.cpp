@@ -43,8 +43,8 @@
 #include "dialogconfig.h"
 #include "webbrowserview.h"
 #include <QQuickWidget>
-#include <QQmlContext>
 #include "retroracecontroller.h"
+#include "workoutraceview.h"
 #include "dialogkeyboardshortcuts.h"
 #include "logger.h"
 #include "strava_service.h"
@@ -1710,27 +1710,9 @@ void WorkoutDialog::start_or_pause_workout() {
 
 void WorkoutDialog::sendLastSecondData(int seconds) {
 
-    if (raceController) {
-        const double tot = Util::convertQTimeToSecD(workout.getDurationQTime());
-        if (tot > 0) raceController->setWorkoutProgress(qBound(0.0, seconds / tot, 1.0));
-        raceController->setWorkoutElapsedSec(seconds);
-        // timeInterval / the timers are decremented just AFTER this call, so the
-        // values here read 1 s high vs the on-screen graph & timer widgets —
-        // subtract 1 so the game's interval/finish countdowns stay in sync.
-        if (tot > 0) raceController->setFinishIn(qMax(0.0, tot - seconds - 1.0));
-
-        // Preview the upcoming interval's target on the road ahead.
-        const double secsToNext = qMax(0.0, Util::convertQTimeToSecD(timeInterval) - 1.0);
-        double nextW = -1.0, nextCad = -1.0;
-        if (currentInterval + 1 < workout.getNbInterval()) {
-            const Interval nxt = workout.getInterval(currentInterval + 1);
-            if (nxt.getPowerStepType() != Interval::NONE && account->FTP > 0)
-                nextW = qRound(nxt.getFTP_start() * account->FTP);
-            if (nxt.getCadenceStepType() != Interval::NONE)
-                nextCad = nxt.getCadence_start();
-        }
-        raceController->setNextInterval(nextW, nextCad, secsToNext);
-    }
+    if (m_raceView)
+        m_raceView->onWorkoutSecond(workout, currentInterval, seconds,
+                                    Util::convertQTimeToSecD(timeInterval), account->FTP);
 
     if (account->enable_studio_mode) {
         for (int i=0; i<account->nb_user_studio; i++) {
@@ -2645,17 +2627,16 @@ WebBrowserView *WorkoutDialog::ensureWebPlayer() {
 
 
 QQuickWidget *WorkoutDialog::ensureRaceView() {
-    if (!raceController) {
-        raceController = new RetroRaceController(this);
-        raceController->setRiderParams(account->bike_weight_kg + account->weight_kg,
-                                       account->userCda);
-        raceController->setLiveMode(true);
-        // In ERG the partner is a cooperative team-mate (draft + leash); in slope/
-        // free-ride it stays a straight effort-vs-effort race.
-        raceController->setErgMode(!isUsingSlopeMode && account->control_trainer_resistance);
-        raceController->setWorkoutName(workout.getName());   // enables the chooser
-        raceController->setWorkoutProfile(buildWorkoutProfile());  // "what's next" strip
-        raceController->setIntervalMessage(currentIntervalObj.getDisplayMessage());
+    if (!m_raceView) {
+        WorkoutRaceView::Setup setup;
+        setup.riderMassKg = account->bike_weight_kg + account->weight_kg;
+        setup.cdA = account->userCda;
+        setup.ergMode = !isUsingSlopeMode && account->control_trainer_resistance;
+        setup.intervalMessage = currentIntervalObj.getDisplayMessage();
+        m_raceView = new WorkoutRaceView(workout, setup, ui->widgetVideo->parentWidget()->layout(),
+                                         {isWorkoutStarted, isWorkoutPaused, isWorkoutOver}, this);
+        raceController = m_raceView->controller();
+        raceView = m_raceView->view();
         // Seed the workout pacer's target the moment the user picks it.
         connect(raceController, &RetroRaceController::opponentChanged, this, [this]() {
             if (currentTargetPower > 0)
@@ -2665,70 +2646,7 @@ QQuickWidget *WorkoutDialog::ensureRaceView() {
         connect(raceController, &RetroRaceController::fullscreenToggleRequested,
                 this, &WorkoutDialog::onToggleGameFullscreen);
     }
-    if (!raceView) {
-        raceView = new QQuickWidget(this);
-        // If this view ever needs a native window, confine it to the view rather
-        // than promoting the dialog's own window (which would tear the dialog down
-        // and rebuild it). The main guard against that, though, is building this
-        // view at show time while hidden (see showEvent) so the realization is a
-        // one-time, invisible event and never happens on a mid-workout switch.
-        raceView->setAttribute(Qt::WA_DontCreateNativeAncestors, true);
-        raceView->setResizeMode(QQuickWidget::SizeRootObjectToView);
-        raceView->rootContext()->setContextProperty(QStringLiteral("race"), raceController);
-        raceView->setSource(QUrl(QStringLiteral("qrc:/game/qml/RetroRace.qml")));
-        // Share the content slot with the video / web players.
-        if (QLayout *contentLayout = ui->widgetVideo->parentWidget()->layout())
-            contentLayout->addWidget(raceView);
-        raceController->start();   // armed; rolls on the workout start
-        // If the workout is already running/over (Game selected mid-workout),
-        // bring the race into the right state immediately.
-        if (isWorkoutOver)
-            raceController->finishRace();
-        else if (isWorkoutStarted && !isWorkoutPaused)
-            raceController->beginRace();
-    }
     return raceView;
-}
-
-// Sample the workout's target-power profile into normalised 0..1 heights so the
-// game can draw a compact "what's next" strip.
-QVariantList WorkoutDialog::buildWorkoutProfile() const {
-    const QList<Interval> &ivs = workout.getLstInterval();
-    QVector<double> startSec, durSec, fStart, fEnd;
-    double acc = 0.0;
-    for (const Interval &iv : ivs) {
-        const double d = Util::convertQTimeToSecD(iv.getDurationQTime());
-        startSec.append(acc);
-        durSec.append(d);
-        const double s = qMax(0.0, iv.getFTP_start());
-        double e = iv.getFTP_end();
-        e = (e <= 0.0) ? s : e;
-        fStart.append(s);
-        fEnd.append(e);
-        acc += d;
-    }
-    const double totalSec = (acc > 0.0) ? acc : 1.0;
-
-    const int N = 120;
-    QVector<double> raw(N, 0.0);
-    double maxF = 0.01;
-    for (int i = 0; i < N; ++i) {
-        const double t = (i + 0.5) / N * totalSec;
-        for (int k = 0; k < durSec.size(); ++k) {
-            if (t < startSec[k] + durSec[k] || k == durSec.size() - 1) {
-                const double f = (durSec[k] > 0.0)
-                               ? qBound(0.0, (t - startSec[k]) / durSec[k], 1.0) : 0.0;
-                raw[i] = fStart[k] + f * (fEnd[k] - fStart[k]);
-                break;
-            }
-        }
-        maxF = qMax(maxF, raw[i]);
-    }
-
-    QVariantList profile;
-    for (double v : raw)
-        profile.append(v / maxF);
-    return profile;
 }
 
 void WorkoutDialog::onToggleGameFullscreen() {
