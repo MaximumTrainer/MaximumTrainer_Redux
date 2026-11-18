@@ -7,8 +7,6 @@ name: Nightly fuzz
 on:
   schedule:
     - cron: '17 7 * * *'
-  push:
-    branches: ['ci-nightly-fuzz']   # TEMP: validate on the branch, removed before merge
   workflow_dispatch:
     inputs:
       seconds:
@@ -31,7 +29,7 @@ jobs:
       contents: read
       issues: write
     env:
-      FUZZ_SECONDS: ${{ github.event.inputs.seconds || (github.event_name == 'push' && '60') || '1200' }}
+      FUZZ_SECONDS: ${{ github.event.inputs.seconds || '1200' }}
 
     steps:
     - name: Checkout
