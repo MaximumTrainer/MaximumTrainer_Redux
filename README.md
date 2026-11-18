@@ -191,7 +191,7 @@ MaximumTrainer has a multi-tier test suite covering BLE parsing, service APIs, U
 | Plan adherence tests | `tests/plan_adherence/` | Completed/skipped/substituted entries, adherence %, encode-decode, change signals |
 | Logger tests | `tests/logger/` | Log level filtering, output format, file write enable/disable |
 | Studio tests | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling |
-| Group workout tests | `tests/group/` | Room-code parsing, message encode/decode, clock-offset estimate, rider-row states; live relay test when `GROUP_RELAY_URL` is set |
+| Group workout tests | `tests/group/` | Room-code parsing, message encode/decode, clock-offset estimate, rider-row states, group-ride start and telemetry; live relay test when `GROUP_RELAY_URL` is set |
 | Retro race tests | `tests/game/` | Race ambient clock vs replay speed, frame updates from per-second setters, native road rendering |
 | Login screen tests | `tests/integration/` | OAuth dialog state, offline login path, Intervals.icu OAuth URL generation |
 | Workout UI tests | `tests/integration/` | Full ERG session driven by SimulatorHub through WorkoutDialog; interval advancement; data accumulation |
