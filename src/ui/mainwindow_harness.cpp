@@ -94,9 +94,9 @@ static const int ssDelays[] = {
     2000,  // after step  6 (enabled studio mode)       → capture Studio
     500,   // after step  7 (captured Studio)           → switch to Intervals.icu
     1500,  // after step  8 (switched to Intervals.icu) → capture Intervals.icu
-    500,   // after step  9 (captured Intervals.icu)    → switch to Plan
-    1500,  // after step 10 (switched to Plan)          → capture Plan
-    500,   // after step 11 (captured Plan)             → switch to History
+    0,     // after step  9 (captured Intervals.icu)    → (unused)
+    0,     // after step 10 (unused)
+    500,   // after step 11 (unused)                    → switch to History
     1500,  // after step 12 (switched to History)       → capture History
     600,   // after step 13 (captured History)          → launch studio workout
     4000,  // after step 14 (launched studio workout)   → capture studio workout
@@ -476,20 +476,9 @@ void MainWindow::screenshotNextStep()
         qInfo() << "Screenshot: activity_history (Intervals.icu tab)";
         break;
 
-    // ── Step 10: show the Plan page. Its left tab is hidden (see #299), so
-    //    select the stacked page directly to still capture the screenshot. ──
+    // Steps 10-11 used to capture the removed Plan page.
     case 10:
-        ui->stackedWidget_menu->setCurrentIndex(2);   // Plan page (tab hidden)
-        ui->tabWidget->setCurrentIndex(0);   // Plan sub-tab
-        raise();
-        activateWindow();
-        QCoreApplication::processEvents();
-        break;
-
-    // ── Step 11: capture Plan ─────────────────────────────────────────────
     case 11:
-        grab().save(m_ssOutputDir + QLatin1String("/screenshot_plan.png"), "PNG");
-        qInfo() << "Screenshot: plan";
         break;
 
     // ── Step 12: switch to History tab (tab 4) ────────────────────────────

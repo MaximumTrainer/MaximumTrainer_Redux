@@ -42,14 +42,6 @@ public:
     /// Fetch training-zone settings using an OAuth2 Bearer token.
     static QNetworkReply* getAthleteSettingsBearer(const QString &athleteId, const QString &bearerToken);
 
-    /// Download a workout as a ZWO (Zwift workout XML) file from Intervals.icu.
-    /// Endpoint: GET /api/v1/athlete/{athleteId}/workouts/{workoutId}.zwo
-    /// @param athleteId  The Intervals.icu athlete ID (e.g. "i12345").
-    /// @param workoutId  The numeric workout ID shown on the calendar (e.g. "12345678").
-    /// @param apiKey     The user's Intervals.icu API key.
-    /// @return The pending QNetworkReply; caller must connect finished().
-    static QNetworkReply* downloadWorkoutZwo(const QString &athleteId, const QString &workoutId, const QString &apiKey);
-
 private:
     /// Build a QNetworkRequest with the Intervals.icu Basic Auth header set.
     static QNetworkRequest buildRequest(const QString &url, const QString &apiKey);

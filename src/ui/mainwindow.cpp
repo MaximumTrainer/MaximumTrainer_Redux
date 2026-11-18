@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 
-#include <functional>
 #include "setting_keys.h"
 #include "ui_mainwindow.h"
 
@@ -42,18 +41,10 @@
 #include "apptheme.h"
 
 #include <QDir>
-#include <QMenu>
 #include <QRegularExpression>
 #include <QWebEngineView>
-#include <QWebEngineProfile>
-#include <QWebEngineScript>
-#include <QWebEnginePage>
-#include <QWebEngineScriptCollection>
-#include <QWebChannel>
 #ifndef GC_WASM_BUILD
-#include <QtWebEngineCore/QWebEngineDownloadRequest>
 #endif
-#include "myqwebenginepage.h"
 
 #include "extrequest.h"
 #include "strava_service.h"
@@ -71,47 +62,6 @@
 #include "groupsession.h"
 #include "groupworkoutcodec.h"
 #include "joingroupdialog.h"
-
-namespace {
-/// Runs @p load the first time @p view is shown, so pages on tabs the user
-/// never opens do not start a Chromium renderer (memory, network, JS) at login.
-class LoadOnFirstShow : public QObject
-{
-public:
-    LoadOnFirstShow(QWidget *view, std::function<void()> load)
-        : QObject(view), m_load(std::move(load))
-    {
-        if (view->isVisible()) {
-            QTimer::singleShot(0, this, [this]() { fire(); });
-            return;
-        }
-        view->installEventFilter(this);
-    }
-
-protected:
-    bool eventFilter(QObject *watched, QEvent *event) override
-    {
-        if (event->type() == QEvent::Show) {
-            watched->removeEventFilter(this);
-            fire();
-        }
-        return false;
-    }
-
-private:
-    void fire()
-    {
-        if (!m_load)
-            return;
-        auto load = std::move(m_load);
-        m_load = nullptr;
-        deleteLater();
-        load();
-    }
-
-    std::function<void()> m_load;
-};
-} // namespace
 
 #ifdef GC_WASM_BUILD
 #include <emscripten.h>
@@ -190,11 +140,6 @@ EM_JS(void, js_exposeWasmDemoWorkout, (), {
 
 
 MainWindow::~MainWindow() {
-    if (replyIntervalsIcuZwo) {
-        replyIntervalsIcuZwo->abort();
-        replyIntervalsIcuZwo->deleteLater();
-        replyIntervalsIcuZwo = nullptr;
-    }
     delete ui;
 
 }
@@ -211,62 +156,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->settings = qApp->property("User_Settings").value<Settings*>();
     this->account = qApp->property("Account").value<Account*>();
 
-    planObject = new PlanObject(this);         ///Used with QWebView Plan page
-
-    replyIntervalsIcuZwo    = nullptr;
-
-
-    createWebChannelPlan();
-
-    // Right-click context menu on the Plan (Intervals.icu calendar) view
-    ui->webView_plan->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui->webView_plan, &QWebEngineView::customContextMenuRequested, this, &MainWindow::showPlanContextMenu);
-
-    // Load Intervals.icu athlete calendar, or show a setup prompt if no credentials configured
-    if (!account->intervals_icu_athlete_id.isEmpty()) {
-        new LoadOnFirstShow(ui->webView_plan, [this]() {
-            ui->webView_plan->setUrl(QUrl(urlIntervalsIcuCalendar.arg(account->intervals_icu_athlete_id)));
-        });
-    } else {
-        ui->webView_plan->setHtml(
-            QStringLiteral(
-                "<html><body style='font-family:sans-serif;text-align:center;padding-top:60px;'>"
-                "<h2>Intervals.icu Calendar</h2>"
-                "<p>No Intervals.icu credentials configured.</p>"
-                "<p>Open <b>Preferences</b> and enter your athlete ID and API key "
-                "in the Connectivity section.</p>"
-                "</body></html>"
-            )
-        );
-    }
-
-    // ── Trainerweb integration ────────────────────────────────────────────────
-    new LoadOnFirstShow(ui->webView_trainerweb_plans, [this]() {
-        ui->webView_trainerweb_plans->setUrl(
-            QUrl(QStringLiteral("https://trainerdb-84bdb.firebaseapp.com/listplan")));
-    });
-    new LoadOnFirstShow(ui->webView_trainerweb_creator, [this]() {
-        ui->webView_trainerweb_creator->setUrl(
-            QUrl(QStringLiteral("https://trainerdb-84bdb.firebaseapp.com/listworkoutcreator")));
-    });
-#ifndef GC_WASM_BUILD
-    {
-        // Intercept workout file downloads from both Trainerweb sub-views.
-        // Both views share the same default profile so we only connect once.
-        auto *plansProfile   = ui->webView_trainerweb_plans->page()->profile();
-        auto *creatorProfile = ui->webView_trainerweb_creator->page()->profile();
-        connect(plansProfile, &QWebEngineProfile::downloadRequested,
-                this, &MainWindow::onTrainerwebDownloadRequested);
-        if (creatorProfile != plansProfile)
-            connect(creatorProfile, &QWebEngineProfile::downloadRequested,
-                    this, &MainWindow::onTrainerwebDownloadRequested);
-    }
-#else
-    // In WASM, QWebEngineProfile::downloadRequested is not available, so
-    // workout imports from Trainerweb cannot be intercepted. Hide the tab.
-    ui->tabWidget->setTabVisible(1, false);
-#endif
-
     // Initialise the Intervals.icu tab with current credentials
     ui->tab_intervals_icu->refreshCredentials();
 
@@ -277,18 +166,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ftb = new FancyTabBar(FancyTabBar::TabBarPosition::Left, ui->widget_fancyMenu);
     ftb->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    // Tab indices must stay in sync with the pages in stackedWidget_menu
-    // (see leftMenuChanged): 0 Workout, 1 Intervals.icu, 2 Studio, 3 Devices,
-    // 4 History. The former Profile and Settings web-view tabs were removed —
-    // FTP/LTHR/weight now live in the Preferences dialog.
-    //
-    // The "Plan" tab is intentionally HIDDEN (not inserted) pending a clear spec
-    // — see issue #299: its Intervals.icu-calendar view needs a separate web
-    // login (the app's OAuth/API auth doesn't carry into the embedded browser),
-    // and the Trainerweb (TrainerDB) view's downloads are broken, so it only
-    // confused users. The page still lives in stackedWidget_menu (index 2); to
-    // bring it back, re-insert the tab below and restore tabToPage in
-    // leftMenuChanged().
+    // Tab indices match the pages in stackedWidget_menu.
     ftb->insertTab(0, QIcon(account->rowing_mode ? ":/image/icon/rower"
                                                   : ":/image/icon/workoutMan"), tr("Workout"));
     ftb->insertTab(1, QIcon(":/image/icon/intervals"),   tr("Intervals.icu"));
@@ -385,7 +263,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //DialogConfig
     dconfig = new DialogMainWindowConfig(this);
 
-    connect(dconfig, &DialogMainWindowConfig::intervalsIcuCredentialsChanged, this, &MainWindow::reloadPlanWebView);
     connect(dconfig, &DialogMainWindowConfig::intervalsIcuCredentialsChanged,
             ui->tab_intervals_icu, &TabIntervalsIcu::refreshCredentials);
     // Athlete profile (FTP/LTHR/weight) edited in Preferences → recompute zones
@@ -432,8 +309,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->setEnabled(true);
     ui->widget_bottomMenu->removeGeneralMessage();
 
-
-    connect(planObject, &PlanObject::signal_goToWorkout, this, &MainWindow::goToWorkoutPlanFilter);
 
     // Native Studio page: enabling studio mode / changing rider count routes
     // through the same MainWindow logic the old web page used.
@@ -497,133 +372,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 }
 
 
-void MainWindow::goToWorkoutPlanFilter(const QString& workoutId) {
-
-
-    if (account->intervals_icu_athlete_id.isEmpty() || account->intervals_icu_api_key.isEmpty()) {
-        ui->widget_bottomMenu->setGeneralMessage(
-            tr("Intervals.icu credentials not configured. Open Preferences to set them."), 5000);
-        return;
-    }
-
-    if (replyIntervalsIcuZwo) {
-        replyIntervalsIcuZwo->abort();
-        replyIntervalsIcuZwo->deleteLater();
-        replyIntervalsIcuZwo = nullptr;
-    }
-
-    replyIntervalsIcuZwo = IntervalsIcuDAO::downloadWorkoutZwo(
-        account->intervals_icu_athlete_id,
-        workoutId,
-        account->intervals_icu_api_key);
-
-    if (!replyIntervalsIcuZwo) {
-        ui->widget_bottomMenu->setGeneralMessage(
-            tr("Failed to start Intervals.icu workout download."), 5000);
-        return;
-    }
-
-    m_pendingIntervalsWorkoutId = workoutId;
-    ui->widget_bottomMenu->setGeneralMessage(tr("Downloading workout from Intervals.icu..."));
-    connect(replyIntervalsIcuZwo, &QNetworkReply::finished, this, &MainWindow::onIntervalsIcuWorkoutDownloaded);
-}
-
-
-void MainWindow::onIntervalsIcuWorkoutDownloaded() {
-
-    if (!replyIntervalsIcuZwo) return;
-
-    const QNetworkReply::NetworkError err = replyIntervalsIcuZwo->error();
-    if (err != QNetworkReply::NoError) {
-        LOG_WARN("MainWindow", QStringLiteral("Intervals.icu ZWO download error: ") + replyIntervalsIcuZwo->errorString());
-        ui->widget_bottomMenu->setGeneralMessage(
-            tr("Could not download workout from Intervals.icu: %1")
-                .arg(replyIntervalsIcuZwo->errorString()), 5000);
-        replyIntervalsIcuZwo->deleteLater();
-        replyIntervalsIcuZwo = nullptr;
-        return;
-    }
-
-    const QByteArray data = replyIntervalsIcuZwo->readAll();
-    replyIntervalsIcuZwo->deleteLater();
-    replyIntervalsIcuZwo = nullptr;
-
-    Workout workout = ImporterWorkoutZwo::importFromByteArray(data, m_pendingIntervalsWorkoutId);
-    if (workout.getLstInterval().isEmpty()) {
-        ui->widget_bottomMenu->setGeneralMessage(
-            tr("Workout import failed: no intervals found in the downloaded file."), 5000);
-        return;
-    }
-
-    // Sanitize the workout name so it is safe to use as a filename
-    QString safeName = workout.getName();
-    safeName.replace(QRegularExpression(QStringLiteral("[/\\\\:*?\"<>|]")), QStringLiteral("_"));
-    if (safeName.isEmpty())
-        safeName = QStringLiteral("intervals_") + m_pendingIntervalsWorkoutId;
-
-    // Save the parsed workout to the user's Intervals folder so it appears in the list
-    const QString intervalsFolder = Util::getSystemPathWorkout() + QDir::separator() + QStringLiteral("intervals");
-    if (!QDir().mkpath(intervalsFolder)) {
-        ui->widget_bottomMenu->setGeneralMessage(
-            tr("Could not create intervals folder: %1").arg(intervalsFolder), 5000);
-        return;
-    }
-
-    // Loop until we find a filename that does not already exist
-    QString uniqueSafeName = safeName;
-    for (int n = 1; QFile::exists(intervalsFolder + QDir::separator() + uniqueSafeName + QStringLiteral(".workout")); ++n)
-        uniqueSafeName = safeName + QStringLiteral("_") + QString::number(n);
-    const QString filePath = intervalsFolder + QDir::separator() + uniqueSafeName + QStringLiteral(".workout");
-
-    if (!XmlUtil::createWorkoutXml(workout, filePath)) {
-        ui->widget_bottomMenu->setGeneralMessage(
-            tr("Could not save workout to disk: %1").arg(filePath), 5000);
-        return;
-    }
-
-    // Refresh the workout list and navigate to the imported workout
-    ui->tab_workout1->refreshUserWorkout();
-    ui->tabWidget_workout->setCurrentIndex(0);
-    // Filter on the SAVED filename stem, not the raw name: the workout list
-    // derives a workout's name from its filename, so a colon/slash/etc. removed
-    // for the filename (e.g. "A:B" → "A_B") must be mirrored in the search term
-    // or the just-imported workout can't be found (#294).
-    ui->tab_workout1->setFilterWorkoutName(uniqueSafeName);
-    ftb->setCurrentIndex(0);
-
-    ui->widget_bottomMenu->setGeneralMessage(
-        tr("Workout '%1' imported from Intervals.icu.").arg(workout.getName()), 5000);
-}
-
-
-void MainWindow::reloadPlanWebView() {
-
-    if (!account->intervals_icu_athlete_id.isEmpty()) {
-        ui->webView_plan->setUrl(QUrl(urlIntervalsIcuCalendar.arg(account->intervals_icu_athlete_id)));
-    } else {
-        ui->webView_plan->setHtml(
-            QStringLiteral(
-                "<html><body style='font-family:sans-serif;text-align:center;padding-top:60px;'>"
-                "<h2>Intervals.icu Calendar</h2>"
-                "<p>No Intervals.icu credentials configured.</p>"
-                "<p>Open <b>Preferences</b> and enter your athlete ID and API key "
-                "in the Connectivity section.</p>"
-                "</body></html>"
-            )
-        );
-    }
-}
-
-
-void MainWindow::showPlanContextMenu(const QPoint &pos) {
-
-    QMenu *menu = new QMenu(ui->webView_plan);
-    menu->addAction(tr("Refresh"), this, &MainWindow::reloadPlanWebView);
-    // popup() instead of exec(): a nested event loop is fatal on WASM.
-    menu->setAttribute(Qt::WA_DeleteOnClose);
-    menu->popup(ui->webView_plan->mapToGlobal(pos));
-}
-
 // trigger after a .zwo file downloaded from Intervals.icu is saved
 void MainWindow::goToWorkoutNameFilterFromIntervals(const QString &workoutName) {
 
@@ -679,109 +427,6 @@ void MainWindow::goToWorkoutNameFilterFromIntervals(const QString &workoutName) 
     ftb->setCurrentIndex(0);
 }
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Trainerweb integration (#121)
-// ─────────────────────────────────────────────────────────────────────────────
-
-#ifndef GC_WASM_BUILD
-void MainWindow::onTrainerwebDownloadRequested(QWebEngineDownloadRequest *download)
-{
-    const QUrl url        = download->url();
-    const QString host    = url.host();
-    const QString fileName = QFileInfo(download->downloadFileName()).fileName();
-    const QString suffix  = QFileInfo(fileName).suffix().toLower();
-
-    // Only intercept downloads from the Trainerweb Firebase domain.
-    // Let other pages' downloads proceed untouched.
-    if (!host.contains(QStringLiteral("trainerdb-84bdb"), Qt::CaseInsensitive)) {
-        download->accept();
-        return;
-    }
-
-    // Only handle recognised workout formats.
-    if (suffix != QLatin1String("zwo") &&
-        suffix != QLatin1String("erg") &&
-        suffix != QLatin1String("mrc")) {
-        download->accept();
-        return;
-    }
-
-    // Redirect the download to a temporary directory and accept it.
-    download->setDownloadDirectory(QDir::tempPath());
-    download->setDownloadFileName(fileName);
-    download->accept();
-
-    // Import the file once the download is complete.
-    connect(download, &QWebEngineDownloadRequest::isFinishedChanged, this,
-            [this, download, suffix]() {
-        if (!download->isFinished())
-            return;
-        if (download->state() != QWebEngineDownloadRequest::DownloadCompleted) {
-            ui->widget_bottomMenu->setGeneralMessage(
-                tr("Trainerweb download failed."), 4000);
-            return;
-        }
-        const QString filePath = download->downloadDirectory()
-                                 + QDir::separator()
-                                 + download->downloadFileName();
-        if (suffix == QLatin1String("zwo")) {
-            QFile f(filePath);
-            if (f.open(QIODevice::ReadOnly)) {
-                const QByteArray data = f.readAll();
-                f.close();
-                Workout w = ImporterWorkoutZwo::importFromByteArray(
-                    data, QFileInfo(filePath).baseName());
-                if (!w.getLstInterval().isEmpty()) {
-                    saveAndNavigateToWorkout(w, QStringLiteral("trainerweb"));
-                    return;
-                }
-            }
-        } else {
-            // .erg / .mrc — use the existing file-based importer.
-            Workout w = ImporterWorkout::importWorkoutFromFile(filePath, account->FTP);
-            if (!w.getLstInterval().isEmpty()) {
-                saveAndNavigateToWorkout(w, QStringLiteral("trainerweb"));
-                return;
-            }
-        }
-        ui->widget_bottomMenu->setGeneralMessage(
-            tr("Could not import Trainerweb workout: no intervals found."), 5000);
-    });
-}
-#endif // GC_WASM_BUILD
-
-void MainWindow::saveAndNavigateToWorkout(const Workout &workout, const QString &subFolder)
-{
-    QString safeName = workout.getName();
-    safeName.replace(QRegularExpression(QStringLiteral("[/\\\\:*?\"<>|]")),
-                     QStringLiteral("_"));
-    if (safeName.isEmpty())
-        safeName = subFolder + QStringLiteral("_workout");
-
-    const QString destDir = Util::getSystemPathWorkout() + QDir::separator() + subFolder;
-    QDir().mkpath(destDir);
-
-    // Find a unique filename so existing workouts are not overwritten.
-    QString uniqueName = safeName;
-    for (int n = 1;
-         QFile::exists(destDir + QDir::separator() + uniqueName + QStringLiteral(".workout"));
-         ++n)
-        uniqueName = safeName + QStringLiteral("_") + QString::number(n);
-
-    const QString destPath = destDir + QDir::separator() + uniqueName + QStringLiteral(".workout");
-    if (XmlUtil::createWorkoutXml(workout, destPath)) {
-        ui->tab_workout1->refreshUserWorkout();
-        ui->tabWidget_workout->setCurrentIndex(0);
-        ui->tab_workout1->setFilterWorkoutName(workout.getName());
-        ftb->setCurrentIndex(0);
-        ui->widget_bottomMenu->setGeneralMessage(
-            tr("Workout '%1' imported from Trainerweb.").arg(workout.getName()), 5000);
-    } else {
-        ui->widget_bottomMenu->setGeneralMessage(
-            tr("Could not save Trainerweb workout to disk."), 5000);
-    }
-}
 
 // Launch the queue from item #1 (triggered by the Start button). Dequeues the
 // first workout itself and runs it directly; the normal finished()→advance chain
@@ -897,67 +542,24 @@ void MainWindow::workoutOver() {
 void MainWindow::leftMenuChanged(int tabSelected) {
 
 
-    // Visible tabs don't map 1:1 to stacked-page indices: the Profile/Settings
-    // pages were removed, and the "Plan" page (stacked index 2) is kept but its
-    // tab is hidden (see the insertTab block / issue #299). Visible tab order is
-    // 0 Workout, 1 Intervals.icu, 2 Studio, 3 Devices, 4 History; the matching
-    // stacked pages are Workout 0, Intervals 1, Studio 3, Sensors 5, History 4.
-    static const int tabToPage[] = {0, 1, 3, 5, 4};
+    // Tabs: 0 Workout, 1 Intervals.icu, 2 Studio, 3 Devices, 4 History.
+    // Stacked pages: Workout 0, Intervals 1, Studio 2, History 3, Sensors 4.
+    static const int tabToPage[] = {0, 1, 2, 4, 3};
     const int pageIndex = (tabSelected >= 0 && tabSelected < 5)
                               ? tabToPage[tabSelected]
                               : tabSelected;
     ui->stackedWidget_menu->setCurrentIndex(pageIndex);
     currentIndexLeftMenu = tabSelected;
 
-    // Refresh saved sensors each time the Sensors tab is opened.
-    if (tabSelected == 4) {
+    // Refresh saved sensors each time the Devices tab is opened.
+    if (tabSelected == 3) {
         if (auto *sw = qobject_cast<SensorsWidget*>(ui->sensorsWidget))
             sw->reload();
     }
     // Refresh studio settings each time the Studio tab is opened.
-    if (tabSelected == 3) {
+    if (tabSelected == 2) {
         if (auto *sw = qobject_cast<StudioWidget*>(ui->studioWidget))
             sw->reload();
-    }
-}
-
-
-void MainWindow::createWebChannelPlan() {
-
-
-    QFile webChannelJsFile(":/qtwebchannel/qwebchannel.js");
-    if(  !webChannelJsFile.open(QIODevice::ReadOnly) ) {
-        LOG_WARN("MainWindow", QStringLiteral("Could not open qwebchannel.js: ") + webChannelJsFile.errorString());
-    }
-    else {
-        QByteArray webChannelJs = webChannelJsFile.readAll();
-        webChannelJs.append(
-                    "\n"
-                    "var planObject"
-                    "\n"
-                    "new QWebChannel(qt.webChannelTransport, function(channel) {"
-                    "     planObject = channel.objects.planObject;"
-                    "});"
-                    "\n"
-                    );
-
-        QWebChannel *channel = new QWebChannel(ui->webView_plan);
-        QWebEngineScript script;
-        script.setSourceCode(webChannelJs);
-        script.setName("qwebchannel.js");
-        script.setWorldId(QWebEngineScript::MainWorld);
-        script.setInjectionPoint(QWebEngineScript::DocumentCreation);
-        script.setRunsOnSubFrames(false);
-
-        // Navigation override: links containing "forum" or "cms" are opened in the system browser
-        QStringList lstExternal = {"forum", "cms" };
-        MyQWebEnginePage *myPage = new MyQWebEnginePage(ui->webView_plan);
-        myPage->setExternalList(lstExternal);
-        ui->webView_plan->setPage(myPage);
-
-        ui->webView_plan->page()->scripts().insert(script);
-        ui->webView_plan->page()->setWebChannel(channel);
-        channel->registerObject("planObject", planObject);
     }
 }
 
@@ -1081,9 +683,9 @@ void MainWindow::enableStudioMode(bool enable) {
         this->setWindowTitle("MaximumTrainer");
     }
 
-    // Disable the Sensors tab (index 4) while in studio mode: sensor pairing is
+    // Disable the Devices tab while in studio mode: sensor pairing is
     // per-rider and not meaningful in the multi-rider studio view.
-    ftb->setTabEnabled(4, !enable);
+    ftb->setTabEnabled(3, !enable);
 
     // Persist so the toggle state survives a restart (saveDisplayPrefs writes
     // enable_studio_mode + nb_user_studio together).
