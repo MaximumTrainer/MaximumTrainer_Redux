@@ -253,6 +253,10 @@ begins and ends, so if the app hangs or crashes while starting, the last line of
 step that failed. If the default folder cannot be written, the log goes to the fallback file above
 and its first lines record the fallback. If neither can be written, messages go to stdout only.
 
+The log is capped: when it reaches 5 MB it is renamed to `MaximumTrainer.log.1` (replacing the
+previous one) and a new file starts, so logs never use more than about 10 MB. When reporting a
+bug that happened a while ago, attach both files.
+
 If you chose a custom path in **Preferences → Logging**, the app switches to it once the
 configuration has loaded. Anything logged before that point (the startup banner and the
 configuration steps) is still in the default file, so check both when the app fails early.

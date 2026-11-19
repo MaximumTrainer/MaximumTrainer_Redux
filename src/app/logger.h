@@ -79,6 +79,11 @@ public:
     /// <AppDataLocation>/MaximumTrainer.log for the current app identity.
     static QString defaultLogFilePath();
 
+    /// Size at which the log file is moved to "<file>.1" (replacing an older
+    /// one) and restarted, so the logs never use more than about twice this.
+    void setMaxFileSize(qint64 bytes);
+    static constexpr qint64 kDefaultMaxFileSize = qint64(5) * 1024 * 1024;
+
     /// True when @p args contain the --debug / /debug switch.
     static bool hasDebugSwitch(const QStringList& args);
 
@@ -146,6 +151,9 @@ private:
     // Open (or re-open) m_logFile at m_filePath.  Returns true on success.
     bool openLogFile();
 
+    // Move a full log file to "<file>.1" and start a new one. Caller holds m_mutex.
+    void rotateIfFull();
+
     // Close the current file and open @p path instead.  Caller must NOT hold
     // m_mutex.  Returns false (and leaves file logging off) on failure.
     bool openFileAt(const QString& path);
@@ -166,6 +174,7 @@ private:
     bool        m_debugSwitch { false };
     QString     m_filePath;
     QFile       m_logFile;
+    qint64      m_maxFileSize { kDefaultMaxFileSize };
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
