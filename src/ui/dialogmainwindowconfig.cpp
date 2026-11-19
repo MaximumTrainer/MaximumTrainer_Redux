@@ -153,19 +153,9 @@ void DialogMainWindowConfig::initUI() {
     ui->comboBox_theme->setCurrentIndex(themeComboIndexFromMode(account->app_theme));
 
     // Intervals.icu credentials
-    ui->lineEdit_intervalsApiKey->setText(account->intervals_icu_api_key);
     ui->lineEdit_intervalsAthleteId->setText(account->intervals_icu_athlete_id);
     ui->checkBox_intervalsAutoUpload->setChecked(account->intervals_icu_auto_upload);
     ui->label_intervalsTestResult->clear();
-
-    // Intervals.icu never hands out the personal API key over OAuth, and every
-    // request prefers the OAuth token anyway, so the key is only for users who
-    // did not sign in.
-    const bool signedInWithOAuth = !account->intervals_icu_access_token.isEmpty();
-    ui->formLayout_intervals->setRowVisible(ui->lineEdit_intervalsApiKey, !signedInWithOAuth);
-    ui->label_intervalsHint->setText(signedInWithOAuth
-        ? tr("Signed in with Intervals.icu. No API key needed.")
-        : tr("Find your API key at intervals.icu → Settings → API."));
 
     // Athlete profile (FTP / LTHR / weight) — edited here, persisted locally.
     ui->spinBox_ftp->setValue(account->FTP);
@@ -340,16 +330,6 @@ void DialogMainWindowConfig::accept() {
     else //MPH
         account->distance_in_km = false;
 
-    // Intervals.icu credentials — trim whitespace before saving
-    const QString newApiKey    = ui->lineEdit_intervalsApiKey->text().trimmed();
-    const QString newAthleteId = ui->lineEdit_intervalsAthleteId->text().trimmed();
-
-    const bool intervalsChanged =
-        account->intervals_icu_api_key    != newApiKey ||
-        account->intervals_icu_athlete_id != newAthleteId;
-
-    account->intervals_icu_api_key    = newApiKey;
-    account->intervals_icu_athlete_id = newAthleteId;
     account->intervals_icu_auto_upload = ui->checkBox_intervalsAutoUpload->isChecked();
     account->saveIntervalsIcuCredentials();  // persist to QSettings (fast, no-fail path)
     if (!XmlUtil::saveLocalSaveFile(account)) {
@@ -372,9 +352,6 @@ void DialogMainWindowConfig::accept() {
     account->saveDisplayPrefs();
     account->saveStravaCredentials();
 
-    if (intervalsChanged)
-        emit intervalsIcuCredentialsChanged();
-
     saveLoggingSettings();
 
     if (profileChangedNow)
@@ -396,13 +373,12 @@ void DialogMainWindowConfig::accept() {
 void DialogMainWindowConfig::onTestIntervalsConnectionClicked()
 {
 #ifndef GC_WASM_BUILD
-    const QString apiKey      = ui->lineEdit_intervalsApiKey->text().trimmed();
-    const QString athleteId   = ui->lineEdit_intervalsAthleteId->text().trimmed();
-    const QString accessToken = account->intervals_icu_access_token;
+    const QString &athleteId   = account->intervals_icu_athlete_id;
+    const QString &accessToken = account->intervals_icu_access_token;
 
-    if (athleteId.isEmpty() || (apiKey.isEmpty() && accessToken.isEmpty())) {
+    if (athleteId.isEmpty() || accessToken.isEmpty()) {
         ui->label_intervalsTestResult->setStyleSheet("color: red;");
-        ui->label_intervalsTestResult->setText(tr("Please enter both API key and Athlete ID."));
+        ui->label_intervalsTestResult->setText(tr("Not signed in to Intervals.icu."));
         return;
     }
 
@@ -416,7 +392,7 @@ void DialogMainWindowConfig::onTestIntervalsConnectionClicked()
     // Reuse or create the service object
     if (!m_intervalsService)
         m_intervalsService = new IntervalsIcuService(this);
-    m_intervalsService->setCredentials(apiKey, athleteId);
+    m_intervalsService->setCredentials(QString(), athleteId);
     m_intervalsService->setAccessToken(accessToken);
 
     ui->pushButton_testIntervalsConnection->setEnabled(false);
