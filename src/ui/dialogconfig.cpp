@@ -311,10 +311,6 @@ void DialogConfig::initUi() {
 
     /// Show last openned tab
     ui->listWidget_settings->setCurrentRow(account->last_index_selected_config_workout);
-    /// Show last openned subtab
-    QTabWidget *myTab = ui->stackedWidget->currentWidget()->findChild<QTabWidget*>();
-    if (myTab)
-        myTab->setCurrentIndex(account->last_tab_sub_config_selected);
 
     // Init the programmatic tabs
     initIntervalSummary();
@@ -677,10 +673,6 @@ void DialogConfig::reject() {
     // On cancel only persist the last-selected tab index so the dialog
     // reopens on the same page; do NOT commit widget values.
     account->last_index_selected_config_workout = ui->listWidget_settings->currentRow();
-    QTabWidget *myTab = ui->stackedWidget->currentWidget()->findChild<QTabWidget*>();
-    if (myTab)
-        account->last_tab_sub_config_selected = myTab->currentIndex();
-
     QDialog::reject();
 }
 
@@ -690,10 +682,6 @@ void DialogConfig::saveSettings() {
     /// Save last openned tab
     account->last_index_selected_config_workout = ui->listWidget_settings->currentRow();
 
-    ///Save last openned subtab
-    QTabWidget *myTab = ui->stackedWidget->currentWidget()->findChild<QTabWidget*>();
-    if (myTab)
-        account->last_tab_sub_config_selected = myTab->currentIndex();
 
 
     int startTrigger = ui->comboBox_startTrigger->currentIndex();

@@ -412,110 +412,30 @@ QLabel#label_imageCalories {
         <number>0</number>
        </property>
        <item>
-        <widget class="QTabWidget" name="tabWidget_display">
-         <property name="currentIndex">
-          <number>0</number>
-         </property>
-         <widget class="QWidget" name="tab_timer">
-          <attribute name="title">
-           <string>Timer</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_25">
-
-           <item>
-            <widget class="QCheckBox" name="checkBox_showIntervalRemainingTime">
+        <widget class="QWidget" name="widget_displayOptions"><layout class="QVBoxLayout" name="verticalLayout_displayOptions"><item><widget class="QGroupBox" name="groupBox_topBar"><property name="title"><string>Top bar</string></property><layout class="QVBoxLayout" name="verticalLayout_topBar"><item><widget class="QCheckBox" name="checkBox_showIntervalRemainingTime">
              <property name="text">
-              <string>Show Interval Remaining</string>
+              <string>Interval remaining</string>
              </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox_showWorkoutRemainingTime">
+            </widget></item><item><widget class="QCheckBox" name="checkBox_showWorkoutRemainingTime">
              <property name="text">
-              <string>Show Workout Remaining</string>
+              <string>Workout remaining</string>
              </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox_showElapsedTime">
+            </widget></item><item><widget class="QCheckBox" name="checkBox_showElapsedTime">
              <property name="text">
-              <string>Show Elapsed Time</string>
+              <string>Elapsed time</string>
              </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox_showCurrentTarget">
+            </widget></item><item><widget class="QCheckBox" name="checkBox_showCurrentTarget">
              <property name="text">
-              <string>Show Current Target</string>
+              <string>Current target</string>
              </property>
-            </widget>
-           </item>
-
-           <item>
-            <spacer name="verticalSpacer_16">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="tab_4">
-          <attribute name="title">
-           <string>Power</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_4">
-           <item>
-            <widget class="QGroupBox" name="groupBox_3">
-             <property name="title">
-              <string>Power</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
-             </property>
-             <layout class="QVBoxLayout" name="verticalLayout_22">
-              <item>
-               <widget class="QCheckBox" name="checkBox_enablePower">
+            </widget></item></layout></widget></item><item><widget class="QGroupBox" name="groupBox_bottomPanels"><property name="title"><string>Bottom panels</string></property><layout class="QGridLayout" name="gridLayout_bottomPanels" columnstretch="0,0,1"><property name="horizontalSpacing"><number>18</number></property>
+<item row="0" column="0"><widget class="QLabel" name="label_widgetPower"><property name="text"><string>Power</string></property></widget></item>
+<item row="0" column="1"><widget class="QCheckBox" name="checkBox_enablePower">
                 <property name="text">
-                 <string>Enable</string>
+                 <string>Show</string>
                 </property>
-               </widget>
-              </item>
-              <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_2">
-                <item>
-                 <widget class="QLabel" name="label_5">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="minimumSize">
-                   <size>
-                    <width>83</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>16777215</width>
-                    <height>16777215</height>
-                   </size>
-                  </property>
-                  <property name="text">
-                   <string>Display:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QComboBox" name="comboBox_displayPower">
+               </widget></item>
+<item row="0" column="2"><widget class="QComboBox" name="comboBox_displayPower">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -543,89 +463,14 @@ QLabel#label_imageCalories {
                     <string>Graph &amp; Detailed</string>
                    </property>
                   </item>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="horizontalSpacer_3">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-
-
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <spacer name="verticalSpacer_15">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeType">
-              <enum>QSizePolicy::Fixed</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>1</width>
-               <height>10</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox_2">
-             <property name="title">
-              <string>Power Details</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
-             </property>
-             <layout class="QVBoxLayout" name="verticalLayout_21">
-              <item>
-               <widget class="QCheckBox" name="checkBox_enablePowerBalance">
+                 </widget></item>
+<item row="1" column="0"><widget class="QLabel" name="label_widgetBalance"><property name="text"><string>Power balance</string></property></widget></item>
+<item row="1" column="1"><widget class="QCheckBox" name="checkBox_enablePowerBalance">
                 <property name="text">
-                 <string>Enable</string>
+                 <string>Show</string>
                 </property>
-               </widget>
-              </item>
-              <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_9">
-                <item>
-                 <widget class="QLabel" name="label_7">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="minimumSize">
-                   <size>
-                    <width>0</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>16777215</width>
-                    <height>16777215</height>
-                   </size>
-                  </property>
-                  <property name="text">
-                   <string>Display when:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QComboBox" name="comboBox_displayPowerBalance">
+               </widget></item>
+<item row="1" column="2"><widget class="QComboBox" name="comboBox_displayPowerBalance">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -645,77 +490,14 @@ QLabel#label_imageCalories {
                     <string>Has Power Balance Target</string>
                    </property>
                   </item>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="horizontalSpacer_11">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <spacer name="verticalSpacer_3">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="tab_6">
-          <attribute name="title">
-           <string>Cadence</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_11">
-           <item>
-            <widget class="QCheckBox" name="checkBox_enableCadence">
+                 </widget></item>
+<item row="2" column="0"><widget class="QLabel" name="label_widgetCadence"><property name="text"><string>Cadence</string></property></widget></item>
+<item row="2" column="1"><widget class="QCheckBox" name="checkBox_enableCadence">
              <property name="text">
-              <string>Enable</string>
+              <string>Show</string>
              </property>
-            </widget>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_5">
-             <item>
-              <widget class="QLabel" name="label_6">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="minimumSize">
-                <size>
-                 <width>0</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Display:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="comboBox_displayCadence">
+            </widget></item>
+<item row="2" column="2"><widget class="QComboBox" name="comboBox_displayCadence">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                  <horstretch>0</horstretch>
@@ -738,74 +520,14 @@ QLabel#label_imageCalories {
                  <string>Graph</string>
                 </property>
                </item>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer_6">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </item>
-
-           <item>
-            <spacer name="verticalSpacer_4">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="tab_hr">
-          <attribute name="title">
-           <string>Heart Rate</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_26">
-           <item>
-            <widget class="QCheckBox" name="checkBox_enableHR">
+              </widget></item>
+<item row="3" column="0"><widget class="QLabel" name="label_widgetHr"><property name="text"><string>Heart rate</string></property></widget></item>
+<item row="3" column="1"><widget class="QCheckBox" name="checkBox_enableHR">
              <property name="text">
-              <string>Enable</string>
+              <string>Show</string>
              </property>
-            </widget>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_3">
-             <item>
-              <widget class="QLabel" name="label_9">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="minimumSize">
-                <size>
-                 <width>0</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Display:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="comboBox_displayHR">
+            </widget></item>
+<item row="3" column="2"><widget class="QComboBox" name="comboBox_displayHR">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                  <horstretch>0</horstretch>
@@ -828,131 +550,31 @@ QLabel#label_imageCalories {
                  <string>Graph</string>
                 </property>
                </item>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer_4">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </item>
-
-           <item>
-            <spacer name="verticalSpacer_17">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>257</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="tab_5">
-          <attribute name="title">
-           <string>Speed</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_10">
-           <item>
-            <widget class="QCheckBox" name="checkBox_enableSpeed">
+              </widget></item>
+<item row="4" column="0"><widget class="QLabel" name="label_widgetSpeed"><property name="text"><string>Speed</string></property></widget></item>
+<item row="4" column="1"><widget class="QCheckBox" name="checkBox_enableSpeed">
              <property name="text">
-              <string>Enable</string>
+              <string>Show</string>
              </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox_showTrainerSpeed">
+            </widget></item>
+<item row="4" column="2"><widget class="QCheckBox" name="checkBox_showTrainerSpeed">
              <property name="text">
-              <string>Show Trainer Speed</string>
+              <string>Show trainer speed</string>
              </property>
-            </widget>
-           </item>
-
-           <item>
-            <spacer name="verticalSpacer_5">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="tab_3">
-          <attribute name="title">
-           <string>Muscle Oxygen</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_18">
-           <item>
-            <widget class="QCheckBox" name="checkBox_enableOxygen">
+            </widget></item>
+<item row="5" column="0"><widget class="QLabel" name="label_widgetOxygen"><property name="text"><string>Muscle oxygen</string></property></widget></item>
+<item row="5" column="1"><widget class="QCheckBox" name="checkBox_enableOxygen">
              <property name="text">
-              <string>Enable</string>
+              <string>Show</string>
              </property>
-            </widget>
-           </item>
-
-           <item>
-            <spacer name="verticalSpacer_2">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="tab_2">
-          <attribute name="title">
-           <string>Workout Stats</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_5">
-           <item>
-            <widget class="QCheckBox" name="checkBox_enableCalories">
+            </widget></item>
+<item row="6" column="0"><widget class="QLabel" name="label_widgetStats"><property name="text"><string>Workout stats</string></property></widget></item>
+<item row="6" column="1"><widget class="QCheckBox" name="checkBox_enableCalories">
              <property name="text">
-              <string>Enable</string>
+              <string>Show</string>
              </property>
-            </widget>
-           </item>
-
-           <item>
-            <spacer name="verticalSpacer_6">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-        </widget>
+            </widget></item>
+</layout></widget></item><item><spacer name="verticalSpacer_widgets"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item></layout></widget>
        </item>
       </layout>
      </widget>

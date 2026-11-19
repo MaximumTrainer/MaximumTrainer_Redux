@@ -60,6 +60,7 @@ inline constexpr SettingKey<int>  ValueCadenceStart              {"displayPrefs/
 inline constexpr SettingKey<int>  ValuePowerStart                {"displayPrefs/value_power_start",                   120};
 inline constexpr SettingKey<int>  ValueSpeedStart                {"displayPrefs/value_speed_start",                   20};
 inline constexpr SettingKey<int>  LastIndexSelectedConfigWorkout {"displayPrefs/last_index_selected_config_workout",  0};
+/// Retired (no sub-tabs); removed at load.
 inline constexpr SettingKey<int>  LastTabSubConfigSelected       {"displayPrefs/last_tab_sub_config_selected",        0};
 inline constexpr SettingKey<bool> ControlTrainerResistance       {"displayPrefs/control_trainer_resistance",          true};
 inline constexpr SettingKey<bool> VirtualShifting                {"displayPrefs/virtual_shifting",                    false};

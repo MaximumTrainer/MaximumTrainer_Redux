@@ -117,7 +117,6 @@ public:
     int  sensor_dropout_timeout_s; ///< Seconds before dropout triggers pause (default 5, range 2–30)
 
     int last_index_selected_config_workout;
-    int last_tab_sub_config_selected;
 
 
 
