@@ -113,6 +113,7 @@ private:
     QPushButton  *m_importButton     = nullptr;
     QPushButton  *m_exportButton     = nullptr;
     QLabel       *m_noteLabel        = nullptr;
+    QLabel       *m_introLabel       = nullptr;
     QScrollArea  *m_scrollArea       = nullptr;
     QWidget      *m_bottomSpacer     = nullptr;
     QGridLayout *m_cardsGrid        = nullptr;
