@@ -48,12 +48,10 @@ inline constexpr SettingKey<bool> ShowSpeedWidget                {"displayPrefs/
 inline constexpr SettingKey<bool> ShowCaloriesWidget             {"displayPrefs/show_calories_widget",                true};
 inline constexpr SettingKey<bool> ShowOxygenWidget               {"displayPrefs/show_oxygen_widget",                  true};
 inline constexpr SettingKey<bool> ShowTrainerSpeed               {"displayPrefs/show_trainer_speed",                  true};
-inline constexpr SettingKey<int>  DisplayHr                      {"displayPrefs/display_hr",                          3};
-inline constexpr SettingKey<int>  DisplayPower                   {"displayPrefs/display_power",                       3};
-/// One-time switch of power/cadence/HR to "Graph & Detailed" for the card layout.
-inline constexpr SettingKey<bool> MetricCardsDefaultsApplied     {"displayPrefs/metric_cards_defaults_applied",       false};
+inline constexpr SettingKey<int>  DisplayHr                      {"displayPrefs/display_hr",                          1};
+inline constexpr SettingKey<int>  DisplayPower                   {"displayPrefs/display_power",                       2};
 inline constexpr SettingKey<int>  DisplayPowerBalance            {"displayPrefs/display_power_balance",               0}; // 0: when balance data is available, 1: only for intervals with a balance target
-inline constexpr SettingKey<int>  DisplayCadence                 {"displayPrefs/display_cadence",                     3};
+inline constexpr SettingKey<int>  DisplayCadence                 {"displayPrefs/display_cadence",                     1};
 inline constexpr SettingKey<int>  DisplayVideo                   {"displayPrefs/display_video",                       0};
 /// Retired power offset; removed at load.
 inline constexpr SettingKey<int>  OffsetPower                    {"displayPrefs/offset_power",                        0};
