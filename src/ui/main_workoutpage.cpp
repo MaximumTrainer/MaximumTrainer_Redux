@@ -1,4 +1,9 @@
 #include "main_workoutpage.h"
+#include <QFileInfo>
+#include <QRegularExpression>
+#include <QStandardPaths>
+#include <QFileDialog>
+#include "fitworkoutwriter.h"
 #include "setting_keys.h"
 #include "asyncdialogs.h"
 #include "ui_main_workoutpage.h"
@@ -136,6 +141,8 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
     connect(actionHostGroup, &QAction::triggered, this, [this] {
         emit hostGroupWorkout(tableModel->getWorkoutAtRow(indexSourceSelected));
     });
+    actionExportFit = contextMenu->addAction(tr("Export for Bike Computer (.fit)…"));
+    connect(actionExportFit, &QAction::triggered, this, &Main_WorkoutPage::exportForBikeComputer);
 #endif
     contextMenu->addSeparator();
     actionRefresh = contextMenu->addAction(QIcon(":/image/icon/refresh"), tr("Refresh"));
@@ -289,6 +296,11 @@ void Main_WorkoutPage::customMenuRequested(const QPoint& pos) {
     QModelIndex index = ui->tableView_workout->indexAt(pos);
     if (!index.isValid() )
         return;
+
+    // A free ride has no steps to put on a bike computer.
+    if (actionExportFit)
+        actionExportFit->setEnabled(tableModel->getWorkoutAtRow(indexSourceSelected).getWorkoutNameEnum()
+                                    != Workout::OPEN_RIDE);
 
     contextMenu->popup(ui->tableView_workout->viewport()->mapToGlobal(pos));
 
@@ -561,3 +573,29 @@ std::optional<Workout> Main_WorkoutPage::selectedWorkout() const {
     if (selectedRows.isEmpty()) return std::nullopt;
     return tableModel->getWorkoutAtRow(proxyModel->mapToSource(selectedRows.first()));
 }
+
+#ifndef GC_WASM_BUILD
+// Saves the selected workout as a FIT workout for Garmin / Wahoo / Hammerhead
+// bike computers (power as % of FTP, so it follows the device's FTP).
+void Main_WorkoutPage::exportForBikeComputer()
+{
+    const Workout workout = tableModel->getWorkoutAtRow(indexSourceSelected);
+    QString fileName = workout.getName();
+    fileName.replace(QRegularExpression(QStringLiteral("[^A-Za-z0-9 _-]")), QStringLiteral("_"));
+    const QString suggested = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
+                              + QLatin1Char('/') + fileName + QStringLiteral(".fit");
+    const QString path = QFileDialog::getSaveFileName(this, tr("Export for Bike Computer"), suggested,
+                                                      tr("FIT workout (*.fit)"));
+    if (path.isEmpty())
+        return;
+    QString error;
+    if (!FitWorkoutWriter::write(workout, account->FTP, account->LTHR, path, &error)) {
+        AsyncDialogs::warning(this, tr("Export for Bike Computer"), error);
+        return;
+    }
+    AsyncDialogs::information(this, tr("Export for Bike Computer"),
+        tr("Saved %1.\n\nGarmin: copy it to the NewFiles folder of the device (USB), or import it in "
+           "Garmin Connect. Wahoo / Hammerhead: import it in the companion app.\n\nPower targets are "
+           "% of FTP, so they follow the FTP set on your bike computer.").arg(QFileInfo(path).fileName()));
+}
+#endif

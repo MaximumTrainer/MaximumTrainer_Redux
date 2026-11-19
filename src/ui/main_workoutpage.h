@@ -70,6 +70,11 @@ public slots:
 
 
 private slots:
+#ifndef GC_WASM_BUILD
+    void exportForBikeComputer();
+#endif
+
+private slots:
 
     void applyFiltersToInputs();
     void onFilterTypeIndexChanged(int index);
@@ -114,6 +119,7 @@ private:
     QAction *actionDelete;
     QAction *actionSetAsDone;
     QAction *actionOpenFolder;
+    QAction *actionExportFit = nullptr;
     QAction *actionRefresh;
     QModelIndex indexSourceSelected;
 };
