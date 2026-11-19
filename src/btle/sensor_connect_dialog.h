@@ -10,6 +10,8 @@
 #include "btle_sensor_config.h"
 
 class BtleHub;
+class ZwiftClickManager;
+class QGridLayout;
 class QLabel;
 class QPushButton;
 class QTimer;
@@ -47,6 +49,13 @@ public:
     /// delete them when the dialog is destroyed.
     void detachHubs();
 
+    /// Adds a Zwift Click row and starts pairing the controllers now, so the
+    /// rider can see them connect before the workout starts.
+    void enableZwiftClick();
+    /// Hands the (possibly connected) controllers to the caller; nullptr if
+    /// Zwift Click was not enabled.
+    ZwiftClickManager *takeZwiftClickManager();
+
 signals:
     /// Emitted when the user clicks "Manage Sensors" – the caller opens the
     /// Sensors preferences page.
@@ -80,6 +89,12 @@ private:
 
     QBluetoothDeviceDiscoveryAgent *m_agent = nullptr;
     QVector<ConnectSlot>            m_slots;
+    QGridLayout                    *m_grid = nullptr;
+    ZwiftClickManager              *m_click = nullptr;
+    QLabel                         *m_clickStatus = nullptr;
+
+    void updateClickUi();
+    bool clickReady() const;   // no Click wanted, or the right controller is in
 
     // One hub per physical device, keyed by its saved identifier (address/UUID).
     QMap<QString, BtleHub*>         m_hubByDevice;

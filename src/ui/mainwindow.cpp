@@ -1085,6 +1085,8 @@ void MainWindow::executeWorkout(Workout workout) {
                         connectDlg.reject();
                         ftb->setCurrentIndex(3);
                     });
+            if (account->use_zwift_click)
+                connectDlg.enableZwiftClick();   // pair the controllers before the ride
 
             if (connectDlg.exec() != QDialog::Accepted)
                 return;   // user cancelled / chose Manage Sensors
@@ -1092,7 +1094,7 @@ void MainWindow::executeWorkout(Workout workout) {
             QMap<BtleSensorRole, BtleHub*> hubsByRole = connectDlg.connectedHubs();
             if (!hubsByRole.isEmpty()) {
                 connectDlg.detachHubs();   // we now own the hubs
-                startWorkoutWithHubs(workout, hubsByRole);
+                startWorkoutWithHubs(workout, hubsByRole, connectDlg.takeZwiftClickManager());
                 return;
             }
             // Empty result = "Skip": drop through to the legacy manual scanner.
@@ -1318,7 +1320,8 @@ void MainWindow::startWorkoutWithConnectedHub(const Workout &workout, BtleHub *b
 
 #ifndef GC_WASM_BUILD
 void MainWindow::startWorkoutWithHubs(const Workout &workout,
-                                      const QMap<BtleSensorRole, BtleHub*> &hubsByRole)
+                                      const QMap<BtleSensorRole, BtleHub*> &hubsByRole,
+                                      ZwiftClickManager *zwiftClick)
 {
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
@@ -1330,6 +1333,7 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
 
     QSet<BtleHub*> allHubs;
     wireHubsToDialog(w, hubsByRole, allHubs);
+    w->adoptZwiftClickManager(zwiftClick);
 
     connect(w, &WorkoutDialog::fitFileReady, this, &MainWindow::checkToUploadFile);
     connect(w, &WorkoutDialog::ftp_lthr_changed, ui->tab_workout1, &Main_WorkoutPage::updateTableViewMetrics);

@@ -58,6 +58,7 @@ class WorkoutDialog : public QDialog
     Q_OBJECT
 
 public:
+    void adoptZwiftClickManager(ZwiftClickManager *manager);
     explicit WorkoutDialog(Workout workout,
                            QList<Radio> lstRadio, QVector<UserStudio> vecUserStudio, QWidget *parent = nullptr);
     ~WorkoutDialog() override;
@@ -304,6 +305,7 @@ private:
     // the trainer — ERG unaffected). Opt-in via account.use_zwift_click. Owned by
     // this dialog; scanning/connections are freed when the workout closes.
     void setupZwiftClick();
+    void connectZwiftClick();
 #ifndef Q_OS_WASM
     ZwiftClickManager *m_clickManager = nullptr;
 #endif

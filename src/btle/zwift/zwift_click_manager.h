@@ -53,6 +53,12 @@ public:
     void stop();
 
     int connectedCount() const;
+    /// Which controllers are connected (side byte from the advertisement).
+    bool rightConnected() const { return m_connectedSides.contains(kRightSide); }
+    bool leftConnected() const  { return m_connectedSides.contains(kLeftSide); }
+
+    static constexpr int kLeftSide  = 8;
+    static constexpr int kRightSide = 7;
 
     /// True if a discovered device looks like a Click/Play shifter (and not the
     /// trainer), so a shared scan can decide which devices to feed us.
@@ -75,6 +81,8 @@ signals:
     // Status / diagnostics.
     void deviceConnected(const QString &name, const QString &address);
     void deviceDisconnected(const QString &address);
+    /// A controller connected or dropped; read rightConnected()/leftConnected().
+    void connectionChanged();
     void unmappedButton(int bitIndex);
 
 private:
@@ -91,6 +99,8 @@ private:
     QString                         m_nameFilter;
     QSet<QString>                   m_knownIds;  // device keys already handled (dedup)
     QList<ZwiftClickHub*>           m_hubs;
+    QSet<int>                       m_connectedSides;  // kLeftSide / kRightSide
+    bool                            m_scanWanted = false;  // start() called, not stop()
     bool                            m_singleDevice = false;  // connect only one (test)
 
     QElapsedTimer m_clock;

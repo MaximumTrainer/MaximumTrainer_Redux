@@ -2071,13 +2071,36 @@ void WorkoutDialog::setupZwiftClick()
     //   Y → gear up   B → gear down   A → radio next   Z → radio prev
     //   right paddle (+) → start/pause workout
     m_clickManager = new ZwiftClickManager(this);   // freed with the dialog (BLE released)
+    connectZwiftClick();
+    m_clickManager->start();   // scan + connect; only the right controller's buttons are mapped
+#endif
+}
+
+// Takes the controllers the pre-workout screen already paired, replacing the
+// manager this dialog started scanning with.
+void WorkoutDialog::adoptZwiftClickManager(ZwiftClickManager *manager)
+{
+#ifndef Q_OS_WASM
+    if (!manager)
+        return;
+    delete m_clickManager;
+    m_clickManager = manager;
+    m_clickManager->setParent(this);   // freed with the dialog (BLE released)
+    connectZwiftClick();
+#else
+    Q_UNUSED(manager)
+#endif
+}
+
+void WorkoutDialog::connectZwiftClick()
+{
+#ifndef Q_OS_WASM
     connect(m_clickManager, &ZwiftClickManager::shiftUp,   this, [this]{ shiftGear(+1); });
     connect(m_clickManager, &ZwiftClickManager::shiftDown, this, [this]{ shiftGear(-1); });
     connect(m_clickManager, &ZwiftClickManager::radioNext, this, &WorkoutDialog::F8next);
     connect(m_clickManager, &ZwiftClickManager::radioPrev, this, &WorkoutDialog::F6previous);
     connect(m_clickManager, &ZwiftClickManager::startPauseWorkout,
             this, [this]{ start_or_pause_workout(); });
-    m_clickManager->start();   // scan + connect; only the right controller's buttons are mapped
 #endif
 }
 

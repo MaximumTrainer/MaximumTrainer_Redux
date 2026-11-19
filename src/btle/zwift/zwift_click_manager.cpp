@@ -58,10 +58,17 @@ int ZwiftClickManager::controllerSide(const QBluetoothDeviceInfo &info)
 
 void ZwiftClickManager::start(const QString &nameFilter, bool singleDevice)
 {
-    if (m_agent)
-        return;   // already scanning
+    m_scanWanted = true;
     m_singleDevice = singleDevice;
     m_nameFilter = nameFilter.trimmed();
+    restartDiscovery();
+}
+
+void ZwiftClickManager::restartDiscovery()
+{
+    if (m_agent)
+        return;   // already scanning
+    LOG_INFO("ZwiftClick", QStringLiteral("scanning for controllers"));
     m_agent = new QBluetoothDeviceDiscoveryAgent(this);
     // A controller only advertises for a few seconds after a button press, so
     // scan continuously to catch late-woken ones.
@@ -82,6 +89,8 @@ void ZwiftClickManager::stopDiscovery()
 
 void ZwiftClickManager::stop()
 {
+    m_scanWanted = false;
+    m_connectedSides.clear();
     if (m_agent) {
         m_agent->stop();
         m_agent->deleteLater();
@@ -121,14 +130,27 @@ void ZwiftClickManager::connectDevice(const QBluetoothDeviceInfo &info)
     auto *hub = new ZwiftClickHub(this);
     m_hubs.append(hub);
 
-    connect(hub, &ZwiftClickHub::connected, this, [this, hub]() {
+    connect(hub, &ZwiftClickHub::connected, this, [this, hub, side]() {
+        if (side == kLeftSide || side == kRightSide)
+            m_connectedSides.insert(side);
+        // Both controllers in: stop scanning so the radio is left to the
+        // trainer and sensors for the rest of the ride.
+        if (leftConnected() && rightConnected() && m_agent) {
+            LOG_INFO("ZwiftClick", QStringLiteral("both controllers connected, scan paused"));
+            stopDiscovery();
+        }
         emit deviceConnected(hub->deviceName(), hub->deviceAddress());
+        emit connectionChanged();
     });
-    connect(hub, &ZwiftClickHub::disconnected, this, [this, hub]() {
+    connect(hub, &ZwiftClickHub::disconnected, this, [this, hub, side]() {
+        m_connectedSides.remove(side);
         emit deviceDisconnected(hub->deviceAddress());
         m_knownIds.remove(hub->deviceAddress());
         m_hubs.removeOne(hub);
         hub->deleteLater();
+        if (m_scanWanted && !m_singleDevice)
+            restartDiscovery();   // pick the controller up again when it wakes
+        emit connectionChanged();
     });
     connect(hub, &ZwiftClickHub::buttonPressed, this,
             &ZwiftClickManager::onButtonPressed);
