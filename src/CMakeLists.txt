@@ -103,7 +103,7 @@ target_sources(mt_core PRIVATE
 
 if(EMSCRIPTEN)
     target_sources(mt_core PRIVATE
-        app/soundplayer_wasm.cpp app/credential_store_wasm.cpp
+        app/soundplayer.h app/soundplayer_wasm.cpp app/credential_store_wasm.cpp
         btle/btle_hub_wasm.cpp btle/webbluetooth_bridge.cpp btle/btle_scanner_dialog_wasm.cpp)
 else()
     target_sources(mt_core PRIVATE
