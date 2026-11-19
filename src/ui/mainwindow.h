@@ -39,6 +39,7 @@ class MainWindow;
 class GroupSession;
 
 class WorkoutDialog;
+class ZwiftClickManager;
 class SimulatorHub;
 
 
@@ -90,7 +91,8 @@ private:
     /// Launch the workout dialog wired to multiple already-connected BLE hubs,
     /// one per saved sensor role. Used by the multi-device pairing flow.
     void startWorkoutWithHubs(const Workout &workout,
-                              const QMap<BtleSensorRole, BtleHub*> &hubsByRole);
+                              const QMap<BtleSensorRole, BtleHub*> &hubsByRole,
+                              ZwiftClickManager *zwiftClick = nullptr);
 
     /// Wire one rider's role→hub map to the dialog; distinct hubs accumulate in
     /// \a allHubs for cleanup. Shared by the solo and Studio launch paths.

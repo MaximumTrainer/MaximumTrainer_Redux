@@ -8,6 +8,7 @@
 #include <QTimer>
 
 #include "btle_hub.h"
+#include "zwift_click_manager.h"
 #include "account.h"
 #include "btle_sensor_store.h"
 
@@ -34,6 +35,7 @@ SensorConnectDialog::SensorConnectDialog(
     mainLayout->setSpacing(12);
 
     QGridLayout *grid = new QGridLayout();
+    m_grid = grid;
     grid->setColumnStretch(1, 1);
     grid->setHorizontalSpacing(16);
     grid->setVerticalSpacing(8);
@@ -232,7 +234,8 @@ void SensorConnectDialog::onScanFinished()
 
     // Give in-flight GATT connections a moment, then auto-continue if anything
     // connected so an unattended start isn't blocked waiting for the user.
-    if (anyConnected())
+    // An enabled Zwift Click that is not in yet waits for Continue instead.
+    if (anyConnected() && clickReady())
         m_autoContinueTimer->start(AUTO_CONTINUE_MS);
 }
 
@@ -293,6 +296,67 @@ void SensorConnectDialog::updateSlotUi(int slotIndex)
     }
     slot.statusLabel->setText(text);
     slot.statusLabel->setStyleSheet(QStringLiteral("color: %1;").arg(color));
+}
+
+void SensorConnectDialog::enableZwiftClick()
+{
+    if (m_click)
+        return;
+    const int row = m_grid->rowCount();
+    m_grid->addWidget(new QLabel(tr("Zwift Click"), this), row, 0);
+    QLabel *hint = new QLabel(tr("Press a button on each controller"), this);
+    hint->setStyleSheet(QStringLiteral("color: #777;"));
+    m_grid->addWidget(hint, row, 1);
+    m_clickStatus = new QLabel(this);
+    m_grid->addWidget(m_clickStatus, row, 2);
+
+    m_click = new ZwiftClickManager(this);
+    connect(m_click, &ZwiftClickManager::connectionChanged, this, [this]() {
+        updateClickUi();
+        // The sensor scan already finished and only the Click was missing.
+        if (clickReady() && anyConnected() && !(m_agent && m_agent->isActive())
+            && !m_autoContinueTimer->isActive())
+            m_autoContinueTimer->start(AUTO_CONTINUE_MS);
+    });
+    updateClickUi();
+    m_click->start();
+}
+
+ZwiftClickManager *SensorConnectDialog::takeZwiftClickManager()
+{
+    ZwiftClickManager *click = m_click;
+    if (click) {
+        disconnect(click, nullptr, this, nullptr);
+        click->setParent(nullptr);
+    }
+    m_click = nullptr;
+    return click;
+}
+
+bool SensorConnectDialog::clickReady() const
+{
+    return !m_click || m_click->rightConnected();
+}
+
+void SensorConnectDialog::updateClickUi()
+{
+    if (!m_clickStatus || !m_click)
+        return;
+    QString text;
+    QString color = QStringLiteral("green");
+    if (m_click->rightConnected() && m_click->leftConnected()) {
+        text = tr("✓ Connected");
+    } else if (m_click->rightConnected()) {
+        text = tr("✓ Right connected");
+    } else if (m_click->leftConnected()) {
+        text = tr("Left connected, waiting for the right");
+        color = QStringLiteral("#777");
+    } else {
+        text = tr("Searching…");
+        color = QStringLiteral("#777");
+    }
+    m_clickStatus->setText(text);
+    m_clickStatus->setStyleSheet(QStringLiteral("color: %1;").arg(color));
 }
 
 void SensorConnectDialog::refreshButtons()
