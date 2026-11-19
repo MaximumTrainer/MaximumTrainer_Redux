@@ -8,8 +8,9 @@
 #include "logger.h"
 
 IntervalsIcuFtpSync::IntervalsIcuFtpSync(const QString &athleteId, const QString &bearerToken,
-                                         int ftpWatts, QObject *parent)
-    : QObject(parent), m_athleteId(athleteId), m_token(bearerToken), m_ftpWatts(ftpWatts)
+                                         int ftpWatts, QObject *parent, int lthrBpm)
+    : QObject(parent), m_athleteId(athleteId), m_token(bearerToken), m_ftpWatts(ftpWatts),
+      m_lthrBpm(lthrBpm)
 {
 }
 
@@ -42,6 +43,8 @@ void IntervalsIcuFtpSync::onSettingsRead()
     const QString field = settings.value(QStringLiteral("indoor_ftp")).toInt() > 0
                               ? QStringLiteral("indoor_ftp") : QStringLiteral("ftp");
     settings.insert(field, m_ftpWatts);
+    if (m_lthrBpm > 0)
+        settings.insert(QStringLiteral("lthr"), m_lthrBpm);
     m_reply = IntervalsIcuDAO::putRideSettingsBearer(m_athleteId, m_token, settings);
     if (!m_reply) {
         finish(false, tr("network unavailable"));

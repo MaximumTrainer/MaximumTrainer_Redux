@@ -49,6 +49,12 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
     titleLabel->setStyleSheet("font-size: 14pt; font-weight: bold; color: #80c0ff;");
     titleLabel->setAlignment(Qt::AlignCenter);
     layout->addWidget(titleLabel);
+    m_profileNote = new QLabel(this);
+    m_profileNote->setWordWrap(true);
+    m_profileNote->setAlignment(Qt::AlignCenter);
+    m_profileNote->setStyleSheet("font-size: 10pt; color: #c8e6c9;");
+    m_profileNote->hide();
+    layout->addWidget(m_profileNote);
 
     // — Achievements section —
     if (!earnedAchievements.isEmpty()) {
@@ -120,6 +126,13 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
         }
     }
 
+    adjustSize();
+}
+
+void PostWorkoutPanel::setProfileNote(const QString &text)
+{
+    m_profileNote->setText(text);
+    m_profileNote->setVisible(!text.isEmpty());
     adjustSize();
 }
 

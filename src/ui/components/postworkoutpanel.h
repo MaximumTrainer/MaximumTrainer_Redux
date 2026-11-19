@@ -25,6 +25,10 @@ public:
                      const QString &fitFilePath, const QString &fitFileName,
                      const QString &fitFileDescription, QWidget *parent);
 
+    /// A line under the title about the profile update (e.g. a test result
+    /// saved to Intervals.icu). Can be called again when the save finishes.
+    void setProfileNote(const QString &text);
+
 signals:
     /// The rider accepted a detected FTP; zones and targets need recomputing.
     void ftpUpdated(int ftpWatts);
@@ -56,6 +60,7 @@ private:
     QNetworkReply *replyPostIntervalsIcuUpload = nullptr;
     bool           m_stravaUpload401Retried    = false;
     QLabel        *m_ftpStatus                 = nullptr;
+    QLabel        *m_profileNote               = nullptr;
 };
 
 #endif // POSTWORKOUTPANEL_H
