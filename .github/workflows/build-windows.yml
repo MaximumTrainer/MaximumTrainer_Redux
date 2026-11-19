@@ -25,6 +25,7 @@ jobs:
 
   build_windows:
     runs-on: windows-latest
+    timeout-minutes: 45
     permissions:
       contents: read
     env:
@@ -387,6 +388,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   test_headless_suites:
     runs-on: windows-latest
+    timeout-minutes: 25
     needs: build_windows
     permissions:
       contents: read
@@ -449,6 +451,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   test_gui:
     runs-on: windows-latest
+    timeout-minutes: 25
     needs: build_windows
     permissions:
       contents: read
@@ -555,6 +558,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   test_gui_live:
     runs-on: windows-latest
+    timeout-minutes: 25
     needs: build_windows
     permissions:
       contents: read

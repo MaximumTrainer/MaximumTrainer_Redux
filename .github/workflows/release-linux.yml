@@ -21,6 +21,7 @@ jobs:
 
   build_linux:
     runs-on: ubuntu-22.04
+    timeout-minutes: 35
     permissions:
       contents: read
       actions: read

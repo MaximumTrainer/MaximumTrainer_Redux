@@ -24,6 +24,7 @@ jobs:
 
   build_mac:
     runs-on: macos-latest
+    timeout-minutes: 35
     permissions:
       contents: read
 
@@ -220,6 +221,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   test_headless_suites:
     runs-on: macos-latest
+    timeout-minutes: 25
     needs: build_mac
     permissions:
       contents: read
@@ -305,6 +307,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   test_gui:
     runs-on: macos-latest
+    timeout-minutes: 25
     needs: build_mac
     permissions:
       contents: read
@@ -390,6 +393,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   test_gui_live:
     runs-on: macos-latest
+    timeout-minutes: 25
     needs: build_mac
     permissions:
       contents: read

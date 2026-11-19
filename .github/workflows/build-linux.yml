@@ -26,6 +26,7 @@ jobs:
 
   build_linux:
     runs-on: ubuntu-22.04
+    timeout-minutes: 35
     permissions:
       contents: read
 
@@ -177,6 +178,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   test_unit_suites:
     runs-on: ubuntu-22.04
+    timeout-minutes: 25
     permissions:
       contents: read
     env:
@@ -281,6 +283,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   test_integration_headless:
     runs-on: ubuntu-22.04
+    timeout-minutes: 25
     needs: build_linux
     permissions:
       contents: read
@@ -368,6 +371,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   test_gui:
     runs-on: ubuntu-22.04
+    timeout-minutes: 25
     needs: build_linux
     permissions:
       contents: read
@@ -500,6 +504,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   test_gui_live:
     runs-on: ubuntu-22.04
+    timeout-minutes: 25
     needs: build_linux
     permissions:
       contents: read
