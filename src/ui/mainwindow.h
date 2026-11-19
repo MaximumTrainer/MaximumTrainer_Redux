@@ -89,7 +89,6 @@ public slots:
 
 #ifndef GC_WASM_BUILD
 private:
-    AchievementsWidget *m_achievementsPage = nullptr;
     /// Launch the workout dialog wired to multiple already-connected BLE hubs,
     /// one per saved sensor role. Used by the multi-device pairing flow.
     void startWorkoutWithHubs(const Workout &workout,
@@ -111,6 +110,7 @@ public slots:
 #endif
 
 private:
+    AchievementsWidget *m_achievementsPage = nullptr;
     /// Simulator-fed workout launch (the "Simulation" connection method).
     /// Shared by the desktop synchronous flow and the WASM async chain.
     void connectSimulatorHub(class SimulatorHub *hub, WorkoutDialog *dialog);

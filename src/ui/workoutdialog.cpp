@@ -6,9 +6,9 @@
 
 #ifndef Q_OS_WASM
 #include "zwift_click_manager.h"
+#endif
 #include "achievementcatalog.h"
 #include "achievementtoast.h"
-#endif
 
 #ifdef Q_OS_WIN32
 #   include <windows.h>
