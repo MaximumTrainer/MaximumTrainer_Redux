@@ -36,12 +36,16 @@ QPixmap greyed(const QPixmap &source)
 QString progressText(const Definition &definition, double value)
 {
     const auto number = [&](double v) {
-        return definition.kind == Kind::TotalHours ? QString::number(v, 'f', 1)
-                                                   : QLocale().toString(qRound(v));
+        if (definition.kind == Kind::TotalHours || definition.kind == Kind::WeekHours
+            || definition.kind == Kind::WattsPerKg)
+            return QString::number(v, 'f', 1);
+        return QLocale().toString(qRound(v));
     };
     QString unit;
     switch (definition.kind) {
-    case Kind::TotalHours:  unit = QStringLiteral(" h");   break;
+    case Kind::TotalHours:
+    case Kind::WeekHours:   unit = QStringLiteral(" h");   break;
+    case Kind::WattsPerKg:  unit = QStringLiteral(" W/kg"); break;
     case Kind::TotalKm:     unit = QStringLiteral(" km");  break;
     case Kind::RideMinutes: unit = QStringLiteral(" min"); break;
     case Kind::RideTss:
@@ -153,8 +157,7 @@ QWidget *AchievementsWidget::buildCard(const QString &key, QWidget *parent)
         auto *date = new QLabel(tr("✓ Earned %1").arg(QLocale().toString(earned.value(key).date(), QStringLiteral("d MMM yyyy"))), card);
         date->setStyleSheet(QStringLiteral("color: #d99a1c; font-weight: bold;"));
         text->addWidget(date);
-    } else if (definition->kind != Kind::Event && definition->kind != Kind::EarlyBird
-               && definition->kind != Kind::NightOwl && m_manager) {
+    } else if (!isYesNo(*definition) && m_manager) {
         const double value = progress(*definition, m_manager->historyStats());
         auto *row = new QHBoxLayout();
         auto *bar = new QProgressBar(card);

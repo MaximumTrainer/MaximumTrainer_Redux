@@ -22,6 +22,12 @@ enum class Kind {
     RideKcal,        ///< one ride with >= N kcal
     WeekTss,         ///< >= N TSS within any 7 days
     WeekRides,       ///< >= N rides within any 7 days
+    WeekHours,       ///< >= N hours within any 7 days
+    MonthRides,      ///< >= N rides within any 30 days
+    WeekendDouble,   ///< rides on the Saturday and Sunday of one weekend
+    NewYear,         ///< a ride on January 1
+    Christmas,       ///< a ride on December 25
+    WattsPerKg,      ///< FTP of at least N W/kg (from the profile)
     StreakDays,      ///< rides on N consecutive days
     EarlyBird,       ///< a ride starting before 7:00
     NightOwl,        ///< a ride starting at 21:00 or later
@@ -52,12 +58,21 @@ struct HistoryStats {
     int    maxRideKcal    = 0;
     double bestWeekTss    = 0.0;
     int    bestWeekRides  = 0;
+    double bestWeekHours  = 0.0;
+    int    bestMonthRides = 0;
+    bool   weekendDouble  = false;
+    bool   newYear        = false;
+    bool   christmas      = false;
+    double ftpWattsPerKg  = 0.0;   ///< filled in from the profile, not the history
     int    bestStreakDays = 0;
     bool   earlyBird      = false;
     bool   nightOwl       = false;
 };
 
 HistoryStats statsFrom(const QList<WorkoutHistorySummary> &history);
+
+/// True for the yes/no kinds that have no meaningful progress bar.
+bool isYesNo(const Definition &definition);
 
 /// Current value towards \a definition (0 for Event achievements).
 double progress(const Definition &definition, const HistoryStats &stats);
@@ -71,6 +86,9 @@ inline const QString MapStep7      = QStringLiteral("map_step_7");
 inline const QString FtpRaised     = QStringLiteral("ftp_raised");
 inline const QString TargetManiac  = QStringLiteral("target_maniac");
 inline const QString GroupRide     = QStringLiteral("group_ride");
+inline const QString GroupHost     = QStringLiteral("group_host");
+inline const QString GroupJoin     = QStringLiteral("group_join");
+inline const QString StudioHost    = QStringLiteral("studio_host");
 }
 
 } // namespace AchievementCatalog

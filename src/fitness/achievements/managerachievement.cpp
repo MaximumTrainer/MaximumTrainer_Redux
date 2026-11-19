@@ -1,9 +1,11 @@
 #include "managerachievement.h"
 
+#include <QCoreApplication>
 #include <QDir>
 
 #include "achievementcatalog.h"
 #include "achievementchecker.h"
+#include "account.h"
 #include "achievementstore.h"
 #include "fitactivityreader.h"
 #include "logger.h"
@@ -37,6 +39,9 @@ void ManagerAchievement::evaluateHistory(bool announce)
             history.append(summary);
     }
     m_stats = statsFrom(history);
+    if (const Account *account = qApp->property("Account").value<Account*>();
+        account && account->weight_kg > 0 && account->FTP > 0)
+        m_stats.ftpWattsPerKg = account->FTP / account->weight_kg;
     for (const Definition &definition : all())
         if (reached(definition, m_stats))
             award(definition.key, announce);

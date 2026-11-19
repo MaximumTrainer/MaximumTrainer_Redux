@@ -42,7 +42,7 @@ private slots:
 
     void catalog_hasUniqueKeysInEveryCategory()
     {
-        QVERIFY(all().size() >= 25);
+        QVERIFY(all().size() >= 40);
         QSet<QString> keys;
         QSet<int> categories;
         for (const Definition &definition : all()) {
@@ -87,6 +87,33 @@ private slots:
         QVERIFY(!statsFrom({ride(at(1, 7, 0), 30)}).earlyBird);
         QVERIFY(statsFrom({ride(at(1, 21, 0), 30)}).nightOwl);
         QVERIFY(!statsFrom({ride(at(1, 20, 59), 30)}).nightOwl);
+    }
+
+    void stats_newerRules()
+    {
+        // 2026-03-07 is a Saturday.
+        QVERIFY(statsFrom({ride(at(7, 9), 60), ride(at(8, 9), 60)}).weekendDouble);
+        QVERIFY(!statsFrom({ride(at(8, 9), 60), ride(at(9, 9), 60)}).weekendDouble);   // Sun + Mon
+        const QDateTime newYear(QDate(2027, 1, 1), QTime(10, 0), QTimeZone::LocalTime);
+        const QDateTime christmas(QDate(2026, 12, 25), QTime(10, 0), QTimeZone::LocalTime);
+        QVERIFY(statsFrom({ride(newYear, 30)}).newYear);
+        QVERIFY(statsFrom({ride(christmas, 30)}).christmas);
+        QVERIFY(!statsFrom({ride(at(1, 10), 30)}).christmas);
+
+        QList<WorkoutHistorySummary> month;
+        for (int day = 1; day <= 20; ++day)
+            month.append(ride(at(day, 18), 45));
+        const HistoryStats stats = statsFrom(month);
+        QCOMPARE(stats.bestMonthRides, 20);
+        QCOMPARE(stats.bestWeekHours, 7 * 0.75);
+        QCOMPARE(stats.bestStreakDays, 20);
+
+        HistoryStats profile;
+        profile.ftpWattsPerKg = 3.2;
+        QVERIFY(reached(*find(QStringLiteral("wkg_3")), profile));
+        QVERIFY(!reached(*find(QStringLiteral("wkg_4")), profile));
+        QVERIFY(isYesNo(*find(QStringLiteral("weekend_double"))));
+        QVERIFY(!isYesNo(*find(QStringLiteral("wkg_3"))));
     }
 
     void reached_followsTargets()

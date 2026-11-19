@@ -1375,8 +1375,14 @@ void WorkoutDialog::workoutOver() {
 
     if (!account->enable_studio_mode) {
         achievementManager->workoutCompleted(workout);
-        if (m_groupRide)
+        if (m_groupRide) {
             achievementManager->recordEvent(AchievementCatalog::Events::GroupRide);
+            achievementManager->recordEvent(m_groupRide->isHost() ? AchievementCatalog::Events::GroupHost
+                                                                  : AchievementCatalog::Events::GroupJoin);
+        }
+    }
+    else {
+        achievementManager->recordEvent(AchievementCatalog::Events::StudioHost);
     }
 
 
