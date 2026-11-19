@@ -762,12 +762,12 @@ void WorkoutDialog::layoutBottomWidgets() {
     horizontalLayout->setSpacing(8);
     // Numbers and a readable live graph in each card; the splitter keeps the
     // bottom pane at least this tall even with older saved pane sizes.
-    ui->widget_allSpeedo->setMinimumHeight(250);
+    ui->widget_allSpeedo->setMinimumHeight(290);
 
     // One card per metric: the info box on top and its live graph below, in a
     // fixed order. The per-metric display options still show/hide the parts.
     auto card = [&](std::initializer_list<QWidget *> parts, int stretch, InfoWidget *info,
-                    TrendChart *trend = nullptr) {
+                    TrendChart *trend = nullptr, const QString &caption = QString()) {
         auto *metricCard = new MetricCard(host);
         for (QWidget *part : parts) {
             horizontalLayout->removeWidget(part);
@@ -775,9 +775,11 @@ void WorkoutDialog::layoutBottomWidgets() {
             part->setMaximumWidth(QWIDGETSIZE_MAX);
             const bool isGraph = qobject_cast<WorkoutPlotZoomer *>(part) != nullptr;
             if (isGraph)
-                part->setMinimumHeight(130);
+                part->setMinimumHeight(105);
             metricCard->addPart(part, isGraph ? 1 : 0);
         }
+        if (!caption.isEmpty())
+            metricCard->setCaption(caption);
         if (trend)
             metricCard->addPart(trend, 1, true);
         if (info)
@@ -795,8 +797,8 @@ void WorkoutDialog::layoutBottomWidgets() {
     card({ui->wid_2_balancePower}, 2, nullptr, m_balanceTrend);
     card({ui->wid_1_infoBoxHr, ui->wid_1_workoutPlot_HeartrateZoom}, 2, ui->wid_1_infoBoxHr);
     card({ui->wid_4_infoBoxSpeed}, 2, nullptr, m_speedTrend);
-    card({ui->wid_5_infoWorkout}, 1, nullptr);
-    card({ui->wid_oxygen}, 1, nullptr, m_oxygenTrend);
+    card({ui->wid_5_infoWorkout}, 1, nullptr, nullptr, tr("WORKOUT"));
+    card({ui->wid_oxygen}, 1, nullptr, m_oxygenTrend, tr("MUSCLE O₂"));
 }
 
 

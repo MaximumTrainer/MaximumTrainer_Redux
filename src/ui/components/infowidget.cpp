@@ -2,6 +2,8 @@
 #include "ui_infowidget.h"
 
 #include <QDebug>
+#include <QHBoxLayout>
+#include <QLabel>
 #include "myconstants.h"
 #include "util.h"
 
@@ -18,8 +20,11 @@ InfoWidget::InfoWidget(QWidget *parent) : QWidget(parent), ui(new Ui::InfoWidget
     // the light/dark palette keep coming from the theme): hero live value,
     // medium secondary stats, small muted captions.
     setStyleSheet(QStringLiteral(R"(
-        QLabel#label_currentValue { font: 600 25pt 'Inter'; }
-        QLabel#label_targetValue, QLabel#label_range { font: 15pt 'Inter'; }
+        QLabel#label_currentValue { font: 700 28pt 'Inter'; }
+        QLabel#label_range { font: 600 9pt 'Inter'; }
+        QLabel#infoCaption { font: 600 8pt 'Inter'; color: #9a9aa6; letter-spacing: 1px; }
+        QLabel#infoTargetPill { font: 8pt 'Inter'; border: 1px solid #44444e; border-radius: 8px; padding: 0px 6px; }
+        QLabel#infoUnit { font: 10pt 'Inter'; color: #9a9aa6; }
         QLabel#label_avgInterval, QLabel#label_maxInterval,
         QLabel#label_avgWorkout,  QLabel#label_maxWorkout { font: 600 13pt 'Inter'; }
         QLabel#label_WorkoutTxt, QLabel#label_AvgIntervalTxt,
@@ -30,7 +35,7 @@ InfoWidget::InfoWidget(QWidget *parent) : QWidget(parent), ui(new Ui::InfoWidget
     useMile = false;
 
     target = -1;
-    ui->label_currentValue->setText(" 0");
+    ui->label_currentValue->setText(QStringLiteral("0"));
     ui->label_range->setText("");
 
     ui->label_range->setVisible(false);
@@ -42,6 +47,39 @@ InfoWidget::InfoWidget(QWidget *parent) : QWidget(parent), ui(new Ui::InfoWidget
     isStopped = true;
     currentColor = 2;
 
+    // Card layout: a title row (small icon, caption, target tag), then the
+    // value with its unit and a "below / above target" hint, then Avg / Max.
+    auto *grid = ui->gridLayout_2;
+    grid->removeWidget(ui->label_image);
+    auto *header = new QHBoxLayout();
+    header->setSpacing(6);
+    m_caption = new QLabel(this);
+    m_caption->setObjectName(QStringLiteral("infoCaption"));
+    m_targetPill = new QLabel(this);
+    m_targetPill->setObjectName(QStringLiteral("infoTargetPill"));
+    m_targetPill->hide();
+    ui->label_image->setFixedSize(18, 18);
+    ui->label_image->setScaledContents(true);
+    header->addWidget(ui->label_image);
+    header->addWidget(m_caption);
+    header->addStretch();
+    header->addWidget(m_targetPill);
+    ui->verticalLayout->insertLayout(0, header);
+
+    ui->label_imageTarget->hide();
+    ui->label_targetValue->hide();
+    ui->label_spacerRow->hide();
+    grid->removeWidget(ui->label_currentValue);
+    grid->removeWidget(ui->label_range);
+    m_unit = new QLabel(this);
+    m_unit->setObjectName(QStringLiteral("infoUnit"));
+    auto *valueRow = new QHBoxLayout();
+    valueRow->setSpacing(4);
+    valueRow->addWidget(ui->label_currentValue, 0, Qt::AlignBottom);
+    valueRow->addWidget(m_unit, 0, Qt::AlignBottom);
+    valueRow->addStretch();
+    grid->addLayout(valueRow, 0, 0, 1, 3);
+    grid->addWidget(ui->label_range, 1, 0, 1, 3);
 }
 
 
@@ -65,27 +103,27 @@ void InfoWidget::setValue(double v) {
     // the rower; show it as time per 500 m instead of a speed.
     if (rowingMode && type == InfoWidget::SPEED) {
         if (v <= 0.5) {
-            ui->label_currentValue->setText(" -");
+            ui->label_currentValue->setText(QStringLiteral("-"));
             return;
         }
         const int paceSec = qRound(1800.0 / v);
-        ui->label_currentValue->setText(QStringLiteral(" %1:%2")
+        ui->label_currentValue->setText(QStringLiteral("%1:%2")
             .arg(paceSec / 60)
             .arg(paceSec % 60, 2, 10, QLatin1Char('0')));
         return;
     }
 
     if (v == 0) {
-        ui->label_currentValue->setText(" 0");
+        ui->label_currentValue->setText(QStringLiteral("0"));
     }
     else if(v < 0) {
-        ui->label_currentValue->setText(" -");
+        ui->label_currentValue->setText(QStringLiteral("-"));
     }
     else {
         if (useMile)
             v = v* constants::GLOBAL_CONST_CONVERT_KMH_TO_MILES;
 
-        ui->label_currentValue->setText(" " + QString::number(v, 'f', 1));
+        ui->label_currentValue->setText(QString::number(v, 'f', 1));
     }
 }
 
@@ -115,28 +153,22 @@ void InfoWidget::setValue( int value ) {
 
 
     if(value < 0) {
-        ui->label_currentValue->setText(" -");
+        ui->label_currentValue->setText(QStringLiteral("-"));
         return;
     }
 
-    ui->label_currentValue->setText(" " + QString::number(value));
+    ui->label_currentValue->setText(QString::number(value));
 
 
-    int diff = value - target;
-    QString diff_str;
-
-    if (diff > 0) {
-        diff_str = "+" + QString::number(diff);
-    }
-    else {
-        diff_str = QString::number(diff);
-    }
-
-    if (diff != 0)
-        ui->label_range->setText(diff_str);
-    else {
-        ui->label_range->setText("");
-    }
+    const int diff = value - target;
+    if (target < 0 || isStopped)
+        ui->label_range->setText(QString());
+    else if (diff > targetRange)
+        ui->label_range->setText(tr("%1 %2 above target").arg(diff).arg(unitText()));
+    else if (diff < -targetRange)
+        ui->label_range->setText(tr("%1 %2 below target").arg(-diff).arg(unitText()));
+    else
+        ui->label_range->setText(tr("on target"));
 
 
     // -1 below, 1 above, 0 on target, 2 no target / stopped. The card around
@@ -150,9 +182,12 @@ void InfoWidget::setValue( int value ) {
         state = 1;
     if (state != currentColor) {
         currentColor = state;
-        ui->label_currentValue->setStyleSheet(state == -1 ? QStringLiteral("color: #e5534b;")
-                                              : state == 1 ? QStringLiteral("color: #f2a33a;")
-                                                           : QString());
+        const QString color = state == -1 ? QStringLiteral("#e5534b")
+                            : state == 1  ? QStringLiteral("#f2a33a")
+                            : state == 0  ? QStringLiteral("#3fb27f") : QString();
+        ui->label_currentValue->setStyleSheet(state == -1 || state == 1
+                                              ? QStringLiteral("color: %1;").arg(color) : QString());
+        ui->label_range->setStyleSheet(color.isEmpty() ? QString() : QStringLiteral("color: %1;").arg(color));
         emit targetStateChanged(state);
     }
 }
@@ -161,16 +196,7 @@ void InfoWidget::setValue( int value ) {
 void InfoWidget::targetChanged(double percentageValue, int range) {
 
 
-    if (percentageValue < 0) { //no target
-        ui->label_range->setVisible(false);
-        ui->label_targetValue->setVisible(false);
-        ui->label_imageTarget->setVisible(false);
-    }
-    else {
-        ui->label_range->setVisible(true);
-        ui->label_targetValue->setVisible(true);
-        ui->label_imageTarget->setVisible(true);
-    }
+    ui->label_range->setVisible(percentageValue >= 0);
 
 
     int realTarget = percentageValue;
@@ -182,6 +208,11 @@ void InfoWidget::targetChanged(double percentageValue, int range) {
     }
 
     ui->label_targetValue->setText(QString::number(realTarget));
+    if (percentageValue >= 0) {
+        m_targetPill->setText(range > 0 ? tr("Target %1 %2 ±%3").arg(realTarget).arg(unitText()).arg(range)
+                                        : tr("Target %1 %2").arg(realTarget).arg(unitText()));
+    }
+    m_targetPill->setVisible(percentageValue >= 0);
 
 
     this->target = realTarget;
@@ -243,7 +274,7 @@ void InfoWidget::setTypeInfoBox(TypeInfoBox type) {
 
     this->type = type;
 
-    int size = 35;
+    int size = 18;
     const qreal dpr = devicePixelRatioF();
     QPixmap pixmapPower   = Util::loadIconForDpr(":/image/icon/power2", size, dpr);
     QPixmap pixmapCadence = Util::loadIconForDpr(":/image/icon/crank2", size, dpr);
@@ -255,6 +286,12 @@ void InfoWidget::setTypeInfoBox(TypeInfoBox type) {
     ui->label_imageTarget->setPixmap(pixmapTarget);
     ui->label_imageTarget->setToolTip(tr("Target"));
     //    ui->label_imageTarget->setP margin left
+
+    m_caption->setText(type == InfoWidget::HEART_RATE ? tr("HEART RATE")
+                       : type == InfoWidget::SPEED    ? tr("SPEED")
+                       : type == InfoWidget::CADENCE  ? tr("CADENCE")
+                                                      : tr("POWER"));
+    refreshUnit();
 
     if (type == InfoWidget::HEART_RATE) {
         ui->label_currentValue->setToolTip(tr("Heart Rate - bpm"));
@@ -295,6 +332,11 @@ void InfoWidget::setTypeInfoBox(TypeInfoBox type) {
 
 void InfoWidget::setRowingMode(bool rowing) {
     rowingMode = rowing;
+    if (m_caption && rowing && type == InfoWidget::CADENCE)
+        m_caption->setText(tr("STROKE RATE"));
+    if (m_caption && rowing && type == InfoWidget::SPEED)
+        m_caption->setText(tr("PACE"));
+    refreshUnit();
     if (!rowing)
         return;
     // Rowing (Beta): the cadence channel carries stroke rate and the speed
@@ -318,6 +360,7 @@ void InfoWidget::setStopped(bool b) {
 
 void InfoWidget::setUseMiles(bool b) {
     useMile = b;
+    refreshUnit();
     ui->label_image->setStyleSheet("image: url(:/image/icon/speed)");
     ui->label_image->setToolTip(tr("Speed - mph"));
     ui->label_currentValue->setToolTip(tr("Speed - mph"));
@@ -328,3 +371,21 @@ void InfoWidget::setTrainerSpeedVisible(bool b) {
     ui->label_trainerSpeedTxt->setVisible(b);
 }
 
+
+QString InfoWidget::unitText() const
+{
+    switch (type) {
+    case InfoWidget::POWER:      return QStringLiteral("W");
+    case InfoWidget::HEART_RATE: return QStringLiteral("bpm");
+    case InfoWidget::CADENCE:    return rowingMode ? QStringLiteral("spm") : QStringLiteral("rpm");
+    case InfoWidget::SPEED:      return rowingMode ? QStringLiteral("/500m")
+                                      : useMile ? QStringLiteral("mph") : QStringLiteral("km/h");
+    default:                     return QString();
+    }
+}
+
+void InfoWidget::refreshUnit()
+{
+    if (m_unit)
+        m_unit->setText(unitText());
+}

@@ -1,6 +1,7 @@
 #include "metriccard.h"
 
 #include <QEvent>
+#include <QLabel>
 #include <QStyle>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -29,6 +30,14 @@ void MetricCard::addPart(QWidget *part, int stretch, bool follower)
         part->installEventFilter(this);
     }
     syncVisibility();
+}
+
+void MetricCard::setCaption(const QString &text)
+{
+    auto *caption = new QLabel(text, this);
+    caption->setStyleSheet(QStringLiteral("font: 600 8pt 'Inter'; color: #9a9aa6; letter-spacing: 1px;"
+                                          " border: none; background: transparent;"));
+    m_layout->insertWidget(0, caption);
 }
 
 void MetricCard::setTargetState(int state)
