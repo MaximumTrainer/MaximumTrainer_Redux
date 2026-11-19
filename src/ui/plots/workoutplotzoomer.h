@@ -56,6 +56,9 @@ public slots:
     void updateCurve(double, int);
     void moveIntervalTime(double timeNow);
 
+    /// The big value and icon drawn over the graph; hidden when the metric
+    /// card already shows the numbers above it.
+    void setValueOverlayVisible(bool visible);
     void updateTextLabelValue(int value);
     void targetChanged(double percentageTarget, int range );
 

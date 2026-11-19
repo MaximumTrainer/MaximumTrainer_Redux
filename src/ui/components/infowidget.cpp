@@ -40,9 +40,8 @@ InfoWidget::InfoWidget(QWidget *parent) : QWidget(parent), ui(new Ui::InfoWidget
 
 
     isStopped = true;
-    currentColor = 0;
+    currentColor = 2;
 
-    ui->frame->setStyleSheet(constants::stylesheetOK);
 }
 
 
@@ -140,31 +139,22 @@ void InfoWidget::setValue( int value ) {
     }
 
 
-    if (isStopped) {
-        if (currentColor != 0) {
-            ui->frame->setStyleSheet(constants::stylesheetOK);
-            currentColor = 0;
-        }
+    // -1 below, 1 above, 0 on target, 2 no target / stopped. The card around
+    // the box shows it; the value colour repeats it.
+    int state = 0;
+    if (isStopped || target < 0)
+        state = 2;
+    else if (diff < -targetRange)
+        state = -1;
+    else if (diff > targetRange)
+        state = 1;
+    if (state != currentColor) {
+        currentColor = state;
+        ui->label_currentValue->setStyleSheet(state == -1 ? QStringLiteral("color: #e5534b;")
+                                              : state == 1 ? QStringLiteral("color: #f2a33a;")
+                                                           : QString());
+        emit targetStateChanged(state);
     }
-    else {
-        if (target < 0) {
-            ui->frame->setStyleSheet(constants::stylesheetOK);
-            currentColor = 0;
-        }
-        else if ( (diff < (-targetRange)) && (currentColor != -1) ) {
-            ui->frame->setStyleSheet(constants::stylesheetTooLow);
-            currentColor = -1;
-        }
-        else if( (diff > targetRange) && (currentColor != 1) ) {
-            ui->frame->setStyleSheet(constants::stylesheetTooHigh);
-            currentColor = 1;
-        }
-        else if ( ((diff < targetRange) && (diff > (-targetRange))) && (currentColor != 0)) {
-            ui->frame->setStyleSheet(constants::stylesheetOK);
-            currentColor = 0;
-        }
-    }
-
 }
 
 

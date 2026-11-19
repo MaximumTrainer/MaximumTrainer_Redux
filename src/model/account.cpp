@@ -174,6 +174,15 @@ void Account::loadDisplayPrefs() {
     if (display_hr == 0)      display_hr = 1;
     if (display_power == 0)   display_power = 1;
     if (display_cadence == 0) display_cadence = 1;
+    // The card layout shows each metric's numbers and live graph together:
+    // switch earlier installs to that once; later choices are kept.
+    if (!AppSettings::read(settings, Keys::MetricCardsDefaultsApplied)) {
+        display_hr = display_power = display_cadence = 3;
+        AppSettings::write(settings, Keys::DisplayHr, display_hr);
+        AppSettings::write(settings, Keys::DisplayPower, display_power);
+        AppSettings::write(settings, Keys::DisplayCadence, display_cadence);
+        AppSettings::write(settings, Keys::MetricCardsDefaultsApplied, true);
+    }
     display_video         = AppSettings::read(settings, Keys::DisplayVideo);
     AppSettings::remove(settings, Keys::OffsetPower);  // retired power offset
 

@@ -10,6 +10,10 @@
 #include "achievementcatalog.h"
 #include "achievementtoast.h"
 #include "intervalsicuftpsync.h"
+#include "workoutplotzoomer.h"
+#include "infowidget.h"
+#include "metriccard.h"
+#include "trendchart.h"
 
 #ifdef Q_OS_WIN32
 #   include <windows.h>
@@ -753,32 +757,46 @@ void WorkoutDialog::initUI() {
 
 void WorkoutDialog::layoutBottomWidgets() {
 
-
     QHBoxLayout *horizontalLayout = static_cast<QHBoxLayout*>(ui->horizontalLayout_Bottom->layout());
+    QWidget *host = horizontalLayout->parentWidget();
+    horizontalLayout->setSpacing(8);
+    // Numbers and a readable live graph in each card; the splitter keeps the
+    // bottom pane at least this tall even with older saved pane sizes.
+    ui->widget_allSpeedo->setMinimumHeight(250);
 
-    horizontalLayout->removeWidget(ui->wid_1_infoBoxHr);
-    horizontalLayout->removeWidget(ui->wid_1_workoutPlot_HeartrateZoom);
-
-    horizontalLayout->removeWidget(ui->wid_2_balancePower);
-    horizontalLayout->removeWidget(ui->wid_2_infoBoxPower);
-    horizontalLayout->removeWidget(ui->wid_2_workoutPlot_PowerZoom);
-
-    horizontalLayout->removeWidget(ui->wid_3_infoBoxCadence);
-    horizontalLayout->removeWidget(ui->wid_3_workoutPlot_CadenceZoom);
-
-    horizontalLayout->removeWidget(ui->wid_4_infoBoxSpeed);
-    horizontalLayout->removeWidget(ui->wid_oxygen);
-    horizontalLayout->removeWidget(ui->wid_5_infoWorkout);
-
-
-    for (QWidget *widget : {static_cast<QWidget *>(ui->wid_2_infoBoxPower), static_cast<QWidget *>(ui->wid_2_workoutPlot_PowerZoom),
-                            static_cast<QWidget *>(ui->wid_3_infoBoxCadence), static_cast<QWidget *>(ui->wid_3_workoutPlot_CadenceZoom),
-                            static_cast<QWidget *>(ui->wid_2_balancePower),
-                            static_cast<QWidget *>(ui->wid_1_infoBoxHr), static_cast<QWidget *>(ui->wid_1_workoutPlot_HeartrateZoom),
-                            static_cast<QWidget *>(ui->wid_4_infoBoxSpeed),
-                            static_cast<QWidget *>(ui->wid_5_infoWorkout),
-                            static_cast<QWidget *>(ui->wid_oxygen)})
-        horizontalLayout->addWidget(widget);
+    // One card per metric: the info box on top and its live graph below, in a
+    // fixed order. The per-metric display options still show/hide the parts.
+    auto card = [&](std::initializer_list<QWidget *> parts, int stretch, InfoWidget *info,
+                    TrendChart *trend = nullptr) {
+        auto *metricCard = new MetricCard(host);
+        for (QWidget *part : parts) {
+            horizontalLayout->removeWidget(part);
+            part->setMinimumWidth(0);
+            part->setMaximumWidth(QWIDGETSIZE_MAX);
+            const bool isGraph = qobject_cast<WorkoutPlotZoomer *>(part) != nullptr;
+            if (isGraph)
+                part->setMinimumHeight(130);
+            metricCard->addPart(part, isGraph ? 1 : 0);
+        }
+        if (trend)
+            metricCard->addPart(trend, 1, true);
+        if (info)
+            connect(info, &InfoWidget::targetStateChanged, metricCard, &MetricCard::setTargetState);
+        horizontalLayout->addWidget(metricCard, stretch);
+    };
+    card({ui->wid_2_infoBoxPower, ui->wid_2_workoutPlot_PowerZoom}, 3, ui->wid_2_infoBoxPower);
+    card({ui->wid_3_infoBoxCadence, ui->wid_3_workoutPlot_CadenceZoom}, 2, ui->wid_3_infoBoxCadence);
+    // Metrics without a target graph get a live trend of the last 30 s.
+    m_balanceTrend = new TrendChart(QColor(242, 184, 48), host);
+    m_balanceTrend->setReference(50);
+    m_balanceTrend->setFixedRange(30, 70);
+    m_speedTrend   = new TrendChart(QColor(143, 183, 255), host);
+    m_oxygenTrend  = new TrendChart(QColor(196, 140, 255), host);
+    card({ui->wid_2_balancePower}, 2, nullptr, m_balanceTrend);
+    card({ui->wid_1_infoBoxHr, ui->wid_1_workoutPlot_HeartrateZoom}, 2, ui->wid_1_infoBoxHr);
+    card({ui->wid_4_infoBoxSpeed}, 2, nullptr, m_speedTrend);
+    card({ui->wid_5_infoWorkout}, 1, nullptr);
+    card({ui->wid_oxygen}, 1, nullptr, m_oxygenTrend);
 }
 
 
@@ -1765,6 +1783,8 @@ void WorkoutDialog::speedDataChosen(int userID, double value) {
 
 
     ui->wid_4_infoBoxSpeed->setValue(value);
+    if (m_speedTrend && userID == 1)
+        m_speedTrend->addValue(value);
 
 }
 
@@ -1864,6 +1884,8 @@ void WorkoutDialog::PowerBalanceDataReceived(int userID, int rightPedalPercentag
             showPowerBalanceWidget(account->display_power_balance);
     }
     ui->wid_2_balancePower->setValue(rightPedalPercentage);
+    if (m_balanceTrend && userID == 1)
+        m_balanceTrend->addValue(rightPedalPercentage);
     m_secondSamples.setRightPedalPercent(userID-1, rightPedalPercentage);
 }
 
@@ -1874,6 +1896,8 @@ void WorkoutDialog::OxygenValueChanged(int userID, double percentageSaturatedHem
     // Mark pairing as done
     markSensorPaired(oxygenPairingDone, labelOxygen);
     ui->wid_oxygen->oxygenValueChanged(percentageSaturatedHemoglobin, totalHemoglobinConcentration);
+    if (m_oxygenTrend)
+        m_oxygenTrend->addValue(percentageSaturatedHemoglobin);
 
     m_secondSamples.setHemoglobin(userID-1, percentageSaturatedHemoglobin, totalHemoglobinConcentration);
 }
@@ -2473,7 +2497,13 @@ void WorkoutDialog::showHeartRateDisplayWidget(int display) {
         }
         else if (display == 2) { /// Graph
             ui->wid_1_workoutPlot_HeartrateZoom->setVisible(true);
+            ui->wid_1_workoutPlot_HeartrateZoom->setValueOverlayVisible(true);
             ui->wid_1_infoBoxHr->setVisible(false);
+        }
+        else if (display == 3) { /// Graph and Detailed
+            ui->wid_1_workoutPlot_HeartrateZoom->setVisible(true);
+            ui->wid_1_infoBoxHr->setVisible(true);
+            ui->wid_1_workoutPlot_HeartrateZoom->setValueOverlayVisible(false);
         }
     }
     else { /// Hide
@@ -2489,11 +2519,13 @@ void WorkoutDialog::showPowerDisplayWidget(int display) {
         }
         else if (display == 2) { /// Graph
             ui->wid_2_workoutPlot_PowerZoom->setVisible(true);
+            ui->wid_2_workoutPlot_PowerZoom->setValueOverlayVisible(true);
             ui->wid_2_infoBoxPower->setVisible(false);
         }
         else if (display == 3) { ///Graph and Detailed
             ui->wid_2_workoutPlot_PowerZoom->setVisible(true);
             ui->wid_2_infoBoxPower->setVisible(true);
+            ui->wid_2_workoutPlot_PowerZoom->setValueOverlayVisible(false);
         }
     }
     else { /// Hide
@@ -2509,7 +2541,13 @@ void WorkoutDialog::showCadenceDisplayWidget(int display) {
         }
         else if (display == 2) { /// Graph
             ui->wid_3_workoutPlot_CadenceZoom->setVisible(true);
+            ui->wid_3_workoutPlot_CadenceZoom->setValueOverlayVisible(true);
             ui->wid_3_infoBoxCadence->setVisible(false);
+        }
+        else if (display == 3) { /// Graph and Detailed
+            ui->wid_3_workoutPlot_CadenceZoom->setVisible(true);
+            ui->wid_3_infoBoxCadence->setVisible(true);
+            ui->wid_3_workoutPlot_CadenceZoom->setValueOverlayVisible(false);
         }
     }
     else { /// Hide

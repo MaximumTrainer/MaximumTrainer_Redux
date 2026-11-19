@@ -566,6 +566,14 @@ void WorkoutPlotZoomer::addMarkerInterval(double time) {
 }
 
 
+void WorkoutPlotZoomer::setValueOverlayVisible(bool visible) {
+    if (qwtTextLabel)
+        qwtTextLabel->setVisible(visible);
+    if (icon)
+        icon->setVisible(visible);
+    replot();
+}
+
 void WorkoutPlotZoomer::updateTextLabelValue(int value) {
 
 
@@ -635,18 +643,9 @@ void WorkoutPlotZoomer::setCanvasColor(CanvasColor color) {
         return;
     m_canvasColor = color;
 
-    switch (color) {
-    case CANVAS_BELOW:
-        canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(14, 61, 170); }");
-        break;
-    case CANVAS_ABOVE:
-        canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(128, 0, 0); }");
-        break;
-    case CANVAS_NEUTRAL:
-    default:
-        canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(35, 35, 35); }");
-        break;
-    }
+    // The surrounding metric card shows below/above target (side bar and
+    // value colour), so the graph keeps one calm background.
+    canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(31, 31, 37); }");
 
     // QwtPlotCanvas caches the styled background (including the rounded-corner
     // border) in its backing store, which a bare setStyleSheet() does not

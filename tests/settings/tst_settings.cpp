@@ -57,10 +57,10 @@ void TstSettings::testDisplayPrefs_freshStoreGivesDefaults()
         QCOMPARE(account.show_calories_widget, true);
         QCOMPARE(account.show_oxygen_widget, true);
         QCOMPARE(account.show_trainer_speed, true);
-        QCOMPARE(account.display_hr, 1);
-        QCOMPARE(account.display_power, 2);
+        QCOMPARE(account.display_hr, 3);
+        QCOMPARE(account.display_power, 3);
         QCOMPARE(account.display_power_balance, 0);
-        QCOMPARE(account.display_cadence, 1);
+        QCOMPARE(account.display_cadence, 3);
         QCOMPARE(account.display_video, 0);
         QCOMPARE(account.start_trigger, 0);
         QCOMPARE(account.value_cadence_start, 40);

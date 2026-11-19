@@ -23,6 +23,17 @@ BalanceWidget::BalanceWidget(QWidget *parent) :
     ui->horizontalSlider->setMinimum(0);
     ui->horizontalSlider->setMaximum(100);
 
+    // Flat look inside the workout metric card: muted caption, big L/R numbers.
+    ui->groupBox_3->setTitle(tr("POWER BALANCE"));
+    ui->horizontalSlider->hide();   // the card's live trend shows the balance
+    setStyleSheet(QStringLiteral(
+        "QGroupBox#groupBox_3 { border: none; margin-top: 16px; padding-top: 2px; }"
+        "QGroupBox#groupBox_3::title { subcontrol-origin: margin; subcontrol-position: top left;"
+        " left: 0px; padding: 0px; background: transparent; color: #9a9aa6; font-size: 8pt; }"
+        "QLabel#label_powerLeft, QLabel#label_powerRight { font: 700 22pt; }"
+        "QLabel#label_unit_left, QLabel#label_unit_right { color: #9a9aa6; border-radius: 3px; padding: 0 3px; }"
+        "QFrame#frame { border: none; background: transparent; }"));
+
 
 }
 
