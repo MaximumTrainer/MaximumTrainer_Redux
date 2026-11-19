@@ -208,23 +208,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     connect(timerCheckToActivateSound, &QTimer::timeout, this, &WorkoutDialog::activateSoundBool);
     soundsActive = false;
 
-    durationReactivateSameSoundMsec = 10000; //to edit if 10sec is too long
-    timerCheckReactivateSoundPowerTooLow =  new QTimer(this);
-    timerCheckReactivateSoundPowerTooHigh =  new QTimer(this);
-    timerCheckReactivateSoundCadenceTooLow =  new QTimer(this);
-    timerCheckReactivateSoundCadenceTooHigh =  new QTimer(this);
-    timerCheckReactivateSoundPowerTooLow->setInterval(durationReactivateSameSoundMsec);
-    timerCheckReactivateSoundPowerTooHigh->setInterval(durationReactivateSameSoundMsec);
-    timerCheckReactivateSoundCadenceTooLow->setInterval(durationReactivateSameSoundMsec);
-    timerCheckReactivateSoundCadenceTooHigh->setInterval(durationReactivateSameSoundMsec);
-    connect(timerCheckReactivateSoundPowerTooLow, &QTimer::timeout, this, &WorkoutDialog::activateSoundPowerTooLow);
-    connect(timerCheckReactivateSoundPowerTooHigh, &QTimer::timeout, this, &WorkoutDialog::activateSoundPowerTooHigh);
-    connect(timerCheckReactivateSoundCadenceTooLow, &QTimer::timeout, this, &WorkoutDialog::activateSoundCadenceTooLow);
-    connect(timerCheckReactivateSoundCadenceTooHigh, &QTimer::timeout, this, &WorkoutDialog::activateSoundCadenceTooHigh);
-    soundPowerTooLowActive = true;
-    soundPowerTooHighActive = true;
-    soundCadenceTooLowActive = true;
-    soundCadenceTooHighActive = true;
 
 
     ///-------------------------- Widget Sensor Loading  ----------------------
@@ -1791,18 +1774,14 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
 
         ///Check to play sound, 10sec cooldown between sound and not first/last 3 second of an interval
         if (!account->enable_studio_mode && currentTargetCadence != -1 && soundsActive && account->enable_sound) {
-            /// TOO LOW
-            if (account->sound_alert_cadence_under_target && (value < currentTargetCadence - currentTargetCadenceRange) && soundCadenceTooLowActive) {
+            const auto breach = m_cadenceAlert.check(value, currentTargetCadence, currentTargetCadenceRange,
+                                                     account->sound_alert_cadence_under_target,
+                                                     account->sound_alert_cadence_above_target,
+                                                     QDateTime::currentMSecsSinceEpoch());
+            if (breach == TargetAlert::Breach::Low)
                 soundPlayer->playSoundCadenceTooLow();
-                soundCadenceTooLowActive = false;
-                timerCheckReactivateSoundCadenceTooLow->start();
-            }
-            /// TOO HIGH
-            else if (account->sound_alert_cadence_above_target && (value > currentTargetCadence + currentTargetCadenceRange) && soundCadenceTooHighActive) {
+            else if (breach == TargetAlert::Breach::High)
                 soundPlayer->playSoundCadenceTooHigh();
-                soundCadenceTooHighActive = false;
-                timerCheckReactivateSoundCadenceTooHigh->start();
-            }
         }
 
 
@@ -1963,18 +1942,14 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 
         ///Check to play sound, 10sec cooldown between sound and not first/last 3 second of an interval
         if (!account->enable_studio_mode && currentTargetPower != -1 && soundsActive && account->enable_sound) {
-            /// TOO LOW
-            if (account->sound_alert_power_under_target && (powerValue < currentTargetPower - currentTargetPowerRange) && soundPowerTooLowActive) {
+            const auto breach = m_powerAlert.check(powerValue, currentTargetPower, currentTargetPowerRange,
+                                                   account->sound_alert_power_under_target,
+                                                   account->sound_alert_power_above_target,
+                                                   QDateTime::currentMSecsSinceEpoch());
+            if (breach == TargetAlert::Breach::Low)
                 soundPlayer->playSoundPowerTooLow();
-                soundPowerTooLowActive = false;
-                timerCheckReactivateSoundPowerTooLow->start();
-            }
-            /// TOO HIGH
-            else if (account->sound_alert_power_above_target && (powerValue > currentTargetPower + currentTargetPowerRange) && soundPowerTooHighActive) {
+            else if (breach == TargetAlert::Breach::High)
                 soundPlayer->playSoundPowerTooHigh();
-                soundPowerTooHighActive = false;
-                timerCheckReactivateSoundPowerTooHigh->start();
-            }
         }
 
 
@@ -3097,22 +3072,6 @@ void WorkoutDialog::ignoreClickPlot() {
 void WorkoutDialog::activateSoundBool() {
     soundsActive = true;
     timerCheckToActivateSound->stop();
-}
-void WorkoutDialog::activateSoundPowerTooLow() {
-    soundPowerTooLowActive = true;
-    timerCheckReactivateSoundPowerTooLow->stop();
-}
-void WorkoutDialog::activateSoundPowerTooHigh() {
-    soundPowerTooHighActive = true;
-    timerCheckReactivateSoundPowerTooHigh->stop();
-}
-void WorkoutDialog::activateSoundCadenceTooLow() {
-    soundCadenceTooLowActive = true;
-    timerCheckReactivateSoundCadenceTooLow->stop();
-}
-void WorkoutDialog::activateSoundCadenceTooHigh() {
-    soundCadenceTooHighActive = true;
-    timerCheckReactivateSoundCadenceTooHigh->stop();
 }
 
 

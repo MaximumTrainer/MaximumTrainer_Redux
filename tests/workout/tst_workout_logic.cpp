@@ -2,6 +2,7 @@
 
 #include "maptesttracker.h"
 #include "sensorsecondaccumulator.h"
+#include "targetalert.h"
 
 class TstWorkoutLogic : public QObject
 {
@@ -18,6 +19,9 @@ private slots:
     void mapTest_unscoredSecondsBreakTheStreak();
     void mapTest_completeStepResetsStepTotal();
     void mapTest_result();
+    void targetAlert_inRangeIsSilent();
+    void targetAlert_lowAndHighRespectToggles();
+    void targetAlert_cooldownPerDirection();
 };
 
 void TstWorkoutLogic::accumulator_startsEmpty()
@@ -143,4 +147,33 @@ void TstWorkoutLogic::mapTest_result()
 }
 
 QTEST_GUILESS_MAIN(TstWorkoutLogic)
+void TstWorkoutLogic::targetAlert_inRangeIsSilent()
+{
+    TargetAlert alert;
+    QCOMPARE(alert.check(200, 200, 10, true, true, 0), TargetAlert::Breach::None);
+    QCOMPARE(alert.check(190, 200, 10, true, true, 0), TargetAlert::Breach::None);
+    QCOMPARE(alert.check(210, 200, 10, true, true, 0), TargetAlert::Breach::None);
+}
+
+void TstWorkoutLogic::targetAlert_lowAndHighRespectToggles()
+{
+    TargetAlert alert;
+    QCOMPARE(alert.check(150, 200, 10, false, true, 0), TargetAlert::Breach::None);
+    QCOMPARE(alert.check(150, 200, 10, true, true, 0), TargetAlert::Breach::Low);
+    QCOMPARE(alert.check(250, 200, 10, true, false, 0), TargetAlert::Breach::None);
+    QCOMPARE(alert.check(250, 200, 10, true, true, 0), TargetAlert::Breach::High);
+}
+
+void TstWorkoutLogic::targetAlert_cooldownPerDirection()
+{
+    TargetAlert alert;
+    QCOMPARE(alert.check(150, 200, 10, true, true, 1000), TargetAlert::Breach::Low);
+    // Same direction stays quiet for the cooldown, the other one is independent.
+    QCOMPARE(alert.check(150, 200, 10, true, true, 1000 + TargetAlert::kCooldownMs - 1),
+             TargetAlert::Breach::None);
+    QCOMPARE(alert.check(250, 200, 10, true, true, 2000), TargetAlert::Breach::High);
+    QCOMPARE(alert.check(150, 200, 10, true, true, 1000 + TargetAlert::kCooldownMs),
+             TargetAlert::Breach::Low);
+}
+
 #include "tst_workout_logic.moc"
