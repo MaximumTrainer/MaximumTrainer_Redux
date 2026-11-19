@@ -2,6 +2,7 @@
 #define INFOWIDGET_H
 
 #include <QWidget>
+class QLabel;
 #include <QLocale>
 
 namespace Ui {
@@ -60,8 +61,13 @@ private:
     double FTP;
     double LTHR;
 
-    TypeInfoBox type;
+    TypeInfoBox type = POWER;
     bool rowingMode = false;
+    QLabel *m_caption    = nullptr;   ///< "POWER", "CADENCE", ... in the title row
+    QLabel *m_targetPill = nullptr;   ///< "Target 143 W ±10"
+    QLabel *m_unit       = nullptr;   ///< unit next to the value
+    void refreshUnit();
+    QString unitText() const;
     bool useMile;
 
     int target;

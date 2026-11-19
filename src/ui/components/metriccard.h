@@ -19,6 +19,8 @@ public:
     /// A \a follower part (e.g. a trend chart) shows only while the card's
     /// other parts do; it never keeps the card visible on its own.
     void addPart(QWidget *part, int stretch = 0, bool follower = false);
+    /// A small caption row for cards whose content has no title of its own.
+    void setCaption(const QString &text);
 
 public slots:
     /// -1 below, 0 on target, 1 above, 2 no target - as InfoWidget reports.
