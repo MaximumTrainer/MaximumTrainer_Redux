@@ -45,6 +45,7 @@ class QQuickWidget;
 class WorkoutRaceView;
 class RetroRaceController;   // retro ghost-race view
 class ZwiftClickManager;     // Zwift Click v2 (right) controller input, direct BLE
+class AchievementToast;      // in-workout "Achievement unlocked" banner
 class GroupSession;
 class GroupPanel;
 class GroupRideCoordinator;
@@ -196,11 +197,9 @@ public slots:
     void activateSoundBool();
 
     // QNetwork reply
-    void slotFinishedGetPixmap();
 
 
     void achievementReceived(Achievement achievement);
-    void lastAchievementAnimationDone();
 
 
 private slots:
@@ -254,8 +253,6 @@ private:
     void showNormalWin();
     void loadInterface();
     void saveInterface();
-
-    void animateAchievement();
     void checkMAPTestOver();
     void recordRiderSecond(int riderIndex, int seconds);
     void markSensorPaired(bool &pairingDone, QLabel *pairingLabel);
@@ -361,12 +358,8 @@ private:
 
 
     /// Achievement window
-    FaderFrame *widgetAchievement;
-    QLabel *labelIcon;
-    QLabel *labelAchievementName;
-    QTimer *timerLastAnimationAchievementComplete;
-    QQueue<Achievement> queueAchievement;
-    bool achievementCurrentlyPlaying;
+    int m_lastAchievementMinute = 0;
+    AchievementToast *m_achievementToast = nullptr;
 
     // Post-workout summary: achievements earned this session
     QList<Achievement> earnedAchievements;
@@ -434,7 +427,6 @@ private:
     SoundPlayer *soundPlayer;
 
     QTimer *timer_sec;
-    QNetworkReply *replyGetBixmap;
 
     Account *account;
     Settings *settings;

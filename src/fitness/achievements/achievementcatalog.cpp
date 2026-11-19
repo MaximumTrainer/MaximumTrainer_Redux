@@ -1,0 +1,201 @@
+#include "achievementcatalog.h"
+
+#include <QCoreApplication>
+#include <QDate>
+#include <QMap>
+#include <algorithm>
+
+#include "workouthistorysummary.h"
+
+namespace AchievementCatalog {
+
+namespace {
+QString tr(const char *text)
+{
+    return QCoreApplication::translate("AchievementCatalog", text);
+}
+
+QList<Definition> buildList()
+{
+    using C = Category;
+    using K = Kind;
+    return {
+        // Milestones
+        {"first_ride",    tr("First Pedal Strokes"), tr("Complete your first workout."),            C::Milestones, K::RideCount, 1},
+        {"rides_10",      tr("Getting Started"),     tr("Complete 10 workouts."),                   C::Milestones, K::RideCount, 10},
+        {"rides_50",      tr("Committed"),           tr("Complete 50 workouts."),                   C::Milestones, K::RideCount, 50},
+        {"rides_100",     tr("Century of Sessions"), tr("Complete 100 workouts."),                  C::Milestones, K::RideCount, 100},
+        {"rides_250",     tr("Indoor Legend"),       tr("Complete 250 workouts."),                  C::Milestones, K::RideCount, 250},
+        {"rides_500",     tr("Lifer"),               tr("Complete 500 workouts."),                  C::Milestones, K::RideCount, 500},
+        {"hours_10",      tr("10 Hours In"),         tr("Ride 10 hours in total."),                 C::Milestones, K::TotalHours, 10},
+        {"hours_50",      tr("50 Hours In"),         tr("Ride 50 hours in total."),                 C::Milestones, K::TotalHours, 50},
+        {"hours_100",     tr("100 Hours In"),        tr("Ride 100 hours in total."),                C::Milestones, K::TotalHours, 100},
+        {"hours_500",     tr("500 Hours In"),        tr("Ride 500 hours in total."),                C::Milestones, K::TotalHours, 500},
+        {"km_100",        tr("First 100 km"),        tr("Ride 100 km in total."),                   C::Milestones, K::TotalKm, 100},
+        {"km_1000",       tr("1,000 km Club"),       tr("Ride 1,000 km in total."),                 C::Milestones, K::TotalKm, 1000},
+        {"km_5000",       tr("5,000 km Club"),       tr("Ride 5,000 km in total."),                 C::Milestones, K::TotalKm, 5000},
+        // Endurance
+        {"ride_60",       tr("Endurance Starter"),   tr("Ride 1 hour in one workout."),             C::Endurance, K::RideMinutes, 60},
+        {"ride_120",      tr("Endurance Intermediate"), tr("Ride 2 hours in one workout."),         C::Endurance, K::RideMinutes, 120},
+        {"ride_180",      tr("Endurance Master"),    tr("Ride 3 hours in one workout."),            C::Endurance, K::RideMinutes, 180},
+        {"ride_240",      tr("Ultra"),               tr("Ride 4 hours in one workout."),            C::Endurance, K::RideMinutes, 240},
+        {"tss_100",       tr("Big Day"),             tr("Score 100 TSS or more in one workout."),   C::Endurance, K::RideTss, 100},
+        {"tss_200",       tr("Epic Day"),            tr("Score 200 TSS or more in one workout."),   C::Endurance, K::RideTss, 200},
+        {"kcal_1000",     tr("Furnace"),             tr("Burn 1,000 kcal in one workout."),         C::Endurance, K::RideKcal, 1000},
+        {"kcal_2000",     tr("Inferno"),             tr("Burn 2,000 kcal in one workout."),         C::Endurance, K::RideKcal, 2000},
+        {"week_tss_500",  tr("Big Week"),            tr("Score 500 TSS within 7 days."),            C::Endurance, K::WeekTss, 500},
+        {"week_tss_800",  tr("Overload Week"),       tr("Score 800 TSS within 7 days."),            C::Endurance, K::WeekTss, 800},
+        {"week_hours_10", tr("Volume Week"),         tr("Ride 10 hours within 7 days."),            C::Endurance, K::WeekHours, 10},
+        // Consistency
+        {"streak_3",      tr("On a Roll"),           tr("Ride 3 days in a row."),                   C::Consistency, K::StreakDays, 3},
+        {"streak_7",      tr("Unstoppable"),         tr("Ride 7 days in a row."),                   C::Consistency, K::StreakDays, 7},
+        {"streak_14",     tr("Fortnight on Fire"),   tr("Ride 14 days in a row."),                  C::Consistency, K::StreakDays, 14},
+        {"week_rides_5",  tr("Five a Week"),         tr("Complete 5 workouts within 7 days."),      C::Consistency, K::WeekRides, 5},
+        {"month_rides_20",tr("Habit Formed"),        tr("Complete 20 workouts within 30 days."),    C::Consistency, K::MonthRides, 20},
+        {"weekend_double",tr("Weekend Warrior"),     tr("Ride on the Saturday and Sunday of the same weekend."), C::Consistency, K::WeekendDouble, 1},
+        {"early_bird",    tr("Early Bird"),          tr("Start a workout before 7:00."),            C::Consistency, K::EarlyBird, 1},
+        {"night_owl",     tr("Night Owl"),           tr("Start a workout at 21:00 or later."),      C::Consistency, K::NightOwl, 1},
+        // Fitness
+        {Events::FirstTest,    tr("Learning to Test"), tr("Complete an FTP or MAP test."),          C::Fitness, K::Event, 0},
+        {Events::MapStep6,     tr("MAP Step 6"),       tr("Reach step 6 of the MAP test."),         C::Fitness, K::Event, 0},
+        {Events::MapStep7,     tr("MAP Step 7"),       tr("Reach step 7 of the MAP test."),         C::Fitness, K::Event, 0},
+        {Events::FtpRaised,    tr("Getting Stronger"), tr("Raise your FTP."),                       C::Fitness, K::Event, 0},
+        {"wkg_3",              tr("Rising Climber"),   tr("Reach an FTP of 3.0 W/kg."),             C::Fitness, K::WattsPerKg, 3.0},
+        {"wkg_4",              tr("Climber"),          tr("Reach an FTP of 4.0 W/kg."),             C::Fitness, K::WattsPerKg, 4.0},
+        {"wkg_5",              tr("Mountain Goat"),    tr("Reach an FTP of 5.0 W/kg."),             C::Fitness, K::WattsPerKg, 5.0},
+        // Special
+        {Events::TargetManiac, tr("Target Maniac"),    tr("Finish a workout with power, power balance, cadence and heart rate targets."), C::Special, K::Event, 0},
+        {Events::GroupRide,    tr("Better Together"),  tr("Finish a group workout."),               C::Special, K::Event, 0},
+        {Events::GroupHost,    tr("Host with the Most"), tr("Finish a group workout you hosted."),  C::Special, K::Event, 0},
+        {Events::GroupJoin,    tr("Joined the Bunch"), tr("Finish a group workout you joined online."), C::Special, K::Event, 0},
+        {Events::StudioHost,   tr("Studio Host"),      tr("Finish a Studio Mode workout."),         C::Special, K::Event, 0},
+        {"new_year",           tr("New Year, New Watts"), tr("Ride on January 1."),                 C::Special, K::NewYear, 1},
+        {"christmas",          tr("Holiday Spirit"),   tr("Ride on December 25."),                  C::Special, K::Christmas, 1},
+    };
+}
+
+// Best total of \a valueOf over any \a days-long window of ride dates.
+template <typename ValueOf>
+double bestWindow(const QMap<QDate, QList<const WorkoutHistorySummary *>> &byDay, int days, ValueOf valueOf)
+{
+    double best = 0.0;
+    for (auto end = byDay.cbegin(); end != byDay.cend(); ++end) {
+        double total = 0.0;
+        for (auto it = byDay.cbegin(); it != byDay.cend(); ++it)
+            if (it.key() <= end.key() && it.key() > end.key().addDays(-days))
+                for (const WorkoutHistorySummary *ride : it.value())
+                    total += valueOf(*ride);
+        best = std::max(best, total);
+    }
+    return best;
+}
+} // namespace
+
+const QList<Definition> &all()
+{
+    static const QList<Definition> list = buildList();
+    return list;
+}
+
+const Definition *find(const QString &key)
+{
+    for (const Definition &definition : all())
+        if (definition.key == key)
+            return &definition;
+    return nullptr;
+}
+
+QString categoryName(Category category)
+{
+    switch (category) {
+    case Category::Milestones:  return tr("Milestones");
+    case Category::Endurance:   return tr("Endurance");
+    case Category::Consistency: return tr("Consistency");
+    case Category::Fitness:     return tr("Fitness");
+    case Category::Special:     return tr("Special");
+    }
+    return QString();
+}
+
+HistoryStats statsFrom(const QList<WorkoutHistorySummary> &history)
+{
+    HistoryStats stats;
+    QMap<QDate, QList<const WorkoutHistorySummary *>> byDay;
+    for (const WorkoutHistorySummary &ride : history) {
+        ++stats.rides;
+        stats.hours += ride.durationSec / 3600.0;
+        stats.km    += ride.totalDistanceKm;
+        stats.longestMinutes = std::max(stats.longestMinutes, ride.durationSec / 60);
+        stats.maxRideTss     = std::max(stats.maxRideTss, ride.tss);
+        stats.maxRideKcal    = std::max(stats.maxRideKcal, ride.calories);
+        if (!ride.startTime.isValid())
+            continue;
+        const QDateTime local = ride.startTime.toLocalTime();
+        stats.earlyBird = stats.earlyBird || local.time().hour() < 7;
+        stats.nightOwl  = stats.nightOwl  || local.time().hour() >= 21;
+        stats.newYear   = stats.newYear   || (local.date().month() == 1 && local.date().day() == 1);
+        stats.christmas = stats.christmas || (local.date().month() == 12 && local.date().day() == 25);
+        byDay[local.date()].append(&ride);
+    }
+
+    const auto one = [](const WorkoutHistorySummary &) { return 1.0; };
+    stats.bestWeekTss    = bestWindow(byDay, 7, [](const WorkoutHistorySummary &r) { return r.tss; });
+    stats.bestWeekRides  = qRound(bestWindow(byDay, 7, one));
+    stats.bestWeekHours  = bestWindow(byDay, 7, [](const WorkoutHistorySummary &r) { return r.durationSec / 3600.0; });
+    stats.bestMonthRides = qRound(bestWindow(byDay, 30, one));
+    for (auto it = byDay.cbegin(); it != byDay.cend(); ++it)
+        if (it.key().dayOfWeek() == Qt::Saturday && byDay.contains(it.key().addDays(1)))
+            stats.weekendDouble = true;
+
+    int run = 0;
+    QDate previous;
+    for (auto it = byDay.cbegin(); it != byDay.cend(); ++it) {
+        run = (previous.isValid() && previous.addDays(1) == it.key()) ? run + 1 : 1;
+        stats.bestStreakDays = std::max(stats.bestStreakDays, run);
+        previous = it.key();
+    }
+    return stats;
+}
+
+double progress(const Definition &definition, const HistoryStats &stats)
+{
+    switch (definition.kind) {
+    case Kind::RideCount:   return stats.rides;
+    case Kind::TotalHours:  return stats.hours;
+    case Kind::TotalKm:     return stats.km;
+    case Kind::RideMinutes: return stats.longestMinutes;
+    case Kind::RideTss:     return stats.maxRideTss;
+    case Kind::RideKcal:    return stats.maxRideKcal;
+    case Kind::WeekTss:     return stats.bestWeekTss;
+    case Kind::WeekRides:   return stats.bestWeekRides;
+    case Kind::StreakDays:  return stats.bestStreakDays;
+    case Kind::WeekHours:   return stats.bestWeekHours;
+    case Kind::MonthRides:  return stats.bestMonthRides;
+    case Kind::WeekendDouble: return stats.weekendDouble ? 1 : 0;
+    case Kind::NewYear:     return stats.newYear ? 1 : 0;
+    case Kind::Christmas:   return stats.christmas ? 1 : 0;
+    case Kind::WattsPerKg:  return stats.ftpWattsPerKg;
+    case Kind::EarlyBird:   return stats.earlyBird ? 1 : 0;
+    case Kind::NightOwl:    return stats.nightOwl ? 1 : 0;
+    case Kind::Event:       return 0;
+    }
+    return 0;
+}
+
+bool isYesNo(const Definition &definition)
+{
+    switch (definition.kind) {
+    case Kind::Event: case Kind::EarlyBird: case Kind::NightOwl:
+    case Kind::WeekendDouble: case Kind::NewYear: case Kind::Christmas:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool reached(const Definition &definition, const HistoryStats &stats)
+{
+    return definition.kind != Kind::Event && progress(definition, stats) >= definition.target;
+}
+
+} // namespace AchievementCatalog

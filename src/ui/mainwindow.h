@@ -40,6 +40,7 @@ class GroupSession;
 
 class WorkoutDialog;
 class ZwiftClickManager;
+class AchievementsWidget;
 class SimulatorHub;
 
 
@@ -109,6 +110,7 @@ public slots:
 #endif
 
 private:
+    AchievementsWidget *m_achievementsPage = nullptr;
     /// Simulator-fed workout launch (the "Simulation" connection method).
     /// Shared by the desktop synchronous flow and the WASM async chain.
     void connectSimulatorHub(class SimulatorHub *hub, WorkoutDialog *dialog);

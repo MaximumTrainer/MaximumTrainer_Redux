@@ -15,6 +15,7 @@
 #include <QTimer>
 #include <QToolButton>
 #include "updatenotifier.h"
+#include "achievementswidget.h"
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
@@ -174,12 +175,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ftb->insertTab(2, QIcon(":/image/icon/studio"), tr("Studio"));
     ftb->insertTab(3, QIcon(":/image/icon/bluetooth"), tr("Devices"));
     ftb->insertTab(4, QIcon(":/image/icon/chart"), tr("History"));
+    ftb->insertTab(5, QIcon(":/image/icon/trophy"), tr("Achievements"));
 
     ftb->setTabEnabled(0, true);
     ftb->setTabEnabled(1, true);
     ftb->setTabEnabled(2, true);
     ftb->setTabEnabled(3, true);
     ftb->setTabEnabled(4, true);
+    ftb->setTabEnabled(5, true);
 
 
     ftb->setCurrentIndex(0);
@@ -203,6 +206,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     ManagerAchievement *achievementManager = new ManagerAchievement(this);
     qApp->setProperty("ManagerAchievement", QVariant::fromValue<ManagerAchievement*>(achievementManager));
+    // Catch up on achievements the ride history already earned, without popups.
+    QTimer::singleShot(0, achievementManager, [achievementManager]() { achievementManager->evaluateHistory(false); });
+    m_achievementsPage = new AchievementsWidget(ui->stackedWidget_menu);
+    ui->stackedWidget_menu->addWidget(m_achievementsPage);   // page 5, after the .ui pages
 
 
     //Parse Workouts
@@ -544,10 +551,10 @@ void MainWindow::workoutOver() {
 void MainWindow::leftMenuChanged(int tabSelected) {
 
 
-    // Tabs: 0 Workout, 1 Intervals.icu, 2 Studio, 3 Devices, 4 History.
-    // Stacked pages: Workout 0, Intervals 1, Studio 2, History 3, Sensors 4.
-    static const int tabToPage[] = {0, 1, 2, 4, 3};
-    const int pageIndex = (tabSelected >= 0 && tabSelected < 5)
+    // Tabs: 0 Workout, 1 Intervals.icu, 2 Studio, 3 Devices, 4 History, 5 Achievements.
+    // Stacked pages: Workout 0, Intervals 1, Studio 2, History 3, Sensors 4, Achievements 5.
+    static const int tabToPage[] = {0, 1, 2, 4, 3, 5};
+    const int pageIndex = (tabSelected >= 0 && tabSelected < 6)
                               ? tabToPage[tabSelected]
                               : tabSelected;
     ui->stackedWidget_menu->setCurrentIndex(pageIndex);
@@ -558,6 +565,8 @@ void MainWindow::leftMenuChanged(int tabSelected) {
         if (auto *sw = qobject_cast<SensorsWidget*>(ui->sensorsWidget))
             sw->reload();
     }
+    if (tabSelected == 5 && m_achievementsPage)
+        m_achievementsPage->reload();
     // Refresh studio settings each time the Studio tab is opened.
     if (tabSelected == 2) {
         if (auto *sw = qobject_cast<StudioWidget*>(ui->studioWidget))

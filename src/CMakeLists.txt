@@ -34,7 +34,8 @@ target_sources(mt_core PRIVATE
     # fitness
     fitness/mmpcalculator.cpp fitness/pmccalculator.cpp fitness/ftpestimator.cpp
     fitness/achievements/achievement.cpp fitness/achievements/managerachievement.cpp
-    fitness/achievements/achievementchecker.cpp
+    fitness/achievements/achievementchecker.cpp fitness/achievements/achievementcatalog.cpp
+    fitness/achievements/achievementstore.cpp
     # model
     model/interval.cpp model/workout.cpp model/sortfilterproxymodel.cpp model/workouttablemodel.cpp
     model/sensor.cpp model/settings.cpp model/dataworkout.cpp model/intervaldata.cpp
@@ -61,7 +62,7 @@ target_sources(mt_core PRIVATE
     ui/splashscreen.cpp ui/dialogmainwindowconfig.cpp ui/dialog_connection_method.cpp
     ui/tab_intervals_icu.cpp ui/workouthistorymodel.cpp ui/historywidget.cpp
     ui/historyfilterproxymodel.cpp ui/activitydetaildialog.cpp ui/dialogkeyboardshortcuts.cpp
-    ui/planadherencewidget.cpp ui/criticalpowerdialog.cpp ui/pmcdialog.cpp
+    ui/planadherencewidget.cpp ui/criticalpowerdialog.cpp ui/pmcdialog.cpp ui/achievementswidget.cpp
     ui/workoutcountdowndialog.cpp ui/queuepanelwidget.cpp ui/sensorswidget.cpp ui/studiowidget.cpp
     ui/apptheme.h ui/asyncdialogs.h
     ui/mainwindow.ui ui/workoutdialog.ui ui/main_workoutpage.ui ui/dialogconfig.ui
@@ -71,7 +72,7 @@ target_sources(mt_core PRIVATE
     ui/components/workoutcombobox.cpp ui/components/delegaterowhover.cpp
     ui/components/mytableview.cpp ui/components/shapefactory.cpp ui/components/infowidget.cpp
     ui/components/bottombar.cpp ui/components/topmenuworkout.cpp ui/components/balancewidget.cpp
-    ui/components/postworkoutpanel.cpp ui/components/workoutraceview.cpp
+    ui/components/postworkoutpanel.cpp ui/components/workoutraceview.cpp ui/components/achievementtoast.cpp
     ui/components/clickablelabel.cpp ui/components/fancytab.cpp ui/components/fancytabbar.cpp
     ui/components/stylehelper.cpp ui/components/faderlabel.cpp ui/components/faderwidget.cpp
     ui/components/faderframe.cpp ui/components/tableviewhover.cpp ui/components/clock.cpp
