@@ -183,9 +183,9 @@ void Account::loadDisplayPrefs() {
     value_power_start   = AppSettings::read(settings, Keys::ValuePowerStart);
     value_speed_start   = AppSettings::read(settings, Keys::ValueSpeedStart);
 
-    // The last-selected config tab/sub-tab.
+    // The last-selected config page.
     last_index_selected_config_workout = AppSettings::read(settings, Keys::LastIndexSelectedConfigWorkout);
-    last_tab_sub_config_selected       = AppSettings::read(settings, Keys::LastTabSubConfigSelected);
+    AppSettings::remove(settings, Keys::LastTabSubConfigSelected);  // settings dialog has no sub-tabs
 
     // General / trainer / pairing / upload preferences.
     control_trainer_resistance   = AppSettings::read(settings, Keys::ControlTrainerResistance);
@@ -264,9 +264,8 @@ void Account::saveDisplayPrefs() {
     AppSettings::write(settings, Keys::ValuePowerStart, value_power_start);
     AppSettings::write(settings, Keys::ValueSpeedStart, value_speed_start);
 
-    // The last-selected config tab/sub-tab.
+    // The last-selected config page.
     AppSettings::write(settings, Keys::LastIndexSelectedConfigWorkout, last_index_selected_config_workout);
-    AppSettings::write(settings, Keys::LastTabSubConfigSelected, last_tab_sub_config_selected);
 
     // General / trainer / pairing / upload preferences. Formerly server-saved;
     // persisted locally so they survive a restart.

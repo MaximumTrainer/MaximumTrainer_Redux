@@ -67,7 +67,6 @@ void TstSettings::testDisplayPrefs_freshStoreGivesDefaults()
         QCOMPARE(account.value_power_start, 120);
         QCOMPARE(account.value_speed_start, 20);
         QCOMPARE(account.last_index_selected_config_workout, 0);
-        QCOMPARE(account.last_tab_sub_config_selected, 0);
         QCOMPARE(account.control_trainer_resistance, true);
         QCOMPARE(account.virtual_shifting, false);
         QCOMPARE(account.use_zwift_click, false);
@@ -131,7 +130,6 @@ void TstSettings::testDisplayPrefs_saveUsesOnDiskKeyNames()
         "value_power_start",
         "value_speed_start",
         "last_index_selected_config_workout",
-        "last_tab_sub_config_selected",
         "control_trainer_resistance",
         "virtual_shifting",
         "use_zwift_click",
@@ -194,7 +192,6 @@ void TstSettings::testDisplayPrefs_roundTripsEveryField()
         writer.value_power_start = 127;
         writer.value_speed_start = 27;
         writer.last_index_selected_config_workout = 7;
-        writer.last_tab_sub_config_selected = 7;
         writer.control_trainer_resistance = false;
         writer.virtual_shifting = true;
         writer.use_zwift_click = true;
@@ -252,7 +249,6 @@ void TstSettings::testDisplayPrefs_roundTripsEveryField()
         QCOMPARE(reader.value_power_start, 127);
         QCOMPARE(reader.value_speed_start, 27);
         QCOMPARE(reader.last_index_selected_config_workout, 7);
-        QCOMPARE(reader.last_tab_sub_config_selected, 7);
         QCOMPARE(reader.control_trainer_resistance, false);
         QCOMPARE(reader.virtual_shifting, true);
         QCOMPARE(reader.use_zwift_click, true);
