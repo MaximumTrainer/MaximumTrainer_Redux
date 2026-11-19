@@ -95,6 +95,12 @@ mt_add_test(settings_tests
     SOURCES ${WORKOUT_MODEL} ${LOGGER} ${CRED_STUB} settings/tst_settings.cpp
     INCLUDES "${TST}/intervals_icu" "${SRC}/app" "${SRC}/model" "${SRC}/persistence/db")
 
+mt_add_test(achievements_tests
+    SOURCES "${SRC}/fitness/achievements/achievementcatalog.cpp"
+        "${SRC}/fitness/achievements/achievementstore.cpp"
+        achievements/tst_achievements.cpp
+    INCLUDES "${SRC}/fitness/achievements" "${SRC}/model")
+
 mt_add_test(workout_logic_tests
     SOURCES "${SRC}/workout/sensorsecondaccumulator.cpp" "${SRC}/workout/maptesttracker.cpp"
         "${SRC}/workout/targetalert.cpp"

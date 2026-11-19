@@ -1,5 +1,6 @@
 #include "postworkoutpanel.h"
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QHBoxLayout>
 #include <QFileInfo>
@@ -11,7 +12,9 @@
 #include <QVBoxLayout>
 
 #include "account.h"
+#include "achievementcatalog.h"
 #include "app_settings.h"
+#include "managerachievement.h"
 #include "ftpestimator.h"
 #include "intervalsicuftpsync.h"
 #include "setting_keys.h"
@@ -173,6 +176,9 @@ void PostWorkoutPanel::addFtpSuggestion(QBoxLayout *layout)
 
 void PostWorkoutPanel::acceptFtp(int ftpWatts)
 {
+    if (auto *achievements = qApp->property("ManagerAchievement").value<ManagerAchievement*>();
+        achievements && ftpWatts > account->FTP)
+        achievements->recordEvent(AchievementCatalog::Events::FtpRaised);
     account->saveProfileFields(ftpWatts, account->LTHR, account->weight_kg);
     AppSettings::write(SettingKeys::Training::FtpSuggestionDismissedW, ftpWatts);
     emit ftpUpdated(ftpWatts);

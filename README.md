@@ -197,6 +197,7 @@ MaximumTrainer has a multi-tier test suite covering BLE parsing, service APIs, U
 | Group workout tests | `tests/group/` | Room-code parsing, message encode/decode, clock-offset estimate, rider-row states, group-ride start and telemetry; live relay test when `GROUP_RELAY_URL` is set |
 | Retro race tests | `tests/game/` | Race ambient clock vs replay speed, frame updates from per-second setters, native road rendering |
 | Workout logic tests | `tests/workout/` | Per-second sensor averaging per rider, MAP ramp-test failure rules and result formula |
+| Achievement tests | `tests/achievements/` | Achievement list (unique keys, categories), history stats (totals, streaks, 7-day windows, time of day), unlock rules and local storage |
 | Login screen tests | `tests/integration/` | OAuth dialog state, offline login path, Intervals.icu OAuth URL generation |
 | Workout UI tests | `tests/integration/` | Full ERG session driven by SimulatorHub through WorkoutDialog; interval advancement; data accumulation |
 | Offline / BLE integration | `tests/integration/` | BLE adapter smoke test, offline mode screenshot, runtime validation |

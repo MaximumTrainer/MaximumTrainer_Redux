@@ -28,6 +28,7 @@
         <file alias="volume_mute">resources/images/volume_mute.png</file>
         <file alias="folder">resources/images/folder.png</file>
         <file alias="chart">resources/images/line_chart.png</file>
+        <file alias="trophy">resources/images/trophy.png</file>
         <file alias="sound">resources/images/speaker.png</file>
         <file alias="display">resources/images/mac_display.png</file>
         <file alias="movie">resources/images/movies.png</file>

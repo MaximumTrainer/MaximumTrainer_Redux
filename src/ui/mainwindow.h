@@ -40,6 +40,7 @@ class GroupSession;
 
 class WorkoutDialog;
 class ZwiftClickManager;
+class AchievementsWidget;
 class SimulatorHub;
 
 
@@ -88,6 +89,7 @@ public slots:
 
 #ifndef GC_WASM_BUILD
 private:
+    AchievementsWidget *m_achievementsPage = nullptr;
     /// Launch the workout dialog wired to multiple already-connected BLE hubs,
     /// one per saved sensor role. Used by the multi-device pairing flow.
     void startWorkoutWithHubs(const Workout &workout,

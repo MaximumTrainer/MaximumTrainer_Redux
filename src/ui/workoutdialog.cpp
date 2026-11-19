@@ -6,6 +6,8 @@
 
 #ifndef Q_OS_WASM
 #include "zwift_click_manager.h"
+#include "achievementcatalog.h"
+#include "achievementtoast.h"
 #endif
 
 #ifdef Q_OS_WIN32
@@ -384,50 +386,12 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     ///----------------------------- End Battery widgets ------------------------
 
 
-    ////  ----------------------  Achievement Window --------------------------
-    widgetAchievement = new FaderFrame(ui->widget_allSpeedo);
-    widgetAchievement->setAttribute(Qt::WA_TransparentForMouseEvents,true);
-    widgetAchievement->setFocusPolicy(Qt::NoFocus);
-    widgetAchievement->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    widgetAchievement->setFixedSize(220, 110);
-    widgetAchievement->setObjectName("frameAchievement");
-    widgetAchievement->setStyleSheet("QWidget#frameAchievement { background-color : rgba(1,1,1,250); "
-                                     "border: 2px solid gray; } "
-                                     "QLabel { color: white; }");
-    QGridLayout *gridAchievement = new QGridLayout(widgetAchievement);
-    labelIcon = new QLabel(widgetAchievement);
-    labelIcon->setFixedSize(48,48);
-    labelIcon->setObjectName("labelIcon");
-
-    QLabel *labelAchievementReceived = new QLabel(widgetAchievement);
-    labelAchievementReceived->setMinimumHeight(20);
-    labelAchievementReceived->setMaximumHeight(20);
-    labelAchievementReceived->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    labelAchievementReceived->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
-    labelAchievementReceived->setAttribute(Qt::WA_TransparentForMouseEvents,true);
-    labelAchievementReceived->setText(tr("New Achievement!"));
-
-    labelAchievementName = new QLabel(widgetAchievement);
-    labelAchievementName->setMinimumHeight(20);
-    labelAchievementName->setMaximumHeight(20);
-    labelAchievementName->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    labelAchievementName->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
-    labelAchievementName->setAttribute(Qt::WA_TransparentForMouseEvents,true);
-    labelAchievementName->setText(tr("Name here!"));
-
-    gridAchievement->addWidget(labelIcon, 0, 0, 2, 1);
-    gridAchievement->addWidget(labelAchievementReceived, 0, 1);
-    gridAchievement->addWidget(labelAchievementName, 1, 1);
-
-    QGridLayout *glayout2 = static_cast<QGridLayout*>( ui->widget_allSpeedo->layout()  );
-    glayout2->addWidget(widgetAchievement, 0, 0, 0, 0, Qt::AlignRight | Qt::AlignBottom);
-    widgetAchievement->setAttribute(Qt::WA_TransparentForMouseEvents,true);
-
-    timerLastAnimationAchievementComplete = new QTimer(this);
-    connect(timerLastAnimationAchievementComplete, &QTimer::timeout, this, &WorkoutDialog::lastAchievementAnimationDone);
-    achievementCurrentlyPlaying = false;
-    widgetAchievement->setVisible(false);
-    ////////////////////////////////////-----------------------------------------
+    // In-workout "Achievement unlocked" banner (queues several unlocks).
+    m_achievementToast = new AchievementToast(this);
+    connect(m_achievementToast, &AchievementToast::shown, this, [this]() {
+        if (account->enable_sound && account->sound_achievement)
+            soundPlayer->playSoundAchievement();
+    });
 
 
     isTransparent = false;
@@ -690,59 +654,6 @@ void WorkoutDialog::batteryStatusReceived(QString sensorType, int percentage) {
 }
 
 
-void WorkoutDialog::slotFinishedGetPixmap() {
-
-
-    QByteArray m_DownloadedData = replyGetBixmap->readAll();
-    QPixmap pixmap; //48,48 icon
-
-    pixmap.loadFromData(m_DownloadedData);
-    labelIcon->setPixmap(pixmap);
-
-    replyGetBixmap->deleteLater();
-}
-
-
-void WorkoutDialog::animateAchievement() {
-
-
-    achievementCurrentlyPlaying = true;
-    if (queueAchievement.size() == 0)
-        return;
-
-    /// Play sound
-    if (account->enable_sound && account->sound_achievement)
-        soundPlayer->playSoundAchievement();
-
-
-    ///Take achievement from top of queue
-    Achievement achievement = queueAchievement.head();
-    /// change name and icon (64x64)
-    labelAchievementName->setText(achievement.getName());
-
-    //Load image !
-    QNetworkAccessManager *managerWS = qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
-    QNetworkRequest request;
-    request.setUrl(QUrl(achievement.getIconUrl()));
-    request.setRawHeader("User-Agent", "MyOwnBrowser 1.0");
-    replyGetBixmap = managerWS->get(request);
-    connect(replyGetBixmap, &QNetworkReply::finished, this, &WorkoutDialog::slotFinishedGetPixmap);
-    widgetAchievement->setVisible(true);
-    widgetAchievement->fadeInAndFadeOutAfterPause(600, 2000, 6500);
-    timerLastAnimationAchievementComplete->start(9000); ///Check other achievement to play in the queue
-}
-
-void WorkoutDialog::lastAchievementAnimationDone() {
-
-    timerLastAnimationAchievementComplete->stop();
-    achievementCurrentlyPlaying = false;
-
-    ///Remove queue item, check if queue is empty, if empty, put flag to not playing;
-    queueAchievement.dequeue();
-    if (!queueAchievement.isEmpty())
-        animateAchievement();
-}
-
 void WorkoutDialog::initUI() {
 
     if (!account->enable_studio_mode) {
@@ -882,6 +793,13 @@ void WorkoutDialog::updateRealTimeGraph(double totalTimeElapsed_msec) {
     if (account->enable_studio_mode)
         return;
 
+    // Ride-length achievements fire live, once per new minute.
+    const int elapsedMinutes = static_cast<int>(timeElapsed_sec / 60);
+    if (elapsedMinutes != m_lastAchievementMinute) {
+        m_lastAchievementMinute = elapsedMinutes;
+        achievementManager->checkLiveMinutes(elapsedMinutes);
+    }
+
     // The clock ticks at 40Hz, but each replot() is a full QWT canvas repaint of
     // three plots — 120 repaints/sec for data that only changes a few times a
     // second. Coalesce to kMiniGraphRefreshMs (~20fps): smooth scrolling at half
@@ -933,6 +851,8 @@ void WorkoutDialog::checkMAPTestOver() {
         // Persist the estimated FTP into the athlete profile, like the FTP
         // tests do (LTHR and weight unchanged).
         if (estimatedFTP > 0) {
+            if (estimatedFTP > account->FTP)
+                achievementManager->recordEvent(AchievementCatalog::Events::FtpRaised);
             account->saveProfileFields(estimatedFTP, account->LTHR, account->weight_kg);
             emit ftp_lthr_changed();
         }
@@ -1453,7 +1373,11 @@ void WorkoutDialog::workoutOver() {
 
     setWidgetsStopped(true);
 
-    achievementManager->workoutCompleted(workout);
+    if (!account->enable_studio_mode) {
+        achievementManager->workoutCompleted(workout);
+        if (m_groupRide)
+            achievementManager->recordEvent(AchievementCatalog::Events::GroupRide);
+    }
 
 
     //Close FIT FILE
@@ -2776,16 +2700,8 @@ void WorkoutDialog::setWidgetsStopped(bool b) {
 
 void WorkoutDialog::achievementReceived(Achievement achievement) {
 
-
-    //// Add achievement to Queue (for in-workout animated overlay)
-    queueAchievement.enqueue(achievement);
-
-    // Also collect for the post-workout summary panel
-    earnedAchievements.append(achievement);
-
-    if (!achievementCurrentlyPlaying) {
-        animateAchievement();
-    }
+    earnedAchievements.append(achievement);   // also listed on the post-workout panel
+    m_achievementToast->enqueue(achievement);
 }
 
 void WorkoutDialog::checkPairingCompleted() {
@@ -3035,6 +2951,9 @@ void WorkoutDialog::checkFitFileCreated() {
         fitFilePath        = fitFilename;
         fitFileName        = workout.getName();
         fitFileDescription = workout.getDescription();
+        // The new ride is in the history now: count it towards the totals.
+        if (!account->enable_studio_mode)
+            achievementManager->evaluateHistory();
         if (!m_quitAfterSave)
             showPostWorkoutPanel();
         emit fitFileReady(fitFilename, workout.getName(), workout.getDescription());
@@ -3296,6 +3215,8 @@ void WorkoutDialog::showTestResult() {
             // any metric the test could not compute (<= 0).
             const int ftpToSave  = (newFTP  > 0) ? newFTP  : account->FTP;
             const int lthrToSave = (newLTHR > 0) ? newLTHR : account->LTHR;
+            if (ftpToSave > account->FTP)
+                achievementManager->recordEvent(AchievementCatalog::Events::FtpRaised);
             account->saveProfileFields(ftpToSave, lthrToSave, account->weight_kg);
             emit ftp_lthr_changed();
         }
@@ -3377,6 +3298,7 @@ void WorkoutDialog::connectDataWorkout() {
     connect(arrDataWorkout[0], &DataWorkout::normalizedPowerChanged, ui->wid_5_infoWorkout, &infosWorkout::NP_Changed);
     connect(arrDataWorkout[0], &DataWorkout::intensityFactorChanged, ui->wid_5_infoWorkout, &infosWorkout::IF_Changed);
     connect(arrDataWorkout[0], &DataWorkout::tssChanged, ui->wid_5_infoWorkout, &infosWorkout::TSS_Changed);
+    connect(arrDataWorkout[0], &DataWorkout::tssChanged, achievementManager, &ManagerAchievement::checkLiveTss);
     connect(arrDataWorkout[0], &DataWorkout::caloriesWorkoutChanged, ui->wid_5_infoWorkout, &infosWorkout::calories_Changed);
     connect(arrDataWorkout[0], &DataWorkout::totalDistanceChanged, ui->wid_5_infoWorkout, &infosWorkout::distanceChanged);
     // Mirror the workout's real ride distance into the race HUD so the game's

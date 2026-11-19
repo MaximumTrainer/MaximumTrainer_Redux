@@ -2,64 +2,50 @@
 #define MANAGERACHIEVEMENT_H
 
 #include <QObject>
-#include <QTimer>
 
-#include "workout.h"
 #include "achievement.h"
-#include "account.h"
+#include "achievementcatalog.h"
+#include "workout.h"
 
-
+/// Awards the local achievements (AchievementCatalog) and saves them
+/// (AchievementStore). History-based ones are evaluated from the ride history,
+/// so earlier rides count; live ones fire during the ride; event ones are
+/// recorded when they happen. Each newly earned one is announced once.
 class ManagerAchievement : public QObject
 {
     Q_OBJECT
-
 public:
     explicit ManagerAchievement(QObject *parent = nullptr);
 
+    /// Awards everything the ride history has reached. With \a announce false
+    /// (startup catch-up) nothing is announced, they are just saved.
+    void evaluateHistory(bool announce = true);
 
+    /// Awards an event achievement (AchievementCatalog::Events).
+    void recordEvent(const QString &key);
 
+    /// Ride-history totals from the last evaluateHistory(), for progress bars.
+    const AchievementCatalog::HistoryStats &historyStats() const { return m_stats; }
 
 public slots:
-
-    /// Check for 1h Workout, 2h Workout, 3h Workout, Target Maniac
+    /// FTP test, MAP test and Target Maniac checks at the end of a workout.
     void workoutCompleted(Workout workout);
-
     void checkMAPAchievement(int lastStepCompleted);
-
+    /// Live checks during a ride: elapsed minutes and current TSS.
+    void checkLiveMinutes(int elapsedMinutes);
+    void checkLiveTss(double tss);
 
 signals:
     void achievementCompleted(Achievement achievement);
+    /// Anything was earned (announced or not); the achievements page refreshes.
+    void achievementsChanged();
 
+private:
+    void award(const QString &key, bool announce);
 
-
-
-private :
-
-    Account *account;
-
-    // Position in QList is equals to DB ID - 1
-    // e.g: lstAchievement.at(0) = first id in database (Endurance Starter, ID:1)
-    QList<Achievement> lstAchievement;
-    int numberOfAchievement;  // number of achievements in the DB at the moment, increase when adding more
-
-
-    //    (1, 'Endurance Starter', 'Apprenti en Endurance', 'Complete a workout of 1h or more.', "Compléter un entraînement de 1h et plus.", 'https://maximumtrainer.com/assets/image/achievements/1.png'),
-    //    (2, 'Endurance Intermediate', 'Intermédiaire en Endurance', 'Complete a workout of 2h or more.', "Compléter un entraînement de 2h et plus.", 'https://maximumtrainer.com/assets/image/achievements/1.png'),
-    //    (3, 'Endurance Master', 'Maître en Endurance', 'Complete a workout of 3h or more.', "Compléter un entraînement de 3h et plus.", 'https://maximumtrainer.com/assets/image/achievements/1.png'),
-    //    (4, 'Target Maniac', 'Maniaque de cibles', 'Complete a workout that has a: power target, power balance target, cadence target and heart rate target.', "Compléter un entraînement qui possède une cible de puissance, d'équilibre de puissance, de cadence et de fréquence cardiaque.", 'https://maximumtrainer.com/assets/image/achievements/1.png'),
-    //    (5, 'Learning to test', 'Apprenti testeur', 'Complete your first FTP Test', "Compléter votre premier Test SFP", 'https://maximumtrainer.com/assets/image/achievements/1.png');
-
-
-    //    (6, 'Learning to test', 'Apprenti testeur', 'Complete your first FTP Test', "Compléter votre premier Test SFP", 'https://maximumtrainer.com/assets/image/achievements/1.png');
-    //    (7, 'Learning to test', 'Apprenti testeur', 'Complete your first FTP Test', "Compléter votre premier Test SFP", 'https://maximumtrainer.com/assets/image/achievements/1.png');
-
-
+    AchievementCatalog::HistoryStats m_stats;
 };
+
 Q_DECLARE_METATYPE(ManagerAchievement*)
-
-
-
-
-
 
 #endif // MANAGERACHIEVEMENT_H
