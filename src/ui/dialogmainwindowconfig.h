@@ -11,7 +11,6 @@
 
 #include "settings.h"
 #include "account.h"
-#include "intervalsicuservice.h"
 
 
 namespace Ui {
@@ -35,8 +34,6 @@ protected:
 
 
 signals:
-    /// Emitted when Intervals.icu credentials are saved so the tab can refresh.
-    void intervalsIcuCredentialsChanged();
     /// Emitted when the athlete profile (FTP / LTHR / weight) was edited, so the
     /// main window can recompute zones and workout targets.
     void profileChanged();
@@ -60,8 +57,6 @@ private slots:
     void unlinkStravaClicked();
     void stravaUnlinkFinished();
 
-    void onTestIntervalsConnectionClicked();
-    void onTestIntervalsConnectionFinished();
 
     /// Logging settings page slots
     void onLogFileEnabledToggled(bool checked);
@@ -89,8 +84,6 @@ private:
 
     QNetworkReply *replyStravaDeauthorization;
 
-    QNetworkReply *replyIntervalsTest = nullptr;
-    IntervalsIcuService *m_intervalsService = nullptr;
 
 
     // Logging settings page widgets (owned by the page widget, not directly by us)

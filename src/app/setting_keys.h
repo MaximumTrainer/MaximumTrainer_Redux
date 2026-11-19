@@ -32,6 +32,7 @@ inline constexpr SettingKey<int>    AppTheme                 {"account/app_theme
 inline constexpr SettingKey<bool>   ForcedDarkDefaultApplied {"account/forced_dark_default_applied", false};
 inline constexpr SettingKey<bool>   IntervalsIcuAutoUpload   {"account/intervals_icu_auto_upload",   false};
 inline constexpr SettingKey<qlonglong> StravaTokenExpiresAt  {"account/strava_token_expires_at",     0};
+/// Retired manual API key (sign-in uses OAuth); removed at load.
 inline const SettingKey<QString>    IntervalsIcuApiKey       {"account/intervals_icu_api_key",       QString()};
 inline const SettingKey<QString>    IntervalsIcuAthleteId    {"account/intervals_icu_athlete_id",    QString()};
 /// Plain-text token from versions before the credential store; read once to migrate, then removed.

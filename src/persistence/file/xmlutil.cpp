@@ -3,13 +3,11 @@
 #include "account.h"
 #include "util.h"
 #include "environnement.h"
-#include "simplecrypt.h"
 
 
 // Key used to obfuscate the Intervals.icu API key at rest in the .save file.
 // This is the same key used for the remembered-password feature in DialogLogin,
 // giving consistent protection across locally-stored credentials.
-static const quint64 INTERVALS_ICU_CRYPT_KEY = Q_UINT64_C(0xdd85116f2b81d85f);
 
 
 //http://qt-project.org/doc/qt-5.0/qtcore/qxmlstreamreader.html#details
@@ -88,19 +86,6 @@ void XmlUtil::parseLocalSaveFile(Account *account) {
                         if (!storedId.isEmpty())
                             account->intervals_icu_athlete_id = storedId;
                     }
-                    else if (xml.name() == QLatin1String("ApiKey")) {
-                        const QString stored = xml.readElementText();
-                        // Decrypt the obfuscated API key. If the value is
-                        // empty or was somehow stored in plaintext (missing
-                        // the SimpleCrypt magic header), decryptToString()
-                        // returns an empty string, which is handled safely.
-                        SimpleCrypt crypto(INTERVALS_ICU_CRYPT_KEY);
-                        const QString decrypted = crypto.decryptToString(stored);
-                        // Same guard as AthleteId: keep any live key rather
-                        // than overwriting it with an empty stored value.
-                        if (!stored.isEmpty())
-                            account->intervals_icu_api_key = decrypted.isEmpty() ? stored : decrypted;
-                    }
                     else if (xml.tokenType() == QXmlStreamReader::EndElement
                              && xml.name() == QLatin1String("IntervalsIcu"))
                         break;
@@ -148,14 +133,9 @@ bool XmlUtil::saveLocalSaveFile(Account *account) {
         writer.writeEndElement();  // WorkoutDone
 
         ///-------------------------------------------------------------------------------------------------------
-        // Intervals.icu credentials — stored locally so they survive re-login.
-        // The API key is obfuscated with SimpleCrypt before writing to disk.
+        // Intervals.icu athlete id — stored locally so it survives re-login.
         writer.writeStartElement("IntervalsIcu");
         writer.writeTextElement("AthleteId", account->intervals_icu_athlete_id);
-        {
-            SimpleCrypt crypto(INTERVALS_ICU_CRYPT_KEY);
-            writer.writeTextElement("ApiKey", crypto.encryptToString(account->intervals_icu_api_key));
-        }
         writer.writeEndElement();  // IntervalsIcu
         ///-------------------------------------------------------------------------------------------------------
 

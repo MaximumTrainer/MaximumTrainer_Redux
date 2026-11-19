@@ -833,11 +833,9 @@ private slots:
 
         // Poisoned file (empty id) must not wipe the live value.
         m_account->intervals_icu_athlete_id = QStringLiteral("i-live-42");
-        m_account->intervals_icu_api_key    = QStringLiteral("live-key");
         writeSave(QString());
         XmlUtil::parseLocalSaveFile(m_account);
         QCOMPARE(m_account->intervals_icu_athlete_id, QStringLiteral("i-live-42"));
-        QCOMPARE(m_account->intervals_icu_api_key,    QStringLiteral("live-key"));
 
         // A populated file still loads.
         writeSave(QStringLiteral("i-from-file"));
@@ -846,7 +844,6 @@ private slots:
 
         QFile::remove(savePath);
         m_account->intervals_icu_athlete_id.clear();
-        m_account->intervals_icu_api_key.clear();
 
         qDebug().noquote()
             << "[LocalSave] empty AthleteId no longer clobbers the live id — PASS";

@@ -269,8 +269,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(updateNotifier, &UpdateNotifier::updateAvailable, this, &MainWindow::showUpdateAvailable);
     updateNotifier->check();
 
-    connect(dconfig, &DialogMainWindowConfig::intervalsIcuCredentialsChanged,
-            ui->tab_intervals_icu, &TabIntervalsIcu::refreshCredentials);
     // Athlete profile (FTP/LTHR/weight) edited in Preferences → recompute zones
     // and workout targets, same as the old profile page's FTP-change path.
     connect(dconfig, &DialogMainWindowConfig::profileChanged,
