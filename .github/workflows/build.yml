@@ -201,8 +201,7 @@ jobs:
         # and sets QT_HOST_PATH, so no separate host-tools install step is needed.
 
     - name: Set up ccache
-      # Same compiler cache as the desktop builds: em++ is a clang driver, so
-      # ccache wraps it as a CMake compiler launcher.
+      # Same compiler cache as the desktop builds (see EM_COMPILER_WRAPPER).
       uses: hendrikmuhs/ccache-action@v1.2.25
       with:
         key: wasm-qt6.11.3-em4.0.7
@@ -266,14 +265,15 @@ jobs:
 
     - name: Build MaximumTrainer (Wasm)
       env:
+        # emcc runs ccache around the clang it invokes, a compiler ccache
+        # understands (wrapping the em++ script itself barely ever hit).
+        EM_COMPILER_WRAPPER: ccache
         CCACHE_BASEDIR: ${{ github.workspace }}
-        CCACHE_COMPILERCHECK: content
       run: |
         source "$EMSDK/emsdk_env.sh"
         cmake -S . -B build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_TOOLCHAIN_FILE="$QT_ROOT_DIR/lib/cmake/Qt6/qt.toolchain.cmake" \
-          -DQWT_INSTALL="$HOME/qwt-wasm" -DMT_WERROR=ON -DMT_BUILD_TESTS=OFF \
-          -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DQWT_INSTALL="$HOME/qwt-wasm" -DMT_WERROR=ON -DMT_BUILD_TESTS=OFF
         cmake --build build-wasm
         ls -la build-wasm/release
 
