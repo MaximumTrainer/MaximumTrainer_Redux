@@ -158,6 +158,15 @@ void DialogMainWindowConfig::initUI() {
     ui->checkBox_intervalsAutoUpload->setChecked(account->intervals_icu_auto_upload);
     ui->label_intervalsTestResult->clear();
 
+    // Intervals.icu never hands out the personal API key over OAuth, and every
+    // request prefers the OAuth token anyway, so the key is only for users who
+    // did not sign in.
+    const bool signedInWithOAuth = !account->intervals_icu_access_token.isEmpty();
+    ui->formLayout_intervals->setRowVisible(ui->lineEdit_intervalsApiKey, !signedInWithOAuth);
+    ui->label_intervalsHint->setText(signedInWithOAuth
+        ? tr("Signed in with Intervals.icu. No API key needed.")
+        : tr("Find your API key at intervals.icu → Settings → API."));
+
     // Athlete profile (FTP / LTHR / weight) — edited here, persisted locally.
     ui->spinBox_ftp->setValue(account->FTP);
     ui->spinBox_lthr->setValue(account->LTHR);
@@ -387,10 +396,11 @@ void DialogMainWindowConfig::accept() {
 void DialogMainWindowConfig::onTestIntervalsConnectionClicked()
 {
 #ifndef GC_WASM_BUILD
-    const QString apiKey    = ui->lineEdit_intervalsApiKey->text().trimmed();
-    const QString athleteId = ui->lineEdit_intervalsAthleteId->text().trimmed();
+    const QString apiKey      = ui->lineEdit_intervalsApiKey->text().trimmed();
+    const QString athleteId   = ui->lineEdit_intervalsAthleteId->text().trimmed();
+    const QString accessToken = account->intervals_icu_access_token;
 
-    if (apiKey.isEmpty() || athleteId.isEmpty()) {
+    if (athleteId.isEmpty() || (apiKey.isEmpty() && accessToken.isEmpty())) {
         ui->label_intervalsTestResult->setStyleSheet("color: red;");
         ui->label_intervalsTestResult->setText(tr("Please enter both API key and Athlete ID."));
         return;
@@ -407,6 +417,7 @@ void DialogMainWindowConfig::onTestIntervalsConnectionClicked()
     if (!m_intervalsService)
         m_intervalsService = new IntervalsIcuService(this);
     m_intervalsService->setCredentials(apiKey, athleteId);
+    m_intervalsService->setAccessToken(accessToken);
 
     ui->pushButton_testIntervalsConnection->setEnabled(false);
     // #888 mid-grey stays legible on both the light and dark themes.
