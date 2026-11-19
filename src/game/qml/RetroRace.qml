@@ -118,11 +118,6 @@ Item {
     // finish — the sky warms and the sun sinks, so a long ride visibly ends at
     // sunset (a quiet "almost there" cue).
     readonly property real dusk: Math.max(0, (root.race.workoutProgress - 0.6) / 0.4)
-    function mixCol(a: color, b: color, t: real): color {
-        return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1)
-    }
-    // Ghost names can be whole history filenames — keep HUD chips readable.
-    function shortName(n: string, max: int): string { return n.length > max ? n.substring(0, max - 1) + "…" : n }
     // Deterministic pseudo-random in [0,1) from an index (stable per object).
     function rnd(n: real): real { var x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); }
 
@@ -180,7 +175,7 @@ Item {
         // jersey: lower back (widest) → mid back → shoulders (tapered, leaning in)
         Rectangle { x: bike.bw*0.23; y: bike.bh*0.34; width: bike.bw*0.54; height: bike.bh*0.16; color: bike.body }
         Rectangle { x: bike.bw*0.27; y: bike.bh*0.24; width: bike.bw*0.46; height: bike.bh*0.12; color: bike.body }
-        Rectangle { x: bike.bw*0.30; y: bike.bh*0.17; width: bike.bw*0.40; height: bike.bh*0.10; color: Qt.darker(bike.body, 1.3) }
+        Rectangle { x: bike.bw*0.30; y: bike.bh*0.17; width: bike.bw*0.40; height: bike.bh*0.10; color: RaceStyle.darker(bike.body, 1.3) }
         // (No arms/hands drawn: from directly behind they sit forward on the
         // bars, hidden by the torso — drawing stubs read as hands poking out.)
         // raised right arm + fist (salute), rising from behind the shoulder
@@ -192,48 +187,49 @@ Item {
                     width: bike.bw*0.14; height: bike.bw*0.14; radius: bike.bw*0.07; color: bike.skin }
         // aero helmet (rounded) with a darker vent stripe
         Rectangle { x: bike.bw*0.38; y: bike.bh*0.05; width: bike.bw*0.24; height: bike.bh*0.16; radius: bike.bw*0.10; color: bike.helmet }
-        Rectangle { x: bike.bw*0.485; y: bike.bh*0.06; width: bike.bw*0.04; height: bike.bh*0.13; color: Qt.darker(bike.helmet, 1.4) }
+        Rectangle { x: bike.bw*0.485; y: bike.bh*0.06; width: bike.bw*0.04; height: bike.bh*0.13; color: RaceStyle.darker(bike.helmet, 1.4) }
     }
 
     component BigButton: Rectangle {
+        id: bigButton
         property string title
         property string subtitle
         property bool   active: true
         signal picked()
         width: 380; height: 84; radius: 10
-        color: !active ? "#2a2a2a" : ma.containsMouse ? "#2f6196" : "#1f456b"
-        border.color: "#9fd0ec"; border.width: 2; opacity: active ? 1.0 : 0.45
+        color: !bigButton.active ? "#2a2a2a" : ma.containsMouse ? "#2f6196" : "#1f456b"
+        border.color: "#9fd0ec"; border.width: 2; opacity: bigButton.active ? 1.0 : 0.45
         Column {
             anchors.centerIn: parent; spacing: 4
-            Text { anchors.horizontalCenter: parent.horizontalCenter; text: title
+            Text { anchors.horizontalCenter: parent.horizontalCenter; text: bigButton.title
                    color: "white"; font.family: "monospace"; font.pixelSize: 20; font.bold: true }
-            Text { anchors.horizontalCenter: parent.horizontalCenter; visible: subtitle !== ""; text: subtitle
+            Text { anchors.horizontalCenter: parent.horizontalCenter; visible: bigButton.subtitle !== ""; text: bigButton.subtitle
                    color: "#cde"; font.family: "monospace"; font.pixelSize: 12 }
         }
         MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true
-            cursorShape: parent.active ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onClicked: if (parent.active) parent.picked() }
+            cursorShape: bigButton.active ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: if (bigButton.active) bigButton.picked() }
     }
 
     // ---------------------------------------------------------------- sky
     Rectangle {
         anchors.fill: parent
         gradient: Gradient {
-            GradientStop { position: 0.0;  color: root.mixCol("#1f3566", "#2a2150", root.dusk) }
-            GradientStop { position: 0.30; color: root.mixCol("#5f93cf", "#a6608c", root.dusk) }
-            GradientStop { position: 0.62; color: root.mixCol("#a9d8ef", "#ef9f66", root.dusk) }
-            GradientStop { position: 1.0;  color: root.mixCol("#cdeaf6", "#ffd9a0", root.dusk) }
+            GradientStop { position: 0.0;  color: RaceStyle.mix("#1f3566", "#2a2150", root.dusk) }
+            GradientStop { position: 0.30; color: RaceStyle.mix("#5f93cf", "#a6608c", root.dusk) }
+            GradientStop { position: 0.62; color: RaceStyle.mix("#a9d8ef", "#ef9f66", root.dusk) }
+            GradientStop { position: 1.0;  color: RaceStyle.mix("#cdeaf6", "#ffd9a0", root.dusk) }
         }
     }
     // warm low sun with a soft halo; sinks toward the ridge line at golden
     // hour (capped so it never disappears behind the mountain ranges)
     readonly property real sunY: 56 + dusk * 38
     Rectangle { x: root.width*0.77 - 22; y: root.sunY - 18; width: 104; height: 104; radius: 52
-                color: root.mixCol("#ffd98a", "#ff9e5e", root.dusk); opacity: 0.30 }
+                color: RaceStyle.mix("#ffd98a", "#ff9e5e", root.dusk); opacity: 0.30 }
     Rectangle { x: root.width*0.77;      y: root.sunY; width: 60;  height: 60;  radius: 30
         gradient: Gradient {
-            GradientStop { position: 0.0; color: root.mixCol("#fff1b4", "#ffd27a", root.dusk) }
-            GradientStop { position: 1.0; color: root.mixCol("#ffb259", "#ff7a3c", root.dusk) }
+            GradientStop { position: 0.0; color: RaceStyle.mix("#fff1b4", "#ffd27a", root.dusk) }
+            GradientStop { position: 1.0; color: RaceStyle.mix("#ffb259", "#ff7a3c", root.dusk) }
         }
     }
 
@@ -381,20 +377,20 @@ Item {
             // a few leafy trees turn warm autumn colours for variety
             readonly property bool autumn: kind === 1 && root.rnd(index + 17) < 0.14
             readonly property color baseFoliage: autumn
-                ? Qt.rgba(0.72 + root.rnd(index+9)*0.12, 0.40 + root.rnd(index+11)*0.16, 0.10 + root.rnd(index+13)*0.08, 1)
-                : Qt.rgba(0.16 + root.rnd(index+9)*0.12, 0.44 + root.rnd(index+11)*0.18, 0.22 + root.rnd(index+13)*0.12, 1)
+                ? RaceStyle.rgba(0.72 + root.rnd(index+9)*0.12, 0.40 + root.rnd(index+11)*0.16, 0.10 + root.rnd(index+13)*0.08, 1)
+                : RaceStyle.rgba(0.16 + root.rnd(index+9)*0.12, 0.44 + root.rnd(index+11)*0.18, 0.22 + root.rnd(index+13)*0.12, 1)
             // distance haze: 0 near .. 1 far, fades the object into the horizon.
-            // Baked into the colours (Qt.tint) rather than a square overlay, which
+            // Baked into the colours (RaceStyle.tint) rather than a square overlay, which
             // showed a faint box around distant trees.
             // Quantised so the tinted colours only change a few times per pass.
             readonly property real haz: Math.round(Math.max(0, Math.min(1, (0.34 - p) / 0.20)) * 6) / 6
-            readonly property color foliage: Qt.tint(baseFoliage, Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
-            readonly property color barkCol: Qt.tint("#5a3a1f", Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
-            readonly property color birchBark: Qt.tint("#e8e4da", Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
-            readonly property color rockCol: Qt.tint(Qt.rgba(0.48 + root.rnd(index+19)*0.14,
+            readonly property color foliage: RaceStyle.tint(baseFoliage, RaceStyle.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
+            readonly property color barkCol: RaceStyle.tint("#5a3a1f", RaceStyle.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
+            readonly property color birchBark: RaceStyle.tint("#e8e4da", RaceStyle.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
+            readonly property color rockCol: RaceStyle.tint(RaceStyle.rgba(0.48 + root.rnd(index+19)*0.14,
                                                              0.49 + root.rnd(index+19)*0.14,
                                                              0.53 + root.rnd(index+19)*0.14, 1),
-                                                     Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
+                                                     RaceStyle.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
             readonly property color petal: ["#ff7bb1", "#ffd84a", "#ff5a5a", "#f2f2f2"][Math.floor(root.rnd(index+23)*4)]
             visible: root.race.started && p > 0.14
             // Drawn once at base size and scaled: only x/y/scale change per frame,
@@ -410,41 +406,41 @@ Item {
                         radius: ob.baseH*0.03; color: "#000000"; opacity: 0.22 }
             // bush: low rounded clump (two blobs)
             Rectangle { visible: ob.kind===2; x: 0;          y: ob.baseH*0.22; width: ob.baseW;      height: ob.baseH*0.78; radius: ob.baseW*0.40; color: ob.foliage }
-            Rectangle { visible: ob.kind===2; x: ob.baseW*0.18; y: 0;          width: ob.baseW*0.64; height: ob.baseH*0.50; radius: ob.baseW*0.34; color: Qt.lighter(ob.foliage,1.16) }
+            Rectangle { visible: ob.kind===2; x: ob.baseW*0.18; y: 0;          width: ob.baseW*0.64; height: ob.baseH*0.50; radius: ob.baseW*0.34; color: RaceStyle.lighter(ob.foliage,1.16) }
 
             // trunk (pine + leafy)
             Rectangle { visible: ob.kind===0 || ob.kind===1; x: ob.baseW*0.44; y: ob.baseH*0.66; width: ob.baseW*0.12; height: ob.baseH*0.36; color: ob.barkCol }
 
             // pine: three tiers narrowing upward (conical)
             Rectangle { visible: ob.kind===0; x: ob.baseW*0.10; y: ob.baseH*0.40; width: ob.baseW*0.80; height: ob.baseH*0.32; radius: ob.baseW*0.10; color: ob.foliage }
-            Rectangle { visible: ob.kind===0; x: ob.baseW*0.18; y: ob.baseH*0.20; width: ob.baseW*0.64; height: ob.baseH*0.28; radius: ob.baseW*0.10; color: Qt.lighter(ob.foliage,1.10) }
-            Rectangle { visible: ob.kind===0; x: ob.baseW*0.30; y: 0;          width: ob.baseW*0.40; height: ob.baseH*0.26; radius: ob.baseW*0.10; color: Qt.lighter(ob.foliage,1.20) }
+            Rectangle { visible: ob.kind===0; x: ob.baseW*0.18; y: ob.baseH*0.20; width: ob.baseW*0.64; height: ob.baseH*0.28; radius: ob.baseW*0.10; color: RaceStyle.lighter(ob.foliage,1.10) }
+            Rectangle { visible: ob.kind===0; x: ob.baseW*0.30; y: 0;          width: ob.baseW*0.40; height: ob.baseH*0.26; radius: ob.baseW*0.10; color: RaceStyle.lighter(ob.foliage,1.20) }
 
             // leafy tree: full round canopy (base blob + two lighter highlights)
             Rectangle { visible: ob.kind===1; x: 0;          y: ob.baseH*0.24; width: ob.baseW;      height: ob.baseH*0.50; radius: ob.baseW*0.42; color: ob.foliage }
-            Rectangle { visible: ob.kind===1; x: ob.baseW*0.10; y: ob.baseH*0.06; width: ob.baseW*0.62; height: ob.baseH*0.44; radius: ob.baseW*0.34; color: Qt.lighter(ob.foliage,1.12) }
-            Rectangle { visible: ob.kind===1; x: ob.baseW*0.40; y: 0;          width: ob.baseW*0.46; height: ob.baseH*0.34; radius: ob.baseW*0.26; color: Qt.lighter(ob.foliage,1.22) }
+            Rectangle { visible: ob.kind===1; x: ob.baseW*0.10; y: ob.baseH*0.06; width: ob.baseW*0.62; height: ob.baseH*0.44; radius: ob.baseW*0.34; color: RaceStyle.lighter(ob.foliage,1.12) }
+            Rectangle { visible: ob.kind===1; x: ob.baseW*0.40; y: 0;          width: ob.baseW*0.46; height: ob.baseH*0.34; radius: ob.baseW*0.26; color: RaceStyle.lighter(ob.foliage,1.22) }
 
             // birch: slim pale trunk with dark bark dashes, airy light canopy
             Rectangle { visible: ob.kind===3; x: ob.baseW*0.45; y: ob.baseH*0.24; width: ob.baseW*0.10; height: ob.baseH*0.78; color: ob.birchBark }
             Rectangle { visible: ob.kind===3; x: ob.baseW*0.45; y: ob.baseH*0.46; width: ob.baseW*0.06; height: ob.baseH*0.030; color: "#3c3a34" }
             Rectangle { visible: ob.kind===3; x: ob.baseW*0.49; y: ob.baseH*0.62; width: ob.baseW*0.06; height: ob.baseH*0.030; color: "#3c3a34" }
             Rectangle { visible: ob.kind===3; x: ob.baseW*0.45; y: ob.baseH*0.80; width: ob.baseW*0.06; height: ob.baseH*0.030; color: "#3c3a34" }
-            Rectangle { visible: ob.kind===3; x: ob.baseW*0.08; y: ob.baseH*0.10; width: ob.baseW*0.84; height: ob.baseH*0.26; radius: ob.baseW*0.30; color: Qt.lighter(ob.foliage,1.28) }
-            Rectangle { visible: ob.kind===3; x: 0;          y: ob.baseH*0.02; width: ob.baseW*0.60; height: ob.baseH*0.20; radius: ob.baseW*0.24; color: Qt.lighter(ob.foliage,1.42) }
-            Rectangle { visible: ob.kind===3; x: ob.baseW*0.42; y: 0;          width: ob.baseW*0.55; height: ob.baseH*0.18; radius: ob.baseW*0.22; color: Qt.lighter(ob.foliage,1.18) }
+            Rectangle { visible: ob.kind===3; x: ob.baseW*0.08; y: ob.baseH*0.10; width: ob.baseW*0.84; height: ob.baseH*0.26; radius: ob.baseW*0.30; color: RaceStyle.lighter(ob.foliage,1.28) }
+            Rectangle { visible: ob.kind===3; x: 0;          y: ob.baseH*0.02; width: ob.baseW*0.60; height: ob.baseH*0.20; radius: ob.baseW*0.24; color: RaceStyle.lighter(ob.foliage,1.42) }
+            Rectangle { visible: ob.kind===3; x: ob.baseW*0.42; y: 0;          width: ob.baseW*0.55; height: ob.baseH*0.18; radius: ob.baseW*0.22; color: RaceStyle.lighter(ob.foliage,1.18) }
 
             // rock: two grey boulders with a sunlit top facet
             Rectangle { visible: ob.kind===4; x: 0;          y: ob.baseH*0.25; width: ob.baseW*0.72; height: ob.baseH*0.75; radius: ob.baseH*0.30; color: ob.rockCol }
-            Rectangle { visible: ob.kind===4; x: ob.baseW*0.40; y: 0;          width: ob.baseW*0.60; height: ob.baseH*0.88; radius: ob.baseH*0.34; color: Qt.lighter(ob.rockCol,1.12) }
-            Rectangle { visible: ob.kind===4; x: ob.baseW*0.50; y: ob.baseH*0.10; width: ob.baseW*0.28; height: ob.baseH*0.24; radius: ob.baseH*0.12; color: Qt.lighter(ob.rockCol,1.30) }
+            Rectangle { visible: ob.kind===4; x: ob.baseW*0.40; y: 0;          width: ob.baseW*0.60; height: ob.baseH*0.88; radius: ob.baseH*0.34; color: RaceStyle.lighter(ob.rockCol,1.12) }
+            Rectangle { visible: ob.kind===4; x: ob.baseW*0.50; y: ob.baseH*0.10; width: ob.baseW*0.28; height: ob.baseH*0.24; radius: ob.baseH*0.12; color: RaceStyle.lighter(ob.rockCol,1.30) }
 
             // flower patch: low green pad with bright blossoms poking out
             Rectangle { visible: ob.kind===5; x: 0;          y: ob.baseH*0.35; width: ob.baseW;      height: ob.baseH*0.65; radius: ob.baseH*0.32; color: ob.foliage }
             Rectangle { visible: ob.kind===5; x: ob.baseW*0.10; y: ob.baseH*0.18; width: ob.baseW*0.14; height: ob.baseW*0.14; radius: ob.baseW*0.07; color: ob.petal }
-            Rectangle { visible: ob.kind===5; x: ob.baseW*0.36; y: ob.baseH*0.02; width: ob.baseW*0.14; height: ob.baseW*0.14; radius: ob.baseW*0.07; color: Qt.lighter(ob.petal,1.15) }
+            Rectangle { visible: ob.kind===5; x: ob.baseW*0.36; y: ob.baseH*0.02; width: ob.baseW*0.14; height: ob.baseW*0.14; radius: ob.baseW*0.07; color: RaceStyle.lighter(ob.petal,1.15) }
             Rectangle { visible: ob.kind===5; x: ob.baseW*0.62; y: ob.baseH*0.22; width: ob.baseW*0.14; height: ob.baseW*0.14; radius: ob.baseW*0.07; color: ob.petal }
-            Rectangle { visible: ob.kind===5; x: ob.baseW*0.80; y: ob.baseH*0.06; width: ob.baseW*0.12; height: ob.baseW*0.12; radius: ob.baseW*0.06; color: Qt.lighter(ob.petal,1.25) }
+            Rectangle { visible: ob.kind===5; x: ob.baseW*0.80; y: ob.baseH*0.06; width: ob.baseW*0.12; height: ob.baseW*0.12; radius: ob.baseW*0.06; color: RaceStyle.lighter(ob.petal,1.25) }
         }
     }
 
@@ -647,8 +643,8 @@ Item {
         scale: hot ? 1.0 + 0.05 * Math.sin(root.animT * 8) : 1.0
         Text {
             id: gapTxt; anchors.centerIn: parent
-            text: (root.leading ? "▼ " : "▲ ") + root.shortName(root.race.oppName, 16) + " "
-                  + gapChip.absGap.toFixed(0) + " m " + (root.leading ? "behind" : "ahead")
+            text: (root.leading ? "▼ " : "▲ ") + RaceStyle.shortName(root.race.oppName, 16) + " "
+                  + Math.round(gapChip.absGap) + " m " + (root.leading ? "behind" : "ahead")
                   + (root.gapTrend > 0.15 ? "  »" : root.gapTrend < -0.15 ? "  «" : "")
             color: gapChip.border.color
             font.family: "monospace"; font.pixelSize: 14; font.bold: true
@@ -711,18 +707,19 @@ Item {
     // target power and blue when under (nothing when in the zone) — a constant,
     // game-like nudge to hold the prescribed effort. Drawn under the HUD.
     Item {
+        id: effortEdge
         anchors.fill: parent; visible: root.effortGlow > 0.01; opacity: root.effortGlow
         readonly property real sideW: parent.width * (0.15 + 0.07 * root.effortMiss)
         readonly property real botH:  parent.height * (0.34 + 0.16 * root.effortMiss)
-        Rectangle { anchors { left: parent.left; top: parent.top; bottom: parent.bottom } width: parent.sideW
+        Rectangle { anchors { left: parent.left; top: parent.top; bottom: parent.bottom } width: effortEdge.sideW
             gradient: Gradient { orientation: Gradient.Horizontal
                 GradientStop { position: 0.0; color: root.effortColor }
                 GradientStop { position: 1.0; color: "#00000000" } } }
-        Rectangle { anchors { right: parent.right; top: parent.top; bottom: parent.bottom } width: parent.sideW
+        Rectangle { anchors { right: parent.right; top: parent.top; bottom: parent.bottom } width: effortEdge.sideW
             gradient: Gradient { orientation: Gradient.Horizontal
                 GradientStop { position: 0.0; color: "#00000000" }
                 GradientStop { position: 1.0; color: root.effortColor } } }
-        Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: parent.botH
+        Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: effortEdge.botH
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "#00000000" }
                 GradientStop { position: 1.0; color: root.effortColor } } }
@@ -823,6 +820,7 @@ Item {
         visible: root.race.started && !root.race.finished && root.race.targetPower > 0
         anchors { left: parent.left; leftMargin: 12; top: parent.top; topMargin: 78 }
         width: zoneTxt.implicitWidth + 22; height: 26; radius: 13
+        id: zonePill
         readonly property bool hot: root.effortState === 0 && root.zoneHoldSec >= 10
         color: root.effortState === 1 ? "#b02525" : root.effortState === -1 ? "#1f4f9e"
              : (hot ? "#1f8f3f" : "#1f7a37")
@@ -831,7 +829,7 @@ Item {
             text: root.effortState === 1 ? "▼ EASE OFF"
                 : root.effortState === -1 ? "▲ PUSH!"
                 : "✓ IN ZONE " + Math.floor(root.zoneHoldSec) + "s"
-                  + (root.zoneMult > 1 ? "  ×" + root.zoneMult : "") + (parent.hot ? " 🔥" : "")
+                  + (root.zoneMult > 1 ? "  ×" + root.zoneMult : "") + (zonePill.hot ? " 🔥" : "")
             color: "white"; font.family: "monospace"; font.pixelSize: 13; font.bold: true }
     }
 
@@ -859,15 +857,16 @@ Item {
         anchors { top: parent.top; left: parent.left; margins: 10 }
         spacing: 16
         component Stat: Column {
+            id: stat
             property string label; property string value
             property color vcolor: "white"
-            Text { text: label; color: "#bcd"; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
-            Text { text: value; color: vcolor; font.family: "monospace"; font.pixelSize: 18; font.bold: true }
+            Text { text: stat.label; color: "#bcd"; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
+            Text { text: stat.value; color: stat.vcolor; font.family: "monospace"; font.pixelSize: 18; font.bold: true }
         }
         Stat { label: "TIME";  value: root.fmtTime(root.race.workoutElapsedSec) }
-        Stat { label: "DIST";  value: (root.race.displayDistanceM / 1000).toFixed(2) + " km" }
-        Stat { label: "SPEED"; value: root.race.playerSpeedKmh.toFixed(1) + " km/h" }
-        Stat { label: "SCORE"; value: Math.floor(root.score).toString(); vcolor: "#ffe24a" }
+        Stat { label: "DIST";  value: RaceStyle.fixed(root.race.displayDistanceM / 1000, 2) + " km" }
+        Stat { label: "SPEED"; value: RaceStyle.fixed(root.race.playerSpeedKmh, 1) + " km/h" }
+        Stat { label: "SCORE"; value: "" + Math.floor(root.score); vcolor: "#ffe24a" }
     }
 
     // Centre: live effort, coloured vs target (red = high, blue = low, white = in range).
@@ -876,6 +875,7 @@ Item {
         anchors.top: parent.top; anchors.topMargin: 3
         spacing: 34
         component BigStat: Column {
+            id: bigStat
             property string label
             property real   value
             property string unit
@@ -885,15 +885,15 @@ Item {
             readonly property bool low:  hasTarget && value < target - range
             readonly property bool high: hasTarget && value > target + range
             readonly property color vcolor: low ? "#5aa0ff" : high ? "#ff5a5a" : "#ffffff"
-            Text { anchors.horizontalCenter: parent.horizontalCenter; text: label
+            Text { anchors.horizontalCenter: parent.horizontalCenter; text: bigStat.label
                    color: "#bcd"; font.family: "monospace"; font.pixelSize: 12; font.bold: true }
-            Text { anchors.horizontalCenter: parent.horizontalCenter; text: value.toFixed(0) + " " + unit
-                   color: vcolor; font.family: "monospace"; font.pixelSize: 34; font.bold: true }
-            Text { anchors.horizontalCenter: parent.horizontalCenter; visible: hasTarget
-                   text: "⌖ " + Math.round(target) + " " + unit
-                         + (low ? "  ▼" + Math.round(target - value)
-                              : high ? "  ▲" + Math.round(value - target) : "")
-                   color: vcolor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
+            Text { anchors.horizontalCenter: parent.horizontalCenter; text: Math.round(bigStat.value) + " " + bigStat.unit
+                   color: bigStat.vcolor; font.family: "monospace"; font.pixelSize: 34; font.bold: true }
+            Text { anchors.horizontalCenter: parent.horizontalCenter; visible: bigStat.hasTarget
+                   text: "⌖ " + Math.round(bigStat.target) + " " + bigStat.unit
+                         + (bigStat.low ? "  ▼" + Math.round(bigStat.target - bigStat.value)
+                              : bigStat.high ? "  ▲" + Math.round(bigStat.value - bigStat.target) : "")
+                   color: bigStat.vcolor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
         }
         BigStat { label: "POWER";   value: root.race.playerPowerW;  unit: "W";   target: root.race.targetPower;   range: root.race.targetPowerRange }
         BigStat { label: "CADENCE"; value: root.race.playerCadence; unit: "rpm"; target: root.race.targetCadence; range: root.race.targetCadenceRange }
@@ -930,22 +930,23 @@ Item {
                 // and a new model would rebuild these rows 30 times a second.
                 model: root.race.standings.length
                 Item {
+                    id: lbRow
                     required property int index
                     width: lbCol.width; height: 18
                     readonly property var row: root.race.standings[index] || ({})
                     readonly property bool me: row.isPlayer === true
                     Text { id: rk; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                           text: row.rank + "."; color: me ? "#ffe24a" : "#dfe7ef"
+                           text: lbRow.row.rank + "."; color: lbRow.me ? "#ffe24a" : "#dfe7ef"
                            font.family: "monospace"; font.pixelSize: 13; font.bold: true }
                     Text { anchors.left: rk.right; anchors.leftMargin: 5
                            anchors.right: gp.left; anchors.rightMargin: 6
                            anchors.verticalCenter: parent.verticalCenter
-                           text: root.shortName(row.name, 12); elide: Text.ElideRight
-                           color: me ? "#ffe24a" : "#ffffff"
-                           font.family: "monospace"; font.pixelSize: 13; font.bold: me }
+                           text: RaceStyle.shortName(lbRow.row.name, 12); elide: Text.ElideRight
+                           color: lbRow.me ? "#ffe24a" : "#ffffff"
+                           font.family: "monospace"; font.pixelSize: 13; font.bold: lbRow.me }
                     Text { id: gp; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                           text: row.gapText
-                           color: row.rank === 1 ? "#5dff5d" : "#ff9d6b"
+                           text: lbRow.row.gapText
+                           color: lbRow.row.rank === 1 ? "#5dff5d" : "#ff9d6b"
                            font.family: "monospace"; font.pixelSize: 13; font.bold: true }
                 }
             }
@@ -988,18 +989,19 @@ Item {
                text: root.race.intervalMessage; color: "#1c4a22"; font.family: "monospace"; font.pixelSize: 16; font.bold: true }
         Item {
             anchors.horizontalCenter: parent.horizontalCenter
+            id: gapMeter
             width: 220; height: 14
             readonly property real sc: (width/2 - 8) / 60
             Rectangle { anchors.fill: parent; radius: 7; color: "#000000"; opacity: 0.35 }
             Rectangle { width: 10; height: 10; radius: 5; color: "#e8e8ff"; anchors.verticalCenter: parent.verticalCenter
-                        x: Math.max(3, Math.min(parent.width-13, parent.width/2 - 5 - root.race.gapMeters * parent.sc)) }
+                        x: Math.max(3, Math.min(gapMeter.width-13, gapMeter.width/2 - 5 - root.race.gapMeters * gapMeter.sc)) }
             Rectangle { width: 10; height: 10; radius: 5; color: "#e23b3b"; anchors.centerIn: parent }
         }
     }
 
     Text {
         anchors { bottom: parent.bottom; left: parent.left; leftMargin: 8; bottomMargin: 72 }
-        text: (root.race.oppIsBot ? "🤖 " : "👻 ") + root.shortName(root.race.oppName, 34) + "   ·   " + root.race.oppPowerW.toFixed(0) + " W"
+        text: (root.race.oppIsBot ? "🤖 " : "👻 ") + RaceStyle.shortName(root.race.oppName, 34) + "   ·   " + Math.round(root.race.oppPowerW) + " W"
         color: "#e8e8e8"; font.family: "monospace"; font.pixelSize: 12
     }
     Text {
@@ -1070,17 +1072,18 @@ Item {
     Repeater {   // confetti — a reward, so it only rains when you actually won
         model: 28
         Rectangle {
+            id: confetti
             required property int index
             // Finishing with your partner is a win too — celebrate the team finish.
             readonly property bool celebrate: root.race.finished && (root.race.gapMeters >= 0 || root.teamMode)
             visible: celebrate
             width: 8; height: 8
-            color: ["#e23b3b", "#5dff5d", "#3aa0ff", "#ffe08a", "#ff6bd6"][index % 5]
+            color: ["#e23b3b", "#5dff5d", "#3aa0ff", "#ffe08a", "#ff6bd6"][confetti.index % 5]
             x: Math.random() * root.width; y: -20
-            NumberAnimation on y { running: celebrate; loops: Animation.Infinite
-                from: -20; to: root.height + 20; duration: 1700 + (index % 7) * 280 }
-            NumberAnimation on rotation { running: celebrate; loops: Animation.Infinite
-                from: 0; to: 360; duration: 700 + (index % 5) * 220 }
+            NumberAnimation on y { running: confetti.celebrate; loops: Animation.Infinite
+                from: -20; to: root.height + 20; duration: 1700 + (confetti.index % 7) * 280 }
+            NumberAnimation on rotation { running: confetti.celebrate; loops: Animation.Infinite
+                from: 0; to: 360; duration: 700 + (confetti.index % 5) * 220 }
         }
     }
     Rectangle { anchors.fill: parent; color: "#000000"; opacity: 0.4; visible: root.race.finished }
@@ -1092,12 +1095,12 @@ Item {
                color: "#ffe08a"; font.family: "monospace"; font.pixelSize: 46; font.bold: true }
         Text { anchors.horizontalCenter: parent.horizontalCenter
                text: root.teamMode ? "You rode the whole workout with your partner 🎉"
-                   : (root.race.gapMeters >= 0 ? "You won by " + root.race.gapMeters.toFixed(0) + " m! 🎉"
-                                          : "Beaten by " + (-root.race.gapMeters).toFixed(0) + " m")
+                   : (root.race.gapMeters >= 0 ? "You won by " + Math.round(root.race.gapMeters) + " m! 🎉"
+                                          : "Beaten by " + Math.round(-root.race.gapMeters) + " m")
                color: (root.teamMode || root.race.gapMeters >= 0) ? "#5dff5d" : "#ff6b6b"
                font.family: "monospace"; font.pixelSize: 22; font.bold: true }
         Text { anchors.horizontalCenter: parent.horizontalCenter
-               text: (root.race.displayDistanceM / 1000).toFixed(2) + " km   ·   vs " + root.shortName(root.race.oppName, 24)
+               text: RaceStyle.fixed(root.race.displayDistanceM / 1000, 2) + " km   ·   vs " + RaceStyle.shortName(root.race.oppName, 24)
                color: "#cde"; font.family: "monospace"; font.pixelSize: 14 }
         Text { anchors.horizontalCenter: parent.horizontalCenter
                text: "SCORE " + Math.floor(root.score)
