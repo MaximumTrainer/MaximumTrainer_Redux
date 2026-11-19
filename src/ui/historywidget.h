@@ -62,6 +62,7 @@ private:
     WorkoutHistoryModel     *m_model         = nullptr;
     HistoryFilterProxyModel *m_proxy         = nullptr;
     QLabel                  *m_statusLabel   = nullptr;
+    class WeeklySummaryWidget *m_weekly      = nullptr;
     QPushButton             *m_cpBtn         = nullptr;
     QPushButton             *m_pmcBtn        = nullptr;
     QLineEdit               *m_searchEdit    = nullptr;

@@ -32,7 +32,7 @@ target_sources(mt_core PRIVATE
     app/util.cpp app/updatenotifier.cpp app/globalvars.cpp app/simplecrypt.cpp app/networkmonitor.cpp
     app/qtmediaplayer.h
     # fitness
-    fitness/mmpcalculator.cpp fitness/pmccalculator.cpp fitness/ftpestimator.cpp
+    fitness/mmpcalculator.cpp fitness/pmccalculator.cpp fitness/ftpestimator.cpp fitness/weeklysummary.cpp
     fitness/achievements/achievement.cpp fitness/achievements/managerachievement.cpp
     fitness/achievements/achievementchecker.cpp fitness/achievements/achievementcatalog.cpp
     fitness/achievements/achievementstore.cpp
@@ -62,7 +62,7 @@ target_sources(mt_core PRIVATE
     ui/splashscreen.cpp ui/dialogmainwindowconfig.cpp ui/dialog_connection_method.cpp
     ui/tab_intervals_icu.cpp ui/workouthistorymodel.cpp ui/historywidget.cpp
     ui/historyfilterproxymodel.cpp ui/activitydetaildialog.cpp ui/dialogkeyboardshortcuts.cpp
-    ui/planadherencewidget.cpp ui/criticalpowerdialog.cpp ui/pmcdialog.cpp ui/achievementswidget.cpp
+    ui/planadherencewidget.cpp ui/criticalpowerdialog.cpp ui/pmcdialog.cpp ui/achievementswidget.cpp ui/weeklysummarywidget.cpp
     ui/workoutcountdowndialog.cpp ui/queuepanelwidget.cpp ui/sensorswidget.cpp ui/studiowidget.cpp
     ui/apptheme.h ui/asyncdialogs.h
     ui/mainwindow.ui ui/workoutdialog.ui ui/main_workoutpage.ui ui/dialogconfig.ui

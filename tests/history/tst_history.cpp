@@ -23,6 +23,7 @@
 #include "workouthistorymodel.h"
 #include "historyfilterproxymodel.h"
 #include "ftpestimator.h"
+#include "weeklysummary.h"
 
 // Garmin FIT epoch (1989-12-31 UTC) offset from the Unix epoch, in seconds.
 static constexpr qint64 FIT_EPOCH_OFFSET = 631065600LL;
@@ -140,6 +141,43 @@ private:
     };
 
 private slots:
+    void weeklySummary_bucketsByMondayWeek()
+    {
+        QCOMPARE(WeeklySummary::mondayOf(QDate(2026, 11, 19)), QDate(2026, 11, 16));   // Thu
+        QCOMPARE(WeeklySummary::mondayOf(QDate(2026, 11, 16)), QDate(2026, 11, 16));   // Mon
+        QCOMPARE(WeeklySummary::mondayOf(QDate(2026, 11, 22)), QDate(2026, 11, 16));   // Sun
+
+        auto ride = [](const QDate &day, int minutes, double tss, double km) {
+            WorkoutHistorySummary s;
+            s.startTime = QDateTime(day, QTime(18, 0), QTimeZone::LocalTime);
+            s.durationSec = minutes * 60;
+            s.tss = tss;
+            s.totalDistanceKm = km;
+            s.valid = true;
+            return s;
+        };
+        const QDate today(2026, 11, 19);
+        const QVector<WeeklySummary::Week> weeks = WeeklySummary::recentWeeks(
+            {ride(QDate(2026, 11, 17), 60, 70, 30), ride(QDate(2026, 11, 19), 30, 40, 15),
+             ride(QDate(2026, 11, 12), 90, 100, 45),
+             ride(QDate(2026, 8, 1), 60, 80, 30),          // older than 12 weeks
+             WorkoutHistorySummary()},                       // no start time
+            today, 12);
+        QCOMPARE(weeks.size(), 12);
+        QCOMPARE(weeks.last().monday, QDate(2026, 11, 16));
+        QCOMPARE(weeks.first().monday, QDate(2026, 8, 31));
+        QCOMPARE(weeks.last().rides, 2);
+        QCOMPARE(weeks.last().hours, 1.5);
+        QCOMPARE(weeks.last().tss, 110.0);
+        QCOMPARE(weeks.last().km, 45.0);
+        QCOMPARE(weeks.at(10).rides, 1);
+        QCOMPARE(weeks.at(10).tss, 100.0);
+        int total = 0;
+        for (const auto &week : weeks)
+            total += week.rides;
+        QCOMPARE(total, 3);
+    }
+
     void ftpEstimate_rulesOfThumb()
     {
         QCOMPARE(FtpEstimator::ftpFromBest20(250.0), 238);
