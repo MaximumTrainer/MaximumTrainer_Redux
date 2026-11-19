@@ -570,13 +570,10 @@ int main(int argc, char *argv[]) {
     showLogin = [&]() {
         auto *loginDlg = new DialogLogin(nullptr);
         QObject::connect(loginDlg, &QDialog::accepted, loginDlg, [&launchMainWindow, loginDlg]() {
-            // getGotUpdate(): the dialog redirected the user to a new-version
-            // download and rejected itself, so accepted() never fires in that case.
             launchMainWindow();
             loginDlg->deleteLater();
         });
         QObject::connect(loginDlg, &QDialog::rejected, loginDlg, [loginDlg]() {
-            // Login refused, or redirected to a version download (getGotUpdate()).
             loginDlg->deleteLater();
             qApp->quit();
         });

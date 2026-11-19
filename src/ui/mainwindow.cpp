@@ -13,6 +13,8 @@
 #include <QApplication>
 #include <QFileDialog>
 #include <QTimer>
+#include <QToolButton>
+#include "updatenotifier.h"
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
@@ -262,6 +264,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     //DialogConfig
     dconfig = new DialogMainWindowConfig(this);
+
+    auto *updateNotifier = new UpdateNotifier(this);
+    connect(updateNotifier, &UpdateNotifier::updateAvailable, this, &MainWindow::showUpdateAvailable);
+    updateNotifier->check();
 
     connect(dconfig, &DialogMainWindowConfig::intervalsIcuCredentialsChanged,
             ui->tab_intervals_icu, &TabIntervalsIcu::refreshCredentials);
@@ -902,6 +908,33 @@ void MainWindow::on_actionKeyboard_Shortcuts_triggered()
 void MainWindow::on_actionPreferences_triggered()
 {
     dconfig->open();
+}
+void MainWindow::showUpdateAvailable(const QString &latestVersion)
+{
+    const QString label = tr("Update available: %1").arg(latestVersion);
+    auto *download = new QAction(label, this);
+    download->setToolTip(tr("Open the download page for MaximumTrainer %1").arg(latestVersion));
+    connect(download, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl(urlGitHubReleasesPage));
+    });
+
+    // Help menu entry for platforms with a native menu bar (macOS), where a
+    // corner widget is not shown.
+    ui->menu->insertAction(ui->menu->actions().value(0), download);
+    ui->menu->insertSeparator(ui->menu->actions().value(1));
+
+    auto *button = new QToolButton(ui->menuBar);
+    button->setDefaultAction(download);
+    button->setAutoRaise(true);
+    button->setCursor(Qt::PointingHandCursor);
+    QFont font = button->font();
+    font.setBold(true);
+    button->setFont(font);
+    QPalette palette = button->palette();
+    palette.setColor(QPalette::ButtonText, palette.color(QPalette::Highlight));
+    button->setPalette(palette);
+    ui->menuBar->setCornerWidget(button, Qt::TopRightCorner);
+    button->show();
 }
 void MainWindow::on_actionWorkout_triggered()
 {

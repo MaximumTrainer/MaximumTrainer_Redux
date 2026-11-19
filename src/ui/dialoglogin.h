@@ -29,13 +29,7 @@ public:
 
     void changeEvent(QEvent *event) override;
 
-    bool getGotUpdate() {
-        return this->gotUpdateDialog;
-    }
-
 private slots:
-    void slotFinishedGetVersion();
-    void onVersionTimeout();
 
     void slotFinishedIntervalsIcuAthlete();
     void slotFinishedIntervalsIcuSettings();
@@ -103,28 +97,19 @@ private:
 
     IntervalsIcuOAuthFlow *m_oauthFlow = nullptr;
 
-    QNetworkReply *replyVersion;
     QNetworkReply *replyIntervalsIcuAthlete;
     QNetworkReply *replyIntervalsIcuSettings;
     QNetworkReply *m_silentAuthReply;
 
-    QTimer *m_versionTimeout;
     QTimer *m_intervalsIcuTimeout;
     QTimer *m_silentAuthTimeout;
 
-    bool gotUpdateDialog;
     bool m_testMode = false;
     bool m_silentAuthCancelled = false;
     int  m_pendingIntervalsIcuReplies;
 
     bool m_loggingInViaIntervalsIcu = false;
 
-    // The update dialog runs a nested event loop. Silent auto-login can finish
-    // inside it; accepting this (non-modal) dialog from there would delete it
-    // mid-callback (use-after-free). While the update dialog is open, defer
-    // login completion and run it once the dialog closes.
-    bool m_updateDialogOpen = false;
-    bool m_loginCompletePending = false;
 
 #ifdef Q_OS_WASM
     QString        m_wasmOAuthState;           ///< CSRF state for the current OAuth popup.
