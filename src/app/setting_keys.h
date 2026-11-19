@@ -44,13 +44,13 @@ inline constexpr SettingKey<bool> ShowHrWidget                   {"displayPrefs/
 inline constexpr SettingKey<bool> ShowPowerWidget                {"displayPrefs/show_power_widget",                   true};
 inline constexpr SettingKey<bool> ShowPowerBalanceWidget         {"displayPrefs/show_power_balance_widget",           true};
 inline constexpr SettingKey<bool> ShowCadenceWidget              {"displayPrefs/show_cadence_widget",                 true};
-inline constexpr SettingKey<bool> ShowSpeedWidget                {"displayPrefs/show_speed_widget",                   true};
-inline constexpr SettingKey<bool> ShowCaloriesWidget             {"displayPrefs/show_calories_widget",                true};
-inline constexpr SettingKey<bool> ShowOxygenWidget               {"displayPrefs/show_oxygen_widget",                  true};
-inline constexpr SettingKey<bool> ShowTrainerSpeed               {"displayPrefs/show_trainer_speed",                  true};
+inline constexpr SettingKey<bool> ShowSpeedWidget                {"displayPrefs/show_speed_widget",                   false};
+inline constexpr SettingKey<bool> ShowCaloriesWidget             {"displayPrefs/show_calories_widget",                false};
+inline constexpr SettingKey<bool> ShowOxygenWidget               {"displayPrefs/show_oxygen_widget",                  false};
+inline constexpr SettingKey<bool> ShowTrainerSpeed               {"displayPrefs/show_trainer_speed",                  false};
 inline constexpr SettingKey<int>  DisplayHr                      {"displayPrefs/display_hr",                          1};
 inline constexpr SettingKey<int>  DisplayPower                   {"displayPrefs/display_power",                       2};
-inline constexpr SettingKey<int>  DisplayPowerBalance            {"displayPrefs/display_power_balance",               0}; // 0: when balance data is available, 1: only for intervals with a balance target
+inline constexpr SettingKey<int>  DisplayPowerBalance            {"displayPrefs/display_power_balance",               1}; // 0: when balance data is available, 1: only for intervals with a balance target
 inline constexpr SettingKey<int>  DisplayCadence                 {"displayPrefs/display_cadence",                     1};
 inline constexpr SettingKey<int>  DisplayVideo                   {"displayPrefs/display_video",                       0};
 /// Retired power offset; removed at load.
@@ -79,7 +79,7 @@ inline constexpr SettingKey<bool> ShowTimerOnTop                 {"displayPrefs/
 inline constexpr SettingKey<bool> ShowIntervalRemaining          {"displayPrefs/show_interval_remaining",             true};
 inline constexpr SettingKey<bool> ShowWorkoutRemaining           {"displayPrefs/show_workout_remaining",              false};
 inline constexpr SettingKey<bool> ShowElapsed                    {"displayPrefs/show_elapsed",                        true};
-inline constexpr SettingKey<bool> ShowCurrentTarget              {"displayPrefs/show_current_target",                 true};
+inline constexpr SettingKey<bool> ShowCurrentTarget              {"displayPrefs/show_current_target",                 false};
 inline constexpr SettingKey<bool> ShowSeperatorInterval          {"displayPrefs/show_seperator_interval",             true};
 inline constexpr SettingKey<bool> ShowGrid                       {"displayPrefs/show_grid",                           false};
 inline constexpr SettingKey<bool> ShowHrTarget                   {"displayPrefs/show_hr_target",                      true};
