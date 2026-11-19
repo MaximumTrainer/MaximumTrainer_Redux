@@ -152,7 +152,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->setupUi(this);
     this->setEnabled(false);
     ui->widget_bottomMenu->setGeneralMessage(tr("Retrieving Data...")); //will be removed when response is received
-    ui->actionAbout_Qt->setIcon(QIcon(":/qt-project.org/qmessagebox/images/qtlogo-64.png"));
     ui->actionOpen_Ride->setEnabled(true);
 
     this->settings = qApp->property("User_Settings").value<Settings*>();
@@ -264,7 +263,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     //DialogConfig
     dconfig = new DialogMainWindowConfig(this);
-
     auto *updateNotifier = new UpdateNotifier(this);
     connect(updateNotifier, &UpdateNotifier::updateAvailable, this, &MainWindow::showUpdateAvailable);
     updateNotifier->check();
@@ -870,25 +868,25 @@ void MainWindow::on_actionAbout_MT_triggered()
                       + "<br/>"
                       + tr("Copyright 2019-present MaximumTrainer maintainers");
     const QString repoUrl = QStringLiteral("https://github.com/MaximumTrainer/MaximumTrainer_Redux");
-    QString openSource = tr("%1 is free and open source. Contributions are welcome — "
+    QString openSource = tr("%1 is free and open source. Contributions are welcome: "
                             "fork it, open an issue, or send a pull request on "
                             "<a href=\"%2\">GitHub</a>.")
                             .arg(appName, repoUrl);
-    this->setStyleSheet("QMessageBox { messagebox-text-interaction-flags: 5; }");
-    QMessageBox::about(this,
-                       tr("About ") + appName,
-                       "<b>"+ nameWithVersion + "</b> - " + tr("Build on ")  + Environnement::getDateBuilded() + "<br/>" +
-                       copyright + "<hr/>" +
-                       openSource + "<hr/>" +
-                       tr("Normalized Power®(NP), Training Stress Score®(TSS) and Intensity Factor®(IF) are registered trademarks of Peaksware LLC."));
-
-
-}
-void MainWindow::on_actionAbout_Qt_triggered()
-{
-    QMessageBox::aboutQt(this);
-
-
+    // open(), not QMessageBox::about(): its exec() is fatal on WASM.
+    auto *about = new QMessageBox(this);
+    about->setAttribute(Qt::WA_DeleteOnClose);
+    about->setWindowTitle(tr("About ") + appName);
+    about->setIconPixmap(windowIcon().pixmap(64, 64));
+    about->setTextFormat(Qt::RichText);
+    about->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    about->setText("<b>"+ nameWithVersion + "</b><br/>" +
+                   copyright + "<hr/>" +
+                   openSource + "<hr/>" +
+                   tr("Built with <a href=\"https://www.qt.io/\">Qt</a> %1, used under the "
+                      "<a href=\"https://www.gnu.org/licenses/lgpl-3.0.html\">LGPL v3</a>.")
+                       .arg(QString::fromLatin1(qVersion())) + "<br/>" +
+                   tr("Normalized Power®(NP), Training Stress Score®(TSS) and Intensity Factor®(IF) are registered trademarks of Peaksware LLC."));
+    about->open();
 }
 void MainWindow::on_actionRequest_Help_triggered()
 {

@@ -143,6 +143,7 @@ void DialogMainWindowConfig::initUI() {
 
     // Intervals.icu credentials
     ui->checkBox_intervalsAutoUpload->setChecked(account->intervals_icu_auto_upload);
+    updateIntervalsAvailability();
 
     // Athlete profile (FTP / LTHR / weight) — edited here, persisted locally.
     ui->spinBox_ftp->setValue(account->FTP);
@@ -154,6 +155,8 @@ void DialogMainWindowConfig::initUI() {
 
 void DialogMainWindowConfig::stravaLinked(bool linked) {
 
+    ui->checkBox_stravaAutoUpload->setEnabled(linked);
+    ui->label_stravaConnected->setVisible(linked);
 
     if (linked) {
         ui->label_connectStrava->setCursor(Qt::ArrowCursor);
@@ -214,8 +217,12 @@ void DialogMainWindowConfig::unlinkStravaClicked() {
 void DialogMainWindowConfig::stravaUnlinkFinished() {
 
 
-    // Unlink locally whether or not Strava acknowledged the deauthorization.
-    account->strava_access_token = "";
+    // Unlink locally whether or not Strava acknowledged the deauthorization,
+    // and persist now: Cancel on this dialog must not resurrect the link.
+    account->strava_access_token.clear();
+    account->strava_refresh_token.clear();
+    account->strava_token_expires_at = 0;
+    account->saveStravaCredentials();
     stravaLinked(false);
     replyStravaDeauthorization->deleteLater();
 
@@ -250,6 +257,7 @@ void DialogMainWindowConfig::showEvent(QShowEvent *event) {
     ui->spinBox_lthr->setValue(account->LTHR);
     ui->doubleSpinBox_weight->setValue(account->weight_kg);
     updateProfileSyncLabel();
+    updateIntervalsAvailability();
 }
 
 /// Show where FTP/LTHR came from when the last intervals.icu login synced
@@ -359,11 +367,23 @@ void DialogMainWindowConfig::accept() {
 
 void DialogMainWindowConfig::setOnlineMode(bool isOnline)
 {
-#ifndef GC_WASM_BUILD
-    ui->groupBox_intervals->setVisible(isOnline);
-#else
-    Q_UNUSED(isOnline);
-#endif
+    m_networkOnline = isOnline;
+    updateIntervalsAvailability();
+}
+
+void DialogMainWindowConfig::updateIntervalsAvailability()
+{
+    const bool signedIn = !account->intervals_icu_access_token.isEmpty();
+    QString reason;
+    if (!signedIn)
+        reason = tr("Intervals.icu features need you to sign in with Intervals.icu. "
+                    "Choose MaximumTrainer → Log Out to return to the sign-in screen.");
+    else if (!m_networkOnline)
+        reason = tr("Intervals.icu is not available while offline. "
+                    "Please check your internet connection.");
+    ui->checkBox_intervalsAutoUpload->setEnabled(reason.isEmpty());
+    ui->label_intervalsSignIn->setText(reason);
+    ui->label_intervalsSignIn->setVisible(!reason.isEmpty());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

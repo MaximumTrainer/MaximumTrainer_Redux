@@ -228,7 +228,6 @@
      <string>?</string>
     </property>
     <addaction name="actionAbout_MT"/>
-    <addaction name="actionAbout_Qt"/>
     <addaction name="actionRequest_Help"/>
     <addaction name="actionKeyboard_Shortcuts"/>
    </widget>
@@ -292,11 +291,6 @@
    </property>
    <property name="text">
     <string>About MaximumTrainer</string>
-   </property>
-  </action>
-  <action name="actionAbout_Qt">
-   <property name="text">
-    <string>About Qt</string>
    </property>
   </action>
   <action name="actionRequest_Help">
