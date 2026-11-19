@@ -69,7 +69,7 @@ QVariant WorkoutHistoryModel::data(const QModelIndex &index, int role) const
         // Numeric sort values for QSortFilterProxyModel — avoids lexicographic ordering
         // on formatted strings like "120 W", "9.5 km", "1h 05m".
         switch (index.column()) {
-        case ColDate:     return s.startTime.toSecsSinceEpoch();
+        case ColDate:     return s.startTime.isValid() ? s.startTime.toSecsSinceEpoch() : qint64(0);
         case ColWorkout:  return s.workoutName;
         case ColDuration: return s.durationSec;
         case ColAvgPower: return s.avgPowerW;

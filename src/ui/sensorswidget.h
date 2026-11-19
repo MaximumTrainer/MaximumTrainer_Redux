@@ -69,6 +69,7 @@ private:
     QCheckBox *m_controlResistanceCheck = nullptr;
     QCheckBox *m_virtualShiftingCheck = nullptr;
     QCheckBox *m_useZwiftClickCheck = nullptr;
+    QLabel    *m_zwiftClickHint = nullptr;
     QSpinBox  *m_ergRampSpin            = nullptr;
     QCheckBox *m_dropoutEnabledCheck    = nullptr;
     QSpinBox  *m_dropoutTimeoutSpin     = nullptr;

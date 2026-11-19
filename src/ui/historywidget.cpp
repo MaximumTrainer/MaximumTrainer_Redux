@@ -57,7 +57,8 @@ void HistoryWidget::setupUi()
     m_tableView->setAlternatingRowColors(true);
     m_tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    m_tableView->horizontalHeader()->setStretchLastSection(true);
+    // The workout name takes the spare width, not the last column (Calories).
+    m_tableView->horizontalHeader()->setSectionResizeMode(WorkoutHistoryModel::ColWorkout, QHeaderView::Stretch);
     m_tableView->verticalHeader()->hide();
     m_tableView->sortByColumn(0, Qt::DescendingOrder);
     m_tableView->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -175,6 +176,10 @@ void HistoryWidget::loadHistory()
     }
 
     m_model->setHistory(summaries);
+    if (!m_dateRangeInitialized) {
+        m_dateRangeInitialized = true;
+        resetDateRange();
+    }
 
     if (summaries.isEmpty())
         m_statusLabel->setText(tr("No activities found in %1").arg(historyPath));
@@ -189,7 +194,7 @@ void HistoryWidget::updateStatus()
         return;  // keep the load-time "no activities / folder not found" message
     const int shown = m_proxy->rowCount();
     if (shown == total)
-        m_statusLabel->setText(tr("%n activity(ies)", "", total));
+        m_statusLabel->setText(total == 1 ? tr("1 activity") : tr("%1 activities").arg(total));
     else
         m_statusLabel->setText(tr("Showing %1 of %2 activities").arg(shown).arg(total));
 }
@@ -229,9 +234,20 @@ void HistoryWidget::applyFilters()
 void HistoryWidget::clearFilters()
 {
     m_searchEdit->clear();
-    m_fromDate->setDate(QDate::currentDate().addYears(-1));
-    m_toDate->setDate(QDate::currentDate());
+    resetDateRange();
     applyFilters();
+}
+
+// Default range covers every activity, so no ride is hidden until the user
+// narrows it.
+void HistoryWidget::resetDateRange()
+{
+    QDate earliest = QDate::currentDate();
+    for (const WorkoutHistorySummary &summary : m_model->history())
+        if (summary.startTime.isValid() && summary.startTime.date() < earliest)
+            earliest = summary.startTime.date();
+    m_fromDate->setDate(earliest);
+    m_toDate->setDate(QDate::currentDate());
 }
 
 const WorkoutHistorySummary *HistoryWidget::summaryForProxyRow(const QModelIndex &proxyIndex) const

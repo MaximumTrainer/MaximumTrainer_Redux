@@ -20,6 +20,8 @@
 #include "fitactivityreader.h"
 #include "fitactivitydetailreader.h"
 #include "pmccalculator.h"
+#include "workouthistorymodel.h"
+#include "historyfilterproxymodel.h"
 
 // Garmin FIT epoch (1989-12-31 UTC) offset from the Unix epoch, in seconds.
 static constexpr qint64 FIT_EPOCH_OFFSET = 631065600LL;
@@ -137,6 +139,27 @@ private:
     };
 
 private slots:
+    void dateFilterKeepsUndatedActivities()
+    {
+        WorkoutHistorySummary dated;
+        dated.workoutName = QStringLiteral("Dated");
+        dated.startTime = QDateTime(QDate(2024, 1, 15), QTime(10, 0), QTimeZone::UTC);
+        WorkoutHistorySummary undated;
+        undated.workoutName = QStringLiteral("Undated");
+
+        WorkoutHistoryModel model;
+        model.setHistory({dated, undated});
+        HistoryFilterProxyModel proxy;
+        proxy.setSourceModel(&model);
+
+        proxy.setDateRange(QDate(2025, 1, 1), QDate(2025, 12, 31));
+        QCOMPARE(proxy.rowCount(), 1);
+        QCOMPARE(proxy.index(0, WorkoutHistoryModel::ColWorkout).data().toString(), QStringLiteral("Undated"));
+
+        proxy.setDateRange(QDate(2024, 1, 1), QDate(2024, 12, 31));
+        QCOMPARE(proxy.rowCount(), 2);
+    }
+
 
     // ── FIT encoding: 32-bit fields are declared 4 bytes wide ─────────────────
     // With 8-byte FIT_UINT32 (no FIT_USE_STDINT_H on LP64) the encoder declared
