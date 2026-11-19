@@ -196,6 +196,16 @@ jobs:
         # --autodesktop (v4) auto-installs the matching linux gcc_64 desktop Qt
         # and sets QT_HOST_PATH, so no separate host-tools install step is needed.
 
+    - name: Set up ccache
+      # Same compiler cache as the desktop builds: em++ is a clang driver, so
+      # ccache wraps it as a CMake compiler launcher.
+      uses: hendrikmuhs/ccache-action@v1.2.25
+      with:
+        key: wasm-qt6.11.3-em4.0.7
+        max-size: 400M
+        evict-old-files: job
+        job-summary: ccache stats
+
     - name: Restore QWT cache (Wasm)
       id: qwt-wasm-cache
       uses: actions/cache@v6
@@ -255,7 +265,8 @@ jobs:
         source "$EMSDK/emsdk_env.sh"
         cmake -S . -B build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_TOOLCHAIN_FILE="$QT_ROOT_DIR/lib/cmake/Qt6/qt.toolchain.cmake" \
-          -DQWT_INSTALL="$HOME/qwt-wasm" -DMT_WERROR=ON -DMT_BUILD_TESTS=OFF
+          -DQWT_INSTALL="$HOME/qwt-wasm" -DMT_WERROR=ON -DMT_BUILD_TESTS=OFF \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
         cmake --build build-wasm
         ls -la build-wasm/release
 
