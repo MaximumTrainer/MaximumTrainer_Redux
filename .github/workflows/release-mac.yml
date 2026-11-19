@@ -17,6 +17,7 @@ jobs:
 
   build_mac:
     runs-on: macos-latest
+    timeout-minutes: 35
     permissions:
       contents: read
       actions: read

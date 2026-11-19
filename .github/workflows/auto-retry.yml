@@ -24,7 +24,8 @@ permissions:
 jobs:
   rerun_failed_jobs:
     if: >-
-      github.event.workflow_run.conclusion == 'failure' &&
+      (github.event.workflow_run.conclusion == 'failure' ||
+       github.event.workflow_run.conclusion == 'timed_out') &&
       github.event.workflow_run.run_attempt == 1
     runs-on: ubuntu-latest
     steps:

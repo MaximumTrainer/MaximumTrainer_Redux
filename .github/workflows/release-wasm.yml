@@ -17,6 +17,7 @@ jobs:
 
   build_wasm:
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     permissions:
       contents: read
       actions: read

@@ -25,6 +25,7 @@ jobs:
 
   build_windows:
     runs-on: windows-latest
+    timeout-minutes: 35
     permissions:
       contents: read
       actions: read
@@ -183,6 +184,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   test_install_windows:
     runs-on: windows-latest
+    timeout-minutes: 25
     needs: build_windows
     permissions:
       contents: read
