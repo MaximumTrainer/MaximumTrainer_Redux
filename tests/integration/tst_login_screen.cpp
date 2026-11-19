@@ -92,6 +92,7 @@
 #include <QSignalSpy>
 #include <QStackedWidget>
 #include <QTcpSocket>
+#include <QTcpServer>
 #include <QHostAddress>
 
 #include "../../src/btle/simulator_hub.h"
@@ -398,6 +399,55 @@ static void saveScreenshot(QWidget &window,
     qDebug().noquote() << "[Screenshot] Saved to:" << path;
 }
 
+
+
+// Sends every request to a local HTTP server instead of intervals.icu.
+class RedirectingNam : public QNetworkAccessManager
+{
+public:
+    explicit RedirectingNam(quint16 port, QObject *parent = nullptr)
+        : QNetworkAccessManager(parent), m_port(port) {}
+protected:
+    QNetworkReply *createRequest(Operation op, const QNetworkRequest &request,
+                                 QIODevice *body) override
+    {
+        QNetworkRequest local(request);
+        QUrl url = request.url();
+        url.setScheme(QStringLiteral("http"));
+        url.setHost(QStringLiteral("127.0.0.1"));
+        url.setPort(m_port);
+        local.setUrl(url);
+        return QNetworkAccessManager::createRequest(op, local, body);
+    }
+private:
+    quint16 m_port;
+};
+
+// Minimal HTTP server answering every request with one fixed status.
+class FixedStatusServer : public QTcpServer
+{
+public:
+    explicit FixedStatusServer(int status, QObject *parent = nullptr)
+        : QTcpServer(parent), m_status(status)
+    {
+        connect(this, &QTcpServer::newConnection, this, [this]() {
+            while (QTcpSocket *socket = nextPendingConnection()) {
+                connect(socket, &QTcpSocket::readyRead, socket, [this, socket]() {
+                    socket->readAll();
+                    const QByteArray body = m_status == 200 ? QByteArray("{}") : QByteArray();
+                    socket->write("HTTP/1.1 " + QByteArray::number(m_status) + " X\r\n"
+                                  "Content-Type: application/json\r\n"
+                                  "Content-Length: " + QByteArray::number(body.size()) + "\r\n"
+                                  "Connection: close\r\n\r\n" + body);
+                    socket->disconnectFromHost();
+                });
+                connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
+            }
+        });
+    }
+private:
+    int m_status;
+};
 
 // ---------------------------------------------------------------------------
 // TstLoginScreen -- QTest class
@@ -841,6 +891,51 @@ private slots:
     //   • pushButton_loginIntervalsIcu exists in the dialog.
     //   • Screenshot saved and non-empty.
     // -----------------------------------------------------------------------
+    // A saved session must survive intervals.icu being down or unreachable:
+    // the app opens with it instead of falling back to the sign-in form.
+    // A rejected token (401) still returns to the sign-in form.
+    void testSilentLoginToleratesOutage_data()
+    {
+        QTest::addColumn<int>("status");          // 0 = connection refused
+        QTest::addColumn<bool>("expectAccepted");
+        QTest::newRow("server error 503")   << 503 << true;
+        QTest::newRow("connection refused") << 0   << true;
+        QTest::newRow("token rejected 401") << 401 << false;
+    }
+
+    void testSilentLoginToleratesOutage()
+    {
+        QFETCH(int, status);
+        QFETCH(bool, expectAccepted);
+
+        FixedStatusServer server(status);
+        quint16 port = 1;  // nothing listens on port 1: connection refused
+        if (status != 0) {
+            QVERIFY(server.listen(QHostAddress::LocalHost));
+            port = server.serverPort();
+        }
+        RedirectingNam nam(port);
+        qApp->setProperty("NetworkManagerWS", QVariant::fromValue<QNetworkAccessManager *>(&nam));
+        m_account->intervals_icu_access_token = QStringLiteral("saved-token");
+        m_account->intervals_icu_athlete_id   = QStringLiteral("i12345");
+
+        auto *dlg = new DialogLogin(nullptr, /*testMode=*/false);
+        QSignalSpy accepted(dlg, &QDialog::accepted);
+        dlg->show();
+
+        if (expectAccepted) {
+            QVERIFY(accepted.wait(8000));
+        } else {
+            QTRY_VERIFY_WITH_TIMEOUT(m_account->intervals_icu_access_token.isEmpty(), 8000);
+            QCOMPARE(accepted.count(), 0);
+        }
+
+        delete dlg;
+        qApp->setProperty("NetworkManagerWS", QVariant::fromValue(m_nam));
+        m_account->intervals_icu_access_token.clear();
+        m_account->intervals_icu_athlete_id.clear();
+    }
+
     void testUpdateNotifierNewerVersion()
     {
         const QString release = QStringLiteral(R"({"tag_name":"v0.0.272"})");
