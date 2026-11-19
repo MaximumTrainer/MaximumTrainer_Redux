@@ -88,15 +88,13 @@ public:
 
 
     void setMessagePlot();
-    void moveWidgetsPosition();
+    void layoutBottomWidgets();
 
     ///timers
-    void showTimerOnTop(bool);
     void showTimerIntervalRemaining(bool);
     void showTimerWorkoutRemaining(bool);
     void showTimerWorkoutElapsed(bool);
     void showTimerCurrentTarget(bool);
-    void updateTimeWidgetVisibility();
 
 
 signals:
@@ -506,7 +504,6 @@ private:
 
     MapTestTracker m_mapTest;
 
-    bool m_timerOnTop = false;   // timers shown on the top bar (vs bottom-left)
 
     int currentTargetPower;
     int currentTargetPowerRange;

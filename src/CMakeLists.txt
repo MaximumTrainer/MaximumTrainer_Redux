@@ -75,11 +75,11 @@ target_sources(mt_core PRIVATE
     ui/components/clickablelabel.cpp ui/components/fancytab.cpp ui/components/fancytabbar.cpp
     ui/components/stylehelper.cpp ui/components/faderlabel.cpp ui/components/faderwidget.cpp
     ui/components/faderframe.cpp ui/components/tableviewhover.cpp ui/components/clock.cpp
-    ui/components/infosworkout.cpp ui/components/timewidget.cpp ui/components/oxygenwidget.cpp
+    ui/components/infosworkout.cpp ui/components/oxygenwidget.cpp
     ui/components/userstudiowidget.cpp ui/components/toggleswitch.cpp
     ui/components/webbrowserview.cpp ui/components/myqwebenginepage.h
     ui/components/infowidget.ui ui/components/bottombar.ui ui/components/topmenuworkout.ui
-    ui/components/balancewidget.ui ui/components/infosworkout.ui ui/components/timewidget.ui
+    ui/components/balancewidget.ui ui/components/infosworkout.ui
     ui/components/oxygenwidget.ui ui/components/userstudiowidget.ui
     # ui/plots
     ui/plots/workoutplot.cpp ui/plots/workoutplotlist.cpp ui/plots/markeritem.cpp

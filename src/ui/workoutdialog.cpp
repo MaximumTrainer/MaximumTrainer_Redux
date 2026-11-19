@@ -763,11 +763,11 @@ void WorkoutDialog::lastAchievementAnimationDone() {
 void WorkoutDialog::initUI() {
 
     if (!account->enable_studio_mode) {
-        moveWidgetsPosition();
+        layoutBottomWidgets();
     }
 
     ///Timers
-    showTimerOnTop(account->show_timer_on_top);
+    ui->widget_topMenu->setTimersVisible(true);
     showTimerIntervalRemaining(account->show_interval_remaining);
     showTimerWorkoutRemaining(account->show_workout_remaining);
     showTimerWorkoutElapsed(account->show_elapsed);
@@ -803,11 +803,9 @@ void WorkoutDialog::initUI() {
 
     if (workout.getWorkoutNameEnum() == Workout::OPEN_RIDE) {
         ui->widget_topMenu->setWorkoutNameLabel(tr("Free Ride"));
-        ui->widget_time->setFreeRideMode();
         ui->widget_topMenu->setFreeRideMode();
     }
     else if (workout.getWorkoutNameEnum() == Workout::MAP_TEST) {
-        ui->widget_time->setMAPMode();
         ui->widget_topMenu->setMAPMode();
     }
     if (workout.getWorkoutNameEnum() == Workout::MAP_TEST || workout.getWorkoutNameEnum() == Workout::OPEN_RIDE)
@@ -818,12 +816,10 @@ void WorkoutDialog::initUI() {
     if (workout.getWorkoutNameEnum() != Workout::OPEN_RIDE) {
 
         timeWorkoutRemaining = workout.getDurationQTime();
-        ui->widget_time->setWorkoutRemainingTime(timeWorkoutRemaining);
         ui->widget_topMenu->setWorkoutRemainingTime(timeWorkoutRemaining);
 
         Interval firstInterval = workout.getInterval(0);
         timeInterval = firstInterval.getDurationQTime();
-        ui->widget_time->setIntervalTime(timeInterval);
         ui->widget_topMenu->setIntervalTime(timeInterval);
 
         adjustTargets(firstInterval);
@@ -831,7 +827,6 @@ void WorkoutDialog::initUI() {
     else {
         // open ride
         timeWorkoutRemaining = timeInterval = QTime(0,0,0,0);
-        ui->widget_time->setIntervalTime(timeInterval);
         ui->widget_topMenu->setIntervalTime(timeInterval);
 
         targetPowerChanged_f(-1, 30);
@@ -844,7 +839,6 @@ void WorkoutDialog::initUI() {
 
 
     if (account->enable_studio_mode) {
-        showTimerOnTop(true);
         ui->wid_1_infoBoxHr->setVisible(false);
         ui->wid_1_infoBoxHr->setVisible(false);
         ui->wid_1_workoutPlot_HeartrateZoom->setVisible(false);
@@ -862,12 +856,11 @@ void WorkoutDialog::initUI() {
 }
 
 
-void WorkoutDialog::moveWidgetsPosition() {
+void WorkoutDialog::layoutBottomWidgets() {
 
 
     QHBoxLayout *horizontalLayout = static_cast<QHBoxLayout*>(ui->horizontalLayout_Bottom->layout());
 
-    horizontalLayout->removeWidget(ui->widget_time);
     horizontalLayout->removeWidget(ui->wid_1_infoBoxHr);
     horizontalLayout->removeWidget(ui->wid_1_workoutPlot_HeartrateZoom);
 
@@ -883,36 +876,14 @@ void WorkoutDialog::moveWidgetsPosition() {
     horizontalLayout->removeWidget(ui->wid_5_infoWorkout);
 
 
-    // insert in good order
-    for (int i=0; i<account->getNumberWidget(); i++) {
-        if (account->tab_display[i] == account->getTimerStr() ) {
-            horizontalLayout->addWidget(ui->widget_time);
-        }
-        else if (account->tab_display[i] == account->getHrStr()) {
-            horizontalLayout->addWidget(ui->wid_1_infoBoxHr);
-            horizontalLayout->addWidget(ui->wid_1_workoutPlot_HeartrateZoom);
-        }
-        else if (account->tab_display[i] == account->getPowerStr()) {
-            horizontalLayout->addWidget(ui->wid_2_infoBoxPower);
-            horizontalLayout->addWidget(ui->wid_2_workoutPlot_PowerZoom);
-        }
-        else if (account->tab_display[i] == account->getCadenceStr()) {
-            horizontalLayout->addWidget(ui->wid_3_infoBoxCadence);
-            horizontalLayout->addWidget(ui->wid_3_workoutPlot_CadenceZoom);
-        }
-        else if (account->tab_display[i] == account->getPowerBalanceStr()) {
-            horizontalLayout->addWidget(ui->wid_2_balancePower);
-        }
-        else if (account->tab_display[i] == account->getSpeedStr()) {
-            horizontalLayout->addWidget(ui->wid_4_infoBoxSpeed);
-        }
-        else if (account->tab_display[i] == account->getInfoWorkoutStr()) {
-            horizontalLayout->addWidget(ui->wid_5_infoWorkout);
-        }
-        else { //settings->tabDisplay[i] == settings->getOxygenStr()
-            horizontalLayout->addWidget(ui->wid_oxygen);
-        }
-    }
+    for (QWidget *widget : {static_cast<QWidget *>(ui->wid_2_infoBoxPower), static_cast<QWidget *>(ui->wid_2_workoutPlot_PowerZoom),
+                            static_cast<QWidget *>(ui->wid_3_infoBoxCadence), static_cast<QWidget *>(ui->wid_3_workoutPlot_CadenceZoom),
+                            static_cast<QWidget *>(ui->wid_2_balancePower),
+                            static_cast<QWidget *>(ui->wid_1_infoBoxHr), static_cast<QWidget *>(ui->wid_1_workoutPlot_HeartrateZoom),
+                            static_cast<QWidget *>(ui->wid_4_infoBoxSpeed),
+                            static_cast<QWidget *>(ui->wid_5_infoWorkout),
+                            static_cast<QWidget *>(ui->wid_oxygen)})
+        horizontalLayout->addWidget(widget);
 }
 
 
@@ -1016,20 +987,16 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
 
     // Update Timers
     timeElapsedTotal = timeElapsedTotal.addSecs(1);
-    ui->widget_time->setWorkoutTime(timeElapsedTotal);
     ui->widget_topMenu->setWorkoutTime(timeElapsedTotal);
 
     if (workout.getWorkoutNameEnum() == Workout::OPEN_RIDE) {
         timeInterval = timeInterval.addSecs(1);
-        ui->widget_time->setIntervalTime(timeInterval);
         ui->widget_topMenu->setIntervalTime(timeInterval);
     }
     else {
         timeInterval = timeInterval.addSecs(-1);
-        ui->widget_time->setIntervalTime(timeInterval);
         ui->widget_topMenu->setIntervalTime(timeInterval);
         timeWorkoutRemaining = timeWorkoutRemaining.addSecs(-1);
-        ui->widget_time->setWorkoutRemainingTime(timeWorkoutRemaining);
         ui->widget_topMenu->setWorkoutRemainingTime(timeWorkoutRemaining);
 
     }
@@ -1166,7 +1133,6 @@ void WorkoutDialog::lapButtonPressed() {
 
     if (workout.getWorkoutNameEnum() == Workout::OPEN_RIDE) {
         timeInterval = QTime(0,0,0,0);
-        ui->widget_time->setIntervalTime(timeInterval);
         ui->widget_topMenu->setIntervalTime(timeInterval);
     }
 }
@@ -1412,7 +1378,6 @@ void WorkoutDialog::applyMoveToInterval(int nbIntervalToDelete) {
 
     //-- Update Timers
     timeInterval = currentIntervalObj.getDurationQTime();
-    ui->widget_time->setIntervalTime(timeInterval);
     ui->widget_topMenu->setIntervalTime(timeInterval);
 
     //calculate workoutRemainingTime
@@ -1420,7 +1385,6 @@ void WorkoutDialog::applyMoveToInterval(int nbIntervalToDelete) {
     for (int i=currentInterval; i<workout.getLstInterval().size(); i++) {
         timeWorkoutRemaining = timeWorkoutRemaining.addSecs(Util::convertQTimeToSecD(workout.getInterval(i).getDurationQTime()));
     }
-    ui->widget_time->setWorkoutRemainingTime(timeWorkoutRemaining);
     ui->widget_topMenu->setWorkoutRemainingTime(timeWorkoutRemaining);
 
     //start timer ignore click (click on QDialog response trigger a new click event)
@@ -1444,7 +1408,6 @@ void WorkoutDialog::moveToNextInterval() {
     if (newInterval.getDisplayMessage() != "")
         ui->widget_workoutPlot->setDisplayIntervalMessage(false, newInterval.getDisplayMessage(), account->nb_sec_show_interval);
 
-    ui->widget_time->setIntervalTime(newInterval.getDurationQTime());
     ui->widget_topMenu->setIntervalTime(newInterval.getDurationQTime());
 
     adjustTargets(newInterval);
@@ -1926,8 +1889,6 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
     }
 
 
-    if (!account->enable_studio_mode)
-        value = value + account->offset_power;
     if (value < 0)
         return;
 
@@ -2323,7 +2284,6 @@ void WorkoutDialog::targetPowerChanged_f(double percentageTarget, int range) {
         // Keep the team-race (draft/leash) in step with the current ERG/slope mode.
         raceController->setErgMode(!isUsingSlopeMode && account->control_trainer_resistance);
     }
-    ui->widget_time->setTargetPower(percentageTarget, range);
     ui->widget_topMenu->setTargetPower(percentageTarget, range);
     sendTargetsPower(percentageTarget, range);
 
@@ -2337,7 +2297,6 @@ void WorkoutDialog::targetCadenceChanged_f(int target, int range) {
 
     currentTargetCadence = target;
     currentTargetCadenceRange = range;
-    ui->widget_time->setTargetCadence(target, range);
     ui->widget_topMenu->setTargetCadence(target, range);
 
     sendTargetsCadence(target, range);
@@ -2346,7 +2305,6 @@ void WorkoutDialog::targetCadenceChanged_f(int target, int range) {
 
 void WorkoutDialog::targetHrChanged_f(double percentageTarget, int range) {
 
-    ui->widget_time->setTargetHeartRate(percentageTarget, range);
     ui->widget_topMenu->setTargetHeartRate(percentageTarget, range);
 
     sendTargetsHr(percentageTarget, range);
@@ -2467,48 +2425,28 @@ int WorkoutDialog::calculateNewTargetCadence() {
     return y;
 }
 
-void WorkoutDialog::showTimerOnTop(bool showOnTop) {
-
-
-    m_timerOnTop = showOnTop;
-    ui->widget_topMenu->setTimersVisible(showOnTop);
-    updateTimeWidgetVisibility();
-}
-
 void WorkoutDialog::showTimerIntervalRemaining(bool show) {
 
-    ui->widget_time->showIntervalRemaining(show);
     ui->widget_topMenu->showIntervalRemaining(show);
-    updateTimeWidgetVisibility();
 }
 
 void WorkoutDialog::showTimerWorkoutRemaining(bool show) {
 
-    ui->widget_time->showWorkoutRemaining(show);
     ui->widget_topMenu->showWorkoutRemaining(show);
-    updateTimeWidgetVisibility();
 }
 
 void WorkoutDialog::showTimerWorkoutElapsed(bool show) {
 
-    ui->widget_time->showWorkoutElapsed(show);
     ui->widget_topMenu->showWorkoutElapsed(show);
-    updateTimeWidgetVisibility();
 }
 
 void WorkoutDialog::showTimerCurrentTarget(bool show) {
 
-    ui->widget_time->showCurrentTarget(show);
     ui->widget_topMenu->showCurrentTarget(show);
-    updateTimeWidgetVisibility();
 }
 
 // Hide the bottom-left time widget entirely when it's on the top bar or when no
 // timer element is enabled — otherwise it reserves an empty box bottom-left.
-void WorkoutDialog::updateTimeWidgetVisibility() {
-
-    ui->widget_time->setVisible(!m_timerOnTop && ui->widget_time->hasVisibleContent());
-}
 
 WebBrowserView *WorkoutDialog::ensureWebPlayer() {
     if (!webPlayer) {
