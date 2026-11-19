@@ -50,3 +50,4 @@ tests/integration/ui_repeatwidget.h
 # aqt download log (created when running aqtinstall locally)
 aqtinstall.log
 /app_version.h
+emsdk-cache/

@@ -161,6 +161,10 @@ jobs:
         # Qt 6.11.x targets Emscripten 4.0.7. It must match or linking against
         # Qt's libqwasm.a fails (Emscripten gives no cross-version ABI guarantee).
         version: '4.0.7'
+        # A fixed install path (the default is a random _temp/<uuid> dir) keeps
+        # compile commands identical between runs, so ccache can hit; it also
+        # caches the SDK download.
+        actions-cache-folder: 'emsdk-cache'
 
     - name: Point apt at a reachable Ubuntu mirror
       # On 2026-11-11 the runners could not resolve any *.ubuntu.com host, and
@@ -261,6 +265,9 @@ jobs:
         echo "GIT_TAG=$GIT_TAG" >> "$GITHUB_ENV"
 
     - name: Build MaximumTrainer (Wasm)
+      env:
+        CCACHE_BASEDIR: ${{ github.workspace }}
+        CCACHE_COMPILERCHECK: content
       run: |
         source "$EMSDK/emsdk_env.sh"
         cmake -S . -B build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release \
