@@ -670,9 +670,9 @@ void DialogConfig::accept() {
 }
 void DialogConfig::reject() {
 
-    // On cancel only persist the last-selected tab index so the dialog
-    // reopens on the same page; do NOT commit widget values.
-    account->last_index_selected_config_workout = ui->listWidget_settings->currentRow();
+    // Every change is already applied live and there is no Cancel button, so
+    // closing with the window's X or Esc keeps the choices like OK does.
+    saveSettings();
     QDialog::reject();
 }
 

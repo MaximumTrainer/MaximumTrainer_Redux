@@ -53,13 +53,13 @@ void TstSettings::testDisplayPrefs_freshStoreGivesDefaults()
         QCOMPARE(account.show_power_widget, true);
         QCOMPARE(account.show_power_balance_widget, true);
         QCOMPARE(account.show_cadence_widget, true);
-        QCOMPARE(account.show_speed_widget, true);
-        QCOMPARE(account.show_calories_widget, true);
-        QCOMPARE(account.show_oxygen_widget, true);
-        QCOMPARE(account.show_trainer_speed, true);
+        QCOMPARE(account.show_speed_widget, false);
+        QCOMPARE(account.show_calories_widget, false);
+        QCOMPARE(account.show_oxygen_widget, false);
+        QCOMPARE(account.show_trainer_speed, false);
         QCOMPARE(account.display_hr, 1);
         QCOMPARE(account.display_power, 2);
-        QCOMPARE(account.display_power_balance, 0);
+        QCOMPARE(account.display_power_balance, 1);
         QCOMPARE(account.display_cadence, 1);
         QCOMPARE(account.display_video, 0);
         QCOMPARE(account.start_trigger, 0);
@@ -82,7 +82,7 @@ void TstSettings::testDisplayPrefs_freshStoreGivesDefaults()
         QCOMPARE(account.show_interval_remaining, true);
         QCOMPARE(account.show_workout_remaining, false);
         QCOMPARE(account.show_elapsed, true);
-        QCOMPARE(account.show_current_target, true);
+        QCOMPARE(account.show_current_target, false);
         QCOMPARE(account.show_seperator_interval, true);
         QCOMPARE(account.show_grid, false);
         QCOMPARE(account.show_hr_target, true);
