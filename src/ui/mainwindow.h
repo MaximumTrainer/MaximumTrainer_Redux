@@ -5,7 +5,6 @@
 #include <QMainWindow>
 #include <QNetworkReply>
 #include <QThread>
-#include <QDockWidget>
 #ifndef GC_WASM_BUILD
 #endif
 
@@ -27,10 +26,7 @@
 #endif
 
 
-#include "workoutqueue.h"
-#include "queuepanelwidget.h"
 
-class WorkoutCountdownDialog; // forward
 
 namespace Ui {
 class MainWindow;
@@ -169,7 +165,6 @@ private slots:
     void on_actionPreferences_triggered();
     void on_actionWorkout_triggered();
     void on_actionHistory_triggered();
-    void addWorkoutToQueue(const Workout &workout);
 
 
     void on_actionCreate_New_triggered();
@@ -211,8 +206,6 @@ private:
     QString loadPathImport() const;
 
 
-    void tryAdvanceWorkoutQueue();
-    void startWorkoutQueue();
 
     // Screenshot mode helpers
     Workout makeDemoWorkout() const;
@@ -275,11 +268,6 @@ private:
 
     // Plan Adherence (#157)
     PlanAdherenceStore *m_adherenceStore = nullptr;
-
-    // Workout queue (#152)
-    WorkoutQueue     *m_workoutQueue   = nullptr;
-    QueuePanelWidget *m_queuePanel     = nullptr;
-    QDockWidget      *m_queueDock      = nullptr;
 };
 
 #endif // MAINWINDOW_H

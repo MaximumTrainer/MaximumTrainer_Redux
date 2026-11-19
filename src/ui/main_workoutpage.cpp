@@ -131,7 +131,6 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
     contextMenu->addSeparator();
     actionOpenFolder = contextMenu->addAction(QIcon(":/image/icon/folder"), tr("Open in folder"));
     contextMenu->addSeparator();
-    actionAddToQueue = contextMenu->addAction(QIcon(":/image/icon/add"), tr("Add to Queue"));
 #ifndef GC_WASM_BUILD
     QAction *actionHostGroup = contextMenu->addAction(tr("Host Group Workout…"));
     connect(actionHostGroup, &QAction::triggered, this, [this] {
@@ -145,7 +144,6 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
     connect(actionDelete, &QAction::triggered, this, &Main_WorkoutPage::deleteWorkout);
     connect(actionSetAsDone, &QAction::triggered, this, &Main_WorkoutPage::setAsDone);
     connect(actionOpenFolder, &QAction::triggered, this, &Main_WorkoutPage::openFolderWorkout);
-    connect(actionAddToQueue, &QAction::triggered, this, &Main_WorkoutPage::addToQueue);
     connect(actionRefresh, &QAction::triggered, this, &Main_WorkoutPage::refreshUserWorkout);
     actionEdit->setEnabled(false);
     actionDelete->setEnabled(false);
@@ -343,14 +341,6 @@ void Main_WorkoutPage::openFolderWorkout() {
     Workout workout = tableModel->getWorkoutAtRow(indexSourceSelected);
 
     Util::openWorkoutFolder(workout.getFilePath());
-}
-
-
-void Main_WorkoutPage::addToQueue() {
-
-    Workout workout = tableModel->getWorkoutAtRow(indexSourceSelected);
-    emit addWorkoutToQueue(workout);
-
 }
 
 

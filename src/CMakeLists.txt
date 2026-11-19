@@ -41,7 +41,6 @@ target_sources(mt_core PRIVATE
     model/sensor.cpp model/settings.cpp model/dataworkout.cpp model/intervaldata.cpp
     model/intervaltablemodel.cpp model/repeatdata.cpp model/account.cpp model/radiotablemodel.cpp
     model/radio.cpp model/trackpoint.cpp model/userstudio.cpp model/planadherencestore.cpp
-    model/workoutqueue.cpp
     # persistence
     persistence/db/extrequest.cpp persistence/db/versiondao.cpp persistence/db/environnement.cpp
     persistence/db/intervalsicudao.cpp persistence/db/intervalsicuftpsync.cpp persistence/db/intervalsicuservice.cpp
@@ -63,7 +62,7 @@ target_sources(mt_core PRIVATE
     ui/tab_intervals_icu.cpp ui/workouthistorymodel.cpp ui/historywidget.cpp
     ui/historyfilterproxymodel.cpp ui/activitydetaildialog.cpp ui/dialogkeyboardshortcuts.cpp
     ui/planadherencewidget.cpp ui/criticalpowerdialog.cpp ui/pmcdialog.cpp ui/achievementswidget.cpp ui/weeklysummarywidget.cpp
-    ui/workoutcountdowndialog.cpp ui/queuepanelwidget.cpp ui/sensorswidget.cpp ui/studiowidget.cpp
+    ui/sensorswidget.cpp ui/studiowidget.cpp
     ui/apptheme.h ui/asyncdialogs.h
     ui/mainwindow.ui ui/workoutdialog.ui ui/main_workoutpage.ui ui/dialogconfig.ui
     ui/dialoglogin.ui ui/z_stylesheet.ui ui/dialogmainwindowconfig.ui

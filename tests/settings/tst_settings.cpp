@@ -312,8 +312,7 @@ void TstSettings::testUiStateKeys_onDiskNamesAndDefaults()
     checkKey(WorkoutFilter::Plan,    "Filter/planFilter",    QString());
     checkKey(WorkoutFilter::Creator, "Filter/creatorFilter", QString());
     checkKey(WorkoutFilter::Type,    "Filter/typeFilter",    -1);
-    checkKey(WorkoutQueue::FilePaths, "workoutQueue/filePaths", QStringList());
-    checkKey(WorkoutQueue::Names,     "workoutQueue/names",     QStringList());
+    checkKey(WorkoutQueue::RetiredGroup, "workoutQueue", QStringList());
     checkKey(LastPath::WorkoutImport, "Importer/loadPath",      QString());
     checkKey(LastPath::Video,         "videoPlayer/loadPath",   QString());
     checkKey(LastPath::ReportExport,  "reports/savePathExport", QString());
@@ -336,16 +335,15 @@ void TstSettings::testUiStateKeys_roundTripValueTypes()
         QSettings settings;
         AppSettings::write(settings, SettingKeys::MainWindow::Size, QSize(1600, 900));
         AppSettings::write(settings, SettingKeys::MainWindow::Pos, QPoint(12, 34));
-        AppSettings::write(settings, SettingKeys::WorkoutQueue::FilePaths, QStringList{QStringLiteral("/a.workout"), QStringLiteral("/b.workout")});
+        settings.setValue(QStringLiteral("recentFiles/paths"), QStringList{QStringLiteral("/a.workout"), QStringLiteral("/b.workout")});
         AppSettings::write(settings, SettingKeys::ActivityDetailDialog::Geometry, QByteArray("\x01\x02geometry", 10));
     }
     const QSettings settings;
     QCOMPARE(settings.value(QStringLiteral("MainWindow/size")).toSize(), QSize(1600, 900));
     QCOMPARE(AppSettings::read(settings, SettingKeys::MainWindow::Size), QSize(1600, 900));
     QCOMPARE(AppSettings::read(settings, SettingKeys::MainWindow::Pos), QPoint(12, 34));
-    QCOMPARE(settings.value(QStringLiteral("workoutQueue/filePaths")).toStringList(),
+    QCOMPARE(settings.value(QStringLiteral("recentFiles/paths")).toStringList(),
              (QStringList{QStringLiteral("/a.workout"), QStringLiteral("/b.workout")}));
-    QCOMPARE(AppSettings::read(settings, SettingKeys::WorkoutQueue::FilePaths).size(), 2);
     QCOMPARE(AppSettings::read(settings, SettingKeys::ActivityDetailDialog::Geometry), QByteArray("\x01\x02geometry", 10));
     QCOMPARE(AppSettings::read(settings, SettingKeys::LastPath::WorkoutImport, QStringLiteral("/home/x")), QStringLiteral("/home/x"));
 }
