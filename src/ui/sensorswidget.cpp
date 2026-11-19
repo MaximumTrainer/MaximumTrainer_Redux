@@ -108,17 +108,13 @@ void SensorsWidget::buildUi()
 
     m_controlResistanceCheck =
         new QCheckBox(tr("Control trainer resistance (ERG / FTMS)"), trainerGroup);
+    m_controlResistanceCheck->setToolTip(tr("When on, MaximumTrainer sets your smart trainer's target power "
+           "during a workout (ERG mode). Turn off to ride a structured workout "
+           "while controlling resistance yourself."));
     connect(m_controlResistanceCheck, &QCheckBox::toggled,
             this, &SensorsWidget::onControlResistanceToggled);
     trainerLayout->addWidget(m_controlResistanceCheck);
 
-    QLabel *trainerHint = new QLabel(
-        tr("When on, MaximumTrainer sets your smart trainer's target power "
-           "during a workout (ERG mode). Turn off to ride a structured workout "
-           "while controlling resistance yourself."), trainerGroup);
-    trainerHint->setWordWrap(true);
-    trainerHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
-    trainerLayout->addWidget(trainerHint);
 
     // Virtual shifting and the Zwift Click are cycling accessories — the whole
     // block hides in rowing mode (see refreshRowingMode).
@@ -130,36 +126,31 @@ void SensorsWidget::buildUi()
 
     m_virtualShiftingCheck =
         new QCheckBox(tr("Virtual shifting (Zwift Cog / single-gear setups)"), m_cyclingOnlyBox);
+    m_virtualShiftingCheck->setToolTip(tr("Adds ▲/▼ gear shifting (keyboard or the on-screen arrows) so a "
+           "single-cog trainer has usable resistance on free rides and tests. "
+           "Leave off if you shift with a real cassette."));
     connect(m_virtualShiftingCheck, &QCheckBox::toggled,
             this, &SensorsWidget::onVirtualShiftingToggled);
     cyclingOnlyLayout->addWidget(m_virtualShiftingCheck);
 
-    QLabel *vsHint = new QLabel(
-        tr("Adds ▲/▼ gear shifting — by keyboard or the on-screen arrows — so a "
-           "single-cog trainer has usable resistance on free rides and tests. "
-           "Leave off if you shift with a real cassette."), m_cyclingOnlyBox);
-    vsHint->setWordWrap(true);
-    vsHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
-    cyclingOnlyLayout->addWidget(vsHint);
 
     m_useZwiftClickCheck =
-        new QCheckBox(tr("Use Zwift Click v2 controller (right side only) - Beta"), m_cyclingOnlyBox);
-    m_useZwiftClickCheck->setToolTip(
-        tr("Wake BOTH controllers (press a button on each). The left/main one only "
-           "keeps the link stable - its buttons aren't used; only the right side is "
-           "supported."));
+        new QCheckBox(tr("Use Zwift Click v2 controller (right side only)"), m_cyclingOnlyBox);
     connect(m_useZwiftClickCheck, &QCheckBox::toggled,
             this, &SensorsWidget::onUseZwiftClickToggled);
     cyclingOnlyLayout->addWidget(m_useZwiftClickCheck);
 
-    QLabel *clickHint = new QLabel(
+    m_zwiftClickHint = new QLabel(
         tr("Wake BOTH controllers before the workout (press a button on each). The "
            "left/main one only keeps the connection stable; its buttons aren't used. "
            "Right side: Y = gear up, B = gear down, A/Z = radio next/prev, "
            "+ paddle = start/pause."), m_cyclingOnlyBox);
-    clickHint->setWordWrap(true);
-    clickHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
-    cyclingOnlyLayout->addWidget(clickHint);
+    m_zwiftClickHint->setWordWrap(true);
+    m_zwiftClickHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
+    cyclingOnlyLayout->addWidget(m_zwiftClickHint);
+    // The button guide is only useful once the controller is enabled.
+    m_zwiftClickHint->setVisible(false);
+    connect(m_useZwiftClickCheck, &QCheckBox::toggled, m_zwiftClickHint, &QWidget::setVisible);
 
     QHBoxLayout *ergRampRow = new QHBoxLayout();
     ergRampRow->addWidget(new QLabel(tr("ERG transition ramp duration:"), trainerGroup));
@@ -168,20 +159,15 @@ void SensorsWidget::buildUi()
     m_ergRampSpin->setSuffix(tr(" s"));
     // Native Windows spin buttons crowd a short value/suffix; reserve room.
     m_ergRampSpin->setMinimumWidth(80);
-    m_ergRampSpin->setToolTip(tr("Seconds to linearly ramp ERG resistance between intervals.\n"
-                                 "Set to 0 to disable smoothing (instant resistance changes)."));
+    m_ergRampSpin->setToolTip(tr("Ramps resistance gradually between interval targets, reducing "
+                                 "mechanical jolt on the trainer.\n"
+                                 "Set to 0 for instant resistance changes."));
     connect(m_ergRampSpin, qOverload<int>(&QSpinBox::valueChanged),
             this, &SensorsWidget::onErgRampChanged);
     ergRampRow->addWidget(m_ergRampSpin);
     ergRampRow->addStretch();
     trainerLayout->addLayout(ergRampRow);
 
-    QLabel *ergRampHint = new QLabel(
-        tr("Ramps resistance gradually when transitioning between interval "
-           "targets, reducing mechanical jolt on the trainer."), trainerGroup);
-    ergRampHint->setWordWrap(true);
-    ergRampHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
-    trainerLayout->addWidget(ergRampHint);
 
     mainLayout->addWidget(trainerGroup);
 
@@ -192,6 +178,7 @@ void SensorsWidget::buildUi()
 
     m_dropoutEnabledCheck =
         new QCheckBox(tr("Auto-pause workout when sensor signal is lost"), dropoutGroup);
+    m_dropoutEnabledCheck->setToolTip(tr("Workout resumes automatically 3 seconds after the signal is restored."));
     connect(m_dropoutEnabledCheck, &QCheckBox::toggled,
             this, &SensorsWidget::onSensorDropoutChanged);
     dropoutLayout->addWidget(m_dropoutEnabledCheck);
@@ -208,12 +195,6 @@ void SensorsWidget::buildUi()
     dropoutRow->addStretch();
     dropoutLayout->addLayout(dropoutRow);
 
-    QLabel *dropoutHint = new QLabel(
-        tr("Workout resumes automatically 3 seconds after the signal is restored."),
-        dropoutGroup);
-    dropoutHint->setWordWrap(true);
-    dropoutHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
-    dropoutLayout->addWidget(dropoutHint);
 
     mainLayout->addWidget(dropoutGroup);
 
@@ -228,18 +209,14 @@ void SensorsWidget::buildUi()
     m_batteryThresholdSpin->setRange(5, 50);
     m_batteryThresholdSpin->setSuffix(tr(" %"));
     m_batteryThresholdSpin->setMinimumWidth(80);
+    m_batteryThresholdSpin->setToolTip(tr("A notification is shown when a sensor reports a battery level at or "
+           "below this threshold."));
     connect(m_batteryThresholdSpin, qOverload<int>(&QSpinBox::valueChanged),
             this, &SensorsWidget::onBatteryThresholdChanged);
     batteryRow->addWidget(m_batteryThresholdSpin);
     batteryRow->addStretch();
     batteryLayout->addLayout(batteryRow);
 
-    QLabel *batteryHint = new QLabel(
-        tr("A notification is shown when a sensor reports a battery level at or "
-           "below this threshold."), batteryGroup);
-    batteryHint->setWordWrap(true);
-    batteryHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
-    batteryLayout->addWidget(batteryHint);
 
     mainLayout->addWidget(batteryGroup);
 
@@ -273,6 +250,7 @@ void SensorsWidget::reload()
         if (m_useZwiftClickCheck) {
             QSignalBlocker b(m_useZwiftClickCheck);
             m_useZwiftClickCheck->setChecked(m_account->use_zwift_click);
+            m_zwiftClickHint->setVisible(m_account->use_zwift_click);
         }
         if (m_ergRampSpin) {
             QSignalBlocker b(m_ergRampSpin);

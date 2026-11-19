@@ -74,6 +74,9 @@ private:
     PlanAdherenceWidget  *m_adherenceWidget = nullptr;
 
     bool                  m_loaded        = false;
+    bool                  m_dateRangeInitialized = false;
+
+    void resetDateRange();
 };
 
 #endif // HISTORYWIDGET_H

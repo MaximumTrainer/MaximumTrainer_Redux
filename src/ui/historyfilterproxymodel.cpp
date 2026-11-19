@@ -40,6 +40,8 @@ bool HistoryFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex 
     if (m_from.isValid() || m_to.isValid()) {
         const QModelIndex dateIdx = src->index(sourceRow, WorkoutHistoryModel::ColDate, sourceParent);
         const qint64 secs = src->data(dateIdx, Qt::UserRole).toLongLong();
+        if (secs <= 0)
+            return true;  // no start time in the file: never hide it by date
         const QDate date = QDateTime::fromSecsSinceEpoch(secs).date();
         if (m_from.isValid() && date < m_from)
             return false;

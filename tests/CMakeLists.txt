@@ -114,9 +114,11 @@ mt_add_test(history_tests
     SOURCES "${SRC}/fitness/pmccalculator.cpp"
         "${SRC}/persistence/file/fitactivityreader.cpp"
         "${SRC}/persistence/file/fitactivitydetailreader.cpp"
+        "${SRC}/ui/workouthistorymodel.cpp" "${SRC}/ui/historyfilterproxymodel.cpp"
         history/tst_history.cpp
+    QT Gui
     LIBS mt_fit
-    INCLUDES "${TST}/history" "${SRC}/model" "${SRC}/persistence/file" "${SRC}/fitness")
+    INCLUDES "${TST}/history" "${SRC}/model" "${SRC}/persistence/file" "${SRC}/fitness" "${SRC}/ui")
 
 mt_add_test(strava_tests
     SOURCES ${LOGGER} "${SRC}/persistence/db/strava_service.cpp" strava/tst_strava_service.cpp
