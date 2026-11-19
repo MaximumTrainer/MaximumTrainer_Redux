@@ -155,6 +155,11 @@ bool Logger::openLogFile()
     }
 
     m_logFile.setFileName(m_filePath);
+    if (QFileInfo(m_filePath).size() >= m_maxFileSize) {
+        const QString previous = m_filePath + QStringLiteral(".1");
+        QFile::remove(previous);
+        QFile::rename(m_filePath, previous);
+    }
     // WriteOnly ensures O_CREAT semantics on all platforms (Linux, macOS,
     // Windows) so the file is created if it does not already exist.
     // Append prevents truncation of existing content.
@@ -165,6 +170,20 @@ bool Logger::openLogFile()
         return false;
     }
     return true;
+}
+
+void Logger::rotateIfFull()
+{
+    if (m_logFile.size() < m_maxFileSize)
+        return;
+    m_logFile.close();
+    openLogFile();
+}
+
+void Logger::setMaxFileSize(qint64 bytes)
+{
+    QMutexLocker lock(&m_mutex);
+    m_maxFileSize = bytes;
 }
 
 bool Logger::openFileAt(const QString& path)
@@ -398,6 +417,7 @@ void Logger::writeToSinks(const QString& formatted, LogLevel level)
         m_logFile.write(utf8);
         m_logFile.write("\n", 1);
         m_logFile.flush();
+        rotateIfFull();
     }
 #endif
 }

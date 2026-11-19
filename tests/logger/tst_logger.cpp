@@ -105,6 +105,7 @@ private slots:
     void testFile_pathReturned();
     void testFile_createsDirectoryIfMissing();
     void testFile_createsFileIfMissing();
+    void testFile_rotatesWhenFull();
 
     // ── Qt message handler ────────────────────────────────────────────────────
     void testQtHandler_warningRouted();
@@ -704,4 +705,48 @@ void TstLogger::testBanner_containsRequiredFields()
 // Test runner
 // ─────────────────────────────────────────────────────────────────────────────
 QTEST_APPLESS_MAIN(TstLogger)
+void TstLogger::testFile_rotatesWhenFull()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("app.log"));
+    const QString previous = path + QStringLiteral(".1");
+
+    const LogLevel savedLevel = Logger::instance().logLevel();
+    Logger::instance().setLogLevel(LogLevel::Info);
+    Logger::instance().setMaxFileSize(1000);
+    Logger::instance().setFileLogging(true, path);
+
+    const QString filler(100, QLatin1Char('x'));
+    for (int i = 0; i < 25; ++i)
+        Logger::instance().log(LogLevel::Info, QStringLiteral("test"),
+                               QStringLiteral("%1 %2").arg(i).arg(filler));
+    Logger::instance().log(LogLevel::Info, QStringLiteral("test"), QStringLiteral("newest"));
+
+    Logger::instance().setFileLogging(false);
+    Logger::instance().setMaxFileSize(Logger::kDefaultMaxFileSize);
+    Logger::instance().setLogLevel(savedLevel);
+
+    // Each file stays near the cap (one line over at most), the older lines
+    // live in "<file>.1", and the newest line is in the current file.
+    QVERIFY(QFileInfo::exists(previous));
+    QVERIFY(QFileInfo(path).size() < 1000 + 300);
+    QVERIFY(QFileInfo(previous).size() < 1000 + 300);
+    QFile current(path);
+    QVERIFY(current.open(QIODevice::ReadOnly));
+    QVERIFY(current.readAll().contains("newest"));
+
+    // An oversized file left by an older version is rotated when opened.
+    QFile big(path);
+    QVERIFY(big.open(QIODevice::WriteOnly));
+    big.write(QByteArray(2000, 'y'));
+    big.close();
+    Logger::instance().setMaxFileSize(1000);
+    Logger::instance().setFileLogging(true, path);
+    Logger::instance().setFileLogging(false);
+    Logger::instance().setMaxFileSize(Logger::kDefaultMaxFileSize);
+    QCOMPARE(QFileInfo(previous).size(), qint64(2000));
+    QVERIFY(QFileInfo(path).size() < 1000);
+}
+
 #include "tst_logger.moc"
