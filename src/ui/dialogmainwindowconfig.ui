@@ -500,11 +500,17 @@
             <property name="text">
              <string>FTP and LTHR synced from intervals.icu</string>
             </property>
+            <property name="openExternalLinks">
+             <bool>true</bool>
+            </property>
+            <property name="textFormat">
+             <enum>Qt::RichText</enum>
+            </property>
             <property name="wordWrap">
              <bool>true</bool>
             </property>
             <property name="styleSheet">
-             <string notr="true">color: #888; font-size: 11px; font-style: italic;</string>
+             <string notr="true">color: #888; font-size: 11px;</string>
             </property>
            </widget>
           </item>
