@@ -29,6 +29,8 @@
 #endif
 #include "userstudiowidget.h"
 #include "myconstants.h"
+#include "maptesttracker.h"
+#include "sensorsecondaccumulator.h"
 #include "userstudio.h"
 
 #ifdef Q_OS_MAC
@@ -258,6 +260,8 @@ private:
 
     void animateAchievement();
     void checkMAPTestOver();
+    void recordRiderSecond(int riderIndex, int seconds);
+    void markSensorPaired(bool &pairingDone, QLabel *pairingLabel);
 
 
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -442,20 +446,8 @@ private:
     // For Rolling Averaging Power
     //    QQueue<double> queuePower;
     //to calculate mean every second ,[0] = Rider#1
-    QVector<int> nbPointHr1sec;
-    QVector<double> averageHr1sec;
-    QVector<int> nbPointCadence1sec;
-    QVector<double> averageCadence1sec;
-    QVector<int> nbPointSpeed1sec;
-    QVector<double> averageSpeed1sec;
-    QVector<int> nbPointPower1sec;
-    QVector<double> averagePower1sec;
-
-    //not doing average for now
-    QVector<double> avgRightPedal1sec;
+    SensorSecondAccumulator m_secondSamples{constants::nbMaxUserStudio};
     bool powerBalanceDataSeen = false; ///< a balance-capable power meter has reported
-    QVector<double> avgSaturatedHemoglobinPercent1sec;
-    QVector<double> avgTotalHemoglobinConc1sec;
 
 
     double lastIntervalEndTime_sec;
@@ -512,9 +504,7 @@ private:
     bool soundCadenceTooHighActive;
     ///---------------------------------------
 
-    int currMAPInterval;
-    int totalSecOffTargetInInterval;
-    int totalConsecutiveOffTarget;
+    MapTestTracker m_mapTest;
 
     bool m_timerOnTop = false;   // timers shown on the top bar (vs bottom-left)
 

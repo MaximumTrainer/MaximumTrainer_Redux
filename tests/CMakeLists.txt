@@ -95,6 +95,11 @@ mt_add_test(settings_tests
     SOURCES ${WORKOUT_MODEL} ${LOGGER} ${CRED_STUB} settings/tst_settings.cpp
     INCLUDES "${TST}/intervals_icu" "${SRC}/app" "${SRC}/model" "${SRC}/persistence/db")
 
+mt_add_test(workout_logic_tests
+    SOURCES "${SRC}/workout/sensorsecondaccumulator.cpp" "${SRC}/workout/maptesttracker.cpp"
+        workout/tst_workout_logic.cpp
+    INCLUDES "${SRC}/workout")
+
 mt_add_test(webengine_safe_mode_tests
     SOURCES ${LOGGER} "${SRC}/app/webengine_safe_mode.cpp"
         webengine_safe_mode/tst_webengine_safe_mode.cpp

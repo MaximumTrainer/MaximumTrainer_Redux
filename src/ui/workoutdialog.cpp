@@ -147,22 +147,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
     isUsingSlopeMode = false;
 
-    //data points
-    nbPointHr1sec = QVector<int>(constants::nbMaxUserStudio, 0);
-    averageHr1sec = QVector<double>(constants::nbMaxUserStudio, -1);
-
-    nbPointCadence1sec = QVector<int>(constants::nbMaxUserStudio, 0);
-    averageCadence1sec = QVector<double>(constants::nbMaxUserStudio, -1);
-
-    nbPointSpeed1sec = QVector<int>(constants::nbMaxUserStudio, 0);
-    averageSpeed1sec = QVector<double>(constants::nbMaxUserStudio, -1);
-
-    nbPointPower1sec = QVector<int>(constants::nbMaxUserStudio, 0);
-    averagePower1sec = QVector<double>(constants::nbMaxUserStudio, -1);
-
-    avgRightPedal1sec = QVector<double>(constants::nbMaxUserStudio, -1);
-    avgSaturatedHemoglobinPercent1sec = QVector<double>(constants::nbMaxUserStudio, -1);
-    avgTotalHemoglobinConc1sec = QVector<double>(constants::nbMaxUserStudio, -1);
 
 
     //// ------------- Clock thread -------------------------
@@ -582,9 +566,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     currentTargetPowerRange = -1;
     currentTargetCadence = -1;
     currentTargetCadenceRange = -1;
-    currMAPInterval = 1;
-    totalSecOffTargetInInterval = 0;
-    totalConsecutiveOffTarget = 0;
 
 
     //Dialog config — shown non-modally so the workout session continues uninterrupted (#137)
@@ -966,39 +947,31 @@ void WorkoutDialog::updateRealTimeGraph(double totalTimeElapsed_msec) {
 // For MAP Test, check last second average, if it's under the target for more than 20secs total or 10 sec consecutive, MAP test over
 void WorkoutDialog::checkMAPTestOver() {
 
+    // The first and last seconds of an interval (sounds muted) are not scored.
+    const bool testFailed = m_mapTest.recordSecond(soundsActive, m_secondSamples.rider(0).power,
+                                                   currentTargetPower, currentTargetPowerRange);
 
-    bool fadeIn = false;
-    //(ignore 3 first and 3 last second of Intervals with soundsActive check)
-    if (soundsActive && averagePower1sec.at(0) < currentTargetPower-currentTargetPowerRange) {
-        totalSecOffTargetInInterval++;
-        totalConsecutiveOffTarget++;
-        fadeIn = true;
-    }
-    else {
-        totalConsecutiveOffTarget = 0;
-    }
-
-    QString redFontStart  = "<font color=\"red\">";
-    QString fontEnd = "</font>";
-
-    QString textTotalOffTargetInterval = tr("Total remaining: ")  + QString::number(20-totalSecOffTargetInInterval) + " sec.";
-    if (totalSecOffTargetInInterval >= 15)
-        textTotalOffTargetInterval = tr("Total remaining: ")+ redFontStart + QString::number(20-totalSecOffTargetInInterval) + " sec." + fontEnd;
-
-    QString textConsecutiveOffTarget =  tr("Consecutive remaining: ") + QString::number(10-totalConsecutiveOffTarget) + " sec.";
-    if (totalConsecutiveOffTarget >= 5)
-        textConsecutiveOffTarget = tr("Consecutive remaining: ")+ redFontStart + QString::number(10-totalConsecutiveOffTarget) + " sec." + fontEnd;
+    const QString redFontStart = "<font color=\"red\">";
+    const QString fontEnd = "</font>";
+    const auto remaining = [&](const QString &label, int left, bool warn) {
+        const QString seconds = QString::number(left) + " sec.";
+        return label + (warn ? redFontStart + seconds + fontEnd : seconds);
+    };
+    const QString textTotalOffTargetInterval =
+        remaining(tr("Total remaining: "), MapTestTracker::kMaxSecondsOffTarget - m_mapTest.secondsOffTarget(),
+                  m_mapTest.secondsOffTarget() >= 15);
+    const QString textConsecutiveOffTarget =
+        remaining(tr("Consecutive remaining: "), MapTestTracker::kMaxConsecutiveOffTarget - m_mapTest.consecutiveOffTarget(),
+                  m_mapTest.consecutiveOffTarget() >= 5);
 
     //Update Time remaining off target (top Left of graph)
-    mainPlot->setAlertMessage(fadeIn, false, tr("MAP Interval ") + "#" + QString::number(currMAPInterval) + " - " + QString::number(currentTargetPower) + " watts"
+    mainPlot->setAlertMessage(m_mapTest.offTargetThisSecond(), false, tr("MAP Interval ") + "#" + QString::number(m_mapTest.step()) + " - " + QString::number(currentTargetPower) + " watts"
                               + "<div style='color:white;height:7px;'>---------------------------------</div><br/> " + textTotalOffTargetInterval +
                               + "<br/>" + textConsecutiveOffTarget, 500);
-    //Check if test interval over
-    if (totalSecOffTargetInInterval >= 20 || totalConsecutiveOffTarget >= 10) {
-
-        int secCompletedInInterval = 180 - Util::convertQTimeToSecD(timeInterval);
-        double mapResult = (currentTargetPower - 30) + (secCompletedInInterval/180.0 * currentTargetPower/10.0);
-        const int estimatedFTP = qRound(mapResult * 0.75);
+    if (testFailed) {
+        const int secCompletedInInterval = MapTestTracker::kStepSeconds - Util::convertQTimeToSecD(timeInterval);
+        const double mapResult = MapTestTracker::mapWatts(currentTargetPower, secCompletedInInterval);
+        const int estimatedFTP = MapTestTracker::estimatedFtp(mapResult);
         mainPlot->setAlertMessage(true, false, workout.getName() + tr(" Result")
                                   + "<div style='color:white;height:7px;'>-------------------</div><br/> "  + QString::number(mapResult, 'f', 1)  + " watts" + "<br/>"
                                   + tr("FTP: ") + QString::number(estimatedFTP) + tr(" watts")
@@ -1031,26 +1004,12 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
     sendLastSecondData(totalTimeElapsed_sec_i);
 
     // Check MAP Test stop condition
-    if (!account->enable_studio_mode && workout.getWorkoutNameEnum() == Workout::MAP_TEST && currentIntervalObj.isTestInterval() && averagePower1sec.at(0) != -1) {
+    if (!account->enable_studio_mode && workout.getWorkoutNameEnum() == Workout::MAP_TEST && currentIntervalObj.isTestInterval() && m_secondSamples.rider(0).power != -1) {
         checkMAPTestOver();
     }
 
 
-    // Reset mean 1 sec
-    averageHr1sec.fill(-1);
-    averageCadence1sec.fill(-1);
-    averageSpeed1sec.fill(-1);
-    averagePower1sec.fill(-1);
-
-    nbPointHr1sec.fill(0);
-    nbPointCadence1sec.fill(0);
-    nbPointSpeed1sec.fill(0);
-    nbPointPower1sec.fill(0);
-
-
-    avgRightPedal1sec.fill(-1);
-    avgSaturatedHemoglobinPercent1sec.fill(-1);
-    avgTotalHemoglobinConc1sec.fill(-1);
+    m_secondSamples.reset();
 
     // Update the graph 'dark' area
     ui->widget_workoutPlot->updateMarkerTimeNow(totalTimeElapsed_sec);
@@ -1157,9 +1116,7 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
         }
 
         if (workout.getWorkoutNameEnum() == Workout::MAP_TEST && currentIntervalObj.isTestInterval()) {
-            achievementManager->checkMAPAchievement(currMAPInterval);
-            totalSecOffTargetInInterval = 0;
-            currMAPInterval++;
+            achievementManager->checkMAPAchievement(m_mapTest.completeStep());
         }
 
 
@@ -1707,6 +1664,14 @@ void WorkoutDialog::start_or_pause_workout() {
 }
 
 
+void WorkoutDialog::recordRiderSecond(int riderIndex, int seconds) {
+    const RiderSecond &second = m_secondSamples.rider(riderIndex);
+    arrDataWorkout[riderIndex]->updateData(account->enable_studio_mode, seconds, second.heartRate, second.cadence,
+                                           second.speed, second.power, second.rightPedalPercent,
+                                           second.saturatedHemoglobinPercent, second.totalHemoglobinConcentration);
+}
+
+
 void WorkoutDialog::sendLastSecondData(int seconds) {
 
     if (m_raceView)
@@ -1715,15 +1680,11 @@ void WorkoutDialog::sendLastSecondData(int seconds) {
 
     if (account->enable_studio_mode) {
         for (int i=0; i<account->nb_user_studio; i++) {
-            arrDataWorkout[i]->updateData(account->enable_studio_mode, seconds, averageHr1sec.at(i), averageCadence1sec.at(i), averageSpeed1sec.at(i), averagePower1sec.at(i),
-                                          avgRightPedal1sec.at(i),
-                                          avgSaturatedHemoglobinPercent1sec.at(i), avgTotalHemoglobinConc1sec.at(i));
+            recordRiderSecond(i, seconds);
         }
     }
     else {
-        arrDataWorkout[0]->updateData(account->enable_studio_mode, seconds, averageHr1sec.at(0), averageCadence1sec.at(0), averageSpeed1sec.at(0), averagePower1sec.at(0),
-                                      avgRightPedal1sec.at(0),
-                                      avgSaturatedHemoglobinPercent1sec.at(0), avgTotalHemoglobinConc1sec.at(0));
+        recordRiderSecond(0, seconds);
     }
 
     // Re-send the gear's load each second so faster/slower pedaling changes
@@ -1731,6 +1692,16 @@ void WorkoutDialog::sendLastSecondData(int seconds) {
     // resistance-level trainers.
     if (gearsDriveNow())
         sendGearLoad();
+}
+
+
+void WorkoutDialog::markSensorPaired(bool &pairingDone, QLabel *pairingLabel) {
+    if (account->enable_studio_mode || pairingDone)
+        return;
+    pairingDone = true;
+    pairingLabel->setText(pairingLabel->text() + msgPairingDone);
+    pairingLabel->setStyleSheet("background-color : rgba(1,1,1,220); color : green;");
+    checkPairingCompleted();
 }
 
 
@@ -1760,28 +1731,14 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
     if (userID == 1 && m_groupRide) m_groupRide->recordHeartRate(value);
 
     // Mark pairing as done
-    if (!account->enable_studio_mode && !hrPairingDone) {
-        hrPairingDone = true;
-        labelPairHr->setText(labelPairHr->text() + msgPairingDone);
-        labelPairHr->setStyleSheet("background-color : rgba(1,1,1,220); color : green;");
-        checkPairingCompleted();
-    }
+    markSensorPaired(hrPairingDone, labelPairHr);
 
 
     if (!isWorkoutPaused && !isWorkoutOver) {
 
         arrDataWorkout[userID-1]->checkUpdateMaxHr(value);
 
-        if (nbPointHr1sec.at(userID-1) == 0) {
-            averageHr1sec.replace(userID-1, value);
-        }
-        else {
-            int nbPoint = nbPointHr1sec.at(userID-1);
-            double firstEle = averageHr1sec.at(userID-1) *((double)nbPoint/(nbPoint+1));
-            double secondEle = ((double)value)/(nbPoint+1);
-            averageHr1sec.replace(userID-1, firstEle + secondEle);
-        }
-        nbPointHr1sec.replace(userID-1, nbPointHr1sec.at(userID-1) + 1);
+        m_secondSamples.addSample(userID-1, SensorSecondAccumulator::Metric::HeartRate, value);
 
 
         //Update Graph (zoomer)
@@ -1819,18 +1776,8 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
     if (userID == 1 && m_groupRide) m_groupRide->recordCadence(value);
 
     // Mark pairing as done
-    if (!account->enable_studio_mode && !cadencePairingDone) {
-        cadencePairingDone = true;
-        labelCadence->setText(labelCadence->text() + msgPairingDone);
-        labelCadence->setStyleSheet("background-color : rgba(1,1,1,220); color : green;");
-        checkPairingCompleted();
-    }
-    if (!account->enable_studio_mode && !scPairingDone) {
-        scPairingDone = true;
-        labelSpeedCadence->setText(labelSpeedCadence->text() + msgPairingDone);
-        labelSpeedCadence->setStyleSheet("background-color : rgba(1,1,1,220); color : green;");
-        checkPairingCompleted();
-    }
+    markSensorPaired(cadencePairingDone, labelCadence);
+    markSensorPaired(scPairingDone, labelSpeedCadence);
 
 
     if (!isWorkoutPaused && !isWorkoutOver) {
@@ -1860,16 +1807,7 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
 
 
         //averaging 1sec
-        if (nbPointCadence1sec.at(userID-1) == 0) {
-            averageCadence1sec.replace(userID-1, value);
-        }
-        else {
-            int nbPoint = nbPointCadence1sec.at(userID-1);
-            double firstEle = averageCadence1sec.at(userID-1) *((double)nbPoint/(nbPoint+1));
-            double secondEle = ((double)value)/(nbPoint+1);
-            averageCadence1sec.replace(userID-1, firstEle + secondEle);
-        }
-        nbPointCadence1sec.replace(userID-1, nbPointCadence1sec.at(userID-1) + 1);
+        m_secondSamples.addSample(userID-1, SensorSecondAccumulator::Metric::Cadence, value);
 
 
         //Update Graph (zoomer)
@@ -1905,18 +1843,8 @@ void WorkoutDialog::TrainerSpeedDataReceived(int userID, double value) {
         return;
 
     // Mark pairing as done
-    if (!account->enable_studio_mode && !speedPairingDone) {
-        speedPairingDone = true;
-        labelSpeed->setText(labelSpeed->text() + msgPairingDone);
-        labelSpeed->setStyleSheet("background-color : rgba(1,1,1,220); color : green;");
-        checkPairingCompleted();
-    }
-    if (!account->enable_studio_mode &&!scPairingDone) {
-        scPairingDone = true;
-        labelSpeedCadence->setText(labelSpeedCadence->text() + msgPairingDone);
-        labelSpeedCadence->setStyleSheet("background-color : rgba(1,1,1,220); color : green;");
-        checkPairingCompleted();
-    }
+    markSensorPaired(speedPairingDone, labelSpeed);
+    markSensorPaired(scPairingDone, labelSpeedCadence);
 
     // The displayed speed is always virtual (see VirtualSpeedDataReceived);
     // a paired sensor's reading is only shown as the optional "trainer speed".
@@ -1972,16 +1900,7 @@ void WorkoutDialog::speedDataChosen(int userID, double value) {
         }
 
         //averaging 1sec
-        if (nbPointSpeed1sec.at(userID-1) == 0) {
-            averageSpeed1sec.replace(userID-1, value);
-        }
-        else {
-            int nbPoint = nbPointSpeed1sec.at(userID-1);
-            double firstEle = averageSpeed1sec.at(userID-1) *((double)nbPoint/(nbPoint+1));
-            double secondEle = ((double)value)/(nbPoint+1);
-            averageSpeed1sec.replace(userID-1, firstEle + secondEle);
-        }
-        nbPointSpeed1sec.replace(userID-1, nbPointSpeed1sec.at(userID-1) + 1);
+        m_secondSamples.addSample(userID-1, SensorSecondAccumulator::Metric::Speed, value);
     }
     ///Resume Workout?
     if (!account->enable_studio_mode && !isAskingUserQuestion && (account->start_trigger == 2) && isWorkoutPaused && !isWorkoutOver && (valueUnit > account->value_speed_start) ) {
@@ -2027,18 +1946,8 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 
 
     // Mark pairing as done
-    if (!account->enable_studio_mode && !powerPairingDone) {
-        powerPairingDone = true;
-        labelPower->setText(labelPower->text() + msgPairingDone);
-        labelPower->setStyleSheet("background-color : rgba(1,1,1,220); color : green;");
-        checkPairingCompleted();
-    }
-    if (!account->enable_studio_mode && !fecPairingDone) {
-        fecPairingDone = true;
-        labelFEC->setText(labelFEC->text() + msgPairingDone);
-        labelFEC->setStyleSheet("background-color : rgba(1,1,1,220); color : green;");
-        checkPairingCompleted();
-    }
+    markSensorPaired(powerPairingDone, labelPower);
+    markSensorPaired(fecPairingDone, labelFEC);
 
 
     const int powerValue = value;
@@ -2070,16 +1979,7 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 
 
         //averaging 1sec
-        if (nbPointPower1sec.at(userID-1) == 0) {
-            averagePower1sec.replace(userID-1, value);
-        }
-        else {
-            int nbPoint = nbPointPower1sec.at(userID-1);
-            double firstEle = averagePower1sec.at(userID-1) *((double)nbPoint/(nbPoint+1));
-            double secondEle = ((double)value)/(nbPoint+1);
-            averagePower1sec.replace(userID-1, firstEle + secondEle);
-        }
-        nbPointPower1sec.replace(userID-1, nbPointPower1sec.at(userID-1) + 1);
+        m_secondSamples.addSample(userID-1, SensorSecondAccumulator::Metric::Power, value);
 
         //Update Graph (zoomer)
         ui->wid_2_workoutPlot_PowerZoom->updateCurve(timeElapsed_sec, powerValue);
@@ -2109,7 +2009,7 @@ void WorkoutDialog::PowerBalanceDataReceived(int userID, int rightPedalPercentag
             showPowerBalanceWidget(account->display_power_balance);
     }
     ui->wid_2_balancePower->setValue(rightPedalPercentage);
-    avgRightPedal1sec.replace(userID-1, rightPedalPercentage);
+    m_secondSamples.setRightPedalPercent(userID-1, rightPedalPercentage);
 }
 
 
@@ -2117,16 +2017,10 @@ void WorkoutDialog::OxygenValueChanged(int userID, double percentageSaturatedHem
 
 
     // Mark pairing as done
-    if (!account->enable_studio_mode && !oxygenPairingDone) {
-        oxygenPairingDone = true;
-        labelOxygen->setText(labelOxygen->text() + msgPairingDone);
-        labelOxygen->setStyleSheet("background-color : rgba(1,1,1,220); color : green;");
-        checkPairingCompleted();
-    }
+    markSensorPaired(oxygenPairingDone, labelOxygen);
     ui->wid_oxygen->oxygenValueChanged(percentageSaturatedHemoglobin, totalHemoglobinConcentration);
 
-    avgSaturatedHemoglobinPercent1sec.replace(userID-1, percentageSaturatedHemoglobin);
-    avgTotalHemoglobinConc1sec.replace(userID-1, totalHemoglobinConcentration);
+    m_secondSamples.setHemoglobin(userID-1, percentageSaturatedHemoglobin, totalHemoglobinConcentration);
 }
 
 
@@ -2235,7 +2129,7 @@ void WorkoutDialog::sendGearLoad() {
         emit setResistance(trainerControlUserId, VirtualGear::resistanceLevel(m_virtualGear));
     } else {
         // Fallback for trainers without 0x04: cadence-aware ERG.
-        const double cad = averageCadence1sec.isEmpty() ? -1.0 : averageCadence1sec.at(0);
+        const double cad = m_secondSamples.rider(0).cadence;
         emit setLoad(trainerControlUserId, gearTargetWatts(m_virtualGear, cad));
     }
 }
