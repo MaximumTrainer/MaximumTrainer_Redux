@@ -1,4 +1,6 @@
 #include "dialogmainwindowconfig.h"
+#include <QAbstractSpinBox>
+#include <QLocale>
 #include "setting_keys.h"
 #include "ui_dialogmainwindowconfig.h"
 #include "asyncdialogs.h"
@@ -260,17 +262,31 @@ void DialogMainWindowConfig::showEvent(QShowEvent *event) {
     updateIntervalsAvailability();
 }
 
-/// Show where FTP/LTHR came from when the last intervals.icu login synced
-/// them (the stamp is cleared when the user edits the values manually).
+/// Signed in, FTP / LTHR / weight are copied from Intervals.icu at every
+/// login, so a local edit would not last: show them read-only and say where to
+/// change them. Offline they stay editable.
 void DialogMainWindowConfig::updateProfileSyncLabel() {
 
-    const QString syncedAt = AppSettings::read(SettingKeys::Login::IntervalsIcuProfileSyncedAt);
-    const QDateTime when = QDateTime::fromString(syncedAt, Qt::ISODate);
-    ui->label_profileSyncSource->setVisible(when.isValid());
+    const bool fromIntervals = !account->intervals_icu_access_token.isEmpty();
+    for (QAbstractSpinBox *box : std::initializer_list<QAbstractSpinBox *>{
+             ui->spinBox_ftp, ui->spinBox_lthr, ui->doubleSpinBox_weight}) {
+        box->setReadOnly(fromIntervals);
+        box->setButtonSymbols(fromIntervals ? QAbstractSpinBox::NoButtons : QAbstractSpinBox::UpDownArrows);
+        box->setToolTip(fromIntervals ? tr("From your Intervals.icu profile") : QString());
+        box->setStyleSheet(fromIntervals ? QStringLiteral("color: #9a9aa4;") : QString());
+    }
+    ui->label_profileSyncSource->setVisible(fromIntervals);
+    if (!fromIntervals)
+        return;
+
+    const QDateTime when = QDateTime::fromString(
+        AppSettings::read(SettingKeys::Login::IntervalsIcuProfileSyncedAt), Qt::ISODate);
+    QString text = tr("From your Intervals.icu profile");
     if (when.isValid())
-        ui->label_profileSyncSource->setText(
-            tr("FTP and LTHR synced from intervals.icu on %1")
-                .arg(when.toString(QStringLiteral("yyyy-MM-dd hh:mm"))));
+        text += tr(", synced %1").arg(QLocale().toString(when, QStringLiteral("d MMM yyyy hh:mm")));
+    text += tr(". Change them in <a href=\"https://intervals.icu/settings\">Intervals.icu settings</a>; "
+               "they update here at your next sign-in.");
+    ui->label_profileSyncSource->setText(text);
 }
 
 
@@ -294,13 +310,14 @@ void DialogMainWindowConfig::accept() {
 
     // Athlete profile (FTP / LTHR / weight) — persist locally and notify the
     // main window so dependent metrics (zones, workout targets) recompute.
-    const bool profileChangedNow =
+    const bool profileChangedNow = !ui->spinBox_ftp->isReadOnly() && (
         account->FTP       != ui->spinBox_ftp->value() ||
         account->LTHR      != ui->spinBox_lthr->value() ||
-        account->weight_kg != ui->doubleSpinBox_weight->value();
-    account->saveProfileFields(ui->spinBox_ftp->value(),
-                               ui->spinBox_lthr->value(),
-                               ui->doubleSpinBox_weight->value());
+        account->weight_kg != ui->doubleSpinBox_weight->value());
+    if (profileChangedNow)
+        account->saveProfileFields(ui->spinBox_ftp->value(),
+                                   ui->spinBox_lthr->value(),
+                                   ui->doubleSpinBox_weight->value());
     // Manually edited values no longer come from intervals.icu — drop the
     // sync stamp so the Preferences label doesn't claim otherwise (the next
     // login sync re-stamps it).
