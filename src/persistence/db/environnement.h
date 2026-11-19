@@ -5,7 +5,6 @@
 
 
 const static QString current_version = "v0.0.0";  // overridden at build time via APP_VERSION
-const static QString date_released = "16/03/2019";  //(dd/mm/yyyy)
 
 /// GitHub Releases — used for version check and update dialog
 const static QString urlGitHubReleasesApi  = "https://api.github.com/repos/MaximumTrainer/MaximumTrainer_Redux/releases/latest";
@@ -118,7 +117,6 @@ public:
 
     /// Public method -----------------------
     static QString getVersion();
-    static QString getDateBuilded();
 
 
     static QString getURLStravaAuthorize(const QString &redirectUri);

@@ -160,7 +160,6 @@ public slots:
 private slots:
     void showUpdateAvailable(const QString &latestVersion);
     void on_actionAbout_MT_triggered();
-    void on_actionAbout_Qt_triggered();
     void on_actionRequest_Help_triggered();
     void on_actionKeyboard_Shortcuts_triggered();
     void on_actionPreferences_triggered();

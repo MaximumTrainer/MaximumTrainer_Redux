@@ -44,9 +44,7 @@ signals:
 
 public slots:
     void stravaLinked(bool);
-    /// Update the Intervals.icu section visibility based on network state.
-    /// When \a isOnline is false the groupBox_intervals is hidden so the
-    /// user cannot attempt to test credentials that will time out.
+    /// Network state; Intervals.icu settings are disabled with a note while offline.
     void setOnlineMode(bool isOnline);
 
 
@@ -65,6 +63,8 @@ private slots:
 
 
 private:
+    void updateIntervalsAvailability();
+    bool m_networkOnline = true;
     void initUI();
     /// Show/refresh the "FTP and LTHR synced from intervals.icu" label.
     void updateProfileSyncLabel();

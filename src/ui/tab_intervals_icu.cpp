@@ -152,85 +152,60 @@ void TabIntervalsIcu::refreshCredentials()
         (!account->intervals_icu_api_key.isEmpty() ||
          !account->intervals_icu_access_token.isEmpty());
 
+    if (!m_networkOnline) {
+        setCalendarAvailable(false, tr("Intervals.icu sync is not available while offline. "
+                                        "Please check your internet connection."));
+        return;
+    }
+
     if (!hasCredentials) {
-        // Clear any stale calendar data so the old content isn't visible
-        // with credentials that may no longer be valid.
+        // Clear any stale calendar data so the old content isn't visible.
         ui->tableWidget_calendar->setRowCount(0);
         m_rowEventIds.clear();
         ui->pushButton_loadWorkout->setEnabled(false);
-
-        // Also abort any in-flight requests
-        if (m_calendarReply) {
-            m_calendarReply->abort();
-            m_calendarReply->deleteLater();
-            m_calendarReply = nullptr;
-        }
-        if (m_downloadReply) {
-            m_downloadReply->abort();
-            m_downloadReply->deleteLater();
-            m_downloadReply = nullptr;
+        if (m_downloadReply)
             ui->tableWidget_calendar->setSelectionMode(QAbstractItemView::SingleSelection);
-        }
-
+        abortCalendarRequests();
         setBusy(false);
-        setStatus(tr("Configure your Intervals.icu credentials in "
-                     "Preferences → Cloud Sync."));
-    } else {
-        setStatus(tr("Ready — click Refresh to load this week's schedule."));
+        setCalendarAvailable(false, tr("Sign in with Intervals.icu to see your training calendar here. "
+                                       "Choose MaximumTrainer → Log Out to return to the sign-in screen."));
+        return;
     }
+
+    setCalendarAvailable(true);
+    setStatus(tr("Ready - click Refresh to load this week's schedule."));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 void TabIntervalsIcu::setOnlineMode(bool isOnline)
 {
-    if (isOnline) {
-        // Restore the normal online UI
-        ui->label_offline->setVisible(false);
-        ui->pushButton_refresh->setVisible(true);
-        ui->pushButton_prevWeek->setVisible(true);
-        ui->pushButton_nextWeek->setVisible(true);
-        ui->pushButton_loadWorkout->setVisible(true);
-        ui->pushButton_syncAll->setVisible(true);
-        ui->label_week->setVisible(true);
-        ui->tableWidget_calendar->setVisible(true);
-        ui->label_status->setVisible(true);
-        refreshCredentials();
-    } else {
-        // Abort any in-flight requests before hiding controls
-        if (m_calendarReply) {
-            m_calendarReply->abort();
-            m_calendarReply->deleteLater();
-            m_calendarReply = nullptr;
-        }
-        if (m_downloadReply) {
-            m_downloadReply->abort();
-            m_downloadReply->deleteLater();
-            m_downloadReply = nullptr;
-        }
-        if (m_syncCalendarReply) {
-            m_syncCalendarReply->abort();
-            m_syncCalendarReply->deleteLater();
-            m_syncCalendarReply = nullptr;
-        }
-        if (m_syncDownloadReply) {
-            m_syncDownloadReply->abort();
-            m_syncDownloadReply->deleteLater();
-            m_syncDownloadReply = nullptr;
-        }
+    m_networkOnline = isOnline;
+    if (!isOnline)
+        abortCalendarRequests();
+    refreshCredentials();
+}
 
-        // Show offline banner and hide all interactive controls
-        ui->label_offline->setText(tr("Intervals.icu sync is not available while offline. "
-                                      "Please check your internet connection."));
-        ui->label_offline->setVisible(true);
-        ui->pushButton_refresh->setVisible(false);
-        ui->pushButton_prevWeek->setVisible(false);
-        ui->pushButton_nextWeek->setVisible(false);
-        ui->pushButton_loadWorkout->setVisible(false);
-        ui->pushButton_syncAll->setVisible(false);
-        ui->label_week->setVisible(false);
-        ui->tableWidget_calendar->setVisible(false);
-        ui->label_status->setVisible(false);
+void TabIntervalsIcu::abortCalendarRequests()
+{
+    for (QNetworkReply **reply : {&m_calendarReply, &m_downloadReply,
+                                  &m_syncCalendarReply, &m_syncDownloadReply}) {
+        if (*reply) {
+            (*reply)->abort();
+            (*reply)->deleteLater();
+            *reply = nullptr;
+        }
     }
+}
+
+void TabIntervalsIcu::setCalendarAvailable(bool available, const QString &banner)
+{
+    ui->label_offline->setText(banner);
+    ui->label_offline->setVisible(!available);
+    for (QWidget *control : std::initializer_list<QWidget *>{
+             ui->pushButton_refresh, ui->pushButton_prevWeek, ui->pushButton_nextWeek,
+             ui->pushButton_loadWorkout, ui->pushButton_syncAll, ui->label_week,
+             ui->tableWidget_calendar, ui->label_status})
+        control->setVisible(available);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

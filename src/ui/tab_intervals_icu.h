@@ -70,6 +70,9 @@ private:
     void populateTable(const QList<IntervalsIcuService::CalendarEvent> &events);
     void setStatus(const QString &msg);
     void setBusy(bool busy);
+    /// Shows the calendar controls, or hides them behind \a banner.
+    void setCalendarAvailable(bool available, const QString &banner = QString());
+    void abortCalendarRequests();
 
     void downloadNextSyncWorkout();
 
@@ -77,6 +80,7 @@ private:
 
     IntervalsIcuService *m_service;
     QDate m_weekStart;   ///< Monday of the currently displayed week
+    bool  m_networkOnline = true;
 
     QNetworkReply *m_calendarReply  = nullptr;
     QNetworkReply *m_downloadReply  = nullptr;

@@ -20,12 +20,6 @@ QString Environnement::getVersion() {
     return current_version;
 #endif
 }
-QString Environnement::getDateBuilded() {
-
-    return date_released;
-}
-
-
 QString Environnement::getURLStravaAuthorize(const QString &redirectUri) {
     // Opened in the system browser; Strava redirects to redirectUri with
     // ?code=... on success (?error=access_denied if declined). For the desktop
