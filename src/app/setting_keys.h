@@ -53,6 +53,7 @@ inline constexpr SettingKey<int>  DisplayPower                   {"displayPrefs/
 inline constexpr SettingKey<int>  DisplayPowerBalance            {"displayPrefs/display_power_balance",               0}; // 0: when balance data is available, 1: only for intervals with a balance target
 inline constexpr SettingKey<int>  DisplayCadence                 {"displayPrefs/display_cadence",                     1};
 inline constexpr SettingKey<int>  DisplayVideo                   {"displayPrefs/display_video",                       0};
+/// Retired power offset; removed at load.
 inline constexpr SettingKey<int>  OffsetPower                    {"displayPrefs/offset_power",                        0};
 inline constexpr SettingKey<int>  StartTrigger                   {"displayPrefs/start_trigger",                       0};
 inline constexpr SettingKey<int>  ValueCadenceStart              {"displayPrefs/value_cadence_start",                 40};
@@ -72,6 +73,7 @@ inline constexpr SettingKey<bool> UsePmForCadence                {"displayPrefs/
 inline constexpr SettingKey<bool> UsePmForSpeed                  {"displayPrefs/use_pm_for_speed",                    false};
 inline constexpr SettingKey<bool> ShowIncludedWorkout            {"displayPrefs/show_included_workout",               true};
 inline constexpr SettingKey<bool> RowingMode                     {"displayPrefs/rowing_mode",                         false};
+/// Retired (timers are always on the top bar); removed at load.
 inline constexpr SettingKey<bool> ShowTimerOnTop                 {"displayPrefs/show_timer_on_top",                   false};
 inline constexpr SettingKey<bool> ShowIntervalRemaining          {"displayPrefs/show_interval_remaining",             true};
 inline constexpr SettingKey<bool> ShowWorkoutRemaining           {"displayPrefs/show_workout_remaining",              false};

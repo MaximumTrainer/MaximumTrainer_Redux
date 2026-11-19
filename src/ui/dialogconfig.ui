@@ -70,15 +70,8 @@ QLabel#label_imageCalories {
         <number>0</number>
        </property>
        <item>
-        <widget class="QTabWidget" name="tabWidget_2">
-         <property name="currentIndex">
-          <number>0</number>
-         </property>
-         <widget class="QWidget" name="tab">
-          <attribute name="title">
-           <string>General</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_2">
+        <widget class="QWidget" name="tab">
+<layout class="QVBoxLayout" name="verticalLayout_2">
            <property name="spacing">
             <number>6</number>
            </property>
@@ -400,8 +393,7 @@ QLabel#label_imageCalories {
             </spacer>
            </item>
           </layout>
-         </widget>
-        </widget>
+</widget>
        </item>
       </layout>
      </widget>
@@ -429,13 +421,7 @@ QLabel#label_imageCalories {
            <string>Timer</string>
           </attribute>
           <layout class="QVBoxLayout" name="verticalLayout_25">
-           <item>
-            <widget class="QCheckBox" name="checkBox_showTimerOnTop">
-             <property name="text">
-              <string>Show On Top Bar</string>
-             </property>
-            </widget>
-           </item>
+
            <item>
             <widget class="QCheckBox" name="checkBox_showIntervalRemainingTime">
              <property name="text">
@@ -464,62 +450,7 @@ QLabel#label_imageCalories {
              </property>
             </widget>
            </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox_4">
-             <property name="title">
-              <string>Position</string>
-             </property>
-             <layout class="QHBoxLayout" name="horizontalLayout_7">
-              <item>
-               <widget class="QPushButton" name="pushButton_leftTimer">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="icon">
-                 <iconset resource="../MyResources.qrc">
-                  <normaloff>:/image/icon/leftArrow</normaloff>:/image/icon/leftArrow</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_rightTimer">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="icon">
-                 <iconset resource="../MyResources.qrc">
-                  <normaloff>:/image/icon/rightArrow</normaloff>:/image/icon/rightArrow</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="horizontalSpacer_8">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </widget>
-           </item>
+
            <item>
             <spacer name="verticalSpacer_16">
              <property name="orientation">
@@ -629,130 +560,8 @@ QLabel#label_imageCalories {
                 </item>
                </layout>
               </item>
-              <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_10">
-                <item>
-                 <widget class="QLabel" name="label_26">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="minimumSize">
-                   <size>
-                    <width>83</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="toolTip">
-                   <string>Increase/Decrease the power values received by a fixed wattage.</string>
-                  </property>
-                  <property name="text">
-                   <string>Power Offset</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QSpinBox" name="spinBox_offsetPower">
-                  <property name="minimumSize">
-                   <size>
-                    <width>0</width>
-                    <height>25</height>
-                   </size>
-                  </property>
-                  <property name="toolTip">
-                   <string>Increase/Decrease the power values received by a fixed wattage.</string>
-                  </property>
-                  <property name="minimum">
-                   <number>-100</number>
-                  </property>
-                  <property name="maximum">
-                   <number>100</number>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLabel" name="label_3">
-                  <property name="text">
-                   <string>watts</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="horizontalSpacer_10">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-              <item>
-               <widget class="QGroupBox" name="groupBox_7">
-                <property name="title">
-                 <string>Position</string>
-                </property>
-                <layout class="QHBoxLayout" name="horizontalLayout_13">
-                 <item>
-                  <widget class="QPushButton" name="pushButton_leftPower">
-                   <property name="minimumSize">
-                    <size>
-                     <width>50</width>
-                     <height>0</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string/>
-                   </property>
-                   <property name="icon">
-                    <iconset resource="../MyResources.qrc">
-                     <normaloff>:/image/icon/leftArrow</normaloff>:/image/icon/leftArrow</iconset>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QPushButton" name="pushButton_rightPower">
-                   <property name="minimumSize">
-                    <size>
-                     <width>50</width>
-                     <height>0</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string/>
-                   </property>
-                   <property name="icon">
-                    <iconset resource="../MyResources.qrc">
-                     <normaloff>:/image/icon/rightArrow</normaloff>:/image/icon/rightArrow</iconset>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <spacer name="horizontalSpacer_13">
-                   <property name="orientation">
-                    <enum>Qt::Horizontal</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>40</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                </layout>
-               </widget>
-              </item>
+
+
              </layout>
             </widget>
            </item>
@@ -853,62 +662,7 @@ QLabel#label_imageCalories {
                 </item>
                </layout>
               </item>
-              <item>
-               <widget class="QGroupBox" name="groupBox_6">
-                <property name="title">
-                 <string>Position</string>
-                </property>
-                <layout class="QHBoxLayout" name="horizontalLayout_12">
-                 <item>
-                  <widget class="QPushButton" name="pushButton_leftPowerBal">
-                   <property name="minimumSize">
-                    <size>
-                     <width>50</width>
-                     <height>0</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string/>
-                   </property>
-                   <property name="icon">
-                    <iconset resource="../MyResources.qrc">
-                     <normaloff>:/image/icon/leftArrow</normaloff>:/image/icon/leftArrow</iconset>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QPushButton" name="pushButton_rightPowerBal">
-                   <property name="minimumSize">
-                    <size>
-                     <width>50</width>
-                     <height>0</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string/>
-                   </property>
-                   <property name="icon">
-                    <iconset resource="../MyResources.qrc">
-                     <normaloff>:/image/icon/rightArrow</normaloff>:/image/icon/rightArrow</iconset>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <spacer name="horizontalSpacer_12">
-                   <property name="orientation">
-                    <enum>Qt::Horizontal</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>40</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                </layout>
-               </widget>
-              </item>
+
              </layout>
             </widget>
            </item>
@@ -1001,62 +755,7 @@ QLabel#label_imageCalories {
              </item>
             </layout>
            </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox_8">
-             <property name="title">
-              <string>Position</string>
-             </property>
-             <layout class="QHBoxLayout" name="horizontalLayout_14">
-              <item>
-               <widget class="QPushButton" name="pushButton_leftCadence">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="icon">
-                 <iconset resource="../MyResources.qrc">
-                  <normaloff>:/image/icon/leftArrow</normaloff>:/image/icon/leftArrow</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_rightCadence">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="icon">
-                 <iconset resource="../MyResources.qrc">
-                  <normaloff>:/image/icon/rightArrow</normaloff>:/image/icon/rightArrow</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="horizontalSpacer_14">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </widget>
-           </item>
+
            <item>
             <spacer name="verticalSpacer_4">
              <property name="orientation">
@@ -1146,62 +845,7 @@ QLabel#label_imageCalories {
              </item>
             </layout>
            </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox_11">
-             <property name="title">
-              <string>Position</string>
-             </property>
-             <layout class="QHBoxLayout" name="horizontalLayout_17">
-              <item>
-               <widget class="QPushButton" name="pushButton_leftHr">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="icon">
-                 <iconset resource="../MyResources.qrc">
-                  <normaloff>:/image/icon/leftArrow</normaloff>:/image/icon/leftArrow</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_rightHr">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="icon">
-                 <iconset resource="../MyResources.qrc">
-                  <normaloff>:/image/icon/rightArrow</normaloff>:/image/icon/rightArrow</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="horizontalSpacer_17">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </widget>
-           </item>
+
            <item>
             <spacer name="verticalSpacer_17">
              <property name="orientation">
@@ -1236,62 +880,7 @@ QLabel#label_imageCalories {
              </property>
             </widget>
            </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox_9">
-             <property name="title">
-              <string>Position</string>
-             </property>
-             <layout class="QHBoxLayout" name="horizontalLayout_15">
-              <item>
-               <widget class="QPushButton" name="pushButton_leftSpeed">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="icon">
-                 <iconset resource="../MyResources.qrc">
-                  <normaloff>:/image/icon/leftArrow</normaloff>:/image/icon/leftArrow</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_rightSpeed">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="icon">
-                 <iconset resource="../MyResources.qrc">
-                  <normaloff>:/image/icon/rightArrow</normaloff>:/image/icon/rightArrow</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="horizontalSpacer_15">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </widget>
-           </item>
+
            <item>
             <spacer name="verticalSpacer_5">
              <property name="orientation">
@@ -1319,62 +908,7 @@ QLabel#label_imageCalories {
              </property>
             </widget>
            </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox_12">
-             <property name="title">
-              <string>Position</string>
-             </property>
-             <layout class="QHBoxLayout" name="horizontalLayout_18">
-              <item>
-               <widget class="QPushButton" name="pushButton_leftOxygen">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="icon">
-                 <iconset resource="../MyResources.qrc">
-                  <normaloff>:/image/icon/leftArrow</normaloff>:/image/icon/leftArrow</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_rightOxygen">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="icon">
-                 <iconset resource="../MyResources.qrc">
-                  <normaloff>:/image/icon/rightArrow</normaloff>:/image/icon/rightArrow</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="horizontalSpacer_18">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </widget>
-           </item>
+
            <item>
             <spacer name="verticalSpacer_2">
              <property name="orientation">
@@ -1402,62 +936,7 @@ QLabel#label_imageCalories {
              </property>
             </widget>
            </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox_10">
-             <property name="title">
-              <string>Position</string>
-             </property>
-             <layout class="QHBoxLayout" name="horizontalLayout_16">
-              <item>
-               <widget class="QPushButton" name="pushButton_leftInfoWorkout">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="icon">
-                 <iconset resource="../MyResources.qrc">
-                  <normaloff>:/image/icon/leftArrow</normaloff>:/image/icon/leftArrow</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButton_rightInfoWorkout">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="icon">
-                 <iconset resource="../MyResources.qrc">
-                  <normaloff>:/image/icon/rightArrow</normaloff>:/image/icon/rightArrow</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="horizontalSpacer_16">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </widget>
-           </item>
+
            <item>
             <spacer name="verticalSpacer_6">
              <property name="orientation">
@@ -1492,20 +971,9 @@ QLabel#label_imageCalories {
         <number>0</number>
        </property>
        <item>
-        <widget class="QTabWidget" name="tabWidget_4">
-         <property name="currentIndex">
-          <number>0</number>
-         </property>
-         <widget class="QWidget" name="tab_16">
-          <attribute name="title">
-           <string>General</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_27">
-           <property name="topMargin">
-            <number>20</number>
-           </property>
-           <item>
-            <widget class="QCheckBox" name="checkBox_seperator">
+        <widget class="QWidget" name="widget_graphOptions">
+<layout class="QGridLayout" name="gridLayout_graph"><property name="horizontalSpacing"><number>24</number></property>
+<item row="0" column="0" colspan="3"><widget class="QCheckBox" name="checkBox_seperator">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -1519,15 +987,13 @@ QLabel#label_imageCalories {
               </size>
              </property>
              <property name="text">
-              <string>Show Seperator between Intervals</string>
+              <string>Show separators between intervals</string>
              </property>
              <property name="checked">
               <bool>true</bool>
              </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox_showGrid">
+            </widget></item>
+<item row="1" column="0" colspan="3"><widget class="QCheckBox" name="checkBox_showGrid">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -1541,38 +1007,14 @@ QLabel#label_imageCalories {
               </size>
              </property>
              <property name="text">
-              <string>Show Grid</string>
+              <string>Show grid</string>
              </property>
              <property name="checked">
               <bool>true</bool>
              </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="verticalSpacer_18">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="tab_7">
-          <attribute name="title">
-           <string>Heart Rate</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_12">
-           <property name="topMargin">
-            <number>20</number>
-           </property>
-           <item>
-            <widget class="QCheckBox" name="checkBox_targetHr">
+            </widget></item>
+<item row="2" column="0"><widget class="QLabel" name="label_graphHr"><property name="text"><string>Heart Rate</string></property></widget></item>
+<item row="2" column="1"><widget class="QCheckBox" name="checkBox_targetHr">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -1586,15 +1028,13 @@ QLabel#label_imageCalories {
               </size>
              </property>
              <property name="text">
-              <string>Show Target</string>
+              <string>Target line</string>
              </property>
              <property name="checked">
               <bool>true</bool>
              </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox_HeartRateCurve">
+            </widget></item>
+<item row="2" column="2"><widget class="QCheckBox" name="checkBox_HeartRateCurve">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -1608,38 +1048,14 @@ QLabel#label_imageCalories {
               </size>
              </property>
              <property name="text">
-              <string>Show Curve</string>
+              <string>Curve</string>
              </property>
              <property name="checked">
               <bool>true</bool>
              </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="verticalSpacer_7">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="tab_8">
-          <attribute name="title">
-           <string>Power</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_13">
-           <property name="topMargin">
-            <number>20</number>
-           </property>
-           <item>
-            <widget class="QCheckBox" name="checkBox_targetPower">
+            </widget></item>
+<item row="3" column="0"><widget class="QLabel" name="label_graphPower"><property name="text"><string>Power</string></property></widget></item>
+<item row="3" column="1"><widget class="QCheckBox" name="checkBox_targetPower">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -1647,48 +1063,22 @@ QLabel#label_imageCalories {
               </sizepolicy>
              </property>
              <property name="text">
-              <string>Show Target</string>
+              <string>Target line</string>
              </property>
              <property name="checked">
               <bool>true</bool>
              </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox_PowerCurve">
+            </widget></item>
+<item row="3" column="2"><widget class="QCheckBox" name="checkBox_PowerCurve">
              <property name="text">
-              <string>Show Curve</string>
+              <string>Curve</string>
              </property>
              <property name="checked">
               <bool>true</bool>
              </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="verticalSpacer_8">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="tab_9">
-          <attribute name="title">
-           <string>Cadence</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_14">
-           <property name="topMargin">
-            <number>20</number>
-           </property>
-           <item>
-            <widget class="QCheckBox" name="checkBox_targetCadence">
+            </widget></item>
+<item row="4" column="0"><widget class="QLabel" name="label_graphCadence"><property name="text"><string>Cadence</string></property></widget></item>
+<item row="4" column="1"><widget class="QCheckBox" name="checkBox_targetCadence">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -1696,15 +1086,13 @@ QLabel#label_imageCalories {
               </sizepolicy>
              </property>
              <property name="text">
-              <string>Show Target</string>
+              <string>Target line</string>
              </property>
              <property name="checked">
               <bool>true</bool>
              </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox_CadenceCurve">
+            </widget></item>
+<item row="4" column="2"><widget class="QCheckBox" name="checkBox_CadenceCurve">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -1712,38 +1100,14 @@ QLabel#label_imageCalories {
               </sizepolicy>
              </property>
              <property name="text">
-              <string>Show Curve</string>
+              <string>Curve</string>
              </property>
              <property name="checked">
               <bool>true</bool>
              </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="verticalSpacer_9">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="tab_10">
-          <attribute name="title">
-           <string>Speed</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_15">
-           <property name="topMargin">
-            <number>20</number>
-           </property>
-           <item>
-            <widget class="QCheckBox" name="checkBox_SpeedCurve">
+            </widget></item>
+<item row="5" column="0"><widget class="QLabel" name="label_graphSpeed"><property name="text"><string>Speed</string></property></widget></item>
+<item row="5" column="2"><widget class="QCheckBox" name="checkBox_SpeedCurve">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -1751,26 +1115,12 @@ QLabel#label_imageCalories {
               </sizepolicy>
              </property>
              <property name="text">
-              <string>Show Curve</string>
+              <string>Curve</string>
              </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="verticalSpacer_10">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-        </widget>
+            </widget></item>
+<item row="6" column="0" colspan="3"><spacer name="verticalSpacer_graph"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item>
+</layout>
+</widget>
        </item>
       </layout>
      </widget>
@@ -1789,15 +1139,8 @@ QLabel#label_imageCalories {
         <number>0</number>
        </property>
        <item>
-        <widget class="QTabWidget" name="tabWidget_5">
-         <property name="currentIndex">
-          <number>0</number>
-         </property>
-         <widget class="QWidget" name="tab_11">
-          <attribute name="title">
-           <string>General</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_16">
+        <widget class="QWidget" name="widget_soundOptions">
+<layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="topMargin">
             <number>20</number>
            </property>
@@ -1914,6 +1257,37 @@ QLabel#label_imageCalories {
              </layout>
             </widget>
            </item>
+<item><widget class="QGroupBox" name="groupBox_powerAlerts"><property name="title"><string>Power alerts</string></property><layout class="QVBoxLayout" name="verticalLayout_powerAlerts"><item><widget class="QCheckBox" name="checkBox_underTargetPower">
+             <property name="text">
+              <string>Below target</string>
+             </property>
+             <property name="class" stdset="0">
+              <string/>
+             </property>
+            </widget></item><item><widget class="QCheckBox" name="checkBox_aboveTargetPower">
+             <property name="text">
+              <string>Above target</string>
+             </property>
+             <property name="class" stdset="0">
+              <string/>
+             </property>
+            </widget></item></layout></widget></item>
+<item><widget class="QGroupBox" name="groupBox_cadenceAlerts"><property name="title"><string>Cadence alerts</string></property><layout class="QVBoxLayout" name="verticalLayout_cadenceAlerts"><item><widget class="QCheckBox" name="checkBox_underTargetCadence">
+             <property name="text">
+              <string>Below target</string>
+             </property>
+             <property name="class" stdset="0">
+              <string/>
+             </property>
+            </widget></item><item><widget class="QCheckBox" name="checkBox_aboveTargetCadence">
+             <property name="text">
+              <string>Above target</string>
+             </property>
+             <property name="class" stdset="0">
+              <string/>
+             </property>
+            </widget></item></layout></widget></item>
+
            <item>
             <layout class="QGridLayout" name="gridLayout_2">
              <item row="0" column="0">
@@ -1958,7 +1332,9 @@ QLabel#label_imageCalories {
                </property>
               </widget>
              </item>
-             <item row="2" column="1">
+             
+
+<item row="2" column="1">
               <spacer name="verticalSpacer_11">
                <property name="orientation">
                 <enum>Qt::Vertical</enum>
@@ -1974,94 +1350,7 @@ QLabel#label_imageCalories {
             </layout>
            </item>
           </layout>
-         </widget>
-         <widget class="QWidget" name="tab_12">
-          <attribute name="title">
-           <string>Power Alerts</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_3">
-           <property name="topMargin">
-            <number>20</number>
-           </property>
-           <item>
-            <widget class="QCheckBox" name="checkBox_underTargetPower">
-             <property name="text">
-              <string>Under Target</string>
-             </property>
-             <property name="class" stdset="0">
-              <string/>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox_aboveTargetPower">
-             <property name="text">
-              <string>Above Target</string>
-             </property>
-             <property name="class" stdset="0">
-              <string/>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="verticalSpacer_12">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="tab_14">
-          <attribute name="title">
-           <string>Cadence Alerts</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_17">
-           <property name="topMargin">
-            <number>20</number>
-           </property>
-           <item>
-            <widget class="QCheckBox" name="checkBox_underTargetCadence">
-             <property name="text">
-              <string>Under Target</string>
-             </property>
-             <property name="class" stdset="0">
-              <string/>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox_aboveTargetCadence">
-             <property name="text">
-              <string>Above Target</string>
-             </property>
-             <property name="class" stdset="0">
-              <string/>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="verticalSpacer_13">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-        </widget>
+</widget>
        </item>
       </layout>
      </widget>
@@ -2080,15 +1369,8 @@ QLabel#label_imageCalories {
         <number>0</number>
        </property>
        <item>
-        <widget class="QTabWidget" name="tabWidget_6">
-         <property name="currentIndex">
-          <number>0</number>
-         </property>
-         <widget class="QWidget" name="tab_13">
-          <attribute name="title">
-           <string>Multimedia</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_19">
+        <widget class="QWidget" name="tab_13">
+<layout class="QVBoxLayout" name="verticalLayout_19">
            <property name="topMargin">
             <number>20</number>
            </property>
@@ -2182,8 +1464,7 @@ QLabel#label_imageCalories {
             </spacer>
            </item>
           </layout>
-         </widget>
-        </widget>
+</widget>
        </item>
       </layout>
      </widget>
@@ -2202,15 +1483,8 @@ QLabel#label_imageCalories {
         <number>0</number>
        </property>
        <item>
-        <widget class="QTabWidget" name="tabWidget">
-         <property name="currentIndex">
-          <number>0</number>
-         </property>
-         <widget class="QWidget" name="tab_15">
-          <attribute name="title">
-           <string>Radios</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_24">
+        <widget class="QWidget" name="tab_15">
+<layout class="QVBoxLayout" name="verticalLayout_24">
            <property name="leftMargin">
             <number>0</number>
            </property>
@@ -2393,8 +1667,7 @@ QLabel#label_imageCalories {
             </layout>
            </item>
           </layout>
-         </widget>
-        </widget>
+</widget>
        </item>
       </layout>
      </widget>

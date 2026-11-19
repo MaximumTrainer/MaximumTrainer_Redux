@@ -321,11 +321,6 @@ void DialogConfig::initUi() {
 
 
     ///Timers
-    ui->checkBox_showTimerOnTop->setChecked(account->show_timer_on_top);
-    if (account->show_timer_on_top) {
-        ui->pushButton_leftTimer->setDisabled(true);
-        ui->pushButton_rightTimer->setDisabled(true);
-    }
     ui->checkBox_showIntervalRemainingTime->setChecked(account->show_interval_remaining);
     ui->checkBox_showWorkoutRemainingTime->setChecked(account->show_workout_remaining);
     ui->checkBox_showElapsedTime->setChecked(account->show_elapsed);
@@ -408,7 +403,6 @@ void DialogConfig::initUi() {
     ui->comboBox_displayPower->setCurrentIndex(account->display_power - 1);
     ui->comboBox_displayCadence->setCurrentIndex(account->display_cadence - 1);
     ui->comboBox_displayPowerBalance->setCurrentIndex(account->display_power_balance);
-    ui->spinBox_offsetPower->setValue(account->offset_power);
 
     // The Game (index 2) is single-rider (no use in multi-rider studio) and
     // makes no sense in free ride (no targets/finish) — drop it from the
@@ -488,14 +482,6 @@ void DialogConfig::on_checkBox_showGrid_clicked(bool checked)
 
 /// Timers
 
-void DialogConfig::on_checkBox_showTimerOnTop_clicked(bool checked)
-{
-    ui->pushButton_leftTimer->setDisabled(checked);
-    ui->pushButton_rightTimer->setDisabled(checked);
-
-    parentDialog->showTimerOnTop(checked);
-
-}
 
 
 void DialogConfig::on_checkBox_showIntervalRemainingTime_clicked(bool checked)
@@ -734,7 +720,6 @@ void DialogConfig::saveSettings() {
 
 
     /// Timers
-    account->show_timer_on_top = ui->checkBox_showTimerOnTop->isChecked();
     account->show_interval_remaining = ui->checkBox_showIntervalRemainingTime->isChecked();
     account->show_workout_remaining =  ui->checkBox_showWorkoutRemainingTime->isChecked();
     account->show_elapsed = ui->checkBox_showElapsedTime->isChecked();
@@ -746,7 +731,6 @@ void DialogConfig::saveSettings() {
     account->display_power = ui->comboBox_displayPower->currentIndex() + 1;
     account->display_cadence = ui->comboBox_displayCadence->currentIndex() + 1;
     account->display_power_balance = ui->comboBox_displayPowerBalance->currentIndex();
-    account->offset_power = ui->spinBox_offsetPower->value();
 
     account->display_video =  ui->comboBox_displayVideo->currentIndex();
 
@@ -789,109 +773,6 @@ void DialogConfig::saveSettings() {
 }
 
 
-void DialogConfig::moveElement(QString widgetIdentifier, bool moveRight) {
-
-
-    //get position current widget
-    int positionWidget = -1;
-    for (int i=0; i<account->getNumberWidget(); i++) {
-        if (account->tab_display[i] == widgetIdentifier)
-            positionWidget = i;
-    }
-
-    //check that element is not already on border
-    if (moveRight && positionWidget == account->getNumberWidget()-1)
-        return;
-    if (!moveRight && positionWidget == 0)
-        return;
-
-    //get the element to permute
-    int posToSwitch;
-    QString widgetToSwitch;
-    moveRight ? posToSwitch=positionWidget+1 : posToSwitch=positionWidget-1;
-    widgetToSwitch = account->tab_display[posToSwitch];
-
-    // permute
-    account->tab_display[posToSwitch] = std::move(widgetIdentifier);
-    account->tab_display[positionWidget] = std::move(widgetToSwitch);
-
-
-    //redraw
-    parentDialog->moveWidgetsPosition();
-}
-
-
-void DialogConfig::on_pushButton_leftTimer_clicked()
-{
-    moveElement(account->getTimerStr(), false);
-}
-void DialogConfig::on_pushButton_rightTimer_clicked()
-{
-    moveElement(account->getTimerStr(), true);
-}
-
-void DialogConfig::on_pushButton_leftHr_clicked()
-{
-    moveElement(account->getHrStr(), false);
-}
-void DialogConfig::on_pushButton_rightHr_clicked()
-{
-    moveElement(account->getHrStr(), true);
-}
-
-void DialogConfig::on_pushButton_leftPower_clicked()
-{
-    moveElement(account->getPowerStr(), false);
-}
-void DialogConfig::on_pushButton_rightPower_clicked()
-{
-    moveElement(account->getPowerStr(), true);
-}
-
-void DialogConfig::on_pushButton_leftPowerBal_clicked()
-{
-    moveElement(account->getPowerBalanceStr(), false);
-}
-void DialogConfig::on_pushButton_rightPowerBal_clicked()
-{
-    moveElement(account->getPowerBalanceStr(), true);
-}
-
-void DialogConfig::on_pushButton_leftCadence_clicked()
-{
-    moveElement(account->getCadenceStr(), false);
-}
-void DialogConfig::on_pushButton_rightCadence_clicked()
-{
-    moveElement(account->getCadenceStr(), true);
-}
-
-void DialogConfig::on_pushButton_leftSpeed_clicked()
-{
-    moveElement(account->getSpeedStr(), false);
-}
-void DialogConfig::on_pushButton_rightSpeed_clicked()
-{
-    moveElement(account->getSpeedStr(), true);
-}
-
-void DialogConfig::on_pushButton_leftInfoWorkout_clicked()
-{
-    moveElement(account->getInfoWorkoutStr(), false);
-}
-void DialogConfig::on_pushButton_rightInfoWorkout_clicked()
-{
-    moveElement(account->getInfoWorkoutStr(), true);
-}
-
-void DialogConfig::on_pushButton_leftOxygen_clicked()
-{
-    moveElement(account->getOxygenStr(), false);
-}
-void DialogConfig::on_pushButton_rightOxygen_clicked()
-{
-    moveElement(account->getOxygenStr(), true);
-}
 
 
 void DialogConfig::on_spinBox_value_intervalmessage_duration_sec_valueChanged(int arg1)

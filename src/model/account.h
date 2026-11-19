@@ -118,38 +118,6 @@ public:
 
     int last_index_selected_config_workout;
     int last_tab_sub_config_selected;
-    QString tab_display[8];
-
-    //-------------- Util functions -------------
-    // Must Matches the DB identifier
-    QString getTimerStr() const {
-        return "Timer";
-    }
-    QString getHrStr() const {
-        return "Hr";
-    }
-    QString getPowerStr() const {
-        return "Power";
-    }
-    QString getCadenceStr() const {
-        return "Cadence";
-    }
-    QString getPowerBalanceStr() const {
-        return "PowerBal";
-    }
-    QString getSpeedStr() const {
-        return "Speed";
-    }
-    QString getOxygenStr() const {
-        return "Oxygen";
-    }
-    QString getInfoWorkoutStr() const{
-        return "InfoWorkout";
-    }
-    int getNumberWidget() const {
-        return 8;
-    }
-    //-------------- /Util functions -------------
 
 
 
@@ -174,13 +142,11 @@ public:
     int display_cadence;
     int display_video;
 
-    bool show_timer_on_top;
     bool show_interval_remaining;
     bool show_workout_remaining;
     bool show_elapsed;
     bool show_current_target;
 
-    int offset_power;
 
     bool show_seperator_interval;
     bool show_grid;

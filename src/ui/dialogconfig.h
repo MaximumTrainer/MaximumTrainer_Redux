@@ -106,46 +106,29 @@ private slots:
 
 
     ///timers
-    void on_checkBox_showTimerOnTop_clicked(bool checked);
     void on_checkBox_showIntervalRemainingTime_clicked(bool checked);
     void on_checkBox_showWorkoutRemainingTime_clicked(bool checked);
     void on_checkBox_showElapsedTime_clicked(bool checked);
     void on_checkBox_showCurrentTarget_clicked(bool checked);
 
 
-    void on_pushButton_rightTimer_clicked();
 
-    void on_pushButton_leftTimer_clicked();
 
-    void on_pushButton_leftHr_clicked();
 
-    void on_pushButton_rightHr_clicked();
 
-    void on_pushButton_leftPower_clicked();
 
-    void on_pushButton_rightPower_clicked();
 
-    void on_pushButton_rightPowerBal_clicked();
 
-    void on_pushButton_leftPowerBal_clicked();
 
-    void on_pushButton_rightCadence_clicked();
 
-    void on_pushButton_leftCadence_clicked();
 
-    void on_pushButton_rightSpeed_clicked();
 
-    void on_pushButton_leftSpeed_clicked();
 
-    void on_pushButton_rightInfoWorkout_clicked();
 
-    void on_pushButton_leftInfoWorkout_clicked();
 
     void on_checkBox_enableOxygen_clicked(bool checked);
 
-    void on_pushButton_leftOxygen_clicked();
 
-    void on_pushButton_rightOxygen_clicked();
 
 
     void on_checkBox_showTrainerSpeed_clicked(bool checked);
@@ -158,7 +141,6 @@ private :
     void initUi();
 
     void playSoundTestEffect();
-    void moveElement(QString widgetIdentifier, bool moveRight); //moveRight false = moveLeft
 
     // Interval-summary overlay setting (lives at the bottom of the General tab)
     void buildIntervalSummaryGroup();

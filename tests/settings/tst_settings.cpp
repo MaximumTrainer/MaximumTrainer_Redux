@@ -62,7 +62,6 @@ void TstSettings::testDisplayPrefs_freshStoreGivesDefaults()
         QCOMPARE(account.display_power_balance, 0);
         QCOMPARE(account.display_cadence, 1);
         QCOMPARE(account.display_video, 0);
-        QCOMPARE(account.offset_power, 0);
         QCOMPARE(account.start_trigger, 0);
         QCOMPARE(account.value_cadence_start, 40);
         QCOMPARE(account.value_power_start, 120);
@@ -81,7 +80,6 @@ void TstSettings::testDisplayPrefs_freshStoreGivesDefaults()
         QCOMPARE(account.use_pm_for_speed, false);
         QCOMPARE(account.show_included_workout, true);
         QCOMPARE(account.rowing_mode, false);
-        QCOMPARE(account.show_timer_on_top, false);
         QCOMPARE(account.show_interval_remaining, true);
         QCOMPARE(account.show_workout_remaining, false);
         QCOMPARE(account.show_elapsed, true);
@@ -128,7 +126,6 @@ void TstSettings::testDisplayPrefs_saveUsesOnDiskKeyNames()
         "display_power_balance",
         "display_cadence",
         "display_video",
-        "offset_power",
         "start_trigger",
         "value_cadence_start",
         "value_power_start",
@@ -147,7 +144,6 @@ void TstSettings::testDisplayPrefs_saveUsesOnDiskKeyNames()
         "use_pm_for_speed",
         "show_included_workout",
         "rowing_mode",
-        "show_timer_on_top",
         "show_interval_remaining",
         "show_workout_remaining",
         "show_elapsed",
@@ -193,7 +189,6 @@ void TstSettings::testDisplayPrefs_roundTripsEveryField()
         writer.display_power_balance = 8;
         writer.display_cadence = 8;
         writer.display_video = 7;
-        writer.offset_power = 7;
         writer.start_trigger = 7;
         writer.value_cadence_start = 47;
         writer.value_power_start = 127;
@@ -212,7 +207,6 @@ void TstSettings::testDisplayPrefs_roundTripsEveryField()
         writer.use_pm_for_speed = true;
         writer.show_included_workout = false;
         writer.rowing_mode = true;
-        writer.show_timer_on_top = true;
         writer.show_interval_remaining = false;
         writer.show_workout_remaining = true;
         writer.show_elapsed = false;
@@ -253,7 +247,6 @@ void TstSettings::testDisplayPrefs_roundTripsEveryField()
         QCOMPARE(reader.display_power_balance, 8);
         QCOMPARE(reader.display_cadence, 8);
         QCOMPARE(reader.display_video, 7);
-        QCOMPARE(reader.offset_power, 7);
         QCOMPARE(reader.start_trigger, 7);
         QCOMPARE(reader.value_cadence_start, 47);
         QCOMPARE(reader.value_power_start, 127);
@@ -272,7 +265,6 @@ void TstSettings::testDisplayPrefs_roundTripsEveryField()
         QCOMPARE(reader.use_pm_for_speed, true);
         QCOMPARE(reader.show_included_workout, false);
         QCOMPARE(reader.rowing_mode, true);
-        QCOMPARE(reader.show_timer_on_top, true);
         QCOMPARE(reader.show_interval_remaining, false);
         QCOMPARE(reader.show_workout_remaining, true);
         QCOMPARE(reader.show_elapsed, false);

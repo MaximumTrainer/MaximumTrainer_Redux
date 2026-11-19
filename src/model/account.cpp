@@ -78,15 +78,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
 
     erg_smoothing_duration_s = qBound(0, erg_smoothing_duration_s, 30);
 
-    tab_display[0] = "Timer";
-    tab_display[1] = "Power";
-    tab_display[2] = "Cadence";
-    tab_display[3] = "PowerBal";
-    tab_display[4] = "Hr";
-    tab_display[5] = "Speed";
-    tab_display[6] = "InfoWorkout";
-    tab_display[7] = "Oxygen";
-
     interval_summary_enabled    = AppSettings::read(settings, Keys::IntervalSummaryEnabled);
     interval_summary_duration_s = qBound(2, AppSettings::read(settings, Keys::IntervalSummaryDurationS), 15);
     app_theme = qBound(0, AppSettings::read(settings, Keys::AppTheme), 2);
@@ -184,7 +175,7 @@ void Account::loadDisplayPrefs() {
     if (display_power == 0)   display_power = 1;
     if (display_cadence == 0) display_cadence = 1;
     display_video         = AppSettings::read(settings, Keys::DisplayVideo);
-    offset_power          = AppSettings::read(settings, Keys::OffsetPower);
+    AppSettings::remove(settings, Keys::OffsetPower);  // retired power offset
 
     // Start-workout trigger and its per-mode threshold values.
     start_trigger       = AppSettings::read(settings, Keys::StartTrigger);
@@ -213,7 +204,7 @@ void Account::loadDisplayPrefs() {
     rowing_mode = AppSettings::read(settings, Keys::RowingMode);
 
     // Timer display
-    show_timer_on_top       = AppSettings::read(settings, Keys::ShowTimerOnTop);
+    AppSettings::remove(settings, Keys::ShowTimerOnTop);  // timers are always on the top bar
     show_interval_remaining = AppSettings::read(settings, Keys::ShowIntervalRemaining);
     show_workout_remaining  = AppSettings::read(settings, Keys::ShowWorkoutRemaining);
     show_elapsed            = AppSettings::read(settings, Keys::ShowElapsed);
@@ -264,7 +255,6 @@ void Account::saveDisplayPrefs() {
     AppSettings::write(settings, Keys::DisplayPowerBalance, display_power_balance);
     AppSettings::write(settings, Keys::DisplayCadence, display_cadence);
     AppSettings::write(settings, Keys::DisplayVideo, display_video);
-    AppSettings::write(settings, Keys::OffsetPower, offset_power);
 
     // Start-workout trigger and its per-mode threshold values. Formerly loaded
     // from the (now-defunct) server account endpoint; persisted locally so the
@@ -296,7 +286,6 @@ void Account::saveDisplayPrefs() {
     AppSettings::write(settings, Keys::ShowIncludedWorkout, show_included_workout);
     AppSettings::write(settings, Keys::RowingMode, rowing_mode);
 
-    AppSettings::write(settings, Keys::ShowTimerOnTop, show_timer_on_top);
     AppSettings::write(settings, Keys::ShowIntervalRemaining, show_interval_remaining);
     AppSettings::write(settings, Keys::ShowWorkoutRemaining, show_workout_remaining);
     AppSettings::write(settings, Keys::ShowElapsed, show_elapsed);
