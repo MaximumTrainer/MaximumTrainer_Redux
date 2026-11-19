@@ -1,4 +1,5 @@
 #include "historywidget.h"
+#include "weeklysummarywidget.h"
 #include "asyncdialogs.h"
 #include "workouthistorymodel.h"
 #include "historyfilterproxymodel.h"
@@ -117,7 +118,9 @@ void HistoryWidget::setupUi()
     filterBar->addWidget(m_toDate);
     filterBar->addWidget(clearBtn);
 
+    m_weekly = new WeeklySummaryWidget(histTab);
     auto *histLayout = new QVBoxLayout(histTab);
+    histLayout->addWidget(m_weekly);
     histLayout->setContentsMargins(8, 8, 8, 8);
     histLayout->setSpacing(6);
     histLayout->addLayout(toolBar);
@@ -176,6 +179,7 @@ void HistoryWidget::loadHistory()
     }
 
     m_model->setHistory(summaries);
+    m_weekly->setHistory(summaries);
     if (!m_dateRangeInitialized) {
         m_dateRangeInitialized = true;
         resetDateRange();

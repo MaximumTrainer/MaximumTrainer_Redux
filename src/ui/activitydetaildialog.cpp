@@ -4,6 +4,9 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+
+#include "achievementcatalog.h"
+#include "achievementstore.h"
 #include <QTableWidget>
 #include <QHeaderView>
 #include <QDialogButtonBox>
@@ -96,6 +99,25 @@ ActivityDetailDialog::ActivityDetailDialog(const WorkoutHistorySummary &summary,
 
     auto *layout = new QVBoxLayout(this);
     layout->addWidget(header);
+
+    // Achievements unlocked during this ride (or right after, when the totals
+    // are counted once the file is saved).
+    if (summary.startTime.isValid()) {
+        const QDateTime from = summary.startTime;
+        const QDateTime to = summary.startTime.addSecs(summary.durationSec + 15 * 60);
+        QStringList names;
+        const QMap<QString, QDateTime> earned = AchievementStore::unlocked();
+        for (auto it = earned.cbegin(); it != earned.cend(); ++it)
+            if (it.value() >= from && it.value() <= to)
+                if (const auto *definition = AchievementCatalog::find(it.key()))
+                    names << definition->name;
+        if (!names.isEmpty()) {
+            auto *achievements = new QLabel(QStringLiteral("🏆 ") + tr("Earned on this ride: %1").arg(names.join(QStringLiteral(", "))), this);
+            achievements->setWordWrap(true);
+            achievements->setStyleSheet(QStringLiteral("color: #d99a1c; font-weight: bold;"));
+            layout->addWidget(achievements);
+        }
+    }
     layout->addWidget(m_plot, 3);
     if (m_lapTable)
         layout->addWidget(m_lapTable, 2);
