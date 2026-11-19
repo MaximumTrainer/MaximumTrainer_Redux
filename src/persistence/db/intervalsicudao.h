@@ -17,6 +17,8 @@
 /// Endpoints used:
 ///   GET /api/v1/athlete/{id}          – basic profile (name, weight, FTP, LTHR)
 ///   GET /api/v1/athlete/{id}/sport-settings – per-sport FTP/LTHR + zones
+class QJsonObject;
+
 class IntervalsIcuDAO
 {
 public:
@@ -41,6 +43,13 @@ public:
 
     /// Fetch training-zone settings using an OAuth2 Bearer token.
     static QNetworkReply* getAthleteSettingsBearer(const QString &athleteId, const QString &bearerToken);
+
+    /// GET /athlete/{id}/sport-settings/Ride: the cycling settings object.
+    static QNetworkReply* getRideSettingsBearer(const QString &athleteId, const QString &bearerToken);
+    /// PUT the full Ride settings object back (needs SETTINGS:WRITE). Sending
+    /// the whole object keeps zones and other fields whatever the PUT semantics.
+    static QNetworkReply* putRideSettingsBearer(const QString &athleteId, const QString &bearerToken,
+                                                const QJsonObject &settings);
 
 private:
     /// Build a QNetworkRequest with the Intervals.icu Basic Auth header set.

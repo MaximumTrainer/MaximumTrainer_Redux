@@ -10,6 +10,8 @@
 class Account;
 class QNetworkReply;
 class QTimer;
+class QBoxLayout;
+class QLabel;
 
 /// Overlay shown when a workout finishes: earned achievements, plus Strava and
 /// Intervals.icu upload of the recorded FIT file (manual button or automatic,
@@ -23,6 +25,10 @@ public:
                      const QString &fitFilePath, const QString &fitFileName,
                      const QString &fitFileDescription, QWidget *parent);
 
+signals:
+    /// The rider accepted a detected FTP; zones and targets need recomputing.
+    void ftpUpdated(int ftpWatts);
+
 private slots:
     void uploadToStrava();
     void doStravaUpload();   ///< the actual upload, after any token refresh
@@ -33,6 +39,8 @@ private slots:
     void slotPostStravaStatusDone();
 
 private:
+    void addFtpSuggestion(QBoxLayout *layout);
+    void acceptFtp(int ftpWatts);
     void setStravaPostStatus(const QString &text, bool retryable);
     void setIntervalsIcuPostStatus(const QString &text, bool retryable);
 
@@ -47,6 +55,7 @@ private:
     qint64         stravaUploadID_post         = 0;
     QNetworkReply *replyPostIntervalsIcuUpload = nullptr;
     bool           m_stravaUpload401Retried    = false;
+    QLabel        *m_ftpStatus                 = nullptr;
 };
 
 #endif // POSTWORKOUTPANEL_H

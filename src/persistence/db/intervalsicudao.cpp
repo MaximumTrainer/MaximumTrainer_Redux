@@ -1,6 +1,8 @@
 #include "intervalsicudao.h"
 
 #include <QByteArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include "environnement.h"
 #include "logger.h"
@@ -94,4 +96,31 @@ QNetworkReply* IntervalsIcuDAO::getAthleteSettingsBearer(const QString &athleteI
 
     const QString url = urlIntervalsIcuApi + athleteId + QStringLiteral("/sport-settings");
     return manager->get(buildBearerRequest(url, bearerToken));
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// GET / PUT /api/v1/athlete/{id}/sport-settings/Ride
+QNetworkReply* IntervalsIcuDAO::getRideSettingsBearer(const QString &athleteId, const QString &bearerToken)
+{
+    QNetworkAccessManager *manager = qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
+    if (!manager) {
+        LOG_WARN("IntervalsIcuDAO", QStringLiteral("getRideSettingsBearer: NetworkManagerWS not available"));
+        return nullptr;
+    }
+    return manager->get(buildBearerRequest(urlIntervalsIcuApi + athleteId + QStringLiteral("/sport-settings/Ride"),
+                                           bearerToken));
+}
+
+QNetworkReply* IntervalsIcuDAO::putRideSettingsBearer(const QString &athleteId, const QString &bearerToken,
+                                                      const QJsonObject &settings)
+{
+    QNetworkAccessManager *manager = qApp->property("NetworkManagerWS").value<QNetworkAccessManager*>();
+    if (!manager) {
+        LOG_WARN("IntervalsIcuDAO", QStringLiteral("putRideSettingsBearer: NetworkManagerWS not available"));
+        return nullptr;
+    }
+    QNetworkRequest request = buildBearerRequest(
+        urlIntervalsIcuApi + athleteId + QStringLiteral("/sport-settings/Ride?recalcHrZones=false"), bearerToken);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    return manager->put(request, QJsonDocument(settings).toJson(QJsonDocument::Compact));
 }

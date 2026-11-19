@@ -22,6 +22,7 @@
 #include "pmccalculator.h"
 #include "workouthistorymodel.h"
 #include "historyfilterproxymodel.h"
+#include "ftpestimator.h"
 
 // Garmin FIT epoch (1989-12-31 UTC) offset from the Unix epoch, in seconds.
 static constexpr qint64 FIT_EPOCH_OFFSET = 631065600LL;
@@ -139,6 +140,51 @@ private:
     };
 
 private slots:
+    void ftpEstimate_rulesOfThumb()
+    {
+        QCOMPARE(FtpEstimator::ftpFromBest20(250.0), 238);
+        // At least 5 W and 2% over the current FTP.
+        QVERIFY(!FtpEstimator::worthSuggesting(200, 204, 0));
+        QVERIFY(FtpEstimator::worthSuggesting(200, 205, 0));
+        QVERIFY(!FtpEstimator::worthSuggesting(300, 305, 0));
+        QVERIFY(FtpEstimator::worthSuggesting(300, 306, 0));
+        // A dismissed estimate is only suggested again when it grows.
+        QVERIFY(!FtpEstimator::worthSuggesting(200, 214, 214));
+        QVERIFY(FtpEstimator::worthSuggesting(200, 220, 214));
+        // Never a decrease.
+        QVERIFY(!FtpEstimator::worthSuggesting(250, 238, 0));
+    }
+
+    void ftpEstimate_fromRecentRides()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString longRide  = dir.filePath(QStringLiteral("long.fit"));
+        const QString shortRide = dir.filePath(QStringLiteral("short.fit"));
+        const QString oldRide   = dir.filePath(QStringLiteral("old.fit"));
+        writeSampleFit(longRide, 1300);   // power 200 + i W each second
+        writeSampleFit(shortRide, 600);   // under 20 minutes
+        writeSampleFit(oldRide, 1300);
+        const QDateTime now = QDateTime::currentDateTime();
+        QFile old(oldRide);
+        QVERIFY(old.open(QIODevice::ReadWrite));
+        QVERIFY(old.setFileTime(now.addDays(-(FtpEstimator::kWindowDays + 1)), QFileDevice::FileModificationTime));
+        old.close();
+
+        const QList<QString> recent = FtpEstimator::recentRides(dir.path(), now);
+        QCOMPARE(recent.size(), 2);
+        QVERIFY(!recent.contains(QFileInfo(oldRide).absoluteFilePath()));
+
+        // Best 1200 s window of 200..1499 W is seconds 100..1299: mean 899.5 W.
+        const FtpEstimator::Estimate estimate = FtpEstimator::fromRides(recent);
+        QVERIFY(estimate.valid);
+        QCOMPARE(estimate.best20W, 900);
+        QCOMPARE(estimate.ftpW, FtpEstimator::ftpFromBest20(899.5));
+
+        QVERIFY(!FtpEstimator::fromRides({QFileInfo(shortRide).absoluteFilePath()}).valid);
+        QVERIFY(!FtpEstimator::fromRides({}).valid);
+    }
+
     void dateFilterKeepsUndatedActivities()
     {
         WorkoutHistorySummary dated;
