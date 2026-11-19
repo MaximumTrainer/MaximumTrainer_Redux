@@ -181,7 +181,9 @@ if(WIN32)
     if(MSVC)
         # Release builds keep a PDB for crash reports (#382); objects carry
         # /Z7 debug info (CMAKE_MSVC_DEBUG_INFORMATION_FORMAT in the root).
-        target_link_options(MaximumTrainer PRIVATE /DEBUG)
+        # /DEBUG turns off the linker's dead-code and identical-code folding
+        # unless they are requested explicitly.
+        target_link_options(MaximumTrainer PRIVATE /DEBUG /OPT:REF /OPT:ICF)
     endif()
 elseif(APPLE)
     set(MT_ICON "${CMAKE_SOURCE_DIR}/resources/myappico.icns")

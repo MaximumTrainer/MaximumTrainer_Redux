@@ -6,6 +6,9 @@
 #include <QQuickWindow>
 #include <QSignalSpy>
 
+#include <memory>
+
+#include "racestyle.h"
 #include "retroracecontroller.h"
 
 Q_IMPORT_QML_PLUGIN(MaximumTrainer_GamePlugin)
@@ -19,6 +22,8 @@ private slots:
     void perSecondSetters_doNotAddFramesWhileTicking();
     void perSecondSetters_refreshWhenIdle();
     void roadSurface_drawsRoadAndVerge();
+    void raceStyle_coloursMatchQtHelpers();
+    void raceStyle_formatsNumbersAndNames();
 };
 
 void TstGame::animClock_followsWallTimeInReplayMode()
@@ -103,6 +108,53 @@ void TstGame::roadSurface_drawsRoadAndVerge()
              qPrintable(asphalt.name()));
     const QColor verge = pixel(5, 290);
     QVERIFY2(verge.green() > verge.red() && verge.green() > verge.blue(), qPrintable(verge.name()));
+}
+
+void TstGame::raceStyle_coloursMatchQtHelpers()
+{
+    // RaceStyle replaces Qt.tint/lighter/darker/rgba in RetroRace.qml, so the
+    // scene must look the same: compare against Qt's own helpers.
+    QQmlEngine engine;
+    QQmlComponent component(&engine);
+    component.setData(R"(
+        import QtQuick
+        QtObject {
+            property color tinted: Qt.tint("#5a3a1f", Qt.rgba(0.62, 0.76, 0.81, 0.3))
+            property color tintedTranslucentBase: Qt.tint("#805a3a1f", Qt.rgba(0.62, 0.76, 0.81, 0.3))
+            property color light: Qt.lighter("#2f7d32", 1.16)
+            property color dark: Qt.darker("#e23b3b", 1.3)
+            property color fromRgba: Qt.rgba(0.72, 0.4, 0.1, 1)
+        })", QUrl());
+    std::unique_ptr<QObject> reference(component.create());
+    QVERIFY2(reference, qPrintable(component.errorString()));
+
+    RaceStyle style;
+    const auto near = [](const QColor &actual, const QColor &expected) {
+        return qAbs(actual.redF() - expected.redF()) < 0.002f
+            && qAbs(actual.greenF() - expected.greenF()) < 0.002f
+            && qAbs(actual.blueF() - expected.blueF()) < 0.002f
+            && qAbs(actual.alphaF() - expected.alphaF()) < 0.002f;
+    };
+    const auto expected = [&](const char *name) { return reference->property(name).value<QColor>(); };
+    const QColor haze = style.rgba(0.62, 0.76, 0.81, 0.3);
+
+    QVERIFY(near(style.tint(QColor("#5a3a1f"), haze), expected("tinted")));
+    QVERIFY(near(style.tint(QColor("#805a3a1f"), haze), expected("tintedTranslucentBase")));
+    QVERIFY(near(style.lighter(QColor("#2f7d32"), 1.16), expected("light")));
+    QVERIFY(near(style.darker(QColor("#e23b3b"), 1.3), expected("dark")));
+    QVERIFY(near(style.rgba(0.72, 0.4, 0.1, 1), expected("fromRgba")));
+    QCOMPARE(style.tint(QColor("#5a3a1f"), style.rgba(0, 0, 0, 0)), QColor("#5a3a1f"));
+    QVERIFY(near(style.mix(QColor("#000000"), QColor("#ffffff"), 0.5), QColor::fromRgbF(0.5f, 0.5f, 0.5f)));
+}
+
+void TstGame::raceStyle_formatsNumbersAndNames()
+{
+    RaceStyle style;
+    QCOMPARE(style.fixed(12.345, 2), QStringLiteral("12.35"));
+    QCOMPARE(style.fixed(27.0, 1), QStringLiteral("27.0"));
+    QCOMPARE(style.shortName(QStringLiteral("Pacer"), 12), QStringLiteral("Pacer"));
+    QCOMPARE(style.shortName(QStringLiteral("2026-11-18 Threshold.fit"), 12),
+             QStringLiteral("2026-11-18 ") + QChar(0x2026));
 }
 
 QTEST_MAIN(TstGame)

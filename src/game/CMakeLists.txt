@@ -11,6 +11,7 @@ qt_add_qml_module(mt_game
         cyclingphysics.h
         ghostreplay.cpp ghostreplay.h
         retroracecontroller.cpp retroracecontroller.h
+        racestyle.cpp racestyle.h
         roadsurface.cpp roadsurface.h)
 target_include_directories(mt_game PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(mt_game PUBLIC Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml mt_fit)
