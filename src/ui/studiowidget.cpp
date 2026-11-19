@@ -112,6 +112,17 @@ void StudioWidget::buildUi()
 
     mainLayout->addLayout(topRow);
 
+    // Shown only while studio mode is off, so the page explains itself.
+    m_introLabel = new QLabel(
+        tr("Studio Mode lets up to %1 riders train together on this computer. "
+           "Each rider gets their own sensors, FTP and LTHR, live metrics and FIT "
+           "file, and the workout targets scale to each rider's FTP. "
+           "Turn it on to set up the riders.").arg(kMaxRiders),
+        this);
+    m_introLabel->setWordWrap(true);
+    m_introLabel->setMaximumWidth(640);
+    mainLayout->addWidget(m_introLabel);
+
     m_noteLabel = new QLabel(
         tr("Each rider trains with their own sensors. Leave a name blank to use "
            "Rider1, Rider2, … in the workout view."),
@@ -376,6 +387,7 @@ void StudioWidget::setStudioControlsVisible(bool visible)
     if (m_importButton)    m_importButton->setVisible(visible);
     if (m_exportButton)    m_exportButton->setVisible(visible);
     if (m_noteLabel)       m_noteLabel->setVisible(visible);
+    if (m_introLabel)      m_introLabel->setVisible(!visible);
     if (m_scrollArea)      m_scrollArea->setVisible(visible);
     // The spacer fills the freed space (off) so nothing re-centres; off when the
     // cards are visible so the scroll area keeps the stretch instead.
