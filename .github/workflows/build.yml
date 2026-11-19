@@ -161,6 +161,10 @@ jobs:
         # Qt 6.11.x targets Emscripten 4.0.7. It must match or linking against
         # Qt's libqwasm.a fails (Emscripten gives no cross-version ABI guarantee).
         version: '4.0.7'
+        # A fixed install path (the default is a random _temp/<uuid> dir) keeps
+        # compile commands identical between runs, so ccache can hit; it also
+        # caches the SDK download.
+        actions-cache-folder: 'emsdk-cache'
 
     - name: Point apt at a reachable Ubuntu mirror
       # On 2026-11-11 the runners could not resolve any *.ubuntu.com host, and
@@ -195,6 +199,15 @@ jobs:
         cache-key-prefix: qt-wasm
         # --autodesktop (v4) auto-installs the matching linux gcc_64 desktop Qt
         # and sets QT_HOST_PATH, so no separate host-tools install step is needed.
+
+    - name: Set up ccache
+      # Same compiler cache as the desktop builds (see EM_COMPILER_WRAPPER).
+      uses: hendrikmuhs/ccache-action@v1.2.25
+      with:
+        key: wasm-qt6.11.3-em4.0.7
+        max-size: 400M
+        evict-old-files: job
+        job-summary: ccache stats
 
     - name: Restore QWT cache (Wasm)
       id: qwt-wasm-cache
@@ -251,6 +264,11 @@ jobs:
         echo "GIT_TAG=$GIT_TAG" >> "$GITHUB_ENV"
 
     - name: Build MaximumTrainer (Wasm)
+      env:
+        # emcc runs ccache around the clang it invokes, a compiler ccache
+        # understands (wrapping the em++ script itself barely ever hit).
+        EM_COMPILER_WRAPPER: ccache
+        CCACHE_BASEDIR: ${{ github.workspace }}
       run: |
         source "$EMSDK/emsdk_env.sh"
         cmake -S . -B build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release \
