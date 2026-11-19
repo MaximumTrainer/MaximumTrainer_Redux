@@ -45,7 +45,7 @@ Account::Account(QObject *parent) : QObject(parent)  {
     FTP       = AppSettings::read(settings, Keys::Ftp);
     LTHR      = AppSettings::read(settings, Keys::Lthr);
     weight_kg = AppSettings::read(settings, Keys::WeightKg);
-    intervals_icu_api_key     = AppSettings::read(settings, Keys::IntervalsIcuApiKey);
+    AppSettings::remove(settings, Keys::IntervalsIcuApiKey);  // retired manual API key
     intervals_icu_athlete_id  = AppSettings::read(settings, Keys::IntervalsIcuAthleteId);
     intervals_icu_auto_upload = AppSettings::read(settings, Keys::IntervalsIcuAutoUpload);
     // OAuth2 tokens — loaded from the platform credential store (encrypted).
@@ -329,7 +329,6 @@ void Account::saveDisplayPrefs() {
 void Account::saveIntervalsIcuCredentials() {
 
     QSettings settings;
-    AppSettings::write(settings, SettingKeys::Account::IntervalsIcuApiKey,     intervals_icu_api_key);
     AppSettings::write(settings, SettingKeys::Account::IntervalsIcuAthleteId,  intervals_icu_athlete_id);
     AppSettings::write(settings, SettingKeys::Account::IntervalsIcuAutoUpload, intervals_icu_auto_upload);
 
@@ -344,12 +343,11 @@ void Account::logout()
     CredentialStore::remove("intervals_icu", "refresh_token");
     intervals_icu_access_token.clear();
 
-    // Manual API key + athlete id (the athlete id is what auto-logs the app in).
+    // The athlete id is what auto-logs the app in.
     intervals_icu_api_key.clear();
     intervals_icu_athlete_id.clear();
 
     QSettings settings;
-    AppSettings::remove(settings, SettingKeys::Account::IntervalsIcuApiKey);
     AppSettings::remove(settings, SettingKeys::Account::IntervalsIcuAthleteId);
 }
 

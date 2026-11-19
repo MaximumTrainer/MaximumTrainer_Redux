@@ -21,7 +21,6 @@
 #include "environnement.h"
 #include "extrequest.h"
 #include "strava_oauth_flow.h"
-#include "intervalsicuservice.h"
 #include "xmlutil.h"
 #include "logger.h"
 #include "apptheme.h"
@@ -54,13 +53,6 @@ int themeModeFromComboIndex(int comboIndex)
 
 DialogMainWindowConfig::~DialogMainWindowConfig()
 {
-#ifndef GC_WASM_BUILD
-    if (replyIntervalsTest) {
-        replyIntervalsTest->abort();
-        replyIntervalsTest->deleteLater();
-        replyIntervalsTest = nullptr;
-    }
-#endif
     delete ui;
 }
 
@@ -119,9 +111,6 @@ DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent
     ui->listWidget_settings->setCurrentRow(0);
 
     initUI();
-
-    connect(ui->pushButton_testIntervalsConnection, &QPushButton::clicked,
-            this, &DialogMainWindowConfig::onTestIntervalsConnectionClicked);
 }
 
 
@@ -153,9 +142,7 @@ void DialogMainWindowConfig::initUI() {
     ui->comboBox_theme->setCurrentIndex(themeComboIndexFromMode(account->app_theme));
 
     // Intervals.icu credentials
-    ui->lineEdit_intervalsAthleteId->setText(account->intervals_icu_athlete_id);
     ui->checkBox_intervalsAutoUpload->setChecked(account->intervals_icu_auto_upload);
-    ui->label_intervalsTestResult->clear();
 
     // Athlete profile (FTP / LTHR / weight) — edited here, persisted locally.
     ui->spinBox_ftp->setValue(account->FTP);
@@ -369,82 +356,6 @@ void DialogMainWindowConfig::accept() {
     }
 }
 
-
-void DialogMainWindowConfig::onTestIntervalsConnectionClicked()
-{
-#ifndef GC_WASM_BUILD
-    const QString &athleteId   = account->intervals_icu_athlete_id;
-    const QString &accessToken = account->intervals_icu_access_token;
-
-    if (athleteId.isEmpty() || accessToken.isEmpty()) {
-        ui->label_intervalsTestResult->setStyleSheet("color: red;");
-        ui->label_intervalsTestResult->setText(tr("Not signed in to Intervals.icu."));
-        return;
-    }
-
-    // Abort any in-flight test request
-    if (replyIntervalsTest) {
-        replyIntervalsTest->abort();
-        replyIntervalsTest->deleteLater();
-        replyIntervalsTest = nullptr;
-    }
-
-    // Reuse or create the service object
-    if (!m_intervalsService)
-        m_intervalsService = new IntervalsIcuService(this);
-    m_intervalsService->setCredentials(QString(), athleteId);
-    m_intervalsService->setAccessToken(accessToken);
-
-    ui->pushButton_testIntervalsConnection->setEnabled(false);
-    // #888 mid-grey stays legible on both the light and dark themes.
-    ui->label_intervalsTestResult->setStyleSheet("color: #888;");
-    ui->label_intervalsTestResult->setText(tr("Testing…"));
-
-    replyIntervalsTest = m_intervalsService->testConnection();
-    connect(replyIntervalsTest, &QNetworkReply::finished,
-            this, &DialogMainWindowConfig::onTestIntervalsConnectionFinished);
-#else
-    ui->label_intervalsTestResult->setStyleSheet("color: #888;");
-    ui->label_intervalsTestResult->setText(tr("Not available in the web version."));
-#endif
-}
-
-void DialogMainWindowConfig::onTestIntervalsConnectionFinished()
-{
-#ifndef GC_WASM_BUILD
-    ui->pushButton_testIntervalsConnection->setEnabled(true);
-
-    if (!replyIntervalsTest)
-        return;
-
-    if (replyIntervalsTest->error() == QNetworkReply::NoError) {
-        const QByteArray data = replyIntervalsTest->readAll();
-        QJsonParseError parseError;
-        const QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
-        if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-            qWarning() << "IntervalsIcuService: failed to parse athlete response:"
-                       << parseError.errorString();
-            ui->label_intervalsTestResult->setStyleSheet("color: red;");
-            ui->label_intervalsTestResult->setText(
-                tr("✗ Unexpected response from server."));
-        } else {
-            const QString name = doc.object()["name"].toString();
-            if (name.isEmpty())
-                qWarning() << "IntervalsIcuService: athlete response missing 'name' field";
-            ui->label_intervalsTestResult->setStyleSheet("color: green;");
-            ui->label_intervalsTestResult->setText(
-                tr("✓ Connected") + (name.isEmpty() ? "" : " — " + name));
-        }
-    } else {
-        ui->label_intervalsTestResult->setStyleSheet("color: red;");
-        ui->label_intervalsTestResult->setText(
-            tr("✗ Failed: %1").arg(replyIntervalsTest->errorString()));
-    }
-
-    replyIntervalsTest->deleteLater();
-    replyIntervalsTest = nullptr;
-#endif
-}
 
 void DialogMainWindowConfig::setOnlineMode(bool isOnline)
 {

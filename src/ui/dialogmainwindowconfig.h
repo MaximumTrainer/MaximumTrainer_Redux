@@ -11,7 +11,6 @@
 
 #include "settings.h"
 #include "account.h"
-#include "intervalsicuservice.h"
 
 
 namespace Ui {
@@ -58,8 +57,6 @@ private slots:
     void unlinkStravaClicked();
     void stravaUnlinkFinished();
 
-    void onTestIntervalsConnectionClicked();
-    void onTestIntervalsConnectionFinished();
 
     /// Logging settings page slots
     void onLogFileEnabledToggled(bool checked);
@@ -87,8 +84,6 @@ private:
 
     QNetworkReply *replyStravaDeauthorization;
 
-    QNetworkReply *replyIntervalsTest = nullptr;
-    IntervalsIcuService *m_intervalsService = nullptr;
 
 
     // Logging settings page widgets (owned by the page widget, not directly by us)
