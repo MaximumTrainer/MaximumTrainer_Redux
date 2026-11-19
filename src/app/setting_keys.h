@@ -160,6 +160,12 @@ inline const SettingKey<QString> LastLoggedKey      {"SettingsGeneral/lastLogged
 inline const SettingKey<QString> IntervalsIcuProfileSyncedAt {"intervalsIcu/profileSyncedAt", QString()};
 } // namespace Login
 
+namespace Training {
+/// Highest FTP estimate the rider dismissed after a workout; only a higher
+/// estimate is suggested again.
+inline constexpr SettingKey<int> FtpSuggestionDismissedW {"training/ftpSuggestionDismissedW", 0};
+} // namespace Training
+
 namespace Group {
 /// Overrides the default group-workout relay (MT_GROUP_RELAY_URL wins over it).
 inline const SettingKey<QString> RelayUrl {"group_relay_url", QString()};

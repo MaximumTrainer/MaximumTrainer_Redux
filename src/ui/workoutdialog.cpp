@@ -3059,6 +3059,7 @@ void WorkoutDialog::showPostWorkoutPanel()
     // visible even when the data panes are collapsed (e.g. fullscreen game).
     widgetPostWorkout = new PostWorkoutPanel(account, earnedAchievements,
                                              fitFilePath, fitFileName, fitFileDescription, this);
+    connect(widgetPostWorkout, &PostWorkoutPanel::ftpUpdated, this, &WorkoutDialog::ftp_lthr_changed);
     const QSize ps = size();   // centre over the whole workout dialog
     const QSize ws = widgetPostWorkout->size();
     widgetPostWorkout->move((ps.width()  - ws.width())  / 2,

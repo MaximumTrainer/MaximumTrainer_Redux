@@ -1,6 +1,7 @@
 #include "postworkoutpanel.h"
 
 #include <QDateTime>
+#include <QHBoxLayout>
 #include <QFileInfo>
 #include <QLabel>
 #include <QNetworkReply>
@@ -10,6 +11,10 @@
 #include <QVBoxLayout>
 
 #include "account.h"
+#include "app_settings.h"
+#include "ftpestimator.h"
+#include "intervalsicuftpsync.h"
+#include "setting_keys.h"
 #include "intervalsicuservice.h"
 #include "logger.h"
 #include "strava_service.h"
@@ -53,6 +58,8 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
             layout->addWidget(row);
         }
     }
+
+    addFtpSuggestion(layout);
 
     // — Upload section —
     const bool hasStrava   = !account->strava_access_token.isEmpty();
@@ -111,6 +118,86 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
     }
 
     adjustSize();
+}
+
+// Suggests a higher FTP when the recent rides show one (see FtpEstimator).
+void PostWorkoutPanel::addFtpSuggestion(QBoxLayout *layout)
+{
+    if (account->enable_studio_mode || account->rowing_mode || account->FTP <= 0)
+        return;
+    const FtpEstimator::Estimate estimate = FtpEstimator::fromRides(
+        FtpEstimator::recentRides(Util::getSystemPathHistory(), QDateTime::currentDateTime()));
+    const int dismissed = AppSettings::read(SettingKeys::Training::FtpSuggestionDismissedW);
+    if (!estimate.valid || !FtpEstimator::worthSuggesting(account->FTP, estimate.ftpW, dismissed))
+        return;
+
+    auto *header = new QLabel(tr("New FTP detected: %1 W").arg(estimate.ftpW), this);
+    header->setStyleSheet("font-size: 11pt; font-weight: bold; color: #80c0ff; margin-top: 10px;");
+    layout->addWidget(header);
+    auto *detail = new QLabel(tr("Your best 20 minutes in the last %1 weeks was %2 W, so your FTP "
+                                 "is about %3 W (currently %4 W).")
+                                  .arg(FtpEstimator::kWindowDays / 7).arg(estimate.best20W)
+                                  .arg(estimate.ftpW).arg(account->FTP), this);
+    detail->setWordWrap(true);
+    detail->setStyleSheet("font-size: 10pt;");
+    layout->addWidget(detail);
+
+    auto *buttons = new QHBoxLayout();
+    auto *update = new QPushButton(tr("Update FTP"), this);
+    auto *later  = new QPushButton(tr("Not now"), this);
+    later->setStyleSheet("background-color: #444;");
+    buttons->addWidget(update);
+    buttons->addWidget(later);
+    layout->addLayout(buttons);
+    m_ftpStatus = new QLabel(this);
+    m_ftpStatus->setWordWrap(true);
+    m_ftpStatus->setStyleSheet("font-size: 10pt;");
+    m_ftpStatus->hide();
+    layout->addWidget(m_ftpStatus);
+
+    const int ftp = estimate.ftpW;
+    connect(update, &QPushButton::clicked, this, [this, ftp, update, later]() {
+        update->setEnabled(false);
+        later->setEnabled(false);
+        acceptFtp(ftp);
+    });
+    connect(later, &QPushButton::clicked, this, [this, ftp, update, later]() {
+        AppSettings::write(SettingKeys::Training::FtpSuggestionDismissedW, ftp);
+        update->setEnabled(false);
+        later->setEnabled(false);
+        m_ftpStatus->setText(tr("FTP left at %1 W.").arg(account->FTP));
+        m_ftpStatus->show();
+        adjustSize();
+    });
+}
+
+void PostWorkoutPanel::acceptFtp(int ftpWatts)
+{
+    account->saveProfileFields(ftpWatts, account->LTHR, account->weight_kg);
+    AppSettings::write(SettingKeys::Training::FtpSuggestionDismissedW, ftpWatts);
+    emit ftpUpdated(ftpWatts);
+    m_ftpStatus->show();
+
+    // Login copies the FTP from Intervals.icu, so save it there too or the
+    // next login would put the old value back.
+    if (account->intervals_icu_access_token.isEmpty() || account->intervals_icu_athlete_id.isEmpty()) {
+        m_ftpStatus->setText(tr("✓ FTP updated to %1 W.").arg(ftpWatts));
+        adjustSize();
+        return;
+    }
+    m_ftpStatus->setText(tr("FTP updated to %1 W. Saving to Intervals.icu…").arg(ftpWatts));
+    adjustSize();
+    auto *sync = new IntervalsIcuFtpSync(account->intervals_icu_athlete_id,
+                                         account->intervals_icu_access_token, ftpWatts, this);
+    connect(sync, &IntervalsIcuFtpSync::finished, this, [this, ftpWatts](bool ok, const QString &error) {
+        if (ok)
+            m_ftpStatus->setText(tr("✓ FTP updated to %1 W, here and on Intervals.icu.").arg(ftpWatts));
+        else
+            m_ftpStatus->setText(tr("FTP updated to %1 W here, but saving it to Intervals.icu failed (%2). "
+                                    "Your next login may restore the old value.").arg(ftpWatts).arg(error));
+        adjustSize();
+    });
+    sync->start();
 }
 
 // Updates the post-workout Strava status — the manual button (auto-upload off)

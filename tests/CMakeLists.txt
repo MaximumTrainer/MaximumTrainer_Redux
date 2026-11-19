@@ -115,6 +115,7 @@ mt_add_test(history_tests
         "${SRC}/persistence/file/fitactivityreader.cpp"
         "${SRC}/persistence/file/fitactivitydetailreader.cpp"
         "${SRC}/ui/workouthistorymodel.cpp" "${SRC}/ui/historyfilterproxymodel.cpp"
+        "${SRC}/fitness/mmpcalculator.cpp" "${SRC}/fitness/ftpestimator.cpp"
         history/tst_history.cpp
     QT Gui
     LIBS mt_fit

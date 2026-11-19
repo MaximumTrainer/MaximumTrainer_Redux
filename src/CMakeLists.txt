@@ -32,7 +32,7 @@ target_sources(mt_core PRIVATE
     app/util.cpp app/updatenotifier.cpp app/globalvars.cpp app/simplecrypt.cpp app/networkmonitor.cpp
     app/qtmediaplayer.h
     # fitness
-    fitness/mmpcalculator.cpp fitness/pmccalculator.cpp
+    fitness/mmpcalculator.cpp fitness/pmccalculator.cpp fitness/ftpestimator.cpp
     fitness/achievements/achievement.cpp fitness/achievements/managerachievement.cpp
     fitness/achievements/achievementchecker.cpp
     # model
@@ -43,7 +43,7 @@ target_sources(mt_core PRIVATE
     model/workoutqueue.cpp
     # persistence
     persistence/db/extrequest.cpp persistence/db/versiondao.cpp persistence/db/environnement.cpp
-    persistence/db/intervalsicudao.cpp persistence/db/intervalsicuservice.cpp
+    persistence/db/intervalsicudao.cpp persistence/db/intervalsicuftpsync.cpp persistence/db/intervalsicuservice.cpp
     persistence/db/intervals_icu_api.cpp persistence/db/intervals_icu_oauth_flow.cpp
     persistence/db/strava_service.cpp persistence/db/strava_oauth_flow.cpp
     persistence/file/xmlutil.cpp persistence/file/fitactivitycreator.cpp
