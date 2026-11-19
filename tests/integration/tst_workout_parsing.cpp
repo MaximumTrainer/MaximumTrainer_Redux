@@ -14,7 +14,7 @@
  *
  * Build (no display required):
  *   cd tests/integration
- *   qmake workout_parsing_tests.pro && make -j$(nproc)
+ *   cmake --build build --target workout_parsing_tests
  *   ../../build/tests/workout_parsing_tests -v2
  */
 

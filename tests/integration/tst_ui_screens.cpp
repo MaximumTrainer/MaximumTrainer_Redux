@@ -36,10 +36,10 @@
  *      QLabel widgets.
  *
  * ZWO inline-string parsing tests were removed; canonical coverage lives in
- * tst_workout_io.cpp (workout_io_tests.pro).
+ * tst_workout_io.cpp (workout_io_tests).
  *
  * Build:
- *   qmake ui_screens_tests.pro && make
+ *   cmake --build build --target ui_screens_tests
  * Run headless (Linux CI):
  *   Xvfb :99 -screen 0 1280x800x24 & export DISPLAY=:99
  *   ../../build/tests/ui_screens_tests -v2

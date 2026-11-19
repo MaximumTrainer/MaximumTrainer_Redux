@@ -5,7 +5,7 @@
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Live integration test class for IntervalsIcuApi.
-// Q_OBJECT declared here (in the header) so qmake reliably runs moc on it.
+// Q_OBJECT declared here (in the header) so AUTOMOC reliably picks it up.
 // ─────────────────────────────────────────────────────────────────────────────
 class TstIntervalsIcuIntegration : public QObject
 {

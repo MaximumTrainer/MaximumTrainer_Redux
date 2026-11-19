@@ -29,7 +29,6 @@
 
 #ifndef Q_OS_WASM
 #include <QQuickWidget>
-#include <QQmlContext>
 #include <QUrl>
 #include <QPainter>
 #include <QImage>
@@ -37,6 +36,9 @@
 #include "zwift_click_test.h"
 #include "groupsimtest.h"
 #endif
+
+#include <QQmlExtensionPlugin>
+Q_IMPORT_QML_PLUGIN(MaximumTrainer_GamePlugin)
 
 
 int main(int argc, char *argv[]) {
@@ -353,9 +355,9 @@ int main(int argc, char *argv[]) {
 
         auto *view = new QQuickWidget();
         view->setAttribute(Qt::WA_DeleteOnClose);
-        view->rootContext()->setContextProperty(QStringLiteral("race"), controller);
+        view->setInitialProperties({{QStringLiteral("race"), QVariant::fromValue(controller)}});
         view->setResizeMode(QQuickWidget::SizeRootObjectToView);
-        view->setSource(QUrl(QStringLiteral("qrc:/game/qml/RetroRace.qml")));
+        view->loadFromModule("MaximumTrainer.Game", "RetroRace");
         view->resize(960, 540);
         view->setWindowTitle(QStringLiteral("MaximumTrainer — Retro Ghost Race (spike)"));
         view->show();

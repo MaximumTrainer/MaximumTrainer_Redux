@@ -25,7 +25,7 @@ Checks: >
   modernize-use-override
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*/src/.*'
-ExcludeHeaderFilterRegex: '.*/src/fitness/fit/.*'
+ExcludeHeaderFilterRegex: '.*/src/fitness/fit/.*|.*_autogen/.*'
 CheckOptions:
   # FIT decoding deliberately keeps a partial result when the file is truncated.
   bugprone-empty-catch.AllowEmptyCatchForExceptions: 'fit::RuntimeException'

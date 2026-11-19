@@ -36,7 +36,7 @@
  *   and a completed "login dialog shown" step (#377).  Skipped otherwise.
  *
  * Build:
- *   qmake runtime_validation_tests.pro && make
+ *   cmake --build build --target runtime_validation_tests
  * Run headless (Linux CI):
  *   Xvfb :99 -screen 0 1280x800x24 & export DISPLAY=:99
  *   ../../build/tests/runtime_validation_tests -v2

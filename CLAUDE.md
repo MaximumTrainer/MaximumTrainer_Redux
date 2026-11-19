@@ -12,14 +12,15 @@ This file is the "how to actually get work done here" cheat sheet.
 
 MaximumTrainer — a cross-platform (Linux / Windows / macOS / WASM) Qt 6 / C++20
 indoor cycling & rowing trainer app. BLE sensors, ERG-mode interval workouts,
-FIT export, QWT plots. Build system is **qmake** (`.pro` / `.pri`), not CMake.
+FIT export, QWT plots. Build system is **CMake** (`CMakeLists.txt`, Ninja). qmake was
+removed in the CMake migration; only QWT itself is still built with its own qmake project.
 
 ---
 
 ## Build & run locally (Linux)
 
 The app builds against **QWT 6.3.0 built from source** (no Qt6 QWT apt package
-exists) and points qmake at it via `QWT_INSTALL=...`.
+exists) and points CMake at it via `-DQWT_INSTALL=...`.
 
 ```bash
 # 1. Build QWT 6.3.0 once (if /tmp/qwt6 is gone — it's ephemeral):
@@ -30,17 +31,19 @@ qmake6 qwt.pro && make -j$(nproc)
 make install INSTALL_ROOT=/tmp/qwt6-stage
 mkdir -p /tmp/qwt6 && mv /tmp/qwt6-stage/usr/local/qwt-6.3.0/* /tmp/qwt6/
 
-# 2. Build the app (from repo root):
-qmake6 MaximumTrainer.pro QWT_INSTALL=/tmp/qwt6
-make -j$(nproc)
+# 2. Build the app and the test suites (from repo root):
+cmake -S . -B build -G Ninja -DQWT_INSTALL=/tmp/qwt6
+cmake --build build
+ctest --test-dir build -j$(nproc)    # all Qt Test suites (isolate HOME, see below)
 
 # 3. Run (QWT in a non-standard prefix needs LD_LIBRARY_PATH):
 LD_LIBRARY_PATH=/tmp/qwt6/lib ./build/release/MaximumTrainer
 ```
 
-- **qmake binary is `qmake6`** here (Qt 6.10 system install on Linux). CI pins Qt **6.11.3** (interim - 6.11 is not LTS; 6.12.0 is blocked: its Windows WebEngine package is a July pre-release build that cannot load against the final qtbase, so wait for 6.12.1, see #332) - local Qt may differ.
-- **The `.pro` file:** **`MaximumTrainer.pro`** (renamed from `PowerVelo.pro` in PR #227). The binary `TARGET` is always `MaximumTrainer`.
-- **Incremental builds:** after `qmake6`, just `make -j$(nproc)`. **A clean build needs `make clean` first** — stale `.obj` files can make `make` a silent no-op (`Nothing to be done for 'first'`) when only config changed.
+- Local Qt is the Qt 6.10 system install (`qmake6` only matters for building QWT). CI pins Qt **6.11.3** (interim - 6.11 is not LTS; 6.12.0 is blocked: its Windows WebEngine package is a July pre-release build that cannot load against the final qtbase, so wait for 6.12.1, see #332) - local Qt may differ.
+- **Layout:** root `CMakeLists.txt` + `cmake/` helpers; `src/CMakeLists.txt` lists every app source (`mt_core` object library + `MaximumTrainer` executable); `src/game` is the `MaximumTrainer.Game` QML module (RetroRace.qml compiled by qmlcachegen; keep it typed: `pragma ComponentBehavior: Bound`, typed functions, `FINAL` controller properties); `tests/CMakeLists.txt` declares each suite with `mt_add_test`. **Adding a source file means adding it to the CMake list.**
+- **Options:** `MT_BUILD_APP=OFF` (suites only, no QWT/WebEngine), `MT_WERROR=ON` (CI), `MT_SANITIZE="address;undefined"`.
+- **Incremental builds:** `cmake --build build`. Ninja tracks dependencies, so no clean builds are needed after config changes.
 
 ### Verifying a change without a GUI session
 Screenshot mode runs a real demo workout headlessly and dumps PNGs, then quits —
@@ -136,9 +139,9 @@ verify step.
   language allows.
 - **clang-tidy is a CI gate** (`.clang-tidy`, job `clang_tidy` in
   `sanitizers.yml`): every enabled check must report zero findings. Locally:
-  `pip install clang-tidy==23.1.4 compiledb`, then in a shadow build dir
-  `compiledb -o compile_commands.json make -j$(nproc)` and
-  `clang-tidy -p . <file.cpp>`. Settings keys go through `SettingKeys`
+  `pip install clang-tidy==23.1.4`, build once (CMake writes
+  `build/compile_commands.json` and the generated moc/uic headers), then
+  `clang-tidy -p build <file.cpp>`. Settings keys go through `SettingKeys`
   (`src/app/setting_keys.h`), never string literals.
 
 ---
@@ -162,7 +165,7 @@ Validation checklist:
 - Cross-check every UI claim (menu paths, tab/button labels, settings categories,
   keyboard shortcuts) against the `.ui` files and slots — grep the source, don't guess.
 - Cross-check build commands against `.github/workflows/build-*.yml` (Qt version,
-  modules, QWT, qmake invocation). **No SFML/VLC** — media is QtMultimedia.
+  modules, QWT, CMake invocation). **No SFML/VLC** — media is QtMultimedia.
 - Don't reference removed features (PowerCurve, Course, SelfLoops/TrainingPeaks,
   ANT+, the old web frontend) or unshipped/broken ones.
 - Screenshots live in `docs/assets/screenshots/`; regenerate with

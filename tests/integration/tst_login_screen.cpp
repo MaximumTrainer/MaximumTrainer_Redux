@@ -56,7 +56,7 @@
  *   and a non-empty athlete name.
  *
  * Build:
- *   qmake login_screen_tests.pro && make
+ *   cmake --build build --target login_screen_tests
  * Run headless (Linux CI):
  *   Xvfb :99 -screen 0 1280x800x24 & export DISPLAY=:99
  *   ../../build/tests/login_screen_tests -v2

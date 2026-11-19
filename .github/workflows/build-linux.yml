@@ -71,7 +71,7 @@ jobs:
           libusb-1.0-0-dev \
           libssl-dev \
           libgl1-mesa-dev \
-          cmake \
+          ninja-build \
           build-essential
 
     - name: Set up ccache
@@ -81,12 +81,6 @@ jobs:
         max-size: 400M
         evict-old-files: job
         job-summary: ccache stats
-
-    - name: Enable ccache in qmake
-      # qmake's built-in ccache feature prefixes the compiler (after macOS
-      # xcrun resolution). A root .qmake.conf reaches every .pro in the repo,
-      # including the test projects, without touching each qmake call.
-      run: echo 'CONFIG += ccache' >> .qmake.conf
 
     - name: Restore QWT cache
       id: qwt-cache
@@ -112,8 +106,8 @@ jobs:
 
     - name: Build and install QWT
       # No QWT apt package exists for Qt6, so build 6.3.0 from source against the
-      # installed Qt6 and stage it under QWT_DIR. MaximumTrainer.pro is pointed at it
-      # via QWT_INSTALL=... .
+      # installed Qt6 and stage it under QWT_DIR. CMake is pointed at it via
+      # -DQWT_INSTALL=... .
       if: steps.qwt-validate.outputs.ok != 'true'
       run: |
         cd /tmp
@@ -138,50 +132,16 @@ jobs:
         fi
         echo "GIT_TAG=$GIT_TAG" >> "$GITHUB_ENV"
 
-    - name: Create Makefile
+    - name: Configure
       run: |
-        qmake MaximumTrainer.pro "QWT_INSTALL=$QWT_DIR" CONFIG+=werror
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+          -DQWT_INSTALL="$QWT_DIR" -DMT_WERROR=ON \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       env:
         INTERVALS_OAUTH_CLIENT_ID: ${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}
 
-    - name: Build
-      run: make -j$(nproc)
-
-    - name: Build integration tests
-      run: |
-        mkdir -p build/tests
-        cd tests/integration
-        qmake btle_integration_tests.pro
-        make -j$(nproc)
-        qmake btle_api_tests.pro
-        make -j$(nproc)
-        qmake runtime_validation_tests.pro
-        make -j$(nproc)
-        qmake offline_mode_tests.pro
-        make -j$(nproc)
-        qmake online_mode_tests.pro
-        make -j$(nproc)
-        qmake login_screen_tests.pro "QWT_INSTALL=$QWT_DIR"
-        make -j$(nproc)
-        qmake workout_ui_tests.pro "QWT_INSTALL=$QWT_DIR"
-        make -j$(nproc)
-        qmake workout_parsing_tests.pro
-        make -j$(nproc)
-        qmake ui_navigation_tests.pro "QWT_INSTALL=$QWT_DIR"
-        make -j$(nproc)
-        qmake ui_screens_tests.pro "QWT_INSTALL=$QWT_DIR"
-        make -j$(nproc)
-        qmake workout_io_tests.pro "QWT_INSTALL=$QWT_DIR"
-        make -j$(nproc)
-        qmake workout_creator_tests.pro
-        make -j$(nproc)
-
-    - name: Build BTLE unit tests
-      run: |
-        mkdir -p build/tests
-        cd tests/btle
-        qmake btle_tests.pro
-        make -j$(nproc)
+    - name: Build app and test suites
+      run: cmake --build build
 
     - name: Bundle QWT shared library into artifact
       # The test-runner jobs have no QWT installation. Carry the .so alongside
@@ -192,17 +152,15 @@ jobs:
         cp -P "$QWT_DIR"/lib/libqwt.so* build/qwtlib/
 
     - name: Upload artifact
-      # Exclude compile intermediates (~3/4 of build/): the test and release
-      # jobs only need the binaries, and every one of them downloads this.
+      # Binaries only (no CMake tree or objects): the test and release jobs
+      # only need these, and every one of them downloads this.
       uses: actions/upload-artifact@v7
       with:
         name: linux
         path: |
-          build/
-          !build/release/.obj/**
-          !build/release/.moc/**
-          !build/release/.qrc/**
-          !build/release/.u/**
+          build/release/
+          build/tests/
+          build/qwtlib/
 
   # ──────────────────────────────────────────────────────────────────────────
   # Unit & Service Test Suites (Linux) — consolidated (#352)
@@ -264,7 +222,7 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y libssl-dev
+        sudo apt-get install -y libssl-dev ninja-build
 
     - name: Set up ccache
       uses: hendrikmuhs/ccache-action@v1.2.25
@@ -274,123 +232,22 @@ jobs:
         evict-old-files: job
         job-summary: ccache stats
 
-    - name: Enable ccache in qmake
-      # qmake's built-in ccache feature prefixes the compiler (after macOS
-      # xcrun resolution). A root .qmake.conf reaches every .pro in the repo,
-      # including the test projects, without touching each qmake call.
-      run: echo 'CONFIG += ccache' >> .qmake.conf
-
-    - name: Logger unit tests
+    - name: Build unit suites
+      # Suites only (no app): this runner has no QWT/WebEngine/Bluetooth, so
+      # the suites needing them are skipped here and run from build_linux.
       run: |
-        mkdir -p build/tests
-        cd tests/logger
-        qmake logger_tests.pro
-        make -j$(nproc)
-        cd ../..
-        ./build/tests/logger_tests -v2
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DMT_BUILD_APP=OFF \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        cmake --build build --target \
+          logger_tests apptheme_tests intervals_icu_tests importer_workout_zwo_tests \
+          intervals_icu_dao_bearer_tests intervals_icu_oauth_exchange_tests strava_tests \
+          group_tests game_tests credential_store_tests config_bootstrap_tests settings_tests \
+          webengine_safe_mode_tests plan_adherence_tests history_tests studio_tests \
+          intervals_icu_integration_tests
 
-    - name: AppTheme unit tests
+    - name: Run unit suites
       run: |
-        cd tests/apptheme
-        qmake apptheme_tests.pro
-        make -j$(nproc)
-        cd ../..
-        QT_QPA_PLATFORM=offscreen ./build/tests/apptheme_tests -v2
-
-    - name: Intervals.icu unit tests
-      run: |
-        cd tests/intervals_icu
-        qmake intervals_icu_tests.pro
-        make -j$(nproc)
-        qmake importer_workout_zwo_tests.pro
-        make -j$(nproc)
-        qmake intervals_icu_dao_bearer_tests.pro
-        make -j$(nproc)
-        qmake intervals_icu_oauth_exchange_tests.pro
-        make -j$(nproc)
-        cd ../..
-        ./build/tests/intervals_icu_tests -v2
-        ./build/tests/importer_workout_zwo_tests -v2
-        ./build/tests/intervals_icu_dao_bearer_tests -v2
-        ./build/tests/intervals_icu_oauth_exchange_tests -v2
-
-    - name: Strava service tests
-      run: |
-        cd tests/strava
-        qmake strava_tests.pro
-        make -j$(nproc)
-        cd ../..
-        ./build/tests/strava_tests -v2
-
-    - name: Group workout tests
-      run: |
-        cd tests/group
-        qmake group_tests.pro
-        make -j$(nproc)
-        cd ../..
-        ./build/tests/group_tests -v2
-
-    - name: Retro race tests
-      run: |
-        cd tests/game
-        qmake game_tests.pro
-        make -j$(nproc)
-        cd ../..
-        QT_QPA_PLATFORM=offscreen ./build/tests/game_tests -v2
-
-    - name: CredentialStore tests
-      run: |
-        cd tests/credential_store
-        qmake credential_store_tests.pro
-        make -j$(nproc)
-        cd ../..
-        ./build/tests/credential_store_tests -v2
-
-    - name: Config bootstrap tests
-      run: |
-        cd tests/config_bootstrap
-        qmake config_bootstrap_tests.pro
-        make -j$(nproc)
-        cd ../..
-        ./build/tests/config_bootstrap_tests -v2
-
-    - name: Settings persistence tests
-      run: |
-        cd tests/settings
-        qmake settings_tests.pro
-        make -j$(nproc)
-        cd ../..
-        ./build/tests/settings_tests -v2
-
-    - name: WebEngine safe mode tests
-      run: |
-        cd tests/webengine_safe_mode
-        qmake webengine_safe_mode_tests.pro
-        make -j$(nproc)
-        cd ../..
-        ./build/tests/webengine_safe_mode_tests -v2
-
-    - name: PlanAdherence tests
-      run: |
-        cd tests/plan_adherence
-        qmake plan_adherence_tests.pro
-        make -j$(nproc)
-        cd ../..
-        ./build/tests/plan_adherence_tests -v2
-
-    - name: History tests
-      run: |
-        cd tests/history
-        qmake history_tests.pro
-        make -j$(nproc)
-        cd ../..
-        ./build/tests/history_tests -v2
-
-    - name: Build Intervals.icu live integration tests
-      run: |
-        cd tests/intervals_icu_integration
-        qmake intervals_icu_integration_tests.pro
-        make -j$(nproc)
+        ctest --test-dir build --output-on-failure -j"$(nproc)" -R '^(logger|apptheme|intervals_icu|importer_workout_zwo|intervals_icu_dao_bearer|intervals_icu_oauth_exchange|strava|group|game|credential_store|config_bootstrap|settings|webengine_safe_mode|plan_adherence|history|studio)_tests$'
 
     - name: Run Intervals.icu live integration tests
       run: |

@@ -53,7 +53,7 @@
  *  20. testXmlRoundTrip_plan           — plan field survives the round-trip
  *
  * Build:
- *   qmake workout_io_tests.pro && make
+ *   cmake --build build --target workout_io_tests
  * Run:
  *   ../../build/tests/workout_io_tests -v2
  */
@@ -707,7 +707,7 @@ private slots:
 
     // =========================================================================
     // BUNDLED TRAINING PLANS — read from the included_workout/ directory the
-    // .pro copies next to the test binary, so the tests also run on CI test
+    // build copies next to the test binary, so the tests also run on CI test
     // shards that only download the build artifact (no source checkout).
     // =========================================================================
 

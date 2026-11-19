@@ -36,7 +36,7 @@ completed activities to the Garmin FIT format.
 | Serialisation | Garmin FIT SDK, TCX, GPX, XML |
 | Hardware protocols | BLE (Qt Bluetooth) |
 | Audio/Video | QtMultimedia (`QMediaPlayer` video + radio, `QSoundEffect` sound effects), platform stubs for WASM |
-| Build system | qmake `.pro` / `.pri` |
+| Build system | CMake (`CMakeLists.txt`, Ninja); RetroRace.qml is a compiled QML module |
 | CI/CD | GitHub Actions (Linux · Windows · macOS · WebAssembly) |
 
 ---
@@ -214,8 +214,8 @@ behind compile-time guards or swappable adapters"**.
      └─────────────────────────────────────────────────┘
 ```
 
-Platform selection is controlled **at qmake time** using `.pro` / `.pri`
-scopes (`wasm`, `win32`, `macx`, `linux`) and optional defines
+Platform selection is controlled **at configure time** in `src/CMakeLists.txt`
+(`EMSCRIPTEN`, `WIN32`, `APPLE`, otherwise Linux) and optional defines
 (`GC_HAVE_QTMULTIMEDIA`).  No runtime `#ifdef` branching inside shared logic files.
 
 ### 3.3 WASM-Specific Constraints
@@ -302,7 +302,7 @@ Follow the classic red-green-refactor cycle for all bug fixes and feature work:
 
 ### 4.3 Unit Tests — `tests/btle/`
 
-**Project file:** `tests/btle/btle_tests.pro`  
+**CMake target:** `btle_tests` (declared in `tests/CMakeLists.txt`)  
 **Runner:** `tests/btle/tst_btle_hub.cpp` (51 test cases)  
 **Framework:** Qt Test (`QTest`, `QSignalSpy`)
 
@@ -332,38 +332,32 @@ QCOMPARE(spy.takeFirst().at(1).toInt(), 96);
 **Build & run (from repository root):**
 
 ```bash
-cd tests/btle
-qmake btle_tests.pro && make -j$(nproc)
-cd ../..
+cmake --build build --target btle_tests
 ./build/tests/btle_tests -v2
 ```
 
 ### 4.4 Service & Model Unit Tests
 
-Each service and domain component has its own standalone Qt Test project that
-requires no display or hardware:
+Each service and domain component has its own standalone Qt Test target
+(`mt_add_test` in `tests/CMakeLists.txt`) that requires no display or hardware:
 
-| Test project | Location | What is tested |
+| Test target | Location | What is tested |
 |-------------|----------|----------------|
-| `intervals_icu_tests.pro` | `tests/intervals_icu/` | `IntervalsIcuApi` (static REST helper) — auth headers, URL construction, query params, null-manager guard |
-| `importer_workout_zwo_tests.pro` | `tests/intervals_icu/` | ZWO XML parser — SteadyState, Ramp, IntervalsT, FreeRide, mixed, malformed input |
-| `intervals_icu_dao_bearer_tests.pro` | `tests/intervals_icu/` | OAuth2 Bearer-token DAO methods |
-| `strava_tests.pro` | `tests/strava/` | Strava upload/status/deauthorize headers, URLs, null-manager guard |
-| `trainingpeaks_tests.pro` | `tests/trainingpeaks/` | TrainingPeaks upload/refresh headers, URLs, no hardcoded secret |
-| `selfloops_tests.pro` | `tests/selfloops/` | Selfloops upload URL construction, POST method, null-manager guard |
-| `credential_store_tests.pro` | `tests/credential_store/` | Round-trip read/write, overwrite, remove, missing key, multi-service, WASM no-op |
-| `config_bootstrap_tests.pro` | `tests/config_bootstrap/` | First-run defaults, no overwrite on rerun, config_version upgrade, legacy migration before defaults, corrupt store left untouched, credential failures logged without values |
-| `plan_adherence_tests.pro` | `tests/plan_adherence/` | Completed/skipped/substituted entries, adherence %, encode-decode round-trip, change signals |
-| `logger_tests.pro` | `tests/logger/` | Log level filtering, output format (timestamp/level/module/message), file write enable/disable |
-| `studio_tests.pro` | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling formula, settings persistence |
+| `intervals_icu_tests` | `tests/intervals_icu/` | `IntervalsIcuApi` (static REST helper) — auth headers, URL construction, query params, null-manager guard |
+| `importer_workout_zwo_tests` | `tests/intervals_icu/` | ZWO XML parser — SteadyState, Ramp, IntervalsT, FreeRide, mixed, malformed input |
+| `intervals_icu_dao_bearer_tests` | `tests/intervals_icu/` | OAuth2 Bearer-token DAO methods |
+| `strava_tests` | `tests/strava/` | Strava upload/status/deauthorize headers, URLs, null-manager guard |
+| `credential_store_tests` | `tests/credential_store/` | Round-trip read/write, overwrite, remove, missing key, multi-service, WASM no-op |
+| `config_bootstrap_tests` | `tests/config_bootstrap/` | First-run defaults, no overwrite on rerun, config_version upgrade, legacy migration before defaults, corrupt store left untouched, credential failures logged without values |
+| `plan_adherence_tests` | `tests/plan_adherence/` | Completed/skipped/substituted entries, adherence %, encode-decode round-trip, change signals |
+| `logger_tests` | `tests/logger/` | Log level filtering, output format (timestamp/level/module/message), file write enable/disable |
+| `studio_tests` | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling formula, settings persistence |
 
 **Build & run pattern (same for every service test):**
 
 ```bash
-cd tests/<suite>
-qmake <suite>_tests.pro && make -j$(nproc)
-cd ../..
-./build/tests/<suite>_tests -v2
+cmake --build build --target <suite>_tests
+./build/tests/<suite>_tests -v2      # or: ctest --test-dir build -R <suite>
 ```
 
 ### 4.5 Integration Tests — `tests/integration/`
@@ -374,13 +368,13 @@ screenshot artifact that is uploaded to the CI run for visual inspection.
 
 | Project | Test(s) | What is covered |
 |---------|---------|-----------------|
-| `btle_integration_tests.pro` | `testBtleActivityRunning` | Full workout session driven by `SimulatorHub` through `WorkoutDialog` into `DataWorkout`; ERG-mode load commands; lap transitions |
-| `btle_api_tests.pro` | `testBleAdapterQuery`, `testBtleHubSmokeTest` | BLE adapter presence query; `BtleHub` smoke test without physical hardware |
-| `runtime_validation_tests.pro` | `testRuntimeValidation` | Qt version, BLE availability, database connectivity, FIT SDK version |
-| `offline_mode_tests.pro` | `testLocalWorkoutAccess`, `testBtleSimulatorCyclingData`, `testOfflineModeScreenshot` | Local workout XML access; simulator cycling data; full offline-mode 1280×720 screenshot |
-| `login_screen_tests.pro` | `testOfflineLogin`, `testIntervalsIcuOAuthUrlGeneration`, `testIntervalsIcuApiLogin`, `testDialogLoginInitialState`, `testDialogLoginOfflineFlow`, `testDialogLoginIntervalsIcuButton`, `testDialogLoginIntervalsIcuOAuthDialog`, `testIntervalsIcuOAuthFlowLoopback`, `testParseSportSettingsProfileSync` | Login dialog state machine; offline login path; OAuth2 URL generation; Intervals.icu API login; system-browser loopback OAuth flow |
-| `online_mode_tests.pro` | `testOnlineModeAuthentication`, `testCalendar`, `testWorkoutPush`, `testWorkoutPull` | Live Intervals.icu API authentication, calendar fetch, workout push/pull (skipped when secrets absent) |
-| `workout_ui_tests.pro` | 15 test cases (XML create/retrieve, ERG load/slope, session lifecycle, interval advancement, data accumulation, screenshot, model construction, round-trip, average power, network connectivity/retrieval, power-on-target) | Complete workout session UI driven by `SimulatorHub`; screenshot at execution |
+| `btle_integration_tests` | `testBtleActivityRunning` | Full workout session driven by `SimulatorHub` through `WorkoutDialog` into `DataWorkout`; ERG-mode load commands; lap transitions |
+| `btle_api_tests` | `testBleAdapterQuery`, `testBtleHubSmokeTest` | BLE adapter presence query; `BtleHub` smoke test without physical hardware |
+| `runtime_validation_tests` | `testRuntimeValidation` | Qt version, BLE availability, database connectivity, FIT SDK version |
+| `offline_mode_tests` | `testLocalWorkoutAccess`, `testBtleSimulatorCyclingData`, `testOfflineModeScreenshot` | Local workout XML access; simulator cycling data; full offline-mode 1280×720 screenshot |
+| `login_screen_tests` | `testOfflineLogin`, `testIntervalsIcuOAuthUrlGeneration`, `testIntervalsIcuApiLogin`, `testDialogLoginInitialState`, `testDialogLoginOfflineFlow`, `testDialogLoginIntervalsIcuButton`, `testDialogLoginIntervalsIcuOAuthDialog`, `testIntervalsIcuOAuthFlowLoopback`, `testParseSportSettingsProfileSync` | Login dialog state machine; offline login path; OAuth2 URL generation; Intervals.icu API login; system-browser loopback OAuth flow |
+| `online_mode_tests` | `testOnlineModeAuthentication`, `testCalendar`, `testWorkoutPush`, `testWorkoutPull` | Live Intervals.icu API authentication, calendar fetch, workout push/pull (skipped when secrets absent) |
+| `workout_ui_tests` | 15 test cases (XML create/retrieve, ERG load/slope, session lifecycle, interval advancement, data accumulation, screenshot, model construction, round-trip, average power, network connectivity/retrieval, power-on-target) | Complete workout session UI driven by `SimulatorHub`; screenshot at execution |
 
 **Run integration tests (from repository root, after build):**
 
@@ -395,9 +389,7 @@ export DISPLAY=:99
 **Intervals.icu integration (live network):**
 
 ```bash
-cd tests/intervals_icu_integration
-qmake intervals_icu_integration_tests.pro && make -j$(nproc)
-cd ../..
+cmake --build build --target intervals_icu_integration_tests
 ./build/tests/intervals_icu_integration_tests -v2
 ```
 
@@ -522,18 +514,19 @@ or cause an undefined-behaviour crash.  Errors are logged with `qWarning()` /
 
 ### 5.3 Modularisation
 
-The codebase is segmented into **qmake `.pri` modules**, each with a single
-responsibility:
+The codebase is segmented into source directories, each with a single
+responsibility (all listed in `src/CMakeLists.txt`):
 
-| Module (`.pri`) | Responsibility | Internal dependencies |
-|-----------------|----------------|----------------------|
-| `src/model/model.pri` | Pure domain model (Workout, Interval, …) | None |
-| `src/workout/workout.pri` | Workout file conversion utilities | `model` |
-| `src/btle/btle.pri` | BLE HAL (hub + scanner + simulator) | `model` |
-| `src/persistence/persistence.pri` | SQLite DAOs + file readers/writers | `model`, `fitness` |
-| `src/fitness/fitness.pri` | FIT SDK + Achievement logic | `model` |
-| `src/ui/ui.pri` | All UI: MainWindow, WorkoutDialog, plots, editors | All above |
-| `src/app/app.pri` | Entry point + global state (media, audio, utils) | `ui`, `btle`, `model` |
+| Directory | Responsibility | Internal dependencies |
+|-----------|----------------|----------------------|
+| `src/model/` | Pure domain model (Workout, Interval, …) | None |
+| `src/workout/` | Workout file conversion utilities | `model` |
+| `src/btle/` | BLE HAL (hub + scanner + simulator) | `model` |
+| `src/persistence/` | DAOs + file readers/writers | `model`, `fitness` |
+| `src/fitness/` | FIT SDK (`mt_fit` target) + Achievement logic | `model` |
+| `src/game/` | Retro race QML module (`mt_game`, `MaximumTrainer.Game`) | `fitness/fit` |
+| `src/ui/` | All UI: MainWindow, WorkoutDialog, plots, editors | All above |
+| `src/app/` | Entry point + global state (media, audio, utils) | `ui`, `btle`, `model` |
 
 **Adding a new feature (TDD order):**
 
@@ -547,8 +540,8 @@ responsibility:
 
 ### 5.4 Coding Conventions
 
-- **C++20** throughout (`std::optional`, structured bindings, `if constexpr`); Qt APIs deprecated up to 6.10 are compiled out via `.qmake.conf`.
-- Include paths are resolved by `INCLUDEPATH` in `.pro` — use bare filenames
+- **C++20** throughout (`std::optional`, structured bindings, `if constexpr`); Qt APIs deprecated up to 6.11 are compiled out (`QT_DISABLE_DEPRECATED_UP_TO` in `cmake/Warnings.cmake`).
+- Every `src/` directory is on the include path (`MT_SOURCE_DIRS` in `src/CMakeLists.txt`) — use bare filenames
   without path prefixes in `#include` directives for files within the same
   module (e.g., `#include "btle_hub.h"`).  For cross-module includes or
   third-party headers, prefer the shortest unambiguous path

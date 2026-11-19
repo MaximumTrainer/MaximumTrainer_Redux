@@ -1,11 +1,14 @@
 #include <QtTest>
 #include <QQmlComponent>
 #include <QQmlEngine>
+#include <QQmlExtensionPlugin>
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QSignalSpy>
 
 #include "retroracecontroller.h"
+
+Q_IMPORT_QML_PLUGIN(MaximumTrainer_GamePlugin)
 
 class TstGame : public QObject
 {

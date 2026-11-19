@@ -55,11 +55,8 @@ jobs:
         evict-old-files: job
         job-summary: ccache stats
 
-    - name: Enable ccache in qmake
-      # qmake's built-in ccache feature prefixes the compiler (after macOS
-      # xcrun resolution). A root .qmake.conf reaches every .pro in the repo,
-      # including the test projects, without touching each qmake call.
-      run: echo 'CONFIG += ccache' >> .qmake.conf
+    - name: Install Ninja
+      run: brew install ninja
 
     - name: Prepare QWT cache target
       # /usr/local is root-owned on the macOS runners, so actions/cache could
@@ -87,8 +84,8 @@ jobs:
       id: qwt-validate
       # A corrupted cache extraction can leave a partial tree behind while the
       # action still reports a cache hit (gtar errors mid-restore have been
-      # seen on macOS runners). Verify the pieces the build links against and
-      # the qmake feature file; rebuild otherwise.
+      # seen on macOS runners). Verify the pieces the build links against;
+      # rebuild otherwise.
       run: |
         if [ "${{ steps.qwt-cache.outputs.cache-hit }}" = "true" ] && \
            [ -f /usr/local/qwt-6.3.0/lib/libqwt.6.dylib ] && \
@@ -138,107 +135,21 @@ jobs:
         echo "Build version: $GIT_TAG"
         echo "GIT_TAG=$GIT_TAG" >> "$GITHUB_ENV"
 
-    - name: Create Makefile
+    - name: Configure
       run: |
-        qmake MaximumTrainer.pro \
-          "QWT_INSTALL=/usr/local/qwt-6.3.0" CONFIG+=werror
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+          -DQWT_INSTALL=/usr/local/qwt-6.3.0 -DMT_WERROR=ON \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_OBJCXX_COMPILER_LAUNCHER=ccache
       env:
         INTERVALS_OAUTH_CLIENT_ID: ${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}
 
-    - name: Diagnose QWT installation
+    - name: Build app and test suites
       run: |
-        echo "=== All qwt_plot.h on system ==="
-        find /opt/homebrew /usr/local -name "qwt_plot.h" 2>/dev/null || true
-        echo "=== Installed qwtconfig.pri ==="
-        cat /usr/local/qwt-6.3.0/features/qwtconfig.pri 2>/dev/null || true
-
-    - name: Run MakeFile
-      run: make -j$(sysctl -n hw.logicalcpu)
-
-    - name: Build runtime validation test
-      run: |
-        mkdir -p build/tests
-        cd tests/integration
-        qmake runtime_validation_tests.pro
-        make -j$(sysctl -n hw.logicalcpu)
-
-    - name: Build offline mode test
-      run: |
-        mkdir -p build/tests
-        cd tests/integration
-        qmake offline_mode_tests.pro
-        make -j$(sysctl -n hw.logicalcpu)
-
-    - name: Build BLE API smoke test
-      run: |
-        mkdir -p build/tests
-        cd tests/integration
-        qmake btle_api_tests.pro
-        make -j$(sysctl -n hw.logicalcpu)
-
-    - name: Build online mode test
-      run: |
-        mkdir -p build/tests
-        cd tests/integration
-        qmake online_mode_tests.pro \
-          QMAKE_LFLAGS+="-L$(brew --prefix openssl@3)/lib" \
-          QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
-        make -j$(sysctl -n hw.logicalcpu)
-
-    - name: Build login screen test
-      run: |
-        mkdir -p build/tests
-        cd tests/integration
-        qmake login_screen_tests.pro "QWT_INSTALL=/usr/local/qwt-6.3.0"
-        make -j$(sysctl -n hw.logicalcpu)
-
-    - name: Build workout UI test
-      run: |
-        mkdir -p build/tests
-        cd tests/integration
-        qmake workout_ui_tests.pro "QWT_INSTALL=/usr/local/qwt-6.3.0" \
-          QMAKE_LFLAGS+="-L$(brew --prefix openssl@3)/lib" \
-          QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
-        make -j$(sysctl -n hw.logicalcpu)
-
-    - name: Build workout parsing test
-      run: |
-        mkdir -p build/tests
-        cd tests/integration
-        qmake workout_parsing_tests.pro \
-          QMAKE_LFLAGS+="-L$(brew --prefix openssl@3)/lib" \
-          QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
-        make -j$(sysctl -n hw.logicalcpu)
-
-    - name: Build UI navigation test
-      run: |
-        mkdir -p build/tests
-        cd tests/integration
-        qmake ui_navigation_tests.pro "QWT_INSTALL=/usr/local/qwt-6.3.0" \
-          QMAKE_LFLAGS+="-L$(brew --prefix openssl@3)/lib" \
-          QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
-        make -j$(sysctl -n hw.logicalcpu)
-
-    - name: Build UI screens test
-      run: |
-        mkdir -p build/tests
-        cd tests/integration
-        qmake ui_screens_tests.pro "QWT_INSTALL=/usr/local/qwt-6.3.0"
-        make -j$(sysctl -n hw.logicalcpu)
-
-    - name: Build workout I/O test
-      run: |
-        mkdir -p build/tests
-        cd tests/integration
-        qmake workout_io_tests.pro "QWT_INSTALL=/usr/local/qwt-6.3.0"
-        make -j$(sysctl -n hw.logicalcpu)
-
-    - name: Build workout creator test
-      run: |
-        mkdir -p build/tests
-        cd tests/integration
-        qmake workout_creator_tests.pro
-        make -j$(sysctl -n hw.logicalcpu)
+        cmake --build build --target MaximumTrainer \
+          runtime_validation_tests offline_mode_tests btle_api_tests online_mode_tests \
+          login_screen_tests workout_ui_tests workout_parsing_tests ui_navigation_tests \
+          ui_screens_tests workout_io_tests workout_creator_tests intervals_icu_integration_tests
 
     - name: Bundle QWT dylib into test artifact
       # The test runner job has no QWT installation. Copy the dylib next to the
@@ -290,17 +201,14 @@ jobs:
         install_name_tool -add_rpath $(brew --prefix openssl@3)/lib build/tests/ui_navigation_tests
 
     - name: upload artifact
-      # Exclude compile intermediates (~3/4 of build/): the test and release
-      # jobs only need the binaries, and every one of them downloads this.
+      # Binaries only (no CMake tree or objects): the test and release jobs
+      # only need these, and every one of them downloads this.
       uses: actions/upload-artifact@v7
       with:
         name: macos
         path: |
-          build/
-          !build/release/.obj/**
-          !build/release/.moc/**
-          !build/release/.qrc/**
-          !build/release/.u/**
+          build/release/
+          build/tests/
 
   # ──────────────────────────────────────────────────────────────────────────
   # Headless Test Suites (macOS) — consolidated (#352)
@@ -348,6 +256,7 @@ jobs:
     - name: Make test binaries executable
       run: |
         chmod +x build/tests/btle_api_tests \
+                 build/tests/intervals_icu_integration_tests \
                  build/tests/workout_io_tests \
                  build/tests/workout_creator_tests \
                  build/tests/workout_parsing_tests
@@ -363,15 +272,6 @@ jobs:
 
     - name: Workout parsing tests
       run: ./build/tests/workout_parsing_tests -v2
-
-    - name: Build Intervals.icu live integration tests
-      run: |
-        mkdir -p build/tests
-        cd tests/intervals_icu_integration
-        qmake intervals_icu_integration_tests.pro \
-          QMAKE_LFLAGS+="-L$(brew --prefix openssl@3)/lib" \
-          QMAKE_CXXFLAGS+="-I$(brew --prefix openssl@3)/include"
-        make -j$(sysctl -n hw.logicalcpu)
 
     - name: Run Intervals.icu live integration tests
       run: |

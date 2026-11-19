@@ -87,12 +87,11 @@ jobs:
         max-size: 600M
         job-summary: sccache stats
 
-    - name: Enable sccache in qmake
-      # Same qmake ccache feature as Linux/macOS, with sccache as the launcher
-      # (it wraps cl only, not link). no_batch stops nmake/jom batch rules from
-      # passing several sources to one cl call, which sccache cannot cache.
-      shell: powershell
-      run: Add-Content .qmake.conf "CONFIG += ccache no_batch`nQMAKE_CACHE_LAUNCHER_PREFIX = sccache"
+    - name: Ensure Ninja
+      shell: pwsh
+      run: |
+        if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) { pip install ninja }
+        ninja --version
 
     - name: Restore OpenSSL cache
       id: openssl-cache
@@ -148,8 +147,8 @@ jobs:
 
     - name: Build QWT
       # No QWT apt/Qt6 binary package exists, so build 6.3.0 from source against
-      # the installed Qt6 and install it to QWT_INSTALL_DIR. MaximumTrainer.pro is
-      # pointed at this location via QWT_INSTALL=... .
+      # the installed Qt6 and install it to QWT_INSTALL_DIR. CMake is pointed at
+      # this location via -DQWT_INSTALL=... .
       if: steps.qwt-validate.outputs.ok != 'true'
       run: |
         $qwtInstallDirFwd = $env:QWT_INSTALL_DIR -replace '\\', '/'
@@ -186,16 +185,24 @@ jobs:
         Write-Host "Build version: $tag"
       shell: powershell
 
-    - name: Create Makefile
+    - name: Configure
+      # sccache wraps cl only. Ninja hands it one source per call, and the app
+      # targets use /Z7 (debug info inside each .obj) so every object caches.
       run: |
         $qwtInstallDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
         $env:INTERVALS_OAUTH_CLIENT_ID = "${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}"
-        qmake MaximumTrainer.pro `
-          "QWT_INSTALL=$qwtInstallDirFwd" CONFIG+=werror
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
+          -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl `
+          "-DQWT_INSTALL=$qwtInstallDirFwd" -DMT_WERROR=ON `
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
       shell: powershell
 
-    - name: Build
-      run: 'jom /J $env:NUMBER_OF_PROCESSORS'
+    - name: Build app and test suites
+      run: |
+        cmake --build build --target MaximumTrainer `
+          runtime_validation_tests btle_api_tests offline_mode_tests online_mode_tests `
+          login_screen_tests workout_ui_tests workout_parsing_tests ui_navigation_tests `
+          ui_screens_tests workout_io_tests workout_creator_tests intervals_icu_integration_tests
       shell: powershell
 
     - name: Copy QWT runtime DLL
@@ -304,107 +311,6 @@ jobs:
         }
       shell: powershell
 
-    - name: Build runtime validation test
-      run: |
-        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
-        Set-Location tests\integration
-        qmake runtime_validation_tests.pro
-        jom /J $env:NUMBER_OF_PROCESSORS
-      shell: powershell
-
-    - name: Build BLE API smoke test
-      run: |
-        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
-        Set-Location tests\integration
-        qmake btle_api_tests.pro
-        jom /J $env:NUMBER_OF_PROCESSORS
-      shell: powershell
-
-    - name: Build offline mode test
-      run: |
-        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
-        Set-Location tests\integration
-        qmake offline_mode_tests.pro
-        jom /J $env:NUMBER_OF_PROCESSORS
-      shell: powershell
-
-    - name: Build online mode test
-      run: |
-        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
-        Set-Location tests\integration
-        qmake online_mode_tests.pro
-        jom /J $env:NUMBER_OF_PROCESSORS
-      shell: powershell
-
-    - name: Build login screen test
-      run: |
-        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
-        Set-Location tests\integration
-        $qwtDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
-        qmake login_screen_tests.pro "QWT_INSTALL=$qwtDirFwd"
-        jom /J $env:NUMBER_OF_PROCESSORS
-      shell: powershell
-
-    - name: Build workout UI test
-      run: |
-        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
-        Set-Location tests\integration
-        $qwtDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
-        qmake workout_ui_tests.pro "QWT_INSTALL=$qwtDirFwd"
-        jom /J $env:NUMBER_OF_PROCESSORS
-      shell: powershell
-
-    - name: Build workout parsing test
-      run: |
-        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
-        Set-Location tests\integration
-        qmake workout_parsing_tests.pro
-        jom /J $env:NUMBER_OF_PROCESSORS
-      shell: powershell
-
-    - name: Build UI navigation test
-      run: |
-        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
-        Set-Location tests\integration
-        $qwtDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
-        qmake ui_navigation_tests.pro "QWT_INSTALL=$qwtDirFwd"
-        jom /J $env:NUMBER_OF_PROCESSORS
-      shell: powershell
-
-    - name: Build UI screens test
-      run: |
-        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
-        Set-Location tests\integration
-        $qwtDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
-        qmake ui_screens_tests.pro "QWT_INSTALL=$qwtDirFwd"
-        jom /J $env:NUMBER_OF_PROCESSORS
-      shell: powershell
-
-    - name: Build workout I/O test
-      run: |
-        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
-        Set-Location tests\integration
-        $qwtDirFwd = $env:QWT_INSTALL_DIR -replace '\\','/'
-        qmake workout_io_tests.pro "QWT_INSTALL=$qwtDirFwd"
-        jom /J $env:NUMBER_OF_PROCESSORS
-      shell: powershell
-
-    - name: Build workout creator test
-      run: |
-        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
-        Set-Location tests\integration
-        qmake workout_creator_tests.pro
-        jom /J $env:NUMBER_OF_PROCESSORS
-      shell: powershell
-
-    - name: Build Intervals.icu live integration test
-      run: |
-        New-Item -ItemType Directory -Force -Path build\tests | Out-Null
-        Set-Location tests\intervals_icu_integration
-        qmake intervals_icu_integration_tests.pro
-        jom /J $env:NUMBER_OF_PROCESSORS
-      shell: powershell
-
     - name: Deploy Qt for test binaries
       run: |
         $tests = @(
@@ -461,18 +367,14 @@ jobs:
       shell: powershell
 
     - name: Upload artifact
-      # Exclude compile intermediates (~3/4 of build/): the test and release
-      # jobs only need the binaries and deployed DLLs, and every one of them
-      # downloads this.
+      # Binaries and deployed DLLs only (no CMake tree or objects): the test
+      # and release jobs only need these, and every one of them downloads this.
       uses: actions/upload-artifact@v7
       with:
         name: windows
         path: |
-          build/
-          !build/release/.obj/**
-          !build/release/.moc/**
-          !build/release/.qrc/**
-          !build/release/.u/**
+          build/release/
+          build/tests/
 
   # ──────────────────────────────────────────────────────────────────────────
   # Headless Test Suites (Windows) — consolidated (#352)

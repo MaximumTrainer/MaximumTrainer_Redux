@@ -11,7 +11,7 @@
 // OnlineModeWindow
 //
 // 1280x720 window that represents the MaximumTrainer online-mode login state.
-// Q_OBJECT declared here (in the header) so qmake reliably runs moc on it.
+// Q_OBJECT declared here (in the header) so AUTOMOC reliably picks it up.
 // ─────────────────────────────────────────────────────────────────────────────
 class OnlineModeWindow : public QWidget
 {
@@ -40,7 +40,7 @@ private:
 // Generic 1280x720 dark-themed window for integration test result display.
 // Shows a title, a configurable list of key-value rows, and a status badge
 // that is updated to PASSED / FAILED once the test completes.
-// Q_OBJECT declared here so qmake reliably runs moc on it.
+// Q_OBJECT declared here so AUTOMOC reliably picks it up.
 // ─────────────────────────────────────────────────────────────────────────────
 class ResultWindow : public QWidget
 {
@@ -67,7 +67,7 @@ private:
 // ─────────────────────────────────────────────────────────────────────────────
 // TstOnlineMode — QTest class
 //
-// Q_OBJECT declared here (in the header) so qmake reliably runs moc on it.
+// Q_OBJECT declared here (in the header) so AUTOMOC reliably picks it up.
 // ─────────────────────────────────────────────────────────────────────────────
 class TstOnlineMode : public QObject
 {

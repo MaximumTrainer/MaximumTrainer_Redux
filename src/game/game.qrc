@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/game">
-        <file>qml/RetroRace.qml</file>
-    </qresource>
-</RCC>

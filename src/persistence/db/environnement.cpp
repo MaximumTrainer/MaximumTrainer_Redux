@@ -15,8 +15,6 @@ Environnement::Environnement()
 
 QString Environnement::getVersion() {
 #ifdef APP_VERSION
-    // trimmed() removes any trailing \r or \n that qmake's $$system() may
-    // embed on Windows when capturing the output of `git describe`.
     return QString(APP_VERSION).trimmed();
 #else
     return current_version;

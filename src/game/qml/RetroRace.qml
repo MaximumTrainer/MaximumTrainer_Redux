@@ -1,16 +1,20 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Shapes
 import MaximumTrainer.Game
 
-// Pseudo-3D (OutRun-style) retro ghost race. The road recedes to a vanishing
+// Pseudo-3D (OutRun-style) retro ghost root.race. The road recedes to a vanishing
 // point (slice-based perspective — still 2D, no real 3D), the opponent appears
 // up the road ahead when you are chasing, and the rider is seen from behind.
-// All data comes from RetroRaceController (context property `race`).
+// All data comes from the RetroRaceController passed in as `race`.
 Item {
     id: root
     width: 960
     height: 540
     focus: true
+
+    required property RetroRaceController race
 
     readonly property real horizonY: Math.round(height * 0.40)
     readonly property real roadH:    height - horizonY
@@ -19,27 +23,27 @@ Item {
     // Wall clock (seconds) for ambient motion (clouds, birds, pulses). It
     // advances with the controller's ~30 Hz tick, which caps the frame rate:
     // a free-running animation would redraw this heavy scene as fast as it can.
-    readonly property real animT: race.animClock
+    readonly property real animT: root.race.animClock
 
     // Effort vs target → a screen-edge glow (gamifies holding the target):
     // red when over, blue when under, nothing when in the zone (calm = reward).
-    readonly property int effortState: (race.targetPower <= 0 || !race.started || race.finished) ? 0
-        : (race.playerPowerW > race.targetPower + race.targetPowerRange) ?  1
-        : (race.playerPowerW < race.targetPower - race.targetPowerRange) ? -1 : 0
+    readonly property int effortState: (root.race.targetPower <= 0 || !root.race.started || root.race.finished) ? 0
+        : (root.race.playerPowerW > root.race.targetPower + root.race.targetPowerRange) ?  1
+        : (root.race.playerPowerW < root.race.targetPower - root.race.targetPowerRange) ? -1 : 0
     readonly property color effortColor: effortState === 1 ? "#ff2a2a" : "#2f74ff"
     readonly property real effortGlow: effortState === 1 ? (0.52 + 0.28 * Math.sin(animT * 7.0))
                                      : effortState === -1 ? (0.46 + 0.16 * Math.sin(animT * 4.5)) : 0.0
     // How far out of the zone (0..1+), to scale the glow size with the miss.
-    readonly property real effortMiss: race.targetPower <= 0 ? 0
-        : Math.min(1.0, Math.abs(race.playerPowerW - race.targetPower) / Math.max(40, race.targetPower * 0.35))
+    readonly property real effortMiss: root.race.targetPower <= 0 ? 0
+        : Math.min(1.0, Math.abs(root.race.playerPowerW - root.race.targetPower) / Math.max(40, root.race.targetPower * 0.35))
     // Race position (1st / 2nd) from the gap sign — a racing-game staple.
-    readonly property bool leading: race.gapMeters >= 0
+    readonly property bool leading: root.race.gapMeters >= 0
     // ERG cooperative race: the pace partner is a team-mate (draft + leash), not a
     // rival — so the finish is framed as teamwork, not win/lose.
-    readonly property bool teamMode: race.ergMode && race.oppIsBot
+    readonly property bool teamMode: root.race.ergMode && root.race.oppIsBot
     // Final sprint: the last 15 s before the finish line.
-    readonly property bool finalSprint: race.started && !race.finished
-        && race.finishSecs > 0 && race.finishSecs <= 15
+    readonly property bool finalSprint: root.race.started && !root.race.finished
+        && root.race.finishSecs > 0 && root.race.finishSecs <= 15
 
     // In-zone hold streak: seconds spent continuously inside the target band —
     // rewards precise, sustained effort (the core gamified-training loop).
@@ -65,19 +69,19 @@ Item {
     // The on-road ghost throws an arm up for a moment after passing YOU.
     property real oppCelebrateUntil: -1
     Timer {
-        interval: 1500; repeat: true; running: race.started && !race.finished
+        interval: 1500; repeat: true; running: root.race.started && !root.race.finished
         onTriggered: {
-            root.gapTrend = (race.gapMeters - root.trendPrevGap) / 1.5
-            root.trendPrevGap = race.gapMeters
+            root.gapTrend = (root.race.gapMeters - root.trendPrevGap) / 1.5
+            root.trendPrevGap = root.race.gapMeters
             if (root.leading) {
-                if (!root.ghostDropped && race.gapMeters > 15 && root.gapTrend > 0.2) {
+                if (!root.ghostDropped && root.race.gapMeters > 15 && root.gapTrend > 0.2) {
                     root.ghostDropped = true; root.ghostMood = 1; root.moodUntil = root.animT + 3.5
-                } else if (race.gapMeters < 6) {
+                } else if (root.race.gapMeters < 6) {
                     root.ghostDropped = false
                 }
                 if (root.ghostMood === 1 && root.animT > root.moodUntil) root.ghostMood = 0
                 if (root.ghostMood !== 1)
-                    root.ghostMood = (race.gapMeters < 12 && root.gapTrend < -0.2) ? 2 : 0
+                    root.ghostMood = (root.race.gapMeters < 12 && root.gapTrend < -0.2) ? 2 : 0
             } else {
                 root.ghostMood = 0
                 root.ghostDropped = false
@@ -85,9 +89,9 @@ Item {
         }
     }
     Connections {
-        target: race
+        target: root.race
         function onUpdated() {
-            if (race.started && !race.finished && race.targetPower > 0 && root.effortState === 0) {
+            if (root.race.started && !root.race.finished && root.race.targetPower > 0 && root.effortState === 0) {
                 if (root.zoneSince < 0) root.zoneSince = root.animT
                 root.zoneHoldSec = root.animT - root.zoneSince
             } else {
@@ -96,43 +100,42 @@ Item {
             }
             if (root.zoneHoldSec > root.bestStreakSec) root.bestStreakSec = root.zoneHoldSec
             // dt clamped so a pause/resume cannot pay out one giant tick.
-            if (root.lastScoreT >= 0 && race.started && !race.finished && race.running
-                && race.targetPower > 0 && root.effortState === 0)
+            if (root.lastScoreT >= 0 && root.race.started && !root.race.finished && root.race.running
+                && root.race.targetPower > 0 && root.effortState === 0)
                 root.score += Math.min(0.5, root.animT - root.lastScoreT) * 10 * root.zoneMult
             root.lastScoreT = root.animT
         }
         function onRaceStateChanged() {
-            if (race.started && !race.finished) {
+            if (root.race.started && !root.race.finished) {
                 root.score = 0; root.bestStreakSec = 0; root.lastScoreT = root.animT
-                root.lastKm = 0; root.gapTrend = 0; root.trendPrevGap = race.gapMeters
+                root.lastKm = 0; root.gapTrend = 0; root.trendPrevGap = root.race.gapMeters
                 root.ghostMood = 0; root.ghostDropped = false; root.oppCelebrateUntil = -1
             }
         }
     }
-    function fmtTime(s) { var m = Math.floor(s / 60); var ss = Math.floor(s % 60); return m + ":" + (ss < 10 ? "0" : "") + ss; }
+    function fmtTime(s: real): string { var m = Math.floor(s / 60); var ss = Math.floor(s % 60); return m + ":" + (ss < 10 ? "0" : "") + ss; }
     // Golden hour: 0 for the first 60% of the workout, then ramps to 1 at the
     // finish — the sky warms and the sun sinks, so a long ride visibly ends at
     // sunset (a quiet "almost there" cue).
-    readonly property real dusk: Math.max(0, (race.workoutProgress - 0.6) / 0.4)
-    function mixCol(a, b, t) {
-        var c1 = Qt.color(a), c2 = Qt.color(b)
-        return Qt.rgba(c1.r + (c2.r - c1.r) * t, c1.g + (c2.g - c1.g) * t, c1.b + (c2.b - c1.b) * t, 1)
+    readonly property real dusk: Math.max(0, (root.race.workoutProgress - 0.6) / 0.4)
+    function mixCol(a: color, b: color, t: real): color {
+        return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1)
     }
     // Ghost names can be whole history filenames — keep HUD chips readable.
-    function shortName(n, max) { return n.length > max ? n.substring(0, max - 1) + "…" : n }
+    function shortName(n: string, max: int): string { return n.length > max ? n.substring(0, max - 1) + "…" : n }
     // Deterministic pseudo-random in [0,1) from an index (stable per object).
-    function rnd(n) { var x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); }
+    function rnd(n: real): real { var x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); }
 
     // Curves disabled for now (straight road) — the winding look fought the
     // sprite. Restore the sine sum below to re-enable bends later.
-    function curveAt(z) { return 0.0; }
-    function roadCx(p, z) { return width / 2 + curveAt(z) * (1 - p) * width * 0.62; }
-    readonly property real nearCurve: curveAt(38 * 2.2 + race.visualDist)
+    function curveAt(z: real): real { return 0.0; }
+    function roadCx(p: real, z: real): real { return width / 2 + curveAt(z) * (1 - p) * width * 0.62; }
+    readonly property real nearCurve: curveAt(38 * 2.2 + root.race.visualDist)
     readonly property real leanDeg: nearCurve * 13
 
     // Slope disabled for now (flat road) while we get the graphics right.
     // Restore: 34 * (1 - p) * Math.sin(p * 9.0 + vd * 0.018)
-    function hillYAt(p, vd) { return 0; }
+    function hillYAt(p: real, vd: real): real { return 0; }
 
     // ---------------------------------------------------------------- components
     // Cyclist seen from behind, scalable, with pumping legs driven by cadence.
@@ -238,6 +241,7 @@ Item {
     Repeater {
         model: 5
         Item {
+            required property int index
             id: cloud
             readonly property real px:    [110, 360, 600, 840, 200][index] / 960 * root.width
             readonly property real py:    [60, 118, 48, 140, 92][index]
@@ -257,6 +261,7 @@ Item {
     Repeater {
         model: 3
         Item {
+            required property int index
             id: bird
             readonly property real py:    [118, 134, 98][index]
             readonly property real bs:    [1.0, 0.8, 1.15][index]
@@ -322,7 +327,7 @@ Item {
         width: root.width; height: root.roadH
         maxHalfWidth: root.maxHalfW
         slices: 120
-        visualDist: race.visualDist
+        visualDist: root.race.visualDist
     }
 
     // Soft atmospheric haze at the horizon — blends the road and verge into the
@@ -345,9 +350,10 @@ Item {
     Repeater {
         model: 156
         Item {
+            required property int index
             id: ob
             readonly property real span: 13 * 156
-            readonly property real az: ((index * 13 - race.visualDist) % span + span) % span + 8  // distance ahead
+            readonly property real az: ((index * 13 - root.race.visualDist) % span + span) % span + 8  // distance ahead
             readonly property real p: Math.min(1.0, 38 / az)
             readonly property real r1: root.rnd(index * 1.3 + 3)
             // 0 pine · 1 leafy · 2 bush · 3 birch · 4 rock · 5 flower patch
@@ -390,7 +396,7 @@ Item {
                                                              0.53 + root.rnd(index+19)*0.14, 1),
                                                      Qt.rgba(0.62, 0.76, 0.81, ob.haz * 0.55))
             readonly property color petal: ["#ff7bb1", "#ffd84a", "#ff5a5a", "#f2f2f2"][Math.floor(root.rnd(index+23)*4)]
-            visible: race.started && p > 0.14
+            visible: root.race.started && p > 0.14
             // Drawn once at base size and scaled: only x/y/scale change per frame,
             // so the parts below keep static geometry and never re-evaluate.
             x: root.width/2 + side * p * latWorld - tw/2
@@ -448,15 +454,15 @@ Item {
     // smoothly with the scenery; it becomes visible far out for a calm approach.
     Item {
         id: ivSign
-        readonly property real aheadZ: race.nextSignZ - race.visualDist   // smooth (visualDist)
+        readonly property real aheadZ: root.race.nextSignZ - root.race.visualDist   // smooth (visualDist)
         readonly property real p:      Math.min(1.0, 34 / Math.max(6, aheadZ))
         readonly property real halfw:  root.maxHalfW * p
         readonly property real cy:     root.horizonY + p * root.roadH
         readonly property real sw:     root.width * 0.12 * p              // panel width (scales with view)
         readonly property real sh:     sw * 0.66
         readonly property real postH:  sw * 1.05
-        visible: race.started && !race.finished && race.nextTargetW > 0
-                 && race.nextSecs >= 0 && aheadZ > 1.5 && aheadZ < 420
+        visible: root.race.started && !root.race.finished && root.race.nextTargetW > 0
+                 && root.race.nextSecs >= 0 && aheadZ > 1.5 && aheadZ < 420
         // Follow the road's right edge, but clamp to the screen so the sign
         // stays fully visible (hugging the right margin and growing) right up to
         // the moment the interval starts — instead of sliding off-screen early
@@ -471,7 +477,7 @@ Item {
                     radius: ivSign.sw*0.06; color: "#16324a"; border.color: "#ffce3a"; border.width: Math.max(1, ivSign.sw*0.028) }
         Text { x: -ivSign.sw/2; y: -ivSign.postH - ivSign.sh; width: ivSign.sw; height: ivSign.sh*0.62
                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
-               text: Math.round(race.nextTargetW) + "W"; color: "white"; font.family: "monospace"
+               text: Math.round(root.race.nextTargetW) + "W"; color: "white"; font.family: "monospace"
                font.pixelSize: Math.max(8, ivSign.sw*0.34); font.bold: true }
         Text { x: -ivSign.sw/2; y: -ivSign.postH - ivSign.sh*0.40; width: ivSign.sw; height: ivSign.sh*0.40
                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
@@ -492,18 +498,18 @@ Item {
     property real finishSecsSmooth: -1
     property real finishSyncT: 0
     Connections {
-        target: race
+        target: root.race
         function onFinishChanged() {
-            if (race.started && !race.finished && race.finishSecs >= 0 && race.finishSecs <= 15) {
-                root.finishSecsSmooth = race.finishSecs
+            if (root.race.started && !root.race.finished && root.race.finishSecs >= 0 && root.race.finishSecs <= 15) {
+                root.finishSecsSmooth = root.race.finishSecs
                 root.finishSyncT = root.animT
-            } else if (race.finishSecs < 0 || race.finishSecs > 16) {
+            } else if (root.race.finishSecs < 0 || root.race.finishSecs > 16) {
                 root.finishSecsSmooth = -1
             }
         }
     }
     readonly property real finishLeft: finishSecsSmooth < 0 ? -1
-        : Math.max(0, finishSecsSmooth - (race.running ? animT - finishSyncT : 0))
+        : Math.max(0, finishSecsSmooth - (root.race.running ? animT - finishSyncT : 0))
     Item {
         id: finishLine
         readonly property real riderP: (playerBike.y + playerBike.height - root.horizonY) / root.roadH
@@ -517,7 +523,7 @@ Item {
         readonly property real bandH:  Math.max(4, 28 * p)
         readonly property real postH:  74 * p
         readonly property int  cols:   12
-        visible: race.started && !race.finished && root.finishLeft > 0
+        visible: root.race.started && !root.race.finished && root.finishLeft > 0
         x: root.width/2 - halfw
         y: cy - bandH
         width: roadW; height: bandH
@@ -525,6 +531,7 @@ Item {
         Repeater {
             model: finishLine.cols * 2
             Rectangle {
+                required property int index
                 readonly property int col:  index % finishLine.cols
                 readonly property int rowi: Math.floor(index / finishLine.cols)
                 x: col * (finishLine.roadW / finishLine.cols)
@@ -552,12 +559,13 @@ Item {
     Item {
         id: slipstream
         anchors.fill: parent
-        visible: race.started && !race.finished && race.drafting
-        opacity: Math.min(1.0, race.draftFactor * 1.2)
+        visible: root.race.started && !root.race.finished && root.race.drafting
+        opacity: Math.min(1.0, root.race.draftFactor * 1.2)
         z: 5
         Repeater {
             model: 14
             Rectangle {
+                required property int index
                 readonly property int  side: index % 2 === 0 ? -1 : 1
                 readonly property int  seed: Math.floor(index / 2)            // 0..6
                 readonly property real spread: 0.13 + 0.075 * (seed % 3)      // how far it fans out
@@ -581,11 +589,11 @@ Item {
     // the rear-view mirror). The gap is also shown on the HUD bubble.
     BackBike {
         id: oppBike
-        readonly property real ahead: -race.gapMeters
+        readonly property real ahead: -root.race.gapMeters
         // Perspective fraction: ~1 when right in front of you, →0 far up the road.
         // ~20 m reads as "just ahead / drawing level".
         readonly property real f: 20 / (20 + Math.max(0, ahead))
-        readonly property real oz: (1.0 / Math.max(0.05, f)) * 30 + race.visualDist
+        readonly property real oz: (1.0 / Math.max(0.05, f)) * 30 + root.race.visualDist
         // Overtake lane: dead-centre (directly ahead) while you're behind or level,
         // so drafting reads as sitting right on the partner's wheel. Only drifts a
         // little to the right during the actual pass (ahead<0), leading into the
@@ -593,11 +601,11 @@ Item {
         readonly property real lane: root.width * 0.10 * Math.max(0, Math.min(1, -ahead / 2))
         // On-road until you're 2 m past; the mirror takes over beyond that (no
         // overlap → never drawn twice).
-        visible: race.started && !race.finished && ahead > -2 && ahead < 400
+        visible: root.race.started && !root.race.finished && ahead > -2 && ahead < 400
         // Shrinks from the player's size when adjacent down to a speck far up the road.
         s: 0.45 + 1.70 * f
         body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.85   // cyan so it stands out on grey + the dash
-        phase: race.oppCrankRev
+        phase: root.race.oppCrankRev
         lean: root.curveAt(oz) * 13
         // Brief flex after passing you — a competitive taunt, so suppressed for the
         // cooperative pace partner (team mode); kept for the "race your last ride" ghost.
@@ -612,7 +620,7 @@ Item {
         id: playerBike
         s: 2.15
         body: "#e23b3b"
-        phase: race.playerCrankRev
+        phase: root.race.playerCrankRev
         lean: root.leanDeg
         x: root.width/2 - width/2
         // Sit above the profile strip so the graph never hides the rider.
@@ -624,11 +632,11 @@ Item {
     // within reach.
     Rectangle {
         id: gapChip
-        readonly property real absGap: Math.abs(race.gapMeters)
+        readonly property real absGap: Math.abs(root.race.gapMeters)
         readonly property bool hot: !root.leading && absGap < 15
         // A sub-2 m gap is noise, not news — only show the bubble (ahead OR
         // behind) once there's a real gap.
-        visible: race.started && !race.finished && absGap >= 2
+        visible: root.race.started && !root.race.finished && absGap >= 2
         z: 40
         anchors.horizontalCenter: parent.horizontalCenter
         y: playerBike.y - height - 12
@@ -639,7 +647,7 @@ Item {
         scale: hot ? 1.0 + 0.05 * Math.sin(root.animT * 8) : 1.0
         Text {
             id: gapTxt; anchors.centerIn: parent
-            text: (root.leading ? "▼ " : "▲ ") + root.shortName(race.oppName, 16) + " "
+            text: (root.leading ? "▼ " : "▲ ") + root.shortName(root.race.oppName, 16) + " "
                   + gapChip.absGap.toFixed(0) + " m " + (root.leading ? "behind" : "ahead")
                   + (root.gapTrend > 0.15 ? "  »" : root.gapTrend < -0.15 ? "  «" : "")
             color: gapChip.border.color
@@ -651,15 +659,15 @@ Item {
     // glass as it closes back in.
     Item {
         id: mirror
-        readonly property real behindM: race.gapMeters
+        readonly property real behindM: root.race.gapMeters
         readonly property real f: 30 / (30 + Math.max(0, behindM))   // 1 close .. →0 far
         // Takes over exactly where the on-road sprite stops (2 m past) — no gap,
         // no overlap, so the partner is never drawn twice.
-        visible: race.started && !race.finished && behindM > 2
+        visible: root.race.started && !root.race.finished && behindM > 2
         z: 40   // above the effort glow, like the HUD
         width: 148; height: 88
         // Ride just off the player's right shoulder, like a bar-end mirror —
-        // close to where the eyes already are during the race.
+        // close to where the eyes already are during the root.race.
         x: playerBike.x + playerBike.width + 70
         y: playerBike.y + playerBike.height/2 - height/2
         Rectangle { anchors.fill: parent; radius: 10
@@ -687,7 +695,7 @@ Item {
             BackBike {
                 s: 0.30 + 0.78 * mirror.f
                 body: "#7fd0ff"; helmet: "#15323f"; alpha: 0.95
-                phase: race.oppCrankRev
+                phase: root.race.oppCrankRev
                 armUp: (!root.teamMode && root.ghostMood === 1) ? 1 : 0
                 // weaves side to side hunting for a way past
                 x: glass.width/2 - width/2
@@ -744,10 +752,10 @@ Item {
         id: sprintText; anchors.centerIn: parent; anchors.verticalCenterOffset: -root.height * 0.07; z: 58
         text: "FINAL SPRINT!"; color: "#ffce3a"; font.family: "monospace"
         font.pixelSize: Math.round(root.height * 0.09); font.bold: true; opacity: 0
-        Connections { target: race
+        Connections { target: root.race
             function onFinishChanged() {
                 if (root.finalSprint && !root.sprintFlashed) { root.sprintFlashed = true; sprintAnim.restart() }
-                else if (race.finishSecs > 16 || race.finishSecs < 0) root.sprintFlashed = false
+                else if (root.race.finishSecs > 16 || root.race.finishSecs < 0) root.sprintFlashed = false
             }
         }
         SequentialAnimation { id: sprintAnim
@@ -762,8 +770,8 @@ Item {
         text: "GO!"; color: "#ffe24a"; font.family: "monospace"
         font.pixelSize: Math.round(root.height * 0.22); font.bold: true
         opacity: 0; scale: 1
-        Connections { target: race
-            function onRaceStateChanged() { if (race.started && !race.finished) goAnim.restart() } }
+        Connections { target: root.race
+            function onRaceStateChanged() { if (root.race.started && !root.race.finished) goAnim.restart() } }
         ParallelAnimation { id: goAnim
             NumberAnimation { target: goText; property: "opacity"; from: 1.0; to: 0.0; duration: 1100 }
             NumberAnimation { target: goText; property: "scale";   from: 0.6; to: 2.4; duration: 1100; easing.type: Easing.OutQuad }
@@ -776,12 +784,12 @@ Item {
         id: otText; anchors.centerIn: parent; anchors.verticalCenterOffset: -root.height * 0.18; z: 58
         text: ""; font.family: "monospace"; font.pixelSize: Math.round(root.height * 0.095); font.bold: true
         opacity: 0
-        Connections { target: race
+        Connections { target: root.race
             function onUpdated() {
-                if (!race.started || race.finished) return
-                if (root.prevGap < 0 && race.gapMeters >= 0) { otText.text = "OVERTAKE!"; otText.color = "#5dff5d"; otAnim.restart() }
-                else if (root.prevGap >= 0 && race.gapMeters < 0) { otText.text = "PASSED!"; otText.color = "#ff6b6b"; otAnim.restart(); root.oppCelebrateUntil = root.animT + 2.5 }
-                root.prevGap = race.gapMeters
+                if (!root.race.started || root.race.finished) return
+                if (root.prevGap < 0 && root.race.gapMeters >= 0) { otText.text = "OVERTAKE!"; otText.color = "#5dff5d"; otAnim.restart() }
+                else if (root.prevGap >= 0 && root.race.gapMeters < 0) { otText.text = "PASSED!"; otText.color = "#ff6b6b"; otAnim.restart(); root.oppCelebrateUntil = root.animT + 2.5 }
+                root.prevGap = root.race.gapMeters
             }
         }
         SequentialAnimation { id: otAnim
@@ -796,10 +804,10 @@ Item {
         id: kmText; anchors.horizontalCenter: parent.horizontalCenter; y: root.height * 0.30; z: 58
         text: ""; color: "#7ee0ff"; font.family: "monospace"; font.pixelSize: Math.round(root.height * 0.085); font.bold: true
         opacity: 0
-        Connections { target: race
+        Connections { target: root.race
             function onUpdated() {
-                if (!race.started || race.finished) return
-                var km = Math.floor(race.displayDistanceM / 1000)
+                if (!root.race.started || root.race.finished) return
+                var km = Math.floor(root.race.displayDistanceM / 1000)
                 if (km > root.lastKm) { root.lastKm = km; root.score += 100; kmText.text = km + " KM  +100"; kmAnim.restart() }
             }
         }
@@ -812,7 +820,7 @@ Item {
     // Effort-zone coaching pill (top-left): a clear, game-like cue to push,
     // ease off, or hold — colour-matched to the effort glow.
     Rectangle {
-        visible: race.started && !race.finished && race.targetPower > 0
+        visible: root.race.started && !root.race.finished && root.race.targetPower > 0
         anchors { left: parent.left; leftMargin: 12; top: parent.top; topMargin: 78 }
         width: zoneTxt.implicitWidth + 22; height: 26; radius: 13
         readonly property bool hot: root.effortState === 0 && root.zoneHoldSec >= 10
@@ -830,14 +838,14 @@ Item {
     // ERG team pill (below the effort-zone pill): the cooperative-race cue —
     // drafting in the partner's slipstream, or the partner easing to wait for you.
     Rectangle {
-        visible: race.started && !race.finished && race.ergMode
-                 && (race.drafting || race.partnerEasing)
+        visible: root.race.started && !root.race.finished && root.race.ergMode
+                 && (root.race.drafting || root.race.partnerEasing)
         anchors { left: parent.left; leftMargin: 12; top: parent.top; topMargin: 110 }
         width: teamTxt.implicitWidth + 22; height: 26; radius: 13
-        color: race.partnerEasing ? "#9e6b1f" : "#1f8f3f"
-        border.color: "#ffe24a"; border.width: race.drafting && race.draftFactor > 0.6 ? 2 : 1
+        color: root.race.partnerEasing ? "#9e6b1f" : "#1f8f3f"
+        border.color: "#ffe24a"; border.width: root.race.drafting && root.race.draftFactor > 0.6 ? 2 : 1
         Text { id: teamTxt; anchors.centerIn: parent
-            text: race.partnerEasing ? "🤝 PARTNER WAITING — bridge up!"
+            text: root.race.partnerEasing ? "🤝 PARTNER WAITING — bridge up!"
                 : "🤝 ON THE WHEEL — drafting »"
             color: "white"; font.family: "monospace"; font.pixelSize: 13; font.bold: true }
     }
@@ -856,9 +864,9 @@ Item {
             Text { text: label; color: "#bcd"; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
             Text { text: value; color: vcolor; font.family: "monospace"; font.pixelSize: 18; font.bold: true }
         }
-        Stat { label: "TIME";  value: root.fmtTime(race.workoutElapsedSec) }
-        Stat { label: "DIST";  value: (race.displayDistanceM / 1000).toFixed(2) + " km" }
-        Stat { label: "SPEED"; value: race.playerSpeedKmh.toFixed(1) + " km/h" }
+        Stat { label: "TIME";  value: root.fmtTime(root.race.workoutElapsedSec) }
+        Stat { label: "DIST";  value: (root.race.displayDistanceM / 1000).toFixed(2) + " km" }
+        Stat { label: "SPEED"; value: root.race.playerSpeedKmh.toFixed(1) + " km/h" }
         Stat { label: "SCORE"; value: Math.floor(root.score).toString(); vcolor: "#ffe24a" }
     }
 
@@ -887,9 +895,9 @@ Item {
                               : high ? "  ▲" + Math.round(value - target) : "")
                    color: vcolor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
         }
-        BigStat { label: "POWER";   value: race.playerPowerW;  unit: "W";   target: race.targetPower;   range: race.targetPowerRange }
-        BigStat { label: "CADENCE"; value: race.playerCadence; unit: "rpm"; target: race.targetCadence; range: race.targetCadenceRange }
-        BigStat { label: "HR";      value: race.playerHr;      unit: "bpm"; target: race.targetHr;      range: race.targetHrRange }
+        BigStat { label: "POWER";   value: root.race.playerPowerW;  unit: "W";   target: root.race.targetPower;   range: root.race.targetPowerRange }
+        BigStat { label: "CADENCE"; value: root.race.playerCadence; unit: "rpm"; target: root.race.targetCadence; range: root.race.targetCadenceRange }
+        BigStat { label: "HR";      value: root.race.playerHr;      unit: "bpm"; target: root.race.targetHr;      range: root.race.targetHrRange }
     }
 
     // (No top-right gap cluster: position and gap live in the avatar bubble.)
@@ -900,7 +908,7 @@ Item {
     // rank · name · time behind the leader ("Leader" / "+12s" / "+1:05").
     Rectangle {
         id: leaderboard
-        visible: race.started && lbRepeater.count > 1
+        visible: root.race.started && lbRepeater.count > 1
         anchors.right: parent.right; anchors.rightMargin: 14
         anchors.verticalCenter: parent.verticalCenter
         width: 176
@@ -920,10 +928,11 @@ Item {
                 id: lbRepeater
                 // A count, not the list itself: the list is re-sent every tick,
                 // and a new model would rebuild these rows 30 times a second.
-                model: race.standings.length
+                model: root.race.standings.length
                 Item {
+                    required property int index
                     width: lbCol.width; height: 18
-                    readonly property var row: race.standings[index] || ({})
+                    readonly property var row: root.race.standings[index] || ({})
                     readonly property bool me: row.isPlayer === true
                     Text { id: rk; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                            text: row.rank + "."; color: me ? "#ffe24a" : "#dfe7ef"
@@ -945,21 +954,21 @@ Item {
 
     // NEXT-interval target card (right side).
     Rectangle {
-        visible: race.started && !race.finished && race.nextTargetW > 0 && race.nextSecs >= 0
+        visible: root.race.started && !root.race.finished && root.race.nextTargetW > 0 && root.race.nextSecs >= 0
         anchors.right: parent.right; anchors.rightMargin: 14
         anchors.top: parent.top; anchors.topMargin: 84
-        width: 116; height: race.nextTargetCad > 0 ? 66 : 52; radius: 6
+        width: 116; height: root.race.nextTargetCad > 0 ? 66 : 52; radius: 6
         color: "#16324a"; border.color: "#ffce3a"; border.width: 2
         Column {
             anchors.centerIn: parent; spacing: 0
             Text { anchors.horizontalCenter: parent.horizontalCenter
-                   text: "NEXT ▸ " + Math.round(race.nextSecs) + "s"
+                   text: "NEXT ▸ " + Math.round(root.race.nextSecs) + "s"
                    color: "#ffce3a"; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
             Text { anchors.horizontalCenter: parent.horizontalCenter
-                   text: Math.round(race.nextTargetW) + " W"
+                   text: Math.round(root.race.nextTargetW) + " W"
                    color: "white"; font.family: "monospace"; font.pixelSize: 22; font.bold: true }
-            Text { anchors.horizontalCenter: parent.horizontalCenter; visible: race.nextTargetCad > 0
-                   text: Math.round(race.nextTargetCad) + " rpm"
+            Text { anchors.horizontalCenter: parent.horizontalCenter; visible: root.race.nextTargetCad > 0
+                   text: Math.round(root.race.nextTargetCad) + " rpm"
                    color: "#7ee0ff"; font.family: "monospace"; font.pixelSize: 12 }
         }
     }
@@ -969,33 +978,33 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top; anchors.topMargin: 84
         spacing: 3
-        visible: race.started && !race.finished && race.nextSecs >= 0
+        visible: root.race.started && !root.race.finished && root.race.nextSecs >= 0
         Text { anchors.horizontalCenter: parent.horizontalCenter
                text: "INTERVAL LEFT"; color: "#22456b"; font.family: "monospace"; font.pixelSize: 12; font.bold: true }
         Text { anchors.horizontalCenter: parent.horizontalCenter
-               text: root.fmtTime(Math.max(0, race.nextSecs)); color: "#13314d"
+               text: root.fmtTime(Math.max(0, root.race.nextSecs)); color: "#13314d"
                font.family: "monospace"; font.pixelSize: 38; font.bold: true }
-        Text { anchors.horizontalCenter: parent.horizontalCenter; visible: race.intervalMessage.length > 0
-               text: race.intervalMessage; color: "#1c4a22"; font.family: "monospace"; font.pixelSize: 16; font.bold: true }
+        Text { anchors.horizontalCenter: parent.horizontalCenter; visible: root.race.intervalMessage.length > 0
+               text: root.race.intervalMessage; color: "#1c4a22"; font.family: "monospace"; font.pixelSize: 16; font.bold: true }
         Item {
             anchors.horizontalCenter: parent.horizontalCenter
             width: 220; height: 14
             readonly property real sc: (width/2 - 8) / 60
             Rectangle { anchors.fill: parent; radius: 7; color: "#000000"; opacity: 0.35 }
             Rectangle { width: 10; height: 10; radius: 5; color: "#e8e8ff"; anchors.verticalCenter: parent.verticalCenter
-                        x: Math.max(3, Math.min(parent.width-13, parent.width/2 - 5 - race.gapMeters * parent.sc)) }
+                        x: Math.max(3, Math.min(parent.width-13, parent.width/2 - 5 - root.race.gapMeters * parent.sc)) }
             Rectangle { width: 10; height: 10; radius: 5; color: "#e23b3b"; anchors.centerIn: parent }
         }
     }
 
     Text {
         anchors { bottom: parent.bottom; left: parent.left; leftMargin: 8; bottomMargin: 72 }
-        text: (race.oppIsBot ? "🤖 " : "👻 ") + root.shortName(race.oppName, 34) + "   ·   " + race.oppPowerW.toFixed(0) + " W"
+        text: (root.race.oppIsBot ? "🤖 " : "👻 ") + root.shortName(root.race.oppName, 34) + "   ·   " + root.race.oppPowerW.toFixed(0) + " W"
         color: "#e8e8e8"; font.family: "monospace"; font.pixelSize: 12
     }
     Text {
         anchors { bottom: parent.bottom; right: parent.right; rightMargin: 46; bottomMargin: 72 }
-        visible: race.started && !race.running && !race.finished
+        visible: root.race.started && !root.race.running && !root.race.finished
         text: "⏸ PAUSED"; color: "#ffd166"; font.family: "monospace"; font.pixelSize: 14; font.bold: true
     }
 
@@ -1004,17 +1013,18 @@ Item {
         id: profileStrip
         readonly property int stripH: 66
         readonly property int barArea: 56
-        visible: race.workoutProfile.length > 0 && !race.finished
+        visible: root.race.workoutProfile.length > 0 && !root.race.finished
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         height: stripH
         Rectangle { anchors.fill: parent; color: "#000000"; opacity: 0.5 }
         Repeater {
-            model: race.workoutProfile.length
+            model: root.race.workoutProfile.length
             Rectangle {
-                readonly property int n: race.workoutProfile.length
+                required property int index
+                readonly property int n: root.race.workoutProfile.length
                 readonly property real bw: profileStrip.width / Math.max(1, n)
-                readonly property real val: race.workoutProfile[index]
-                readonly property bool done: (index + 0.5) / n <= race.workoutProgress
+                readonly property real val: root.race.workoutProfile[index]
+                readonly property bool done: (index + 0.5) / n <= root.race.workoutProgress
                 x: index * bw; width: bw + 0.6
                 height: Math.max(2, (val > 0 ? val : 0) * profileStrip.barArea)
                 y: profileStrip.stripH - height - 4
@@ -1022,35 +1032,35 @@ Item {
             }
         }
         Rectangle { width: 2; color: "#ffce3a"; anchors { top: parent.top; bottom: parent.bottom }
-                    x: race.workoutProgress * profileStrip.width }
+                    x: root.race.workoutProgress * profileStrip.width }
         Rectangle {
             anchors { right: parent.right; verticalCenter: parent.verticalCenter; rightMargin: 6 }
             width: 30; height: 30; radius: 5; color: fsMa.containsMouse ? "#2f6196" : "#1f456b"
             border.color: "#9fd0ec"; border.width: 1
-            Text { anchors.centerIn: parent; text: race.gameFullscreen ? "🗗" : "⛶"; color: "white"; font.pixelSize: 16 }
+            Text { anchors.centerIn: parent; text: root.race.gameFullscreen ? "🗗" : "⛶"; color: "white"; font.pixelSize: 16 }
             MouseArea { id: fsMa; anchors.fill: parent; hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor; onClicked: race.requestFullscreenToggle() }
+                cursorShape: Qt.PointingHandCursor; onClicked: root.race.requestFullscreenToggle() }
         }
     }
 
     // ---------------------------------------------------------------- overlays
-    Rectangle { anchors.fill: parent; color: "#000000"; opacity: 0.5; visible: !race.started && !race.finished }
+    Rectangle { anchors.fill: parent; color: "#000000"; opacity: 0.5; visible: !root.race.started && !root.race.finished }
 
     Column {   // step 1: choose opponent
         anchors.centerIn: parent; spacing: 14
-        visible: !race.oppChosen && !race.started && !race.finished
+        visible: !root.race.oppChosen && !root.race.started && !root.race.finished
         Text { anchors.horizontalCenter: parent.horizontalCenter; text: "CHOOSE YOUR RACE"
                color: "#ffe08a"; font.family: "monospace"; font.pixelSize: 30; font.bold: true }
         BigButton { title: "🏁  Race your last performance"
-            subtitle: race.hasLastRide ? "your most recent ride of this workout" : "no previous ride for this workout yet"
-            active: race.hasLastRide; onPicked: race.chooseGhost() }
-        BigButton { title: race.ergMode ? "🤝  Ride with your Pace Partner" : "🤖  Race the Pacer"
-            subtitle: race.ergMode ? "team up — draft to hold the wheel" : "holds the workout's target watts"
-            onPicked: race.choosePacer() }
+            subtitle: root.race.hasLastRide ? "your most recent ride of this workout" : "no previous ride for this workout yet"
+            active: root.race.hasLastRide; onPicked: root.race.chooseGhost() }
+        BigButton { title: root.race.ergMode ? "🤝  Ride with your Pace Partner" : "🤖  Race the Pacer"
+            subtitle: root.race.ergMode ? "team up — draft to hold the wheel" : "holds the workout's target watts"
+            onPicked: root.race.choosePacer() }
     }
     Column {   // step 2: ready
         anchors.centerIn: parent; spacing: 8
-        visible: race.oppChosen && !race.started && !race.finished
+        visible: root.race.oppChosen && !root.race.started && !root.race.finished
         Text { anchors.horizontalCenter: parent.horizontalCenter; text: "READY"
                color: "#ffe08a"; font.family: "monospace"; font.pixelSize: 42; font.bold: true }
         Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Start the workout to begin the race"
@@ -1060,8 +1070,9 @@ Item {
     Repeater {   // confetti — a reward, so it only rains when you actually won
         model: 28
         Rectangle {
+            required property int index
             // Finishing with your partner is a win too — celebrate the team finish.
-            readonly property bool celebrate: race.finished && (race.gapMeters >= 0 || root.teamMode)
+            readonly property bool celebrate: root.race.finished && (root.race.gapMeters >= 0 || root.teamMode)
             visible: celebrate
             width: 8; height: 8
             color: ["#e23b3b", "#5dff5d", "#3aa0ff", "#ffe08a", "#ff6bd6"][index % 5]
@@ -1072,21 +1083,21 @@ Item {
                 from: 0; to: 360; duration: 700 + (index % 5) * 220 }
         }
     }
-    Rectangle { anchors.fill: parent; color: "#000000"; opacity: 0.4; visible: race.finished }
+    Rectangle { anchors.fill: parent; color: "#000000"; opacity: 0.4; visible: root.race.finished }
     Column {
-        anchors.centerIn: parent; spacing: 10; visible: race.finished
+        anchors.centerIn: parent; spacing: 10; visible: root.race.finished
         Text { anchors.horizontalCenter: parent.horizontalCenter
                text: root.teamMode ? "🤝  GREAT TEAMWORK!"
-                                   : (race.gapMeters >= 0 ? "🏆  YOU WIN!" : "🏁  FINISH!")
+                                   : (root.race.gapMeters >= 0 ? "🏆  YOU WIN!" : "🏁  FINISH!")
                color: "#ffe08a"; font.family: "monospace"; font.pixelSize: 46; font.bold: true }
         Text { anchors.horizontalCenter: parent.horizontalCenter
                text: root.teamMode ? "You rode the whole workout with your partner 🎉"
-                   : (race.gapMeters >= 0 ? "You won by " + race.gapMeters.toFixed(0) + " m! 🎉"
-                                          : "Beaten by " + (-race.gapMeters).toFixed(0) + " m")
-               color: (root.teamMode || race.gapMeters >= 0) ? "#5dff5d" : "#ff6b6b"
+                   : (root.race.gapMeters >= 0 ? "You won by " + root.race.gapMeters.toFixed(0) + " m! 🎉"
+                                          : "Beaten by " + (-root.race.gapMeters).toFixed(0) + " m")
+               color: (root.teamMode || root.race.gapMeters >= 0) ? "#5dff5d" : "#ff6b6b"
                font.family: "monospace"; font.pixelSize: 22; font.bold: true }
         Text { anchors.horizontalCenter: parent.horizontalCenter
-               text: (race.displayDistanceM / 1000).toFixed(2) + " km   ·   vs " + root.shortName(race.oppName, 24)
+               text: (root.race.displayDistanceM / 1000).toFixed(2) + " km   ·   vs " + root.shortName(root.race.oppName, 24)
                color: "#cde"; font.family: "monospace"; font.pixelSize: 14 }
         Text { anchors.horizontalCenter: parent.horizontalCenter
                text: "SCORE " + Math.floor(root.score)
