@@ -90,6 +90,7 @@ public:
 
     void setMessagePlot();
     void layoutBottomWidgets();
+    void applyStartTrigger(int trigger, double value, double threshold);
 
     ///timers
     void showTimerIntervalRemaining(bool);

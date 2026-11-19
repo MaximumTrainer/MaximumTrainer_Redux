@@ -1730,10 +1730,6 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
 
         arrDataWorkout[userID-1]->checkUpdateMaxCad(value);
 
-        ///Below Pause treshold?
-        if (!account->enable_studio_mode && (account->start_trigger == 0) && (value < account->value_cadence_start) ) {
-            start_or_pause_workout();
-        }
 
         ///Check to play sound, 10sec cooldown between sound and not first/last 3 second of an interval
         if (!account->enable_studio_mode && currentTargetCadence != -1 && soundsActive && account->enable_sound) {
@@ -1756,10 +1752,7 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
         ui->wid_3_workoutPlot_CadenceZoom->updateCurve(timeElapsed_sec, value);
 
     }
-    ///Resume Workout?
-    if (!account->enable_studio_mode && !isAskingUserQuestion && (account->start_trigger == 0) && isWorkoutPaused && !isWorkoutOver && (value > account->value_cadence_start) ) {
-        start_or_pause_workout();
-    }
+    applyStartTrigger(0, value, account->value_cadence_start);
 
 
     // Show raw data to the display
@@ -1836,18 +1829,11 @@ void WorkoutDialog::speedDataChosen(int userID, double value) {
 
         arrDataWorkout[userID-1]->checkUpdateMaxSpeed(value);
 
-        ///Below Pause treshold?
-        if (!account->enable_studio_mode && (account->start_trigger == 2) && (valueUnit < account->value_speed_start) ) {
-            start_or_pause_workout();
-        }
 
         //averaging 1sec
         m_secondSamples.addSample(userID-1, SensorSecondAccumulator::Metric::Speed, value);
     }
-    ///Resume Workout?
-    if (!account->enable_studio_mode && !isAskingUserQuestion && (account->start_trigger == 2) && isWorkoutPaused && !isWorkoutOver && (valueUnit > account->value_speed_start) ) {
-        start_or_pause_workout();
-    }
+    applyStartTrigger(2, valueUnit, account->value_speed_start);
 
 
     ui->wid_4_infoBoxSpeed->setValue(value);
@@ -1896,10 +1882,6 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 
         arrDataWorkout[userID-1]->checkUpdateMaxPower(powerValue);
 
-        ///Below Pause treshold?
-        if (!account->enable_studio_mode && (account->start_trigger == 1) && (powerValue < account->value_power_start) ) {
-            start_or_pause_workout();
-        }
 
         ///Check to play sound, 10sec cooldown between sound and not first/last 3 second of an interval
         if (!account->enable_studio_mode && currentTargetPower != -1 && soundsActive && account->enable_sound) {
@@ -1922,10 +1904,7 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 
 
     }
-    ///Resume Workout?
-    if (!account->enable_studio_mode && !isAskingUserQuestion && (account->start_trigger == 1) && isWorkoutPaused && !isWorkoutOver && (value >= account->value_power_start) ) {
-        start_or_pause_workout();
-    }
+    applyStartTrigger(1, value, account->value_power_start);
 
 
     // Show raw data to the display
@@ -1936,6 +1915,18 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
     }
 }
 
+
+// Auto start/pause on the chosen metric: pause below the threshold, resume
+// (or start) once it is over it; exactly at the threshold keeps the state.
+void WorkoutDialog::applyStartTrigger(int trigger, double value, double threshold)
+{
+    if (account->enable_studio_mode || account->start_trigger != trigger || isWorkoutOver)
+        return;
+    if (!isWorkoutPaused && value < threshold)
+        start_or_pause_workout();
+    else if (isWorkoutPaused && !isAskingUserQuestion && value > threshold)
+        start_or_pause_workout();
+}
 
 void WorkoutDialog::PowerBalanceDataReceived(int userID, int rightPedalPercentage) {
 
