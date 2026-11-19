@@ -275,7 +275,7 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
             m_silentAuthTimeout->setSingleShot(true);
             connect(m_silentAuthTimeout, &QTimer::timeout,
                     this, &DialogLogin::onSilentAuthTimeout);
-            m_silentAuthTimeout->start(10000);
+            m_silentAuthTimeout->start(5000);
         } else {
             // Could not create request — fall back to the login form silently
             showLoginForm(false);
@@ -326,14 +326,14 @@ void DialogLogin::loginOffline()
 
 void DialogLogin::onSilentAuthTimeout()
 {
-    LOG_WARN("DialogLogin", QStringLiteral("Silent auth timed out – showing login form"));
+    LOG_WARN("DialogLogin", QStringLiteral("Silent auth timed out – continuing with the saved session"));
     m_silentAuthCancelled = true;
     if (m_silentAuthReply) {
         auto *r = m_silentAuthReply;
         m_silentAuthReply = nullptr;
         r->abort(); r->deleteLater();
     }
-    showLoginForm(false);
+    loginWithIntervalsIcuIdentity();
 }
 
 void DialogLogin::onSilentAuthFinished()
@@ -373,11 +373,12 @@ void DialogLogin::onSilentAuthFinished()
         showLoginForm(true); // show "session expired" notice
 
     } else {
-        // Network error or unexpected status → fail silently
+        // Intervals.icu unreachable or failing: training works locally, so
+        // enter with the saved session rather than blocking on the sign-in form.
         LOG_WARN("DialogLogin",
-                 QStringLiteral("Silent auth network error (%1) – showing login form")
-                 .arg(netError));
-        showLoginForm(false);
+                 QStringLiteral("Silent auth failed (network error %1, HTTP %2) – continuing with the saved session")
+                 .arg(netError).arg(httpStatus));
+        loginWithIntervalsIcuIdentity();
     }
 }
 
