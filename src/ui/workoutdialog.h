@@ -46,6 +46,7 @@ class WorkoutRaceView;
 class RetroRaceController;   // retro ghost-race view
 class ZwiftClickManager;     // Zwift Click v2 (right) controller input, direct BLE
 class AchievementToast;      // in-workout "Achievement unlocked" banner
+class TrendChart;            // live 30 s trend in a metric card
 class GroupSession;
 class GroupPanel;
 class GroupRideCoordinator;
@@ -362,6 +363,9 @@ private:
     int m_lastAchievementMinute = 0;
     QString m_profileNote;   ///< test result save status, shown on the post-workout panel
     AchievementToast *m_achievementToast = nullptr;
+    TrendChart *m_speedTrend   = nullptr;
+    TrendChart *m_balanceTrend = nullptr;
+    TrendChart *m_oxygenTrend  = nullptr;
 
     // Post-workout summary: achievements earned this session
     QList<Achievement> earnedAchievements;

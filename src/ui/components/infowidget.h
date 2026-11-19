@@ -38,6 +38,10 @@ public:
     void setTrainerSpeedVisible(bool b);
 
 
+signals:
+    /// -1 below target, 0 on target, 1 above, 2 no target or stopped.
+    void targetStateChanged(int state);
+
 public slots:
 
     void setValue( int v );
@@ -65,7 +69,7 @@ private:
 
 
     bool isStopped;
-    int currentColor;  // 0 = Okay, -1= TooLow, 1=TooHigh
+    int currentColor;  // -1 below, 0 on target, 1 above, 2 no target
 
 };
 
