@@ -15,8 +15,9 @@ class IntervalsIcuFtpSync : public QObject
 {
     Q_OBJECT
 public:
+    /// \a lthrBpm > 0 also updates the Ride LTHR (FTP tests measure it).
     IntervalsIcuFtpSync(const QString &athleteId, const QString &bearerToken, int ftpWatts,
-                        QObject *parent = nullptr);
+                        QObject *parent = nullptr, int lthrBpm = 0);
     void start();
 
 signals:
@@ -30,6 +31,7 @@ private:
     QString        m_athleteId;
     QString        m_token;
     int            m_ftpWatts;
+    int            m_lthrBpm = 0;
     QNetworkReply *m_reply = nullptr;
 };
 

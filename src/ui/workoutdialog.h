@@ -303,6 +303,7 @@ private:
     // this dialog; scanning/connections are freed when the workout closes.
     void setupZwiftClick();
     void connectZwiftClick();
+    void saveTestResult(int ftpWatts, int lthrBpm);
 #ifndef Q_OS_WASM
     ZwiftClickManager *m_clickManager = nullptr;
 #endif
@@ -359,6 +360,7 @@ private:
 
     /// Achievement window
     int m_lastAchievementMinute = 0;
+    QString m_profileNote;   ///< test result save status, shown on the post-workout panel
     AchievementToast *m_achievementToast = nullptr;
 
     // Post-workout summary: achievements earned this session

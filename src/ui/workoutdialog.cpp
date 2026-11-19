@@ -9,6 +9,7 @@
 #endif
 #include "achievementcatalog.h"
 #include "achievementtoast.h"
+#include "intervalsicuftpsync.h"
 
 #ifdef Q_OS_WIN32
 #   include <windows.h>
@@ -851,10 +852,7 @@ void WorkoutDialog::checkMAPTestOver() {
         // Persist the estimated FTP into the athlete profile, like the FTP
         // tests do (LTHR and weight unchanged).
         if (estimatedFTP > 0) {
-            if (estimatedFTP > account->FTP)
-                achievementManager->recordEvent(AchievementCatalog::Events::FtpRaised);
-            account->saveProfileFields(estimatedFTP, account->LTHR, account->weight_kg);
-            emit ftp_lthr_changed();
+            saveTestResult(estimatedFTP, 0);
         }
         //Go to cooldown interval (last interval)
         moveToInterval(workout.getNbInterval()-1, -1, -1, false);
@@ -2985,6 +2983,7 @@ void WorkoutDialog::showPostWorkoutPanel()
     widgetPostWorkout = new PostWorkoutPanel(account, earnedAchievements,
                                              fitFilePath, fitFileName, fitFileDescription, this);
     connect(widgetPostWorkout, &PostWorkoutPanel::ftpUpdated, this, &WorkoutDialog::ftp_lthr_changed);
+    widgetPostWorkout->setProfileNote(m_profileNote);
     const QSize ps = size();   // centre over the whole workout dialog
     const QSize ws = widgetPostWorkout->size();
     widgetPostWorkout->move((ps.width()  - ws.width())  / 2,
@@ -3180,6 +3179,35 @@ void WorkoutDialog::createUserStudioWidget() {
 }
 
 
+// Saves a test result to the profile and, signed in, to Intervals.icu: login
+// copies FTP/LTHR from there, so a local-only result would be lost at the next
+// sign-in. \a lthrBpm 0 = the test did not measure LTHR.
+void WorkoutDialog::saveTestResult(int ftpWatts, int lthrBpm)
+{
+    if (ftpWatts > account->FTP)
+        achievementManager->recordEvent(AchievementCatalog::Events::FtpRaised);
+    account->saveProfileFields(ftpWatts, lthrBpm > 0 ? lthrBpm : account->LTHR, account->weight_kg);
+    emit ftp_lthr_changed();
+
+    const QString saved = lthrBpm > 0 ? tr("New FTP %1 W and LTHR %2 bpm").arg(ftpWatts).arg(lthrBpm)
+                                      : tr("New FTP %1 W").arg(ftpWatts);
+    if (account->intervals_icu_access_token.isEmpty() || account->intervals_icu_athlete_id.isEmpty()) {
+        m_profileNote = tr("%1 saved to your profile.").arg(saved);
+        return;
+    }
+    m_profileNote = tr("%1 saved. Saving to Intervals.icu…").arg(saved);
+    auto *sync = new IntervalsIcuFtpSync(account->intervals_icu_athlete_id, account->intervals_icu_access_token,
+                                         ftpWatts, this, lthrBpm);
+    connect(sync, &IntervalsIcuFtpSync::finished, this, [this, saved](bool ok, const QString &error) {
+        m_profileNote = ok ? tr("✓ %1 saved to your profile and Intervals.icu.").arg(saved)
+                           : tr("%1 saved here, but saving to Intervals.icu failed (%2). "
+                                "Your next sign-in may restore the old values.").arg(saved, error);
+        if (widgetPostWorkout)
+            widgetPostWorkout->setProfileNote(m_profileNote);
+    });
+    sync->start();
+}
+
 void WorkoutDialog::showTestResult() {
 
     // May already have been shown when the last test interval finished.
@@ -3221,10 +3249,7 @@ void WorkoutDialog::showTestResult() {
             // any metric the test could not compute (<= 0).
             const int ftpToSave  = (newFTP  > 0) ? newFTP  : account->FTP;
             const int lthrToSave = (newLTHR > 0) ? newLTHR : account->LTHR;
-            if (ftpToSave > account->FTP)
-                achievementManager->recordEvent(AchievementCatalog::Events::FtpRaised);
-            account->saveProfileFields(ftpToSave, lthrToSave, account->weight_kg);
-            emit ftp_lthr_changed();
+            saveTestResult(ftpToSave, newLTHR > 0 ? lthrToSave : 0);
         }
     }
 
