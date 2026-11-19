@@ -30,6 +30,7 @@
 #include "userstudiowidget.h"
 #include "myconstants.h"
 #include "maptesttracker.h"
+#include "targetalert.h"
 #include "sensorsecondaccumulator.h"
 #include "userstudio.h"
 
@@ -193,10 +194,6 @@ public slots:
     void ignoreClickPlot();
 
     void activateSoundBool();
-    void activateSoundPowerTooLow();
-    void activateSoundPowerTooHigh();
-    void activateSoundCadenceTooLow();
-    void activateSoundCadenceTooHigh();
 
     // QNetwork reply
     void slotFinishedGetPixmap();
@@ -493,15 +490,8 @@ private:
     QTimer *timerCheckToActivateSound;
     bool soundsActive;
 
-    int durationReactivateSameSoundMsec; //to edit if 10sec is too long
-    QTimer *timerCheckReactivateSoundPowerTooLow;
-    QTimer *timerCheckReactivateSoundPowerTooHigh;
-    QTimer *timerCheckReactivateSoundCadenceTooLow;
-    QTimer *timerCheckReactivateSoundCadenceTooHigh;
-    bool soundPowerTooLowActive;
-    bool soundPowerTooHighActive;
-    bool soundCadenceTooLowActive;
-    bool soundCadenceTooHighActive;
+    TargetAlert m_powerAlert;
+    TargetAlert m_cadenceAlert;
     ///---------------------------------------
 
     MapTestTracker m_mapTest;
