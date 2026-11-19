@@ -3,6 +3,7 @@
 #include "asyncdialogs.h"
 #include "ui_main_workoutpage.h"
 
+#include <QHeaderView>
 #include <QPainter>
 #include <QMessageBox>
 #include <QScrollBar>
@@ -97,6 +98,15 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
     ui->tableView_workout->setColumnWidth(8, 40);
     ui->tableView_workout->setColumnWidth(9, 40);
     ui->tableView_workout->setColumnWidth(11, 40);   // Done (check) — small, no header
+    // Never narrower than the column title in the current font (the fixed
+    // widths clipped "Duration" and "Max FTP"); Creator may stay truncated.
+    QHeaderView *workoutHeader = ui->tableView_workout->horizontalHeader();
+    const QFontMetrics headerMetrics(workoutHeader->font());
+    for (int column = 3; column <= 9; ++column) {
+        const QString title = ui->tableView_workout->model()->headerData(column, Qt::Horizontal).toString();
+        workoutHeader->resizeSection(column, qMax(workoutHeader->sectionSize(column),
+                                                  headerMetrics.horizontalAdvance(title) + 16));
+    }
     // Let the Graph column fill the remaining width (it used to be the last
     // section; the new Done column is last now, so stretch the Graph explicitly).
     ui->tableView_workout->horizontalHeader()->setSectionResizeMode(10, QHeaderView::Stretch);
