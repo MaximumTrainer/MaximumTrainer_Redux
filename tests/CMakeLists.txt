@@ -229,7 +229,7 @@ mt_add_test(login_screen_tests QWT
         "${SRC}/btle/simulator_hub.cpp"
         "${SRC}/persistence/db/intervals_icu_oauth_flow.cpp"
         "${SRC}/ui/dialoglogin.cpp" "${SRC}/ui/dialoglogin.ui"
-        "${SRC}/ui/updatedialog.cpp" "${SRC}/ui/updatedialog.ui"
+        "${SRC}/app/updatenotifier.cpp"
         integration/tst_login_screen.cpp
     QT Gui Widgets Network
     INCLUDES ${APP_INCLUDES})

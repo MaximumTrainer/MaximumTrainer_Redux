@@ -29,7 +29,7 @@ endforeach()
 target_sources(mt_core PRIVATE
     # app
     app/logger.cpp app/config_bootstrap.cpp app/startup_trace.cpp app/webengine_safe_mode.cpp
-    app/util.cpp app/globalvars.cpp app/simplecrypt.cpp app/networkmonitor.cpp
+    app/util.cpp app/updatenotifier.cpp app/globalvars.cpp app/simplecrypt.cpp app/networkmonitor.cpp
     app/qtmediaplayer.h
     # fitness
     fitness/mmpcalculator.cpp fitness/pmccalculator.cpp
@@ -57,7 +57,7 @@ target_sources(mt_core PRIVATE
     group/joingroupdialog.cpp group/groupridersmodel.cpp group/groupriderdelegate.cpp
     # ui
     ui/mainwindow.cpp ui/mainwindow_harness.cpp ui/workoutdialog.cpp ui/main_workoutpage.cpp
-    ui/dialogconfig.cpp ui/dialoglogin.cpp ui/z_stylesheet.cpp ui/updatedialog.cpp
+    ui/dialogconfig.cpp ui/dialoglogin.cpp ui/z_stylesheet.cpp
     ui/splashscreen.cpp ui/dialogmainwindowconfig.cpp ui/dialog_connection_method.cpp
     ui/tab_intervals_icu.cpp ui/workouthistorymodel.cpp ui/historywidget.cpp
     ui/historyfilterproxymodel.cpp ui/activitydetaildialog.cpp ui/dialogkeyboardshortcuts.cpp
@@ -65,7 +65,7 @@ target_sources(mt_core PRIVATE
     ui/workoutcountdowndialog.cpp ui/queuepanelwidget.cpp ui/sensorswidget.cpp ui/studiowidget.cpp
     ui/apptheme.h ui/asyncdialogs.h
     ui/mainwindow.ui ui/workoutdialog.ui ui/main_workoutpage.ui ui/dialogconfig.ui
-    ui/dialoglogin.ui ui/z_stylesheet.ui ui/updatedialog.ui ui/dialogmainwindowconfig.ui
+    ui/dialoglogin.ui ui/z_stylesheet.ui ui/dialogmainwindowconfig.ui
     ui/tab_intervals_icu.ui
     # ui/components
     ui/components/workoutcombobox.cpp ui/components/delegaterowhover.cpp

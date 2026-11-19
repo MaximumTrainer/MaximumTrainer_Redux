@@ -13,8 +13,6 @@
 
 #include "logger.h"
 
-#include "updatedialog.h"
-#include "versiondao.h"
 #include "environnement.h"
 #include "util.h"
 #include "xmlutil.h"
@@ -177,13 +175,10 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
     this->setWindowFlags(Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
 #endif
 
-    gotUpdateDialog              = false;
     replyIntervalsIcuAthlete     = nullptr;
     replyIntervalsIcuSettings    = nullptr;
-    replyVersion                 = nullptr;
     m_silentAuthReply            = nullptr;
     m_intervalsIcuTimeout        = nullptr;
-    m_versionTimeout             = nullptr;
     m_silentAuthTimeout          = nullptr;
     m_pendingIntervalsIcuReplies = 0;
     m_silentAuthCancelled        = false;
@@ -265,25 +260,6 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
         return;
     }
 
-    // Check for app updates in the background; never block the login UI.
-    // WASM users cannot download a desktop binary, so skip the version check.
-    // Source/dev builds report version "0.0.0" (APP_VERSION is only populated
-    // from git describe in CI release builds), which would always look outdated
-    // and pop the update dialog on every launch — skip the check for them.
-#ifndef Q_OS_WASM
-    const bool isDevBuild = Environnement::getVersion().remove(QRegularExpression("^[vV]")) == "0.0.0";
-    replyVersion = isDevBuild ? nullptr : VersionDAO::getVersion();
-    if (replyVersion) {
-        connect(replyVersion, &QNetworkReply::finished,
-                this, &DialogLogin::slotFinishedGetVersion);
-        m_versionTimeout = new QTimer(this);
-        m_versionTimeout->setSingleShot(true);
-        connect(m_versionTimeout, &QTimer::timeout,
-                this, &DialogLogin::onVersionTimeout);
-        m_versionTimeout->start(10000);
-    }
-#endif // Q_OS_WASM
-
     // Silent session restore: if stored tokens exist, try to validate them
     // against the API before showing the login form.
     const QString storedToken    = account->intervals_icu_access_token;
@@ -306,69 +282,6 @@ DialogLogin::DialogLogin(QWidget *parent, bool testMode)
         }
     }
     // else: no stored session — stay on page 0 (login form)
-}
-
-
-void DialogLogin::onVersionTimeout() {
-    if (!replyVersion) return;
-    LOG_WARN("DialogLogin", QStringLiteral("Version check timed out after 10 s – aborting"));
-    replyVersion->abort();
-}
-
-void DialogLogin::slotFinishedGetVersion() {
-
-    m_versionTimeout->stop();
-
-    if (!replyVersion) return;
-
-    const QNetworkReply::NetworkError netError = replyVersion->error();
-
-    if (netError == QNetworkReply::NoError) {
-        const QByteArray arrayData = replyVersion->readAll();
-        LOG_DEBUG("DialogLogin", QStringLiteral("Version check response: ") + QString::fromUtf8(arrayData));
-
-        const QString latestVersion = Util::parseJsonObjectVersion(QString::fromUtf8(arrayData));
-        LOG_INFO("DialogLogin", QStringLiteral("Current: ") + Environnement::getVersion()
-                 + QStringLiteral("  Latest: ") + latestVersion);
-
-        if (!this->isVisible()) {
-            // Login already completed (dialog accepted, pending deletion) before
-            // the version reply arrived — don't pop an update prompt over the app.
-            LOG_INFO("DialogLogin", QStringLiteral("Version check returned after login – skipping update dialog"));
-        } else if (!latestVersion.isEmpty() && Util::isVersionNewer(Environnement::getVersion(), latestVersion)) {
-            LOG_INFO("DialogLogin", QStringLiteral("Update available – showing dialog"));
-            m_updateDialogOpen = true;
-            // open(), not exec(): a nested event loop is fatal on WASM.
-            auto *up = new UpdateDialog(latestVersion, this);
-            up->setAttribute(Qt::WA_DeleteOnClose);
-            connect(up, &QDialog::finished, this, [this](int updateChoice) {
-                m_updateDialogOpen = false;
-                if (updateChoice == QDialog::Accepted) {
-                    gotUpdateDialog = true;
-                } else {
-                    LOG_INFO("DialogLogin", QStringLiteral("User declined update – proceeding to login"));
-                }
-            });
-            up->open();
-        }
-    } else {
-        LOG_WARN("DialogLogin", QStringLiteral("Version check failed – ") + replyVersion->errorString());
-    }
-
-    replyVersion->deleteLater();
-    replyVersion = nullptr;
-
-    if (gotUpdateDialog) {
-        return QDialog::reject();
-    }
-
-    // Silent auto-login may have completed while the update dialog's nested loop
-    // was running; its completeLogin() was deferred to avoid deleting this dialog
-    // from under that loop. Now that the dialog is closed, finish entering the app.
-    if (m_loginCompletePending) {
-        m_loginCompletePending = false;
-        completeLogin();
-    }
 }
 
 
@@ -794,16 +707,6 @@ void DialogLogin::clearTokens()
 void DialogLogin::completeLogin()
 {
     if (!this->isVisible()) return;
-
-    if (m_updateDialogOpen) {
-        // The update dialog's nested event loop is running. Accepting now would
-        // emit accepted() → launchMainWindow()/deleteLater() and destroy this
-        // dialog from inside slotFinishedGetVersion (use-after-free). Defer until
-        // the update dialog closes; slotFinishedGetVersion() will finish login.
-        LOG_INFO("DialogLogin", QStringLiteral("Login complete – deferred until update dialog closes"));
-        m_loginCompletePending = true;
-        return;
-    }
 
     LOG_INFO("DialogLogin", QStringLiteral("Login complete – entering application"));
     this->accept();

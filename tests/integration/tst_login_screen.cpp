@@ -95,6 +95,7 @@
 #include <QHostAddress>
 
 #include "../../src/btle/simulator_hub.h"
+#include "../../src/app/updatenotifier.h"
 #include "../../src/persistence/db/environnement.h"
 #include "../../src/persistence/db/intervals_icu_oauth_flow.h"
 #include "../../src/app/util.h"
@@ -840,6 +841,16 @@ private slots:
     //   • pushButton_loginIntervalsIcu exists in the dialog.
     //   • Screenshot saved and non-empty.
     // -----------------------------------------------------------------------
+    void testUpdateNotifierNewerVersion()
+    {
+        const QString release = QStringLiteral(R"({"tag_name":"v0.0.272"})");
+        QCOMPARE(UpdateNotifier::newerVersion("v0.0.271", release), QStringLiteral("v0.0.272"));
+        QVERIFY(UpdateNotifier::newerVersion("v0.0.272", release).isEmpty());
+        QVERIFY(UpdateNotifier::newerVersion("v0.0.273", release).isEmpty());
+        QVERIFY(UpdateNotifier::newerVersion("v0.0.271", "not json").isEmpty());
+        QVERIFY(UpdateNotifier::newerVersion("v0.0.271", "{}").isEmpty());
+    }
+
     void testDialogLoginInitialState()
     {
         // Test mode: skip network requests; stackedWidget_main defaults to
