@@ -71,7 +71,7 @@ private :
     // Apply a canvas background colour only when it actually changes — this is
     // called on every sensor packet, and setStyleSheet() forces a full style
     // recompute, so guarding on the colour state avoids needless restyles.
-    enum CanvasColor { CANVAS_NEUTRAL, CANVAS_BELOW, CANVAS_ABOVE, CANVAS_ON_TARGET };
+    enum CanvasColor { CANVAS_NEUTRAL, CANVAS_BELOW, CANVAS_ABOVE };
     void setCanvasColor(CanvasColor color);
     int m_canvasColor = -1;
 

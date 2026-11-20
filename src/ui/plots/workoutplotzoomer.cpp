@@ -662,7 +662,7 @@ void WorkoutPlotZoomer::updateTextLabelValue(int value) {
             setCanvasColor(CANVAS_ABOVE);
         }
         else {
-            setCanvasColor(CANVAS_ON_TARGET);
+            setCanvasColor(CANVAS_NEUTRAL);
         }
 
     }
@@ -674,28 +674,19 @@ void WorkoutPlotZoomer::setCanvasColor(CanvasColor color) {
         return;
     m_canvasColor = color;
 
-    // Same palette as the card's side bar: red below, amber above, green on target.
+    // Same palette as the card's side bar: red below, amber above.
     switch (color) {
     case CANVAS_BELOW:
         canvas()->setStyleSheet(QStringLiteral(" QwtPlotCanvas { background-color: rgb(84, 34, 36); }"));
-        valueQwtText.setColor(QColor(0xff, 0x8a, 0x84));
         break;
     case CANVAS_ABOVE:
         canvas()->setStyleSheet(QStringLiteral(" QwtPlotCanvas { background-color: rgb(84, 58, 22); }"));
-        valueQwtText.setColor(QColor(0xf2, 0xa3, 0x3a));
-        break;
-    case CANVAS_ON_TARGET:
-        canvas()->setStyleSheet(QStringLiteral(" QwtPlotCanvas { background-color: rgb(31, 31, 37); }"));
-        valueQwtText.setColor(QColor(0x3f, 0xb2, 0x7f));
         break;
     case CANVAS_NEUTRAL:
     default:
         canvas()->setStyleSheet(QStringLiteral(" QwtPlotCanvas { background-color: rgb(31, 31, 37); }"));
-        valueQwtText.setColor(Qt::white);
         break;
     }
-    if (qwtTextLabel)
-        qwtTextLabel->setText(valueQwtText);
 
     // QwtPlotCanvas caches the styled background (including the rounded-corner
     // border) in its backing store, which a bare setStyleSheet() does not
