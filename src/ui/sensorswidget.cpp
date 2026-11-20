@@ -30,19 +30,8 @@ SensorsWidget::SensorsWidget(QWidget *parent)
     reload();
 }
 
-void SensorsWidget::buildUi()
+void SensorsWidget::addSimulatedSensorsGroup(QVBoxLayout *layout)
 {
-    QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(16, 16, 16, 16);
-    mainLayout->setSpacing(12);
-
-    QLabel *title = new QLabel(tr("Devices"), this);
-    QFont titleFont = title->font();
-    titleFont.setPointSizeF(titleFont.pointSizeF() + 3);
-    titleFont.setBold(true);
-    title->setFont(titleFont);
-    mainLayout->addWidget(title);
-
     QGroupBox *simulatedGroup = new QGroupBox(tr("Simulated Sensors"), this);
     QVBoxLayout *simulatedLayout = new QVBoxLayout(simulatedGroup);
     simulatedLayout->setSpacing(4);
@@ -56,7 +45,21 @@ void SensorsWidget::buildUi()
     simulatedHint->setWordWrap(true);
     simulatedHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
     simulatedLayout->addWidget(simulatedHint);
-    mainLayout->addWidget(simulatedGroup);
+    layout->addWidget(simulatedGroup);
+}
+
+void SensorsWidget::buildUi()
+{
+    QVBoxLayout *mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
+    mainLayout->setSpacing(12);
+
+    QLabel *title = new QLabel(tr("Devices"), this);
+    QFont titleFont = title->font();
+    titleFont.setPointSizeF(titleFont.pointSizeF() + 3);
+    titleFont.setBold(true);
+    title->setFont(titleFont);
+    mainLayout->addWidget(title);
 
 #ifdef GC_WASM_BUILD
     QLabel *unavailable = new QLabel(
@@ -64,6 +67,7 @@ void SensorsWidget::buildUi()
     unavailable->setWordWrap(true);
     unavailable->setStyleSheet(QStringLiteral("color: #777;"));
     mainLayout->addWidget(unavailable);
+    addSimulatedSensorsGroup(mainLayout);
     mainLayout->addStretch();
     return;
 #else
@@ -235,6 +239,7 @@ void SensorsWidget::buildUi()
 
     mainLayout->addWidget(batteryGroup);
 
+    addSimulatedSensorsGroup(mainLayout);
     mainLayout->addStretch();
 
     // The FTMS slot and control group follow the app mode (Rower vs Trainer).

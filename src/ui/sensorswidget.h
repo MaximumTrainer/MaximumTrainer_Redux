@@ -11,6 +11,7 @@ class QPushButton;
 class QCheckBox;
 class QSpinBox;
 class QGroupBox;
+class QVBoxLayout;
 class Account;
 
 /*
@@ -40,6 +41,7 @@ private slots:
     void onVirtualShiftingToggled(bool checked);
     void onUseZwiftClickToggled(bool checked);
     void onSimulatedSensorsToggled(bool checked);
+    void addSimulatedSensorsGroup(QVBoxLayout *layout);
     void onErgRampChanged(int seconds);
     void onSensorDropoutChanged();
     void onBatteryThresholdChanged(int percent);
