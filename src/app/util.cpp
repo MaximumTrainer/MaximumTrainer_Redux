@@ -461,8 +461,7 @@ QColor Util::getColor(Color color) {
     QColor lineCadence(0,0,255);
 
     /// HR
-    //    QColor colorHRShapeTarget("gray");
-    QColor colorHRShapeTarget(255, 191, 191, 20);
+    QColor colorHRShapeTarget(247, 143, 179);
     QColor lineHR("red");
 
     /// Speed

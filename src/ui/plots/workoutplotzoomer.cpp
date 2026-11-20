@@ -464,9 +464,9 @@ void WorkoutPlotZoomer::drawGraphIntervalsHeartrate() {
             lstPointsShape.append(topRight);
             lstPointsShape.append(btnRight);
             if (val.getHRStepType() == Interval::PROGRESSIVE)
-                addShapeFromPoints("PARALLELOGRAM_POWER", colorHrShape, lstPointsShape, 10, true);
+                addShapeFromPoints("PARALLELOGRAM_HR", colorHrShape, lstPointsShape, 10, true);
             else
-                addShapeFromPoints("PARALLELOGRAM_POWER", colorHrShape, lstPointsShape, 10, false);
+                addShapeFromPoints("PARALLELOGRAM_HR", colorHrShape, lstPointsShape, 10, false);
 
 
             /// HR TARGET LINE
@@ -732,13 +732,15 @@ void WorkoutPlotZoomer::addShapeFromPoints(const QString &title, const QColor &c
 
     QColor fillColor = color;
     fillColor.setAlpha(200);
-    // Same look as the main graph: cadence is an outline, power blocks take their zone colour.
-    const bool outline = title == QLatin1String("PARALLELOGRAM_CADENCE");
+    // Cadence (dashed) and heart rate (dotted) are outlines, so they never read
+    // as a power zone block or an off-target colour.
+    const bool outline = title == QLatin1String("PARALLELOGRAM_CADENCE")
+                         || title == QLatin1String("PARALLELOGRAM_HR");
     if (outline)
         fillColor.setAlpha(40);
     QPen pen(color, outline ? 1.5 : 1);
     if (outline)
-        pen.setStyle(Qt::DashLine);
+        pen.setStyle(title == QLatin1String("PARALLELOGRAM_HR") ? Qt::DotLine : Qt::DashLine);
     if (zoneBrush.gradient())
         pen.setBrush(zoneBrush);
     pen.setJoinStyle(Qt::MiterJoin);
