@@ -16,6 +16,7 @@
 #include "qwt_plot_layout.h"
 #include "qwt_plot_textlabel.h"
 #include "qwt_text.h"
+#include "qwt_plot_zoneitem.h"
 
 
 #include "util.h"
@@ -149,7 +150,7 @@ void WorkoutPlotZoomer::init(GRAPH_TYPE graph, bool firstInit) {
         setAxisScaleDraw( QwtPlot::xBottom, new TimeScaleDraw( timeStartWorkout ) );
         setAxisScale( QwtPlot::xBottom, d_interval.minValue(), d_interval.maxValue(), 10 );
 
-        canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(35, 35, 35); }");
+        canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(31, 31, 37); }");
         canvas()->setCursor(Qt::CrossCursor);
 
         // Match the detailed InfoWidget hero value exactly: 600 25pt 'Inter'.
@@ -548,6 +549,8 @@ void WorkoutPlotZoomer::moveIntervalTime(double timeNow_msec) {
 
 
     d_interval = QwtInterval( timeNow_sec - 15 , timeNow_sec + 15);
+    if (m_tint)
+        m_tint->setInterval(d_interval.minValue(), d_interval.maxValue());
     setAxisScale( QwtPlot::xBottom, d_interval.minValue(), d_interval.maxValue(), 10 );
     setAxisScale( QwtPlot::yLeft, leftLow, leftHigh, leftHigh - leftLow > 80 ? 0 : 10);  // auto steps once widened
 
@@ -698,27 +701,29 @@ void WorkoutPlotZoomer::setCanvasColor(CanvasColor color) {
         return;
     m_canvasColor = color;
 
-    // Same palette as the card's side bar: red below, amber above.
+    // Same palette as the card's side bar: red below, amber above. A full-width
+    // background item, so a change is a brush swap rather than a style sheet.
+    if (!m_tint) {
+        m_tint = new QwtPlotZoneItem();
+        m_tint->setOrientation(Qt::Vertical);
+        m_tint->setInterval(d_interval.minValue(), d_interval.maxValue());
+        m_tint->setPen(QPen(Qt::NoPen));
+        m_tint->setZ(-1);
+        m_tint->attach(this);
+    }
     switch (color) {
     case CANVAS_BELOW:
-        canvas()->setStyleSheet(QStringLiteral(" QwtPlotCanvas { background-color: rgb(84, 34, 36); }"));
+        m_tint->setBrush(QColor(84, 34, 36));
         break;
     case CANVAS_ABOVE:
-        canvas()->setStyleSheet(QStringLiteral(" QwtPlotCanvas { background-color: rgb(84, 58, 22); }"));
+        m_tint->setBrush(QColor(84, 58, 22));
         break;
     case CANVAS_NEUTRAL:
     default:
-        canvas()->setStyleSheet(QStringLiteral(" QwtPlotCanvas { background-color: rgb(31, 31, 37); }"));
+        m_tint->setBrush(Qt::NoBrush);
         break;
     }
-
-    // QwtPlotCanvas caches the styled background (including the rounded-corner
-    // border) in its backing store, which a bare setStyleSheet() does not
-    // refresh — so the previous colour lingers at the canvas edge/corners until
-    // some later full repaint. Invalidate the cache and repaint immediately.
-    if (auto *plotCanvas = qobject_cast<QwtPlotCanvas*>(canvas()))
-        plotCanvas->invalidateBackingStore();
-    canvas()->update();
+    replot();
 }
 
 
