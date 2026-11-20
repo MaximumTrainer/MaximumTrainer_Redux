@@ -193,6 +193,7 @@ MaximumTrainer has a multi-tier test suite covering BLE parsing, service APIs, U
 | Config bootstrap tests | `tests/config_bootstrap/` | First-run default configuration, legacy settings migration, unreadable settings store, credential load failures logged without values |
 | Logger tests | `tests/logger/` | Log level filtering, output format, file write enable/disable |
 | Studio tests | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling |
+| Workout export tests | `tests/workout_export/` | FIT workout steps (ramps, % FTP, cadence, intensity), file decodes as a FIT workout |
 | Group workout tests | `tests/group/` | Room-code parsing, message encode/decode, clock-offset estimate, rider-row states, group-ride start and telemetry; live relay test when `GROUP_RELAY_URL` is set |
 | Retro race tests | `tests/game/` | Race ambient clock vs replay speed, frame updates from per-second setters, native road rendering |
 | Workout logic tests | `tests/workout/` | Per-second sensor averaging per rider, MAP ramp-test failure rules and result formula |

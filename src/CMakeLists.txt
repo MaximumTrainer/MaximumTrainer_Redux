@@ -46,7 +46,7 @@ target_sources(mt_core PRIVATE
     persistence/db/intervalsicudao.cpp persistence/db/intervalsicuftpsync.cpp persistence/db/intervalsicuservice.cpp
     persistence/db/intervals_icu_api.cpp persistence/db/intervals_icu_oauth_flow.cpp
     persistence/db/strava_service.cpp persistence/db/strava_oauth_flow.cpp
-    persistence/file/xmlutil.cpp persistence/file/fitactivitycreator.cpp
+    persistence/file/xmlutil.cpp persistence/file/fitactivitycreator.cpp persistence/file/fitworkoutwriter.cpp
     persistence/file/fitactivityreader.cpp persistence/file/fitactivitydetailreader.cpp
     persistence/file/importerworkout.cpp persistence/file/importerworkoutzwo.cpp
     # workout

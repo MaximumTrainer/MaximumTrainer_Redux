@@ -95,6 +95,14 @@ mt_add_test(settings_tests
     SOURCES ${WORKOUT_MODEL} ${LOGGER} ${CRED_STUB} settings/tst_settings.cpp
     INCLUDES "${TST}/intervals_icu" "${SRC}/app" "${SRC}/model" "${SRC}/persistence/db")
 
+mt_add_test(workout_export_tests
+    SOURCES ${WORKOUT_MODEL} ${LOGGER} ${CRED_STUB}
+        "${SRC}/persistence/file/fitworkoutwriter.cpp"
+        workout_export/tst_workout_export.cpp
+    LIBS mt_fit
+    INCLUDES "${TST}/intervals_icu" "${SRC}/app" "${SRC}/model" "${SRC}/persistence/file"
+        "${SRC}/persistence/db")
+
 mt_add_test(achievements_tests
     SOURCES "${SRC}/fitness/achievements/achievementcatalog.cpp"
         "${SRC}/fitness/achievements/achievementstore.cpp"
