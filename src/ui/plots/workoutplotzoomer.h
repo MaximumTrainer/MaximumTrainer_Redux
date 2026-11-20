@@ -113,9 +113,13 @@ private:
     bool noTarget;
     int leftLow;
     int leftHigh;
+    int targetLow = 0;
+    int targetHigh = 0;
+    int m_lastValue = -1;
+    void fitAxisToLiveValues();
 
     QwtText valueQwtText;
-    QwtPlotTextLabel *qwtTextLabel;
+    QwtPlotTextLabel *qwtTextLabel = nullptr;
     QwtPlotTextLabel *m_zoneLabel = nullptr;   ///< power: the target's zone, top right
     bool m_valueOverlayVisible = true;
     void updateZoneLabel(double percentageTarget);
