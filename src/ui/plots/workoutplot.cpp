@@ -7,6 +7,8 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QSplitter>
+#include <QApplication>
+#include <QCursor>
 #include <QTimer>
 #include <QToolButton>
 #include <QKeyEvent>
@@ -251,15 +253,23 @@ bool WorkoutPlot::eventFilter(QObject *watched, QEvent *event) {
 
 
     if (watched == widgetDifficulty || watched == labelDifficulty
-            || watched == btnDecreaseDifficulty || watched == btnIncreaseDifficulty) {
-        if (event->type() == QEvent::HoverEnter || event->type() == QEvent::Enter) {
-            d_picker->setEnabled(false);
-        }
-        else if (event->type() == QEvent::HoverLeave ||  event->type() == QEvent::Leave) {
-            d_picker->setEnabled(true);
-        }
+            || watched == btnDecreaseDifficulty || watched == btnIncreaseDifficulty
+            || (m_topLeftStrip && watched == m_topLeftStrip)) {
+        if (event->type() == QEvent::Enter || event->type() == QEvent::Leave)
+            QTimer::singleShot(0, this, &WorkoutPlot::updatePickerForPointer);
     }
     return false;
+}
+
+// The hover readout and click-to-seek belong to the graph itself: off while the
+// pointer is over an overlay (difficulty buttons, sensor chips), so no stale
+// value is left behind.
+void WorkoutPlot::updatePickerForPointer() {
+    const bool overGraph = QApplication::widgetAt(QCursor::pos()) == canvas();
+    if (d_picker->isEnabled() == overGraph)
+        return;
+    d_picker->setEnabled(overGraph);
+    d_picker->setTrackerMode(overGraph ? QwtPicker::AlwaysOn : QwtPicker::AlwaysOff);
 }
 
 
