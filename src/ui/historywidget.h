@@ -11,15 +11,12 @@ class QLabel;
 class QPushButton;
 class QLineEdit;
 class QDateEdit;
-class QTabWidget;
 class QModelIndex;
 class QMenu;
 class QAction;
 class QPoint;
 class WorkoutHistoryModel;
 class HistoryFilterProxyModel;
-class PlanAdherenceStore;
-class PlanAdherenceWidget;
 
 class HistoryWidget : public QWidget
 {
@@ -28,8 +25,6 @@ class HistoryWidget : public QWidget
 public:
     explicit HistoryWidget(QWidget *parent = nullptr);
 
-    /// Inject the adherence store (called from MainWindow after store is created).
-    void setAdherenceStore(PlanAdherenceStore *store);
 
 public slots:
     void loadHistory();
@@ -55,7 +50,6 @@ private:
     /// Refresh the status label with the visible-vs-total activity count.
     void updateStatus();
 
-    QTabWidget              *m_tabs          = nullptr;
 
     // Workout history tab
     QTableView              *m_tableView     = nullptr;
@@ -71,8 +65,6 @@ private:
     QMenu                   *m_contextMenu   = nullptr;
     QAction                 *m_deleteAction  = nullptr;
 
-    // Plan adherence tab (added when store is injected)
-    PlanAdherenceWidget  *m_adherenceWidget = nullptr;
 
     bool                  m_loaded        = false;
     bool                  m_dateRangeInitialized = false;

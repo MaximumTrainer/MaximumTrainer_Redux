@@ -191,7 +191,6 @@ MaximumTrainer has a multi-tier test suite covering BLE parsing, service APIs, U
 | ZWO importer tests | `tests/intervals_icu/` | Parsing of SteadyState, Ramp, IntervalsT, FreeRide, mixed, and malformed ZWO workout files |
 | Credential store tests | `tests/credential_store/` | Round-trip read/write, overwrite, remove, missing key, multi-service, WASM no-op |
 | Config bootstrap tests | `tests/config_bootstrap/` | First-run default configuration, legacy settings migration, unreadable settings store, credential load failures logged without values |
-| Plan adherence tests | `tests/plan_adherence/` | Completed/skipped/substituted entries, adherence %, encode-decode, change signals |
 | Logger tests | `tests/logger/` | Log level filtering, output format, file write enable/disable |
 | Studio tests | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling |
 | Group workout tests | `tests/group/` | Room-code parsing, message encode/decode, clock-offset estimate, rider-row states, group-ride start and telemetry; live relay test when `GROUP_RELAY_URL` is set |

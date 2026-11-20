@@ -22,7 +22,6 @@
 #include "soundplayer.h"
 
 #include "faderlabel.h"
-#include "faderframe.h"
 #include "radio.h"
 #ifdef GC_HAVE_QTMULTIMEDIA
 #include "qtmediaplayer.h"

@@ -313,6 +313,7 @@ void TstSettings::testUiStateKeys_onDiskNamesAndDefaults()
     checkKey(WorkoutFilter::Creator, "Filter/creatorFilter", QString());
     checkKey(WorkoutFilter::Type,    "Filter/typeFilter",    -1);
     checkKey(WorkoutQueue::RetiredGroup, "workoutQueue", QStringList());
+    checkKey(PlanAdherence::RetiredGroup, "planAdherence", QString());
     checkKey(LastPath::WorkoutImport, "Importer/loadPath",      QString());
     checkKey(LastPath::Video,         "videoPlayer/loadPath",   QString());
     checkKey(LastPath::ReportExport,  "reports/savePathExport", QString());

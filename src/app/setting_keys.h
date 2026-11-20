@@ -134,6 +134,11 @@ namespace WorkoutQueue {
 inline const SettingKey<QStringList> RetiredGroup {"workoutQueue", QStringList()};
 } // namespace WorkoutQueue
 
+namespace PlanAdherence {
+/// Retired (the Plan Adherence tab was removed); the whole group is removed at load.
+inline const SettingKey<QString> RetiredGroup {"planAdherence", QString()};
+} // namespace PlanAdherence
+
 /// Last directory used by a file dialog; read with the home directory as default.
 namespace LastPath {
 inline const SettingKey<QString> WorkoutImport {"Importer/loadPath",        QString()};

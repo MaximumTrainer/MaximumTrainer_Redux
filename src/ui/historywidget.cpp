@@ -6,8 +6,6 @@
 #include "activitydetaildialog.h"
 #include "fitactivityreader.h"
 #include "fitactivitydetailreader.h"
-#include "planadherencewidget.h"
-#include "planadherencestore.h"
 #include "criticalpowerdialog.h"
 #include "pmccalculator.h"
 #include "pmcdialog.h"
@@ -20,7 +18,6 @@
 #include <QDateEdit>
 #include <QMenu>
 #include <QAction>
-#include <QTabWidget>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -40,8 +37,6 @@ HistoryWidget::HistoryWidget(QWidget *parent)
 
 void HistoryWidget::setupUi()
 {
-    m_tabs = new QTabWidget(this);
-
     // ── Workout History tab ──────────────────────────────────────────────────
     auto *histTab = new QWidget(this);
     m_model = new WorkoutHistoryModel(this);
@@ -131,20 +126,9 @@ void HistoryWidget::setupUi()
     // before the first load (the date editors' signals only fire on user change).
     applyFilters();
 
-    m_tabs->addTab(histTab, tr("Activity History"));
-
-    // Plan Adherence tab placeholder — added in setAdherenceStore()
-
     auto *mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->addWidget(m_tabs);
-}
-
-void HistoryWidget::setAdherenceStore(PlanAdherenceStore *store)
-{
-    if (!store || m_adherenceWidget) return;
-    m_adherenceWidget = new PlanAdherenceWidget(store, this);
-    m_tabs->addTab(m_adherenceWidget, tr("Plan Adherence"));
+    mainLayout->addWidget(histTab);
 }
 
 void HistoryWidget::showEvent(QShowEvent *event)

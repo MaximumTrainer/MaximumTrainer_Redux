@@ -17,7 +17,6 @@
 #include "myconstants.h"
 #include "tab_intervals_icu.h"
 #include "historywidget.h"
-#include "planadherencestore.h"
 #ifdef GC_WASM_BUILD
 #include "btle_hub_wasm.h"
 #else
@@ -154,7 +153,6 @@ public slots:
     void hostGroupWorkout(const Workout &workout);
     void showJoinGroupDialog();
 
-    void checkToUploadFile(const QString& filename, const QString& nameOnly, const QString& description);
 
 
 private slots:
@@ -266,8 +264,6 @@ private:
     bool m_ssSavedStudioEnabled = false;
     int  m_ssSavedRiderCount    = 1;
 
-    // Plan Adherence (#157)
-    PlanAdherenceStore *m_adherenceStore = nullptr;
 };
 
 #endif // MAINWINDOW_H
