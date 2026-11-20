@@ -268,9 +268,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     //DialogConfig
     dconfig = new DialogMainWindowConfig(this);
-    auto *updateNotifier = new UpdateNotifier(this);
-    connect(updateNotifier, &UpdateNotifier::updateAvailable, this, &MainWindow::showUpdateAvailable);
-    updateNotifier->check();
+    // Screenshot mode feeds the docs: no "Update available" banner in them.
+    if (!QCoreApplication::arguments().contains(QLatin1String("--screenshots"), Qt::CaseInsensitive)) {
+        auto *updateNotifier = new UpdateNotifier(this);
+        connect(updateNotifier, &UpdateNotifier::updateAvailable, this, &MainWindow::showUpdateAvailable);
+        updateNotifier->check();
+    }
 
     // Athlete profile (FTP/LTHR/weight) edited in Preferences → recompute zones
     // and workout targets, same as the old profile page's FTP-change path.
