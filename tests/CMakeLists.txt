@@ -258,7 +258,6 @@ mt_add_test(ui_navigation_tests QWT
 mt_add_test(ui_screens_tests QWT
     SOURCES ${LOGGER} ${APP_MODEL} ${CRED_STUB} ${REPEAT_WIDGET}
         "${SRC}/ui/components/faderlabel.cpp" "${SRC}/ui/components/shapefactory.cpp"
-        "${SRC}/ui/dialog_connection_method.cpp"
         "${SRC}/ui/plots/curvedatacadence.cpp" "${SRC}/ui/plots/curvedataheartrate.cpp"
         "${SRC}/ui/plots/curvedatapower.cpp" "${SRC}/ui/plots/curvedataspeed.cpp"
         "${SRC}/ui/plots/workoutplot.cpp" "${SRC}/ui/plots/zoneitem.cpp"

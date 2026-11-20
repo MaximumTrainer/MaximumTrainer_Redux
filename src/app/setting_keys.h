@@ -65,6 +65,7 @@ inline constexpr SettingKey<int>  LastTabSubConfigSelected       {"displayPrefs/
 inline constexpr SettingKey<bool> ControlTrainerResistance       {"displayPrefs/control_trainer_resistance",          true};
 inline constexpr SettingKey<bool> VirtualShifting                {"displayPrefs/virtual_shifting",                    false};
 inline constexpr SettingKey<bool> UseZwiftClick                  {"displayPrefs/use_zwift_click",                     false};
+inline constexpr SettingKey<bool> UseSimulatedSensors            {"displayPrefs/use_simulated_sensors",               false};
 inline constexpr SettingKey<bool> EnableStudioMode               {"displayPrefs/enable_studio_mode",                  false};
 inline constexpr SettingKey<bool> DistanceInKm                   {"displayPrefs/distance_in_km",                      true};
 inline constexpr SettingKey<bool> ForceWorkoutWindowOnTop        {"displayPrefs/force_workout_window_on_top",         false};

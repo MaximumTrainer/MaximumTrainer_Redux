@@ -191,6 +191,7 @@ void Account::loadDisplayPrefs() {
     control_trainer_resistance   = AppSettings::read(settings, Keys::ControlTrainerResistance);
     virtual_shifting             = AppSettings::read(settings, Keys::VirtualShifting);
     use_zwift_click              = AppSettings::read(settings, Keys::UseZwiftClick);
+    use_simulated_sensors        = AppSettings::read(settings, Keys::UseSimulatedSensors);
     enable_studio_mode           = AppSettings::read(settings, Keys::EnableStudioMode);
     distance_in_km               = AppSettings::read(settings, Keys::DistanceInKm);
     force_workout_window_on_top  = AppSettings::read(settings, Keys::ForceWorkoutWindowOnTop);
@@ -274,6 +275,7 @@ void Account::saveDisplayPrefs() {
     AppSettings::write(settings, Keys::ControlTrainerResistance, control_trainer_resistance);
     AppSettings::write(settings, Keys::VirtualShifting, virtual_shifting);
     AppSettings::write(settings, Keys::UseZwiftClick, use_zwift_click);
+    AppSettings::write(settings, Keys::UseSimulatedSensors, use_simulated_sensors);
     AppSettings::write(settings, Keys::EnableStudioMode, enable_studio_mode);
     AppSettings::write(settings, Keys::DistanceInKm, distance_in_km);
     AppSettings::write(settings, Keys::ForceWorkoutWindowOnTop, force_workout_window_on_top);

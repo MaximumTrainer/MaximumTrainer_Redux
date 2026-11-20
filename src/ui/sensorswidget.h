@@ -39,6 +39,7 @@ private slots:
     void onControlResistanceToggled(bool checked);
     void onVirtualShiftingToggled(bool checked);
     void onUseZwiftClickToggled(bool checked);
+    void onSimulatedSensorsToggled(bool checked);
     void onErgRampChanged(int seconds);
     void onSensorDropoutChanged();
     void onBatteryThresholdChanged(int percent);
@@ -69,6 +70,7 @@ private:
     QCheckBox *m_controlResistanceCheck = nullptr;
     QCheckBox *m_virtualShiftingCheck = nullptr;
     QCheckBox *m_useZwiftClickCheck = nullptr;
+    QCheckBox *m_simulatedSensorsCheck = nullptr;
     QLabel    *m_zwiftClickHint = nullptr;
     QSpinBox  *m_ergRampSpin            = nullptr;
     QCheckBox *m_dropoutEnabledCheck    = nullptr;

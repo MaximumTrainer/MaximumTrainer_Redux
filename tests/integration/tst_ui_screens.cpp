@@ -12,25 +12,11 @@
  *
  * Test coverage:
  *
- *   1. ConnectionDialog — "Simulation" button:
- *      Show DialogConnectionMethod, click the "Simulation" button with
- *      QTest::mouseClick, and verify that selectedMethod() returns
- *      DialogConnectionMethod::Simulation and that the dialog accepted.
+ *   1. Simulated-data notice:
+ *      WorkoutPlot::showNotice() shows the centred notice with its text and
+ *      hideNotice() fades it away.
  *
- *   2. ConnectionDialog — "BTLE Device" button:
- *      Show DialogConnectionMethod, click the "BTLE Device" button with
- *      QTest::mouseClick, and verify that selectedMethod() returns
- *      DialogConnectionMethod::BTLE and that the dialog accepted.
- *
- *   3. ConnectionDialog — initial state:
- *      Verify that DialogConnectionMethod defaults to BTLE before any
- *      button is clicked.
- *
- *   4. ConnectionDialog screenshot:
- *      Capture a 1280×720 labelled screenshot of DialogConnectionMethod
- *      as visual build evidence.
- *
- *   5. PostWorkoutSummary — data visibility:
+ *   2. PostWorkoutSummary — data visibility:
  *      Build a simulated post-workout summary widget and verify that the
  *      key metrics (TSS, NP, IF, average power) are visible in child
  *      QLabel widgets.
@@ -64,7 +50,6 @@
 #include <QSignalSpy>
 #include <QAbstractButton>
 
-#include "../../src/ui/dialog_connection_method.h"
 #include "../../src/ui/plots/workoutplot.h"
 #include "../../src/model/account.h"
 #include "../../src/model/workout.h"
@@ -246,17 +231,29 @@ private slots:
         qApp->setProperty("Account", QVariant());
     }
 
-    // -----------------------------------------------------------------------
-    // testConnectionDialog_defaultIsBtle
-    //
-    // Verify that DialogConnectionMethod defaults to BTLE before any button
-    // is clicked.
-    // -----------------------------------------------------------------------
-    void testConnectionDialog_defaultIsBtle()
+    void testSimulatedDataNotice_showsAndHides()
     {
-        DialogConnectionMethod dlg;
-        QCOMPARE(dlg.selectedMethod(), DialogConnectionMethod::BTLE);
-        qDebug().noquote() << "[ConnectionDialog] Default method is BTLE — PASS";
+        Interval interval;
+        interval.setTime(QTime(0, 1, 0));
+        Workout workout(QString(), Workout::USER_MADE, {interval}, QStringLiteral("Notice test"),
+                        QString(), QString(), QString(), Workout::T_OTHERS);
+        WorkoutPlot plot;
+        plot.setUserData(200.0, 170.0);
+        plot.setWorkoutData(workout, true);
+        plot.resize(800, 300);
+        plot.show();
+        (void)QTest::qWaitForWindowExposed(&plot);
+
+        QLabel *notice = plot.findChild<QLabel *>(QStringLiteral("labelNotice"));
+        QVERIFY2(notice != nullptr, "WorkoutPlot must own the centred notice label");
+        QVERIFY(!notice->isVisible());
+
+        plot.showNotice(QStringLiteral("Using simulated data"));
+        QVERIFY(notice->isVisible());
+        QCOMPARE(notice->text(), QStringLiteral("Using simulated data"));
+
+        plot.hideNotice();
+        QTRY_VERIFY_WITH_TIMEOUT(!notice->isVisible(), 3000);
     }
 
     // Keyboard-sized difficulty changes must use the same state transition as
@@ -308,131 +305,6 @@ private slots:
         plot.adjustDifficultyBy(-200);
         QCOMPARE(difficultyLabel->text(), QStringLiteral("-100%"));
         QCOMPARE(changedSpy.takeFirst().at(0).toInt(), -100);
-    }
-
-    // -----------------------------------------------------------------------
-    // testConnectionDialog_simulationButton
-    //
-    // Show DialogConnectionMethod non-modally and click the "Simulation"
-    // button with QTest::mouseClick.  Verify that:
-    //   • selectedMethod() returns DialogConnectionMethod::Simulation
-    //   • A QSignalSpy on the accepted() signal fires once.
-    // -----------------------------------------------------------------------
-    void testConnectionDialog_simulationButton()
-    {
-        DialogConnectionMethod dlg;
-        dlg.show();
-        (void)QTest::qWaitForWindowExposed(&dlg);
-
-        // Find by the stable objectName set in DialogConnectionMethod's ctor.
-        QPushButton *btnSim =
-            dlg.findChild<QPushButton *>(QStringLiteral("btn_sim"));
-        QVERIFY2(btnSim != nullptr,
-                 "DialogConnectionMethod must contain a button with objectName 'btn_sim'");
-
-        QSignalSpy acceptedSpy(&dlg, &QDialog::accepted);
-
-        // Click the button
-        QTest::mouseClick(btnSim, Qt::LeftButton);
-        QCoreApplication::processEvents();
-
-        QCOMPARE(dlg.selectedMethod(), DialogConnectionMethod::Simulation);
-        QVERIFY2(acceptedSpy.count() >= 1,
-                 "DialogConnectionMethod::accepted() must fire when Simulation is clicked");
-
-        qDebug().noquote()
-            << "[ConnectionDialog] Simulation button click → selectedMethod == Simulation — PASS";
-    }
-
-    // -----------------------------------------------------------------------
-    // testConnectionDialog_btleButton
-    //
-    // Click the "BTLE Device" button and verify that selectedMethod() returns
-    // BTLE and the dialog accepted.
-    // -----------------------------------------------------------------------
-    void testConnectionDialog_btleButton()
-    {
-        DialogConnectionMethod dlg;
-        dlg.show();
-        (void)QTest::qWaitForWindowExposed(&dlg);
-
-        // Find by the stable objectName set in DialogConnectionMethod's ctor.
-        QPushButton *btnBtle =
-            dlg.findChild<QPushButton *>(QStringLiteral("btn_btle"));
-        QVERIFY2(btnBtle != nullptr,
-                 "DialogConnectionMethod must contain a button with objectName 'btn_btle'");
-
-        QSignalSpy acceptedSpy(&dlg, &QDialog::accepted);
-        QTest::mouseClick(btnBtle, Qt::LeftButton);
-        QCoreApplication::processEvents();
-
-        QCOMPARE(dlg.selectedMethod(), DialogConnectionMethod::BTLE);
-        QVERIFY2(acceptedSpy.count() >= 1,
-                 "DialogConnectionMethod::accepted() must fire when BTLE is clicked");
-
-        qDebug().noquote()
-            << "[ConnectionDialog] BTLE button click → selectedMethod == BTLE — PASS";
-    }
-
-    // -----------------------------------------------------------------------
-    // testConnectionDialog_screenshot
-    //
-    // Capture a labelled 1280×720 screenshot of DialogConnectionMethod as
-    // visual build evidence.
-    // -----------------------------------------------------------------------
-    void testConnectionDialog_screenshot()
-    {
-        // Wrap the dialog in a 1280×720 frame for a consistent screenshot size.
-        QWidget container;
-        container.setWindowTitle(
-            QString("MaximumTrainer — ConnectionDialog [%1]").arg(kPlatformTag.toUpper()));
-        container.setFixedSize(1280, 720);
-        container.setStyleSheet("background: #0d1117;");
-
-        auto *layout = new QVBoxLayout(&container);
-        layout->setContentsMargins(48, 48, 48, 48);
-        layout->setSpacing(24);
-
-        // Meta label
-        auto *metaLbl = new QLabel(
-            QString("UI Screens Test  |  Platform: %1  |  Qt %2  |  %3")
-                .arg(kPlatformTag.toUpper(), qVersion(), m_timestamp),
-            &container);
-        metaLbl->setStyleSheet(
-            "font-size: 12px; color: #8b949e; "
-            "font-family: 'DejaVu Sans','Segoe UI',sans-serif;");
-        layout->addWidget(metaLbl);
-
-        // Embed the dialog's content inline (the dialog's layout)
-        auto *infoLbl = new QLabel(
-            "ConnectionDialog: user selects between 'BTLE Device' and 'Simulation'",
-            &container);
-        infoLbl->setStyleSheet(
-            "font-size: 14px; color: #c9d1d9; "
-            "font-family: 'DejaVu Sans','Segoe UI',sans-serif;");
-        layout->addWidget(infoLbl);
-
-        DialogConnectionMethod *dlg = new DialogConnectionMethod(&container);
-        dlg->setWindowFlags(Qt::Widget);  // embed as a child widget, not a dialog
-        layout->addWidget(dlg, 0, Qt::AlignHCenter);
-
-        auto *resultLbl = new QLabel(
-            "Default selection: BTLE Device (highlighted button)\n"
-            "Simulation button: click to select SimulatorHub mode",
-            &container);
-        resultLbl->setStyleSheet("font-size: 13px; color: #3fb950;");
-        layout->addWidget(resultLbl);
-        layout->addStretch(1);
-
-        container.show();
-        (void)QTest::qWaitForWindowExposed(&container);
-
-        const QString screenshotName =
-            QString("ui-screens-connection-dialog-%1-%2.png")
-                .arg(kPlatformTag, m_timestamp);
-        saveScreenshot(container, screenshotName, m_outDir);
-
-        qDebug().noquote() << "[Screenshot] ConnectionDialog screenshot saved — PASS";
     }
 
     // -----------------------------------------------------------------------

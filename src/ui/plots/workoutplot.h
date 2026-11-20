@@ -58,6 +58,9 @@ public:
     void setDisplayIntervalMessage(bool fadeIn, QString text, int timeToDisplay);
     void setAlertMessage(bool fadeIn, bool fadeOut, QString text, int timeToDisplay);
     void removeAlertMessage();
+    /// Centred notice that stays until hideNotice().
+    void showNotice(const QString &text);
+    void hideNotice();
     void removeMainMessage();
 
 
@@ -139,6 +142,7 @@ private:
     FaderLabel *labelMsg;
     FaderLabel *labelMsgInterval;
     FaderLabel *labelAlertMessage;
+    FaderLabel *labelNotice = nullptr;
     QWidget *widgetCanvas;
 
 

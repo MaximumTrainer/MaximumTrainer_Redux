@@ -1504,6 +1504,8 @@ void WorkoutDialog::start_or_pause_workout() {
             soundPlayer->playSoundStartWorkout();
         ui->widget_topMenu->setButtonStartPaused(true);
         ui->widget_workoutPlot->removeMainMessage();
+        if (m_simulatedDataNotice)
+            QTimer::singleShot(15000, this, [this]() { ui->widget_workoutPlot->hideNotice(); });
         isWorkoutStarted = true;
         isWorkoutPaused = false;
         if (this->workout.getInterval(0).getDisplayMessage() != "")
@@ -1969,6 +1971,14 @@ void WorkoutDialog::sendSlopes(double slope) {
 
 // Virtual shifting (#293) — drive a single-cog trainer's resistance from a
 // rider-controlled gear instead of sending slope 0 (which spins out).
+void WorkoutDialog::showSimulatedDataNotice()
+{
+    m_simulatedDataNotice = true;
+    ui->widget_workoutPlot->showNotice(
+        tr("Using simulated data - turn it on or off in Devices > Simulated Sensors"));
+}
+
+
 void WorkoutDialog::enableTrainerControl() {
     trainerControlUserId = 1;       // solo rider; hubs ignore the id
     updateGearIndicator();          // a trainer is now wired → reveal the gear UI

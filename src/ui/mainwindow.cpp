@@ -37,7 +37,6 @@
 #include "xmlutil.h"
 #include "managerachievement.h"
 #include "simulator_hub.h"
-#include "dialog_connection_method.h"
 #include "networkmonitor.h"
 #include "dialogkeyboardshortcuts.h"
 #include "apptheme.h"
@@ -878,7 +877,7 @@ void MainWindow::on_actionOpen_Ride_triggered()
 void MainWindow::executeWorkout(Workout workout) {
 
     // Re-entrancy guard: the launch flow below runs nested event loops (the
-    // connection-method / sensor dialogs and the BLE connect wait), during which
+    // sensor dialogs and the BLE connect wait), during which
     // a queued double-click on the workout list could otherwise re-enter here and
     // spawn a second (or third) WorkoutDialog. Block until this launch resolves;
     // once the workout is actually running isInsideWorkout keeps it blocked.
@@ -890,30 +889,16 @@ void MainWindow::executeWorkout(Workout workout) {
     // WASM: fully async chain — any nested event loop (QDialog::exec /
     // QEventLoop::exec) is a qFatal on Qt WASM without asyncify. The
     // m_launchingWorkout guard is released by each terminal continuation.
-    auto *connDlg = new DialogConnectionMethod(this);
-    connDlg->setAttribute(Qt::WA_DeleteOnClose);
-    connect(connDlg, &QDialog::finished, this, [this, workout, connDlg](int result) {
-        if (result != QDialog::Accepted) {
-            m_launchingWorkout = false;
-            return;
-        }
-        if (connDlg->selectedMethod() == DialogConnectionMethod::Simulation)
-            startSimulatedWorkout(workout);
-        else
-            startWasmBleWorkout(workout);
-    });
-    connDlg->open();
+    if (account->use_simulated_sensors)
+        startSimulatedWorkout(workout);
+    else
+        startWasmBleWorkout(workout);
     return;
 #else
     auto launchGuard = qScopeGuard([this]() { m_launchingWorkout = false; });
 
-    DialogConnectionMethod connDlg(this);
-    if (connDlg.exec() != QDialog::Accepted)
-        return;
-
-
-    // ── Simulation path ───────────────────────────────────────────────────
-    if (connDlg.selectedMethod() == DialogConnectionMethod::Simulation) {
+    // Devices > Simulated Sensors: generated data, no hardware.
+    if (account->use_simulated_sensors) {
         startSimulatedWorkout(workout);
         return;
     }
@@ -1089,6 +1074,7 @@ void MainWindow::startSimulatedWorkout(const Workout &workout)
     workoutExecuting();
     QApplication::restoreOverrideCursor();
     w->show();
+    w->showSimulatedDataNotice();
     m_launchingWorkout = false;
 }
 

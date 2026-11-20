@@ -291,6 +291,17 @@ void WorkoutPlot::init(bool firstInit) {
         labelAlertMessage->hide();
 
 
+        labelNotice = new FaderLabel(this);
+        labelNotice->setObjectName(QStringLiteral("labelNotice"));
+        labelNotice->setStyleSheet("background-color: rgba(20, 20, 24, 225);"
+                                   "border-radius: 10px;"
+                                   "border: 1px solid #f2a33a;"
+                                   "color: white; padding: 8px 14px;");
+        labelNotice->setAlignment(Qt::AlignCenter);
+        labelNotice->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+        labelNotice->hide();
+
+
         labelMsgInterval = new FaderLabel(this);
         labelMsgInterval->setStyleSheet("background-color : rgba(1,1,1,220);"
                                         "border-radius: 15px;"
@@ -360,6 +371,9 @@ void WorkoutPlot::init(bool firstInit) {
         QFont fontAlert;
         fontAlert.setPointSize(12);
         labelAlertMessage->setFont(fontAlert);
+        QFont fontNotice;
+        fontNotice.setPointSize(12);
+        labelNotice->setFont(fontNotice);
 
 
         widgetCanvas = this->canvas();
@@ -371,6 +385,7 @@ void WorkoutPlot::init(bool firstInit) {
         gridLayout->addWidget(labelAlertMessage, 0, 0, 0, 0, Qt::AlignLeft | Qt::AlignTop);
         gridLayout->addWidget(labelMsg, 0, 0, 2, 2);
         gridLayout->addWidget(labelMsgInterval, 0, 0, 2, 2, Qt::AlignBottom);
+        gridLayout->addWidget(labelNotice, 0, 0, 2, 2, Qt::AlignHCenter | Qt::AlignTop);
         widgetCanvas->setLayout(gridLayout);
 
         // Suppress the plot's click-picker while the pointer is over the
@@ -560,6 +575,20 @@ void WorkoutPlot::setAlertMessage(bool fadeIn, bool fadeOut, QString text, int t
 
 
 }
+
+void WorkoutPlot::showNotice(const QString &text) {
+    labelNotice->setText(text);
+    labelNotice->show();
+    labelNotice->fadeIn(300);
+}
+
+void WorkoutPlot::hideNotice() {
+    if (!labelNotice->isVisible())
+        return;
+    labelNotice->fadeOut(600);
+    QTimer::singleShot(650, labelNotice, &QWidget::hide);
+}
+
 
 void WorkoutPlot::removeAlertMessage() {
     labelAlertMessage->fadeOut(300);

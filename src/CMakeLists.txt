@@ -58,7 +58,7 @@ target_sources(mt_core PRIVATE
     # ui
     ui/mainwindow.cpp ui/mainwindow_harness.cpp ui/workoutdialog.cpp ui/main_workoutpage.cpp
     ui/dialogconfig.cpp ui/dialoglogin.cpp ui/z_stylesheet.cpp
-    ui/splashscreen.cpp ui/dialogmainwindowconfig.cpp ui/dialog_connection_method.cpp
+    ui/splashscreen.cpp ui/dialogmainwindowconfig.cpp
     ui/tab_intervals_icu.cpp ui/workouthistorymodel.cpp ui/historywidget.cpp
     ui/historyfilterproxymodel.cpp ui/activitydetaildialog.cpp ui/dialogkeyboardshortcuts.cpp
     ui/criticalpowerdialog.cpp ui/pmcdialog.cpp ui/achievementswidget.cpp ui/weeklysummarywidget.cpp
