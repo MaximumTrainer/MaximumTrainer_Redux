@@ -6,6 +6,7 @@
 #include <QWidget>
 
 #include "achievement.h"
+#include "ridesummary.h"
 
 class Account;
 class QNetworkReply;
@@ -46,6 +47,7 @@ private slots:
 private:
     void addRideSummary(QBoxLayout *layout);
     void addFtpSuggestion(QBoxLayout *layout);
+    void addRideTrend(QBoxLayout *layout);
     void acceptFtp(int ftpWatts);
     void setStravaPostStatus(const QString &text, bool retryable);
     void setIntervalsIcuPostStatus(const QString &text, bool retryable);
@@ -63,6 +65,7 @@ private:
     bool           m_stravaUpload401Retried    = false;
     QLabel        *m_ftpStatus                 = nullptr;
     QLabel        *m_profileNote               = nullptr;
+    RideTrend      m_trend;
 };
 
 #endif // POSTWORKOUTPANEL_H

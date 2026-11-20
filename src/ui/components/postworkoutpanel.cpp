@@ -74,6 +74,72 @@ private:
     RideSummary m_ride;
 };
 
+/// Average heart rate on the last rides of the same workout, one bar each:
+/// the lowest (best) is green with a star, today blue, the rest grey.
+class HrTrendChart : public QWidget
+{
+public:
+    HrTrendChart(const RideTrend &trend, QWidget *parent) : QWidget(parent), m_trend(trend)
+    {
+        setFixedHeight(104);
+        setMinimumWidth(240);
+    }
+
+protected:
+    void paintEvent(QPaintEvent *) override
+    {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing);
+        const int count = int(m_trend.rides.size());
+        int lowest = m_trend.rides.first().avgHrBpm;
+        int highest = lowest;
+        for (const RideTrend::Ride &ride : m_trend.rides) {
+            lowest = qMin(lowest, ride.avgHrBpm);
+            highest = qMax(highest, ride.avgHrBpm);
+        }
+        // Start the bars a little below the lowest value so differences show.
+        const double floor = lowest - qMax(4, (highest - lowest) * 2 / 3);
+        const double span = qMax(1.0, highest - floor);
+        constexpr double kValueRow = 16.0;
+        constexpr double kDateRow = 16.0;
+        const double chartHeight = height() - kValueRow - kDateRow;
+        const double slot = double(width()) / count;
+        const double barWidth = qMin(36.0, slot - 10.0);
+
+        QFont valueFont = font();
+        valueFont.setPointSizeF(8.5);
+        valueFont.setWeight(QFont::DemiBold);
+        QFont dateFont = font();
+        dateFont.setPointSizeF(7.5);
+        const QColor best(0x3f, 0xb2, 0x7f);
+        for (int index = 0; index < count; ++index) {
+            const RideTrend::Ride &ride = m_trend.rides.at(index);
+            const bool isBest = index == m_trend.bestIndex;
+            const double barHeight = qMax(3.0, chartHeight * (ride.avgHrBpm - floor) / span);
+            const double x = slot * index + (slot - barWidth) / 2;
+            const QRectF bar(x, kValueRow + chartHeight - barHeight, barWidth, barHeight);
+            const QColor color = isBest ? best : ride.isCurrent ? QColor(0x3f, 0x8f, 0xd8) : QColor(70, 70, 80);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(color);
+            painter.drawRoundedRect(bar, 4, 4);
+
+            painter.setFont(valueFont);
+            painter.setPen(isBest ? best : QColor(0xe6, 0xe6, 0xea));
+            const QString value = (isBest ? QStringLiteral("\u2605 ") : QString()) + QString::number(ride.avgHrBpm);
+            painter.drawText(QRectF(slot * index, bar.top() - kValueRow, slot, kValueRow),
+                             Qt::AlignHCenter | Qt::AlignBottom, value);
+            painter.setFont(dateFont);
+            painter.setPen(QColor(0x96, 0x96, 0xa0));
+            const QString date = ride.isCurrent ? PostWorkoutPanel::tr("Today")
+                                                : QLocale().toString(ride.date, QStringLiteral("d MMM"));
+            painter.drawText(QRectF(slot * index, height() - kDateRow, slot, kDateRow), Qt::AlignCenter, date);
+        }
+    }
+
+private:
+    RideTrend m_trend;
+};
+
 QWidget *statTile(const QString &caption, const QString &value, QWidget *parent)
 {
     auto *tile = new QFrame(parent);
@@ -218,6 +284,7 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
         }
     }
 
+    addRideTrend(side);
 
     side->addStretch();
     const bool hasSide = side->count() > 1;
@@ -276,11 +343,16 @@ void PostWorkoutPanel::addRideSummary(QBoxLayout *layout)
         grid->addWidget(statTile(tiles.at(i).first, tiles.at(i).second, this), i / kColumns, i % kColumns);
     layout->addLayout(grid);
 
-    // Progress on the same workout: the last ride of it, side by side.
-    const QString previousFile = RideComparison::previousRideFile(Util::getSystemPathHistory(), fitFilePath,
-                                                                  current.durationSec);
-    if (!previousFile.isEmpty()) {
-        const RideComparison diff = RideComparison::compare(current, FitActivityReader::readFile(previousFile));
+    // Progress on the same workout: the last ride of it side by side, and the
+    // heart-rate trend over the last rides (shown in the side column).
+    constexpr int kTrendRides = 6;
+    QList<WorkoutHistorySummary> previousRides;
+    for (const QString &file : RideComparison::previousRideFiles(Util::getSystemPathHistory(), fitFilePath,
+                                                                 current.durationSec, kTrendRides - 1))
+        previousRides.append(FitActivityReader::readFile(file));
+    m_trend = RideTrend::build(current, previousRides);
+    if (!previousRides.isEmpty()) {
+        const RideComparison diff = RideComparison::compare(current, previousRides.first());
         auto signedText = [](double value, const QString &unit) {
             const int rounded = qRound(value);
             const QString number = rounded > 0 ? QStringLiteral("+%1").arg(rounded)
@@ -293,13 +365,30 @@ void PostWorkoutPanel::addRideSummary(QBoxLayout *layout)
                                 : (value > 0) == (goodSign > 0) ? QStringLiteral("#3fb27f") : QStringLiteral("#f2a33a");
             return QStringLiteral("<b style=\"color:%1\">%2</b>").arg(color, text);
         };
+        // In ERG the watts follow the workout, so the body's answer is what
+        // moves: heart rate and watts per beat. Without heart rate, fall back to power.
         QStringList parts;
-        if (diff.hasPower)
-            parts << tr("NP %1").arg(coloured(signedText(diff.npDeltaW, tr("W")), +1, diff.npDeltaW));
-        if (diff.hasHeartRate)
+        if (diff.hasHeartRate) {
             parts << tr("Avg HR %1").arg(coloured(signedText(diff.hrDeltaBpm, tr("bpm")), -1, diff.hrDeltaBpm));
-        if (diff.tssDelta != 0.0 || diff.hasPower)
-            parts << tr("TSS %1").arg(coloured(signedText(diff.tssDelta, {}), 0, 0));
+            if (diff.hasEfficiency) {
+                const int hundredths = qRound(diff.efficiencyDelta * 100);
+                const QString text = hundredths == 0 ? QStringLiteral("=")
+                                   : QStringLiteral("%1%2 %3").arg(hundredths > 0 ? QStringLiteral("+") : QStringLiteral("\u2212"))
+                                         .arg(QString::number(qAbs(hundredths) / 100.0, 'f', 2), tr("W/bpm"));
+                parts << tr("Efficiency %1").arg(coloured(text, +1, hundredths));
+            }
+            if (diff.currentFtpW > 0 && diff.previousFtpW > 0) {
+                parts << (qAbs(diff.currentFtpW - diff.previousFtpW) <= 2
+                              ? QStringLiteral("<span style=\"color:#9a9aa6\">%1</span>").arg(tr("same FTP"))
+                              : QStringLiteral("<span style=\"color:#9a9aa6\">%1</span>")
+                                    .arg(tr("FTP %1 \u2192 %2").arg(diff.previousFtpW).arg(diff.currentFtpW)));
+            }
+        } else {
+            if (diff.hasPower)
+                parts << tr("NP %1").arg(coloured(signedText(diff.npDeltaW, tr("W")), +1, diff.npDeltaW));
+            if (diff.tssDelta != 0.0 || diff.hasPower)
+                parts << tr("TSS %1").arg(coloured(signedText(diff.tssDelta, {}), 0, 0));
+        }
         if (diff.valid && !parts.isEmpty()) {
             const QString when = QLocale().toString(diff.previousStart.date(), QStringLiteral("d MMM"));
             auto *row = new QLabel(QStringLiteral("<span style=\"color:#9a9aa6\">%1</span>&nbsp;&nbsp;&nbsp;%2")
@@ -330,6 +419,43 @@ void PostWorkoutPanel::addRideSummary(QBoxLayout *layout)
         legendLabel->setStyleSheet(QStringLiteral("font-size: 9pt; color: #c8c8d0;"));
         layout->addWidget(legendLabel);
     }
+}
+
+void PostWorkoutPanel::addRideTrend(QBoxLayout *layout)
+{
+    if (!m_trend.valid)
+        return;
+    auto *header = new QLabel(tr("Heart rate on this workout"), this);
+    header->setStyleSheet(QStringLiteral("font-size: 10pt; font-weight: bold; color: #80c0ff;"));
+    layout->addSpacing(6);
+    layout->addWidget(header);
+    layout->addWidget(new HrTrendChart(m_trend, this));
+
+    const int rides = int(m_trend.rides.size());
+    QString headline;
+    if (m_trend.currentIsBest()) {
+        headline = QStringLiteral("<b style=\"color:#3fb27f\">%1</b>").arg(tr("Lowest heart rate yet"));
+        if (m_trend.currentPowerW > 0)
+            headline += QStringLiteral("&nbsp;&nbsp;<span style=\"color:#9a9aa6\">%1</span>")
+                            .arg(tr("at the same %1 W").arg(m_trend.currentPowerW));
+    } else {
+        const int bestHr = m_trend.rides.at(m_trend.bestIndex).avgHrBpm;
+        headline = QStringLiteral("<b style=\"color:#f2a33a\">%1</b>")
+                       .arg(tr("%1 bpm above your best").arg(m_trend.rides.last().avgHrBpm - bestHr));
+    }
+    const double efficiency = m_trend.rides.last().efficiency;
+    QString detail;
+    if (efficiency > 0.0) {
+        const QString rank = m_trend.currentEfficiencyRank == 1
+                                 ? tr("best of %1 rides").arg(rides)
+                                 : tr("#%1 of %2 rides").arg(m_trend.currentEfficiencyRank).arg(rides);
+        detail = tr("Efficiency %1 W/bpm").arg(QString::number(efficiency, 'f', 2)) + QStringLiteral(" \u00b7 ") + rank;
+    }
+    auto *summary = new QLabel(detail.isEmpty() ? headline : headline + QStringLiteral("<br>") + detail, this);
+    summary->setTextFormat(Qt::RichText);
+    summary->setWordWrap(true);
+    summary->setStyleSheet(QStringLiteral("font-size: 10pt; color: #c8c8d0;"));
+    layout->addWidget(summary);
 }
 
 void PostWorkoutPanel::setProfileNote(const QString &text)

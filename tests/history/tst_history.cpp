@@ -179,6 +179,71 @@ private slots:
         QCOMPARE(diff.tssDelta, 3.5);
         before.avgHrBpm = 0;
         QVERIFY(!RideComparison::compare(now, before).hasHeartRate);
+
+        // Several rides of the workout, newest first, abandoned and other workouts skipped.
+        writeSampleFit(path("2026-10-20(10-00-00)-MT-user-Threshold.fit"), 600);
+        QCOMPARE(RideComparison::previousRideFiles(dir.path(), current, 600, 5),
+                 (QStringList{path("2026-11-01(10-00-00)-MT-user-Threshold.fit"),
+                              path("2026-10-20(10-00-00)-MT-user-Threshold.fit")}));
+        QCOMPARE(RideComparison::previousRideFiles(dir.path(), current, 600, 1).size(), 1);
+    }
+
+    void rideComparison_efficiencyAndFtpFromTss()
+    {
+        // 1 h at NP 250 scored with FTP 250 is TSS 100; FTP 260 makes it 92.5.
+        WorkoutHistorySummary ride;
+        ride.valid = true;
+        ride.durationSec = 3600;
+        ride.normalizedPower = 250;
+        ride.avgPowerW = 240;
+        ride.avgHrBpm = 125;
+        ride.tss = 100.0;
+        QCOMPARE(RideComparison::impliedFtp(ride), 250);
+        QCOMPARE(RideComparison::efficiency(ride), 2.0);
+        WorkoutHistorySummary later = ride;
+        later.tss = 100.0 * 250 * 250 / (260.0 * 260.0);
+        later.avgHrBpm = 120;
+        QCOMPARE(RideComparison::impliedFtp(later), 260);
+
+        const RideComparison diff = RideComparison::compare(later, ride);
+        QVERIFY(diff.hasEfficiency);
+        QCOMPARE(qRound(diff.efficiencyDelta * 100), 8);        // 250/120 - 2.0
+        QCOMPARE(diff.previousFtpW, 250);
+        QCOMPARE(diff.currentFtpW, 260);
+
+        ride.tss = 0.0;
+        QCOMPARE(RideComparison::impliedFtp(ride), 0);
+    }
+
+    void rideTrend_ranksHeartRateAndEfficiency()
+    {
+        auto ride = [](int day, int hr, int np) {
+            WorkoutHistorySummary summary;
+            summary.valid = true;
+            summary.startTime = QDateTime(QDate(2026, 6, day), QTime(10, 0));
+            summary.avgHrBpm = hr;
+            summary.normalizedPower = np;
+            summary.avgPowerW = np - 4;
+            return summary;
+        };
+        const WorkoutHistorySummary today = ride(30, 145, 202);
+        const QList<WorkoutHistorySummary> previous = {ride(20, 149, 207), ride(10, 150, 199),
+                                                       ride(5, 0, 210), ride(1, 152, 188)};   // newest first
+        const RideTrend trend = RideTrend::build(today, previous);
+        QVERIFY(trend.valid);
+        QCOMPARE(trend.rides.size(), 4);                   // the ride without heart rate is left out
+        QCOMPARE(trend.rides.first().date, QDate(2026, 6, 1));   // oldest first
+        QVERIFY(trend.rides.last().isCurrent);
+        QVERIFY(trend.currentIsBest());
+        QCOMPARE(trend.currentHrRank, 1);
+        QCOMPARE(trend.currentEfficiencyRank, 1);          // 202/145 beats 207/149
+        QCOMPARE(trend.currentPowerW, 198);
+
+        const RideTrend worse = RideTrend::build(ride(30, 151, 202), previous);
+        QCOMPARE(worse.rides.at(worse.bestIndex).avgHrBpm, 149);
+        QCOMPARE(worse.currentHrRank, 3);
+        QVERIFY(!RideTrend::build(today, {}).valid);       // nothing to compare with
+        QVERIFY(!RideTrend::build(ride(30, 0, 202), previous).valid);
     }
 
     void powerZones_rampBrushSwitchesAtZoneBounds()
