@@ -4,6 +4,10 @@
 #include <QDateTime>
 #include <QHBoxLayout>
 #include <QFileInfo>
+#include <QFrame>
+#include <QGridLayout>
+#include <QPainter>
+#include <QPainterPath>
 #include <QLabel>
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -15,13 +19,85 @@
 #include "achievementcatalog.h"
 #include "app_settings.h"
 #include "managerachievement.h"
+#include "fitactivitydetailreader.h"
+#include "fitactivityreader.h"
 #include "ftpestimator.h"
+#include "ridesummary.h"
 #include "intervalsicuftpsync.h"
 #include "setting_keys.h"
 #include "intervalsicuservice.h"
 #include "logger.h"
 #include "strava_service.h"
 #include "util.h"
+
+namespace {
+
+QColor zoneColor(int zone)
+{
+    static const std::array<QColor, 10> colors {
+        QColor("#9e9e9e"), QColor("#2f8fd8"), QColor("#3fb27f"), QColor("#f2c230"), QColor("#f28c28"),
+        QColor("#e5534b"), QColor("#a052d6"), QColor("#d6529e"), QColor("#7a5cff"), QColor("#5c5c66")};
+    return colors.at(qBound(0, zone, int(colors.size()) - 1));
+}
+
+QString clockText(int seconds)
+{
+    const int hours = seconds / 3600;
+    const int minutes = (seconds % 3600) / 60;
+    const int secs = seconds % 60;
+    return hours > 0 ? QStringLiteral("%1:%2:%3").arg(hours).arg(minutes, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0'))
+                     : QStringLiteral("%1:%2").arg(minutes).arg(secs, 2, 10, QLatin1Char('0'));
+}
+
+/// Time in each power zone as one stacked bar.
+class ZoneBar : public QWidget
+{
+public:
+    ZoneBar(const RideSummary &ride, QWidget *parent) : QWidget(parent), m_ride(ride)
+    {
+        setFixedHeight(14);
+    }
+
+protected:
+    void paintEvent(QPaintEvent *) override
+    {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing);
+        QPainterPath clip;
+        clip.addRoundedRect(rect(), 5, 5);
+        painter.setClipPath(clip);
+        painter.fillRect(rect(), QColor(255, 255, 255, 20));
+        const int total = qMax(1, m_ride.zoneTotalSeconds());
+        double x = 0;
+        for (int zone = 0; zone < m_ride.zoneSeconds.size(); ++zone) {
+            const double w = width() * double(m_ride.zoneSeconds.at(zone)) / total;
+            painter.fillRect(QRectF(x, 0, w, height()), zoneColor(zone));
+            x += w;
+        }
+    }
+
+private:
+    RideSummary m_ride;
+};
+
+QWidget *statTile(const QString &caption, const QString &value, QWidget *parent)
+{
+    auto *tile = new QFrame(parent);
+    tile->setObjectName(QStringLiteral("statTile"));
+    tile->setStyleSheet(QStringLiteral("QFrame#statTile { background-color: rgba(255,255,255,16); border-radius: 8px; }"));
+    auto *tileLayout = new QVBoxLayout(tile);
+    tileLayout->setContentsMargins(12, 8, 12, 8);
+    tileLayout->setSpacing(0);
+    auto *captionLabel = new QLabel(caption.toUpper(), tile);
+    captionLabel->setStyleSheet(QStringLiteral("font-size: 8pt; color: #9a9aa6; letter-spacing: 1px;"));
+    auto *valueLabel = new QLabel(value, tile);
+    valueLabel->setStyleSheet(QStringLiteral("font-size: 16pt; font-weight: bold;"));
+    tileLayout->addWidget(captionLabel);
+    tileLayout->addWidget(valueLabel);
+    return tile;
+}
+
+} // namespace
 
 PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &earnedAchievements,
                                    const QString &fitFilePath, const QString &fitFileName,
@@ -33,22 +109,29 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
     , fitFileDescription(fitFileDescription)
 {
     setObjectName("widgetPostWorkout");
+    // A plain QWidget only paints its style-sheet background with this set.
+    setAttribute(Qt::WA_StyledBackground);
     setStyleSheet(
         "QWidget#widgetPostWorkout { background-color: rgba(10,10,10,220); border-radius: 12px; }"
         "QLabel  { color: white; }"
-        "QPushButton { background-color: #2a6099; color: white; border-radius: 6px; padding: 11px 28px; font-size: 12pt; }"
+        "QPushButton { background-color: #2a6099; color: white; border-radius: 6px; padding: 7px 16px; font-size: 10pt; }"
         "QPushButton:hover { background-color: #3275bd; }"
         "QPushButton:disabled { background-color: #1a3a59; color: #888; }");
 
     auto *layout = new QVBoxLayout(this);
-    layout->setSpacing(10);
-    layout->setContentsMargins(28, 22, 28, 22);
-    setMinimumWidth(460);
+    layout->setSpacing(8);
+    layout->setContentsMargins(26, 18, 26, 20);
 
     auto *titleLabel = new QLabel(tr("Workout Complete!"), this);
     titleLabel->setStyleSheet("font-size: 14pt; font-weight: bold; color: #80c0ff;");
     titleLabel->setAlignment(Qt::AlignCenter);
     layout->addWidget(titleLabel);
+    if (!fitFileName.isEmpty()) {
+        auto *nameLabel = new QLabel(fitFileName, this);
+        nameLabel->setAlignment(Qt::AlignCenter);
+        nameLabel->setStyleSheet("font-size: 10pt; color: #9a9aa6;");
+        layout->addWidget(nameLabel);
+    }
     m_profileNote = new QLabel(this);
     m_profileNote->setWordWrap(true);
     m_profileNote->setAlignment(Qt::AlignCenter);
@@ -56,19 +139,31 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
     m_profileNote->hide();
     layout->addWidget(m_profileNote);
 
+    // The ride on the left and what to do next (achievements, FTP, uploads) on
+    // the right keeps the panel short enough to fit; narrow windows stack them.
+    const bool wide = !parent || parent->width() >= 980;
+    auto *rideColumn = new QVBoxLayout;
+    rideColumn->setSpacing(8);
+    addRideSummary(rideColumn);
+    rideColumn->addStretch();
+    auto *sidePanel = new QWidget(this);
+    auto *side = new QVBoxLayout(sidePanel);
+    side->setContentsMargins(0, 0, 0, 0);
+    side->setSpacing(8);
+
     // — Achievements section —
     if (!earnedAchievements.isEmpty()) {
-        auto *achHeader = new QLabel(tr("Achievements Earned:"), this);
-        achHeader->setStyleSheet("font-size: 10pt; font-weight: bold; color: #f0c040; margin-top: 6px;");
-        layout->addWidget(achHeader);
+        auto *achHeader = new QLabel(tr("Achievements earned"), this);
+        achHeader->setStyleSheet("font-size: 10pt; font-weight: bold; color: #f0c040;");
+        side->addWidget(achHeader);
         for (const Achievement &a : earnedAchievements) {
             auto *row = new QLabel(QString("🏆  %1").arg(a.getName()), this);
             row->setStyleSheet("font-size: 10pt;");
-            layout->addWidget(row);
+            side->addWidget(row);
         }
     }
 
-    addFtpSuggestion(layout);
+    addFtpSuggestion(side);
 
     // — Upload section —
     const bool hasStrava   = !account->strava_access_token.isEmpty();
@@ -77,9 +172,10 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
                            !account->intervals_icu_access_token.isEmpty());
 
     if (hasStrava || hasIcu) {
-        auto *upHeader = new QLabel(tr("Upload Activity:"), this);
-        upHeader->setStyleSheet("font-size: 11pt; font-weight: bold; color: #80c0ff; margin-top: 10px;");
-        layout->addWidget(upHeader);
+        auto *upHeader = new QLabel(tr("Upload activity"), this);
+        upHeader->setStyleSheet("font-size: 10pt; font-weight: bold; color: #80c0ff;");
+        side->addSpacing(6);
+        side->addWidget(upHeader);
 
         if (hasStrava) {
             // Manual mode (auto-upload off) shows a button to trigger the upload;
@@ -89,7 +185,7 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
                 auto *btn = new QPushButton(tr("Upload to Strava"), this);
                 btn->setObjectName("btnStrava");
                 connect(btn, &QPushButton::clicked, this, &PostWorkoutPanel::uploadToStrava);
-                layout->addWidget(btn);
+                side->addWidget(btn);
             }
             auto *lbl = new QLabel(this);
             lbl->setObjectName("lblStrava");
@@ -100,7 +196,8 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
             lbl->setOpenExternalLinks(true);
             if (account->strava_auto_upload)
                 lbl->setText(tr("Uploading to Strava…"));
-            layout->addWidget(lbl);
+            lbl->setVisible(!lbl->text().isEmpty());
+            side->addWidget(lbl);
             if (account->strava_auto_upload)
                 QTimer::singleShot(0, this, &PostWorkoutPanel::uploadToStrava);
         }
@@ -109,7 +206,7 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
                 auto *btn = new QPushButton(tr("Upload to Intervals.icu"), this);
                 btn->setObjectName("btnIntervalsIcu");
                 connect(btn, &QPushButton::clicked, this, &PostWorkoutPanel::uploadToIntervalsIcu);
-                layout->addWidget(btn);
+                side->addWidget(btn);
             }
             auto *lbl = new QLabel(this);
             lbl->setObjectName("lblIntervalsIcu");
@@ -120,13 +217,90 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
             lbl->setOpenExternalLinks(true);
             if (account->intervals_icu_auto_upload)
                 lbl->setText(tr("Uploading to Intervals.icu…"));
-            layout->addWidget(lbl);
+            lbl->setVisible(!lbl->text().isEmpty());
+            side->addWidget(lbl);
             if (account->intervals_icu_auto_upload)
                 QTimer::singleShot(0, this, &PostWorkoutPanel::uploadToIntervalsIcu);
         }
     }
 
+
+    side->addStretch();
+    const bool hasSide = side->count() > 1;
+    if (!hasSide)
+        sidePanel->hide();
+    auto *body = new QBoxLayout(wide ? QBoxLayout::LeftToRight : QBoxLayout::TopToBottom);
+    body->setSpacing(24);
+    body->addLayout(rideColumn, 1);
+    if (hasSide) {
+        if (wide)
+            sidePanel->setFixedWidth(300);
+        body->addWidget(sidePanel, 0, Qt::AlignTop);
+    }
+    layout->addLayout(body);
+    if (!wide || !hasSide)
+        setMinimumWidth(520);
+
     adjustSize();
+}
+
+// The ride's numbers and time in power zones, read back from its FIT file the
+// same way History does.
+void PostWorkoutPanel::addRideSummary(QBoxLayout *layout)
+{
+    if (fitFilePath.isEmpty())
+        return;
+    const RideSummary ride = RideSummary::build(FitActivityReader::readFile(fitFilePath),
+                                                FitActivityDetailReader::readFile(fitFilePath),
+                                                account->FTP, QVector<int>(account->power_zones.cbegin(),
+                                                                           account->power_zones.cend()));
+    if (!ride.valid)
+        return;
+
+    QList<QPair<QString, QString>> tiles;
+    tiles.append({tr("Time"), clockText(ride.durationSec)});
+    if (ride.hasPower) {
+        tiles.append({tr("Avg power"), tr("%1 W").arg(ride.avgPowerW)});
+        if (ride.normalizedPower > 0)
+            tiles.append({tr("NP"), tr("%1 W").arg(ride.normalizedPower)});
+        if (ride.intensityFactor > 0)
+            tiles.append({tr("IF"), QString::number(ride.intensityFactor, 'f', 2)});
+        if (ride.tss > 0)
+            tiles.append({tr("TSS"), QString::number(qRound(ride.tss))});
+    }
+    if (ride.avgHrBpm > 0)
+        tiles.append({tr("Avg HR"), tr("%1 bpm").arg(ride.avgHrBpm)});
+    if (ride.avgCadence > 0)
+        tiles.append({tr("Cadence"), tr("%1 rpm").arg(ride.avgCadence)});
+    if (ride.calories > 0)
+        tiles.append({tr("Calories"), tr("%1 kcal").arg(ride.calories)});
+
+    auto *grid = new QGridLayout;
+    grid->setSpacing(8);
+    constexpr int kColumns = 4;
+    for (int i = 0; i < tiles.size(); ++i)
+        grid->addWidget(statTile(tiles.at(i).first, tiles.at(i).second, this), i / kColumns, i % kColumns);
+    layout->addLayout(grid);
+
+    if (ride.hasPower && ride.zoneTotalSeconds() > 0) {
+        auto *zonesHeader = new QLabel(account->power_zones.isEmpty() ? tr("Time in power zones")
+                                                                     : tr("Time in power zones (Intervals.icu)"), this);
+        zonesHeader->setStyleSheet(QStringLiteral("font-size: 9pt; color: #9a9aa6; margin-top: 6px;"));
+        layout->addWidget(zonesHeader);
+        layout->addWidget(new ZoneBar(ride, this));
+        QStringList legend;
+        for (int zone = 0; zone < ride.zoneSeconds.size(); ++zone) {
+            if (ride.zoneSeconds.at(zone) <= 0)
+                continue;
+            legend.append(QStringLiteral("<span style=\"color:%1\">&#9632;</span> Z%2 %3")
+                              .arg(zoneColor(zone).name()).arg(zone + 1).arg(clockText(ride.zoneSeconds.at(zone))));
+        }
+        auto *legendLabel = new QLabel(legend.join(QStringLiteral("&nbsp;&nbsp;&nbsp;")), this);
+        legendLabel->setTextFormat(Qt::RichText);
+        legendLabel->setWordWrap(true);
+        legendLabel->setStyleSheet(QStringLiteral("font-size: 9pt; color: #c8c8d0;"));
+        layout->addWidget(legendLabel);
+    }
 }
 
 void PostWorkoutPanel::setProfileNote(const QString &text)
@@ -148,7 +322,8 @@ void PostWorkoutPanel::addFtpSuggestion(QBoxLayout *layout)
         return;
 
     auto *header = new QLabel(tr("New FTP detected: %1 W").arg(estimate.ftpW), this);
-    header->setStyleSheet("font-size: 11pt; font-weight: bold; color: #80c0ff; margin-top: 10px;");
+    header->setStyleSheet("font-size: 10pt; font-weight: bold; color: #80c0ff;");
+    layout->addSpacing(6);
     layout->addWidget(header);
     auto *detail = new QLabel(tr("Your best 20 minutes in the last %1 weeks was %2 W, so your FTP "
                                  "is about %3 W (currently %4 W).")
@@ -223,8 +398,10 @@ void PostWorkoutPanel::acceptFtp(int ftpWatts)
 // or the status label (auto-upload on), whichever is present.
 void PostWorkoutPanel::setStravaPostStatus(const QString &text, bool retryable)
 {
-    if (auto *lbl = findChild<QLabel*>("lblStrava"))
+    if (auto *lbl = findChild<QLabel*>("lblStrava")) {
         lbl->setText(text);
+        lbl->setVisible(!text.isEmpty());
+    }
     // The manual button (if any) is re-enabled only when a retry makes sense.
     if (auto *btn = findChild<QPushButton*>("btnStrava"))
         btn->setEnabled(retryable);
@@ -383,8 +560,10 @@ void PostWorkoutPanel::slotPostStravaStatusDone()
 // (auto-upload off) or the status label (auto-upload on), whichever is present.
 void PostWorkoutPanel::setIntervalsIcuPostStatus(const QString &text, bool retryable)
 {
-    if (auto *lbl = findChild<QLabel*>("lblIntervalsIcu"))
+    if (auto *lbl = findChild<QLabel*>("lblIntervalsIcu")) {
         lbl->setText(text);
+        lbl->setVisible(!text.isEmpty());
+    }
     if (auto *btn = findChild<QPushButton*>("btnIntervalsIcu"))
         btn->setEnabled(retryable);
     adjustSize();

@@ -20,6 +20,7 @@
 #include "fitactivityreader.h"
 #include "fitactivitydetailreader.h"
 #include "pmccalculator.h"
+#include "ridesummary.h"
 #include "workouthistorymodel.h"
 #include "historyfilterproxymodel.h"
 #include "ftpestimator.h"
@@ -141,6 +142,50 @@ private:
     };
 
 private slots:
+    void rideSummary_zonesAndIntensity()
+    {
+        const QVector<int> coggan = RideSummary::zoneBounds(200, {});
+        QCOMPARE(coggan, (QVector<int>{110, 150, 180, 210, 240, 300}));
+        QCOMPARE(RideSummary::powerZone(110, coggan), 0);   // 55 % is still Z1
+        QCOMPARE(RideSummary::powerZone(111, coggan), 1);
+        QCOMPARE(RideSummary::powerZone(200, coggan), 3);   // 100 % is Z4
+        QCOMPARE(RideSummary::powerZone(301, coggan), 6);   // above 150 % is Z7
+        // Intervals.icu bounds end with an open 999 % zone, which is dropped.
+        QCOMPARE(RideSummary::zoneBounds(200, {120, 160, 1998}), (QVector<int>{120, 160}));
+
+        WorkoutHistorySummary summary;
+        summary.valid = true;
+        summary.durationSec = 600;
+        summary.normalizedPower = 180;
+        summary.tss = 12.5;
+        WorkoutHistoryDetail detail;
+        // 4 s in Z2, a 60 s pause gap (capped to 5 s) in Z4, 1 s at the end in Z6, no-power sample ignored.
+        const int seconds[] = {0, 1, 2, 3, 4, 64, 65};
+        const int watts[]   = {120, 120, 120, 120, 200, 260, -1};
+        for (int i = 0; i < 7; ++i) {
+            ActivityRecordPoint point;
+            point.elapsedSec = seconds[i];
+            point.power = watts[i];
+            point.heartRate = 140 + i;
+            detail.records.append(point);
+        }
+        const RideSummary ride = RideSummary::build(summary, detail, 200);
+        QVERIFY(ride.valid);
+        QVERIFY(ride.hasPower);
+        QCOMPARE(ride.zoneSeconds.size(), 7);
+        QCOMPARE(ride.zoneSeconds.at(1), 4);
+        QCOMPARE(ride.zoneSeconds.at(3), 5);
+        QCOMPARE(ride.zoneSeconds.at(5), 1);
+        QCOMPARE(ride.zoneTotalSeconds(), 10);
+        // The athlete's own zones: 3 zones from 2 bounds.
+        const RideSummary custom = RideSummary::build(summary, detail, 200, {130, 210, 1998});
+        QCOMPARE(custom.zoneSeconds, (QVector<int>{4, 5, 1}));
+        QCOMPARE(ride.maxPowerW, 260);
+        QCOMPARE(ride.maxHrBpm, 146);
+        QCOMPARE(ride.intensityFactor, 0.9);
+        QCOMPARE(ride.tss, 12.5);
+    }
+
     void weeklySummary_bucketsByMondayWeek()
     {
         QCOMPARE(WeeklySummary::mondayOf(QDate(2026, 11, 19)), QDate(2026, 11, 16));   // Thu

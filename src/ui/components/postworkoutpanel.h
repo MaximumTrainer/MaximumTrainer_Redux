@@ -13,7 +13,8 @@ class QTimer;
 class QBoxLayout;
 class QLabel;
 
-/// Overlay shown when a workout finishes: earned achievements, plus Strava and
+/// Overlay shown when a workout finishes: the ride summary (stats and time in
+/// power zones), earned achievements, an FTP suggestion, plus Strava and
 /// Intervals.icu upload of the recorded FIT file (manual button or automatic,
 /// with Strava token refresh, a one-shot 401 retry and upload status polling).
 class PostWorkoutPanel : public QWidget
@@ -43,6 +44,7 @@ private slots:
     void slotPostStravaStatusDone();
 
 private:
+    void addRideSummary(QBoxLayout *layout);
     void addFtpSuggestion(QBoxLayout *layout);
     void acceptFtp(int ftpWatts);
     void setStravaPostStatus(const QString &text, bool retryable);
