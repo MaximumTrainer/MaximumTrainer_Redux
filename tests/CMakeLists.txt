@@ -112,10 +112,6 @@ mt_add_test(webengine_safe_mode_tests
         webengine_safe_mode/tst_webengine_safe_mode.cpp
     INCLUDES "${SRC}/app")
 
-mt_add_test(plan_adherence_tests
-    SOURCES "${SRC}/model/planadherencestore.cpp" plan_adherence/tst_plan_adherence.cpp
-    INCLUDES "${TST}/plan_adherence" "${SRC}/model")
-
 mt_add_test(history_tests
     SOURCES "${SRC}/fitness/pmccalculator.cpp"
         "${SRC}/persistence/file/fitactivityreader.cpp"

@@ -340,16 +340,6 @@
     <string>Multiple Workouts</string>
    </property>
   </action>
-  <action name="actionFree_Ride">
-   <property name="text">
-    <string>Free Ride</string>
-   </property>
-  </action>
-  <action name="actiona">
-   <property name="text">
-    <string>a</string>
-   </property>
-  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>

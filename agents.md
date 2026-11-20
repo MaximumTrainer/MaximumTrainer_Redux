@@ -349,7 +349,6 @@ Each service and domain component has its own standalone Qt Test target
 | `strava_tests` | `tests/strava/` | Strava upload/status/deauthorize headers, URLs, null-manager guard |
 | `credential_store_tests` | `tests/credential_store/` | Round-trip read/write, overwrite, remove, missing key, multi-service, WASM no-op |
 | `config_bootstrap_tests` | `tests/config_bootstrap/` | First-run defaults, no overwrite on rerun, config_version upgrade, legacy migration before defaults, corrupt store left untouched, credential failures logged without values |
-| `plan_adherence_tests` | `tests/plan_adherence/` | Completed/skipped/substituted entries, adherence %, encode-decode round-trip, change signals |
 | `logger_tests` | `tests/logger/` | Log level filtering, output format (timestamp/level/module/message), file write enable/disable |
 | `studio_tests` | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling formula, settings persistence |
 
@@ -444,7 +443,7 @@ Push to branch
       │
       ├─► test_unit_suites (Linux, no build needed): logger, apptheme,
       │     intervals_icu (4 suites), strava, credential_store, config_bootstrap,
-      │     plan_adherence, history, live Intervals.icu integration
+      │     history, live Intervals.icu integration
       ├─► build_linux ──► test_integration_headless   (btle unit/api, workout io/creator/parsing)
       │                ├─► test_gui                    (Xvfb: btle integration, runtime validation,
       │                │                                offline mode, ui screens, ui navigation,

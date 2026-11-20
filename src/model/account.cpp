@@ -206,6 +206,7 @@ void Account::loadDisplayPrefs() {
     // Timer display
     AppSettings::remove(settings, Keys::ShowTimerOnTop);  // timers are always on the top bar
     AppSettings::remove(settings, SettingKeys::WorkoutQueue::RetiredGroup);  // workout queue removed
+    AppSettings::remove(settings, SettingKeys::PlanAdherence::RetiredGroup);  // Plan Adherence tab removed
     show_interval_remaining = AppSettings::read(settings, Keys::ShowIntervalRemaining);
     show_workout_remaining  = AppSettings::read(settings, Keys::ShowWorkoutRemaining);
     show_elapsed            = AppSettings::read(settings, Keys::ShowElapsed);

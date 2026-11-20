@@ -40,7 +40,7 @@ target_sources(mt_core PRIVATE
     model/interval.cpp model/workout.cpp model/sortfilterproxymodel.cpp model/workouttablemodel.cpp
     model/sensor.cpp model/settings.cpp model/dataworkout.cpp model/intervaldata.cpp
     model/intervaltablemodel.cpp model/repeatdata.cpp model/account.cpp model/radiotablemodel.cpp
-    model/radio.cpp model/trackpoint.cpp model/userstudio.cpp model/planadherencestore.cpp
+    model/radio.cpp model/trackpoint.cpp model/userstudio.cpp
     # persistence
     persistence/db/extrequest.cpp persistence/db/versiondao.cpp persistence/db/environnement.cpp
     persistence/db/intervalsicudao.cpp persistence/db/intervalsicuftpsync.cpp persistence/db/intervalsicuservice.cpp
@@ -61,20 +61,20 @@ target_sources(mt_core PRIVATE
     ui/splashscreen.cpp ui/dialogmainwindowconfig.cpp ui/dialog_connection_method.cpp
     ui/tab_intervals_icu.cpp ui/workouthistorymodel.cpp ui/historywidget.cpp
     ui/historyfilterproxymodel.cpp ui/activitydetaildialog.cpp ui/dialogkeyboardshortcuts.cpp
-    ui/planadherencewidget.cpp ui/criticalpowerdialog.cpp ui/pmcdialog.cpp ui/achievementswidget.cpp ui/weeklysummarywidget.cpp
+    ui/criticalpowerdialog.cpp ui/pmcdialog.cpp ui/achievementswidget.cpp ui/weeklysummarywidget.cpp
     ui/sensorswidget.cpp ui/studiowidget.cpp
     ui/apptheme.h ui/asyncdialogs.h
     ui/mainwindow.ui ui/workoutdialog.ui ui/main_workoutpage.ui ui/dialogconfig.ui
     ui/dialoglogin.ui ui/z_stylesheet.ui ui/dialogmainwindowconfig.ui
     ui/tab_intervals_icu.ui
     # ui/components
-    ui/components/workoutcombobox.cpp ui/components/delegaterowhover.cpp
+    ui/components/delegaterowhover.cpp
     ui/components/mytableview.cpp ui/components/shapefactory.cpp ui/components/infowidget.cpp
     ui/components/bottombar.cpp ui/components/topmenuworkout.cpp ui/components/balancewidget.cpp
     ui/components/postworkoutpanel.cpp ui/components/workoutraceview.cpp ui/components/achievementtoast.cpp ui/components/metriccard.cpp ui/components/trendchart.cpp
     ui/components/clickablelabel.cpp ui/components/fancytab.cpp ui/components/fancytabbar.cpp
-    ui/components/stylehelper.cpp ui/components/faderlabel.cpp ui/components/faderwidget.cpp
-    ui/components/faderframe.cpp ui/components/tableviewhover.cpp ui/components/clock.cpp
+    ui/components/stylehelper.cpp ui/components/faderlabel.cpp
+    ui/components/tableviewhover.cpp ui/components/clock.cpp
     ui/components/infosworkout.cpp ui/components/oxygenwidget.cpp
     ui/components/userstudiowidget.cpp ui/components/toggleswitch.cpp
     ui/components/webbrowserview.cpp ui/components/myqwebenginepage.h

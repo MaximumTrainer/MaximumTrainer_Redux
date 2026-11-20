@@ -343,11 +343,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                 AsyncDialogs::warning(this, tr("Intervals.icu Sync Failed"), err);
             });
 
-    // ── Plan Adherence (#157) ─────────────────────────────────────────────────
-    m_adherenceStore = new PlanAdherenceStore(this);
-    if (auto *hw = qobject_cast<HistoryWidget*>(ui->historyWidget))
-        hw->setAdherenceStore(m_adherenceStore);
-
 #ifdef GC_WASM_BUILD
     // Expose the demo-workout test hook so Playwright can drive the app into
     // the metric-dashboard view and verify QML rendering in the browser.
@@ -1077,7 +1072,6 @@ void MainWindow::startSimulatedWorkout(const Workout &workout)
     }
     w->enableTrainerControl();
 
-    connect(w, &WorkoutDialog::fitFileReady, this, &MainWindow::checkToUploadFile);
     connect(w, &WorkoutDialog::ftp_lthr_changed, ui->tab_workout1, &Main_WorkoutPage::updateTableViewMetrics);
     connect(w, &WorkoutDialog::ftpUserStudioChanged, this, &MainWindow::updateVecStudio);
 
@@ -1191,7 +1185,6 @@ void MainWindow::startWorkoutWithConnectedHub(const Workout &workout, BtleHub *b
     connect(w, &WorkoutDialog::reconnectDevice, btleHub, &BtleHub::scanForDevice);
 #endif
 
-    connect(w, &WorkoutDialog::fitFileReady, this, &MainWindow::checkToUploadFile);
     connect(w, &WorkoutDialog::ftp_lthr_changed, ui->tab_workout1, &Main_WorkoutPage::updateTableViewMetrics);
     connect(w, &WorkoutDialog::ftpUserStudioChanged, this, &MainWindow::updateVecStudio);
 
@@ -1226,7 +1219,6 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
     wireHubsToDialog(w, hubsByRole, allHubs);
     w->adoptZwiftClickManager(zwiftClick);
 
-    connect(w, &WorkoutDialog::fitFileReady, this, &MainWindow::checkToUploadFile);
     connect(w, &WorkoutDialog::ftp_lthr_changed, ui->tab_workout1, &Main_WorkoutPage::updateTableViewMetrics);
     connect(w, &WorkoutDialog::ftpUserStudioChanged, this, &MainWindow::updateVecStudio);
 
@@ -1353,7 +1345,6 @@ void MainWindow::startWorkoutWithStudioHubs(const Workout &workout,
     for (const QPair<int, QMap<BtleSensorRole, BtleHub*>> &rider : riderHubs)
         wireHubsToDialog(w, rider.second, allHubs, rider.first);
 
-    connect(w, &WorkoutDialog::fitFileReady, this, &MainWindow::checkToUploadFile);
     connect(w, &WorkoutDialog::ftp_lthr_changed, ui->tab_workout1, &Main_WorkoutPage::updateTableViewMetrics);
     connect(w, &WorkoutDialog::ftpUserStudioChanged, this, &MainWindow::updateVecStudio);
 
@@ -1428,22 +1419,6 @@ void MainWindow::on_actionMultiple_Workouts_triggered()
     }
 }
 
-
-void MainWindow::checkToUploadFile(const QString& filename, const QString& nameOnly, const QString& description) {
-
-    Q_UNUSED(description);
-
-    // ── Plan adherence: auto-mark this workout as completed ──────────────────
-    if (m_adherenceStore && !nameOnly.isEmpty()) {
-        const QDate today = QDate::currentDate();
-        m_adherenceStore->addCompleted(today, nameOnly, filename);
-    }
-
-    // Strava and Intervals.icu auto-uploads are both handled in WorkoutDialog's
-    // post-workout panel (so the status — and the "View on …" link — shows
-    // there, and the manual button is replaced), which also avoids uploading
-    // the same activity twice.
-}
 
 void MainWindow::onNetworkOnlineChanged(bool isOnline)
 {
