@@ -23,6 +23,7 @@
 #include "startup_trace.h"
 
 #include <QElapsedTimer>
+#include <QSurfaceFormat>
 #include <QDir>
 #include <exception>
 #include <memory>
@@ -105,6 +106,17 @@ int main(int argc, char *argv[]) {
     // web video player is shown. Qt5 was more lenient, which is why this
     // surfaced only after the Qt6 migration.
     QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+#ifdef Q_OS_LINUX
+    // The workout window has GL content (video, race), so every widget repaint
+    // is presented through a GL swap. Under XWayland that swap waits on vsync and
+    // stalled the whole UI for ~150 ms every ~11 s (mini-graphs froze). The
+    // repaints are already paced by their own timers, so don't block on vsync.
+    {
+        QSurfaceFormat format = QSurfaceFormat::defaultFormat();
+        format.setSwapInterval(0);
+        QSurfaceFormat::setDefaultFormat(format);
+    }
+#endif
 
     // The workout view mixes QQuickWidget (retro race) with NATIVE siblings
     // (QVideoWidget, QtWebEngine). By default Qt forces every sibling of a
