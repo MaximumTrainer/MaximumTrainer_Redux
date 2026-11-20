@@ -27,16 +27,9 @@ struct RideSummary
 
     int zoneTotalSeconds() const;
 
-    /// \a zoneUpperWatts are the athlete's zone upper bounds (Intervals.icu);
-    /// empty means the standard 7 Coggan zones from \a ftpWatts.
+    /// \a zoneBoundsPct come from PowerZones::boundsPct (empty means Coggan).
     static RideSummary build(const WorkoutHistorySummary &summary, const WorkoutHistoryDetail &detail,
-                             int ftpWatts, const QVector<int> &zoneUpperWatts = {});
-    /// Upper bounds actually used: \a zoneUpperWatts without its open-ended
-    /// top value (Intervals.icu ends with 999 % of FTP), or Coggan's
-    /// 55/75/90/105/120/150 % of FTP. N bounds make N + 1 zones.
-    static QVector<int> zoneBounds(int ftpWatts, const QVector<int> &zoneUpperWatts);
-    /// Zone index for \a watts: the first bound it does not exceed.
-    static int powerZone(int watts, const QVector<int> &bounds);
+                             int ftpWatts, const QVector<int> &zoneBoundsPct = {});
 };
 
 #endif // RIDESUMMARY_H

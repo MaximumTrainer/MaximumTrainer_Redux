@@ -63,7 +63,7 @@ set(APP_DAO
     "${SRC}/persistence/db/versiondao.cpp" "${SRC}/persistence/db/intervalsicudao.cpp"
     "${SRC}/persistence/file/xmlutil.cpp")
 set(APP_INCLUDES
-    "${SRC}/app" "${SRC}/btle" "${SRC}/model" "${SRC}/fitness/achievements"
+    "${SRC}/app" "${SRC}/btle" "${SRC}/model" "${SRC}/fitness" "${SRC}/fitness/achievements"
     "${SRC}/persistence/db" "${SRC}/persistence/file" "${SRC}/ui" "${SRC}/ui/components"
     "${SRC}/ui/plots" "${SRC}/ui/workout_editor")
 set(REPEAT_WIDGET
@@ -119,6 +119,7 @@ mt_add_test(history_tests
         "${SRC}/ui/workouthistorymodel.cpp" "${SRC}/ui/historyfilterproxymodel.cpp"
         "${SRC}/fitness/mmpcalculator.cpp" "${SRC}/fitness/ftpestimator.cpp"
         "${SRC}/fitness/weeklysummary.cpp" "${SRC}/fitness/ridesummary.cpp"
+        "${SRC}/fitness/powerzones.cpp"
         history/tst_history.cpp
     QT Gui
     LIBS mt_fit
@@ -253,6 +254,7 @@ mt_add_test(ui_screens_tests QWT
         "${SRC}/ui/plots/curvedatacadence.cpp" "${SRC}/ui/plots/curvedataheartrate.cpp"
         "${SRC}/ui/plots/curvedatapower.cpp" "${SRC}/ui/plots/curvedataspeed.cpp"
         "${SRC}/ui/plots/workoutplot.cpp" "${SRC}/ui/plots/zoneitem.cpp"
+        "${SRC}/fitness/powerzones.cpp"
         "${SRC}/ui/workout_editor/myqwtpickermachine.cpp"
         "${SRC}/ui/workout_editor/myqwtplotpicker.cpp"
         integration/tst_ui_screens.cpp

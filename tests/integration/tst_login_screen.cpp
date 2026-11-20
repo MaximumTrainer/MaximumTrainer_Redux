@@ -728,6 +728,7 @@ private slots:
             {"types":["Run","TrailRun"],"ftp":300,"lthr":172},
             {"types":["Ride","VirtualRide"],"ftp":250,"indoor_ftp":240,"lthr":165,
              "power_zones":[55,75,90,105,120,150],
+             "power_zone_names":["Recovery","Endurance","Tempo","Threshold","VO2","Anaerobic","Sprint"],
              "hr_zones":[120,140,155,165,175]}
         ])");
 
@@ -738,6 +739,10 @@ private slots:
         QCOMPARE(account->hr_zones, (QList<int>{120, 140, 155, 165, 175}));
         // 55% … 150% of the applied 240 W FTP
         QCOMPARE(account->power_zones, (QList<int>{132, 180, 216, 252, 288, 360}));
+        // Kept as % of FTP too (so they follow an FTP change), with the zone names.
+        QCOMPARE(account->power_zones_pct, (QList<int>{55, 75, 90, 105, 120, 150}));
+        QCOMPARE(account->power_zone_names.size(), 7);
+        QCOMPARE(account->power_zone_names.at(6), QStringLiteral("Sprint"));
 
         // Outdoor ftp is the fallback when indoor_ftp is absent.
         QVERIFY(Util::parseJsonIntervalsIcuSettings(

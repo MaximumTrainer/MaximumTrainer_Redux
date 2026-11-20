@@ -1,3 +1,4 @@
+#include "powerzones.h"
 #include "workoutplot.h"
 
 #include <QPen>
@@ -569,7 +570,8 @@ void WorkoutPlot::removeAlertMessage() {
 void WorkoutPlot::drawGraphIntervals() {
 
 
-    QColor colorPower = Util::getColor(Util::SQUARE_POWER);
+    const Account *zoneAccount = qApp->property("Account").value<Account*>();
+    const QVector<int> zoneBounds = PowerZones::boundsPct(zoneAccount ? zoneAccount->power_zones_pct : QList<int>{});
     QColor colorCadence = Util::getColor(Util::SQUARE_CADENCE);
     QColor colorHr = Util::getColor(Util::SQUARE_HEARTRATE);
 
@@ -603,6 +605,9 @@ void WorkoutPlot::drawGraphIntervals() {
         /// POWER SHAPE
         lstPointsPower.clear();
         if (val.getPowerStepType() != Interval::NONE) {
+            // Each block takes its zone colour (a ramp: the zone of its midpoint).
+            const QColor zoneColor = PowerZones::color(
+                PowerZones::zoneForPct((val.getFTP_start() + val.getFTP_end()) * 50.0, zoneBounds));
             /// POWER PARALLELOGRAM --------------------------------------------------------
             btnLeft = QPointF(time, val.getFTP_start()*FTP - val.getFTP_range() );
             topLeft = QPointF(time, val.getFTP_start()*FTP + val.getFTP_range() );
@@ -615,9 +620,9 @@ void WorkoutPlot::drawGraphIntervals() {
             lstPointsPower.append(topRight);
             lstPointsPower.append(btnRight);
             if (val.getPowerStepType() == Interval::PROGRESSIVE)
-                addShapeFromPoints("PARALLELOGRAM_POWER", colorPower, lstPointsPower, 11, true);
+                addShapeFromPoints("PARALLELOGRAM_POWER", zoneColor, lstPointsPower, 11, true);
             else
-                addShapeFromPoints("PARALLELOGRAM_POWER", colorPower, lstPointsPower, 11, false);
+                addShapeFromPoints("PARALLELOGRAM_POWER", zoneColor, lstPointsPower, 11, false);
         }
 
 
@@ -983,7 +988,13 @@ void WorkoutPlot::addShapeFromPoints(const QString &title, const QColor &color, 
 
     QColor fillColor = color;
     fillColor.setAlpha(200);
-    QPen pen(color, 1);
+    // Cadence is an outline, so it never reads as a power zone block.
+    const bool outline = title == QLatin1String("PARALLELOGRAM_CADENCE");
+    if (outline)
+        fillColor.setAlpha(40);
+    QPen pen(color, outline ? 1.5 : 1);
+    if (outline)
+        pen.setStyle(Qt::DashLine);
     pen.setJoinStyle(Qt::MiterJoin);
     item->setPen(pen);
     item->setBrush(fillColor);

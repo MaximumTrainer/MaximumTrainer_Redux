@@ -1,3 +1,4 @@
+#include "powerzones.h"
 #include "workoutplotlist.h"
 #include "util.h"
 
@@ -82,7 +83,7 @@ void WorkoutPlotList::init() {
 void WorkoutPlotList::drawGraphIntervals() {
 
 
-    QColor colorPower = Util::getColor(Util::SQUARE_POWER);
+    const QVector<int> zoneBounds = PowerZones::boundsPct(account->power_zones_pct);
     QColor colorCadence = Util::getColor(Util::SQUARE_CADENCE);
     QColor colorHr = Util::getColor(Util::SQUARE_HEARTRATE);
 
@@ -116,6 +117,9 @@ void WorkoutPlotList::drawGraphIntervals() {
         /// POWER SHAPE
         lstPointsPower.clear();
         if (val.getPowerStepType() != Interval::NONE) {
+            // Each block takes its zone colour (a ramp: the zone of its midpoint).
+            const QColor zoneColor = PowerZones::color(
+                PowerZones::zoneForPct((val.getFTP_start() + val.getFTP_end()) * 50.0, zoneBounds));
             /// POWER PARALLELOGRAM --------------------------------------------------------
             btnLeft = QPointF(time, val.getFTP_start()*ftp - val.getFTP_range() );
             topLeft = QPointF(time, val.getFTP_start()*ftp + val.getFTP_range() );
@@ -128,9 +132,9 @@ void WorkoutPlotList::drawGraphIntervals() {
             lstPointsPower.append(topRight);
             lstPointsPower.append(btnRight);
             if (val.getPowerStepType() == Interval::PROGRESSIVE)
-                addShapeFromPoints("PARALLELOGRAM_POWER", colorPower, lstPointsPower, 11, true);
+                addShapeFromPoints("PARALLELOGRAM_POWER", zoneColor, lstPointsPower, 11, true);
             else
-                addShapeFromPoints("PARALLELOGRAM_POWER", colorPower, lstPointsPower, 11, false);
+                addShapeFromPoints("PARALLELOGRAM_POWER", zoneColor, lstPointsPower, 11, false);
         }
 
 
@@ -192,7 +196,14 @@ void WorkoutPlotList::addShapeFromPoints(const QString &title, const QColor &col
 
     QColor fillColor = color;
     fillColor.setAlpha(200);
-    QPen pen(color, 1);
+    // Cadence is an outline, so it never reads as a power zone block.
+    const bool outline = title == QLatin1String("PARALLELOGRAM_CADENCE");
+    if (outline)
+        fillColor.setAlpha(40);
+    QColor penColor = color;
+    if (outline)
+        penColor.setAlpha(170);   // thumbnails are too small for a dashed line
+    QPen pen(penColor, 1);
     pen.setJoinStyle(Qt::MiterJoin);
     item->setPen(pen);
     item->setBrush(fillColor);

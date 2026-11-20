@@ -2,6 +2,8 @@
 
 #include <QtGlobal>
 
+#include "powerzones.h"
+
 int RideSummary::zoneTotalSeconds() const
 {
     int total = 0;
@@ -10,35 +12,12 @@ int RideSummary::zoneTotalSeconds() const
     return total;
 }
 
-QVector<int> RideSummary::zoneBounds(int ftpWatts, const QVector<int> &zoneUpperWatts)
-{
-    const int ftp = qMax(1, ftpWatts);
-    QVector<int> bounds;
-    for (const int watts : zoneUpperWatts) {
-        if (watts > 0 && watts < 3 * ftp)
-            bounds.append(watts);
-    }
-    if (bounds.isEmpty()) {
-        for (const int pct : {55, 75, 90, 105, 120, 150})
-            bounds.append(qRound(ftp * pct / 100.0));
-    }
-    return bounds;
-}
-
-int RideSummary::powerZone(int watts, const QVector<int> &bounds)
-{
-    for (int zone = 0; zone < bounds.size(); ++zone) {
-        if (watts <= bounds.at(zone))
-            return zone;
-    }
-    return int(bounds.size());
-}
-
 RideSummary RideSummary::build(const WorkoutHistorySummary &summary, const WorkoutHistoryDetail &detail,
-                               int ftpWatts, const QVector<int> &zoneUpperWatts)
+                               int ftpWatts, const QVector<int> &zoneBoundsPct)
 {
     RideSummary ride;
-    const QVector<int> bounds = zoneBounds(ftpWatts, zoneUpperWatts);
+    const QVector<int> bounds = zoneBoundsPct.isEmpty() ? PowerZones::boundsPct({}) : zoneBoundsPct;
+    const double ftp = qMax(1, ftpWatts);
     ride.zoneSeconds.fill(0, bounds.size() + 1);
     ride.valid           = summary.valid;
     ride.durationSec     = summary.durationSec;
@@ -64,7 +43,7 @@ RideSummary RideSummary::build(const WorkoutHistorySummary &summary, const Worko
         ride.hasPower = true;
         ride.maxPowerW = qMax(ride.maxPowerW, point.power);
         const int gap = i + 1 < records.size() ? records.at(i + 1).elapsedSec - point.elapsedSec : 1;
-        ride.zoneSeconds[powerZone(point.power, bounds)] += qBound(0, gap, kMaxGapSec);
+        ride.zoneSeconds[PowerZones::zoneForPct(point.power * 100.0 / ftp, bounds)] += qBound(0, gap, kMaxGapSec);
     }
     return ride;
 }

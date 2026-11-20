@@ -4,7 +4,9 @@
 #include <QDebug>
 #include <QHBoxLayout>
 #include <QLabel>
+#include "account.h"
 #include "myconstants.h"
+#include "powerzones.h"
 #include "util.h"
 
 
@@ -58,11 +60,14 @@ InfoWidget::InfoWidget(QWidget *parent) : QWidget(parent), ui(new Ui::InfoWidget
     m_targetPill = new QLabel(this);
     m_targetPill->setObjectName(QStringLiteral("infoTargetPill"));
     m_targetPill->hide();
+    m_zonePill = new QLabel(this);
+    m_zonePill->hide();
     ui->label_image->setFixedSize(18, 18);
     ui->label_image->setScaledContents(true);
     header->addWidget(ui->label_image);
     header->addWidget(m_caption);
     header->addStretch();
+    header->addWidget(m_zonePill);
     header->addWidget(m_targetPill);
     ui->verticalLayout->insertLayout(0, header);
 
@@ -213,6 +218,7 @@ void InfoWidget::targetChanged(double percentageValue, int range) {
                                         : tr("Target %1 %2").arg(realTarget).arg(unitText()));
     }
     m_targetPill->setVisible(percentageValue >= 0);
+    updateZonePill(type == InfoWidget::POWER ? percentageValue : -1);
 
 
     this->target = realTarget;
@@ -388,4 +394,22 @@ void InfoWidget::refreshUnit()
 {
     if (m_unit)
         m_unit->setText(unitText());
+}
+
+// The power target's zone, in the zone's colour (same zones as the graphs).
+void InfoWidget::updateZonePill(double targetFraction)
+{
+    if (targetFraction <= 0) {
+        m_zonePill->hide();
+        return;
+    }
+    const auto *account = qApp->property("Account").value<Account *>();
+    const QVector<int> bounds = PowerZones::boundsPct(account ? account->power_zones_pct : QList<int>{});
+    const int zone = PowerZones::zoneForPct(targetFraction * 100.0, bounds);
+    m_zonePill->setText(PowerZones::label(zone, int(bounds.size()) + 1,
+                                          account ? account->power_zone_names : QStringList{}));
+    m_zonePill->setStyleSheet(QStringLiteral("QLabel { font: bold 8pt 'Inter'; color: #141418; background: %1;"
+                                             " border-radius: 8px; padding: 0px 6px; }")
+                                  .arg(PowerZones::color(zone).name()));
+    m_zonePill->show();
 }

@@ -32,7 +32,7 @@ target_sources(mt_core PRIVATE
     app/util.cpp app/updatenotifier.cpp app/globalvars.cpp app/simplecrypt.cpp app/networkmonitor.cpp
     app/qtmediaplayer.h
     # fitness
-    fitness/mmpcalculator.cpp fitness/pmccalculator.cpp fitness/ftpestimator.cpp fitness/weeklysummary.cpp fitness/ridesummary.cpp
+    fitness/mmpcalculator.cpp fitness/pmccalculator.cpp fitness/ftpestimator.cpp fitness/weeklysummary.cpp fitness/ridesummary.cpp fitness/powerzones.cpp
     fitness/achievements/achievement.cpp fitness/achievements/managerachievement.cpp
     fitness/achievements/achievementchecker.cpp fitness/achievements/achievementcatalog.cpp
     fitness/achievements/achievementstore.cpp

@@ -457,7 +457,7 @@ QColor Util::getColor(Color color) {
 
     /// Cadence
     //    QColor colorCadenceShapeTarget(216, 222, 255, 20);
-    QColor colorCadenceShapeTarget(178,183,210);
+    QColor colorCadenceShapeTarget(77, 208, 225);
     QColor lineCadence(0,0,255);
 
     /// HR
@@ -732,6 +732,21 @@ bool Util::parseJsonIntervalsIcuSettings(const QString &data)
                 zones.append(qRound(zv.toInt() * ftp / 100.0));
         if (!zones.isEmpty())
             account->power_zones = std::move(zones);
+    }
+    if (pwrZonesVal.isArray()) {
+        QList<int> zonesPct;
+        for (const QJsonValue zv : pwrZonesVal.toArray())
+            if (zv.toInt(0) > 0)
+                zonesPct.append(zv.toInt());
+        if (!zonesPct.isEmpty())
+            account->power_zones_pct = std::move(zonesPct);
+    }
+    const QJsonValue zoneNamesVal = ride.value(QStringLiteral("power_zone_names"));
+    if (zoneNamesVal.isArray()) {
+        QStringList names;
+        for (const QJsonValue nv : zoneNamesVal.toArray())
+            names.append(nv.toString());
+        account->power_zone_names = names;
     }
 
     return applied;
