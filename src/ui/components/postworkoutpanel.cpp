@@ -22,6 +22,7 @@
 #include "fitactivitydetailreader.h"
 #include "fitactivityreader.h"
 #include "ftpestimator.h"
+#include "powerzones.h"
 #include "ridesummary.h"
 #include "intervalsicuftpsync.h"
 #include "setting_keys.h"
@@ -31,14 +32,6 @@
 #include "util.h"
 
 namespace {
-
-QColor zoneColor(int zone)
-{
-    static const std::array<QColor, 10> colors {
-        QColor("#9e9e9e"), QColor("#2f8fd8"), QColor("#3fb27f"), QColor("#f2c230"), QColor("#f28c28"),
-        QColor("#e5534b"), QColor("#a052d6"), QColor("#d6529e"), QColor("#7a5cff"), QColor("#5c5c66")};
-    return colors.at(qBound(0, zone, int(colors.size()) - 1));
-}
 
 QString clockText(int seconds)
 {
@@ -71,7 +64,7 @@ protected:
         double x = 0;
         for (int zone = 0; zone < m_ride.zoneSeconds.size(); ++zone) {
             const double w = width() * double(m_ride.zoneSeconds.at(zone)) / total;
-            painter.fillRect(QRectF(x, 0, w, height()), zoneColor(zone));
+            painter.fillRect(QRectF(x, 0, w, height()), PowerZones::color(zone));
             x += w;
         }
     }
@@ -252,8 +245,7 @@ void PostWorkoutPanel::addRideSummary(QBoxLayout *layout)
         return;
     const RideSummary ride = RideSummary::build(FitActivityReader::readFile(fitFilePath),
                                                 FitActivityDetailReader::readFile(fitFilePath),
-                                                account->FTP, QVector<int>(account->power_zones.cbegin(),
-                                                                           account->power_zones.cend()));
+                                                account->FTP, PowerZones::boundsPct(account->power_zones_pct));
     if (!ride.valid)
         return;
 
@@ -283,7 +275,7 @@ void PostWorkoutPanel::addRideSummary(QBoxLayout *layout)
     layout->addLayout(grid);
 
     if (ride.hasPower && ride.zoneTotalSeconds() > 0) {
-        auto *zonesHeader = new QLabel(account->power_zones.isEmpty() ? tr("Time in power zones")
+        auto *zonesHeader = new QLabel(account->power_zones_pct.isEmpty() ? tr("Time in power zones")
                                                                      : tr("Time in power zones (Intervals.icu)"), this);
         zonesHeader->setStyleSheet(QStringLiteral("font-size: 9pt; color: #9a9aa6; margin-top: 6px;"));
         layout->addWidget(zonesHeader);
@@ -293,7 +285,7 @@ void PostWorkoutPanel::addRideSummary(QBoxLayout *layout)
             if (ride.zoneSeconds.at(zone) <= 0)
                 continue;
             legend.append(QStringLiteral("<span style=\"color:%1\">&#9632;</span> Z%2 %3")
-                              .arg(zoneColor(zone).name()).arg(zone + 1).arg(clockText(ride.zoneSeconds.at(zone))));
+                              .arg(PowerZones::color(zone).name()).arg(zone + 1).arg(clockText(ride.zoneSeconds.at(zone))));
         }
         auto *legendLabel = new QLabel(legend.join(QStringLiteral("&nbsp;&nbsp;&nbsp;")), this);
         legendLabel->setTextFormat(Qt::RichText);

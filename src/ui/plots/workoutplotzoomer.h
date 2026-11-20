@@ -115,6 +115,9 @@ private:
 
     QwtText valueQwtText;
     QwtPlotTextLabel *qwtTextLabel;
+    QwtPlotTextLabel *m_zoneLabel = nullptr;   ///< power: the target's zone, top right
+    bool m_valueOverlayVisible = true;
+    void updateZoneLabel(double percentageTarget);
     bool isStopped;
 
 

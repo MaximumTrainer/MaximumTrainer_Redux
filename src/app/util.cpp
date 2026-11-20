@@ -733,6 +733,21 @@ bool Util::parseJsonIntervalsIcuSettings(const QString &data)
         if (!zones.isEmpty())
             account->power_zones = std::move(zones);
     }
+    if (pwrZonesVal.isArray()) {
+        QList<int> zonesPct;
+        for (const QJsonValue zv : pwrZonesVal.toArray())
+            if (zv.toInt(0) > 0)
+                zonesPct.append(zv.toInt());
+        if (!zonesPct.isEmpty())
+            account->power_zones_pct = std::move(zonesPct);
+    }
+    const QJsonValue zoneNamesVal = ride.value(QStringLiteral("power_zone_names"));
+    if (zoneNamesVal.isArray()) {
+        QStringList names;
+        for (const QJsonValue nv : zoneNamesVal.toArray())
+            names.append(nv.toString());
+        account->power_zone_names = names;
+    }
 
     return applied;
 }

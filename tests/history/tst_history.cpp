@@ -20,6 +20,7 @@
 #include "fitactivityreader.h"
 #include "fitactivitydetailreader.h"
 #include "pmccalculator.h"
+#include "powerzones.h"
 #include "ridesummary.h"
 #include "workouthistorymodel.h"
 #include "historyfilterproxymodel.h"
@@ -144,14 +145,18 @@ private:
 private slots:
     void rideSummary_zonesAndIntensity()
     {
-        const QVector<int> coggan = RideSummary::zoneBounds(200, {});
-        QCOMPARE(coggan, (QVector<int>{110, 150, 180, 210, 240, 300}));
-        QCOMPARE(RideSummary::powerZone(110, coggan), 0);   // 55 % is still Z1
-        QCOMPARE(RideSummary::powerZone(111, coggan), 1);
-        QCOMPARE(RideSummary::powerZone(200, coggan), 3);   // 100 % is Z4
-        QCOMPARE(RideSummary::powerZone(301, coggan), 6);   // above 150 % is Z7
-        // Intervals.icu bounds end with an open 999 % zone, which is dropped.
-        QCOMPARE(RideSummary::zoneBounds(200, {120, 160, 1998}), (QVector<int>{120, 160}));
+        const QVector<int> coggan = PowerZones::boundsPct({});
+        QCOMPARE(coggan, (QVector<int>{55, 75, 90, 105, 120, 150}));
+        QCOMPARE(PowerZones::zoneForPct(55, coggan), 0);    // 55 % is still Z1
+        QCOMPARE(PowerZones::zoneForPct(55.5, coggan), 1);
+        QCOMPARE(PowerZones::zoneForPct(100, coggan), 3);   // threshold is Z4
+        QCOMPARE(PowerZones::zoneForPct(151, coggan), 6);   // above 150 % is Z7
+        // Intervals.icu zones end with an open 999 % zone, which is dropped.
+        QCOMPARE(PowerZones::boundsPct({60, 80, 999}), (QVector<int>{60, 80}));
+        QCOMPARE(PowerZones::label(2, 7, {}), QStringLiteral("Z3 Tempo"));
+        QCOMPARE(PowerZones::label(1, 3, {QStringLiteral("Easy"), QStringLiteral("Steady"), QStringLiteral("Hard")}),
+                 QStringLiteral("Z2 Steady"));
+        QCOMPARE(PowerZones::label(1, 3, {}), QStringLiteral("Z2"));
 
         WorkoutHistorySummary summary;
         summary.valid = true;
@@ -178,7 +183,7 @@ private slots:
         QCOMPARE(ride.zoneSeconds.at(5), 1);
         QCOMPARE(ride.zoneTotalSeconds(), 10);
         // The athlete's own zones: 3 zones from 2 bounds.
-        const RideSummary custom = RideSummary::build(summary, detail, 200, {130, 210, 1998});
+        const RideSummary custom = RideSummary::build(summary, detail, 200, PowerZones::boundsPct({65, 105, 999}));
         QCOMPARE(custom.zoneSeconds, (QVector<int>{4, 5, 1}));
         QCOMPARE(ride.maxPowerW, 260);
         QCOMPARE(ride.maxHrBpm, 146);

@@ -1,4 +1,6 @@
 #include "workoutplotzoomer.h"
+#include "account.h"
+#include "powerzones.h"
 
 
 #include <QFile>
@@ -163,6 +165,11 @@ void WorkoutPlotZoomer::init(GRAPH_TYPE graph, bool firstInit) {
         qwtTextLabel = new QwtPlotTextLabel();
         qwtTextLabel->setText( valueQwtText );
         qwtTextLabel->attach( this );
+        m_zoneLabel = new QwtPlotTextLabel();
+        m_zoneLabel->setMargin(6);
+        m_zoneLabel->setZ(14);
+        m_zoneLabel->attach(this);
+        m_zoneLabel->hide();
 
 
         /// middle vertical line
@@ -567,6 +574,9 @@ void WorkoutPlotZoomer::addMarkerInterval(double time) {
 
 
 void WorkoutPlotZoomer::setValueOverlayVisible(bool visible) {
+    m_valueOverlayVisible = visible;
+    if (m_zoneLabel && !visible)
+        m_zoneLabel->hide();
     if (qwtTextLabel)
         qwtTextLabel->setVisible(visible);
     if (icon)
@@ -672,6 +682,7 @@ void WorkoutPlotZoomer::targetChanged(double percentageTarget, int range ) {
     this->target = targetValue;
     this->targetRange = range;
     moveIntervalTarget(target, range);
+    updateZoneLabel(type == GRAPH_TYPE::POWER ? percentageTarget : -1);
 
     replot();
 
@@ -708,3 +719,32 @@ void WorkoutPlotZoomer::setPosition(double timeMsec)  {
     moveIntervalTime(timeMsec);
 }
 
+
+// The power target's zone as a coloured tag (graph-only cards have no title
+// row for the zone chip; when the title row shows, the overlay is off).
+void WorkoutPlotZoomer::updateZoneLabel(double percentageTarget)
+{
+    if (!m_zoneLabel)
+        return;
+    if (percentageTarget <= 0 || !m_valueOverlayVisible) {
+        m_zoneLabel->hide();
+        return;
+    }
+    const auto *account = qApp->property("Account").value<Account *>();
+    const QVector<int> bounds = PowerZones::boundsPct(account ? account->power_zones_pct : QList<int>{});
+    const int zone = PowerZones::zoneForPct(percentageTarget * 100.0, bounds);
+    // QwtText has no padding; thin spaces keep the text off the badge edge.
+    const QString pad = QStringLiteral("\u2009\u2009");
+    QwtText text(pad + PowerZones::label(zone, int(bounds.size()) + 1,
+                                         account ? account->power_zone_names : QStringList{}) + pad);
+    QFont font("Inter");
+    font.setPointSize(9);
+    font.setBold(true);
+    text.setFont(font);
+    text.setColor(QColor("#141418"));
+    text.setBackgroundBrush(PowerZones::color(zone));
+    text.setBorderRadius(6);
+    text.setRenderFlags(Qt::AlignRight | Qt::AlignTop);
+    m_zoneLabel->setText(text);
+    m_zoneLabel->show();
+}

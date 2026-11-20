@@ -100,6 +100,8 @@ public:
     QString intervals_icu_access_token;  ///< OAuth2 bearer token (from OAuth login flow)
     QList<int> hr_zones;               ///< HR zone upper-bounds retrieved from Intervals.icu
     QList<int> power_zones;            ///< Power zone upper-bounds retrieved from Intervals.icu
+    QList<int> power_zones_pct;        ///< The same bounds in % of FTP (follow an FTP change)
+    QStringList power_zone_names;      ///< Intervals.icu zone names, one per zone (may be empty)
 
     bool control_trainer_resistance;
     bool virtual_shifting;         ///< Opt-in (default off): drive resistance from a virtual gear (▲/▼) for single-cog / Zwift Cog setups. Off = real gears / free ride unchanged.
