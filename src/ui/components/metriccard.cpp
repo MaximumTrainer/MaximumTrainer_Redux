@@ -12,7 +12,6 @@ MetricCard::MetricCard(QWidget *parent) : QFrame(parent)
     setProperty("targetState", QStringLiteral("none"));
     setStyleSheet(QStringLiteral(
         "QFrame#metricCard { background-color: #26262d; border: 1px solid #34343d; border-radius: 12px; }"
-        "QFrame#metricCard[targetState=\"ok\"]    { border-left: 4px solid #3fb27f; }"
         "QFrame#metricCard[targetState=\"below\"] { border-left: 4px solid #e5534b; }"
         "QFrame#metricCard[targetState=\"above\"] { border-left: 4px solid #f2a33a; }"));
     m_layout = new QVBoxLayout(this);
