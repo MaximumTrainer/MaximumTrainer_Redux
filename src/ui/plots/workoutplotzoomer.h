@@ -71,7 +71,7 @@ private :
     // Apply a canvas background colour only when it actually changes — this is
     // called on every sensor packet, and setStyleSheet() forces a full style
     // recompute, so guarding on the colour state avoids needless restyles.
-    enum CanvasColor { CANVAS_NEUTRAL, CANVAS_BELOW, CANVAS_ABOVE };
+    enum CanvasColor { CANVAS_NEUTRAL, CANVAS_BELOW, CANVAS_ABOVE, CANVAS_ON_TARGET };
     void setCanvasColor(CanvasColor color);
     int m_canvasColor = -1;
 
@@ -113,9 +113,13 @@ private:
     bool noTarget;
     int leftLow;
     int leftHigh;
+    int targetLow = 0;
+    int targetHigh = 0;
+    int m_lastValue = -1;
+    void fitAxisToLiveValues();
 
     QwtText valueQwtText;
-    QwtPlotTextLabel *qwtTextLabel;
+    QwtPlotTextLabel *qwtTextLabel = nullptr;
     QwtPlotTextLabel *m_zoneLabel = nullptr;   ///< power: the target's zone, top right
     bool m_valueOverlayVisible = true;
     void updateZoneLabel(double percentageTarget);

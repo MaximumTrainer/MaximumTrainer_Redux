@@ -525,7 +525,7 @@ void WorkoutPlotZoomer::moveIntervalTime(double timeNow_msec) {
 
     d_interval = QwtInterval( timeNow_sec - 15 , timeNow_sec + 15);
     setAxisScale( QwtPlot::xBottom, d_interval.minValue(), d_interval.maxValue(), 10 );
-    setAxisScale( QwtPlot::yLeft, leftLow, leftHigh, 10);  //Calculated when receiving value or with target
+    setAxisScale( QwtPlot::yLeft, leftLow, leftHigh, leftHigh - leftLow > 80 ? 0 : 10);  // auto steps once widened
 
 
     replot();
@@ -550,17 +550,32 @@ void WorkoutPlotZoomer::moveIntervalTarget(double target, int range) {
 
 
     /// Make graph smaller when target range is small (zoomed effect)
-    if (range <= 10) {
-        leftHigh = target + range + 7 ;
-        leftLow = target - range - 7;
-        if (leftLow < 0) leftLow = 0;
-    }
-    else {
-        leftHigh = target + range + extraAfterRange ;
-        leftLow = target - range - extraAfterRange;
-        if (leftLow < 0) leftLow = 0;
-    }
+    const int margin = range <= 10 ? 7 : extraAfterRange;
+    targetHigh = int(target) + range + margin;
+    targetLow = qMax(0, int(target) - range - margin);
+    fitAxisToLiveValues();
 
+}
+
+
+// The target band, widened so the live line and the value on screen stay in view.
+void WorkoutPlotZoomer::fitAxisToLiveValues() {
+    leftLow = targetLow;
+    leftHigh = targetHigh;
+    if (m_lastValue < 0)
+        return;
+    int lowest = m_lastValue;
+    int highest = m_lastValue;
+    for (const QPointF &sample : std::as_const(samples)) {
+        lowest = qMin(lowest, int(sample.y()));
+        highest = qMax(highest, int(sample.y()));
+    }
+    const int margin = qMax(3, extraAfterRange / 2);
+    leftLow = qMax(0, qMin(targetLow, lowest - margin));
+    leftHigh = qMax(targetHigh, highest + margin);
+    // Headroom so the line never runs under the big value drawn at the top.
+    if (m_valueOverlayVisible && leftHigh > targetHigh)
+        leftHigh += (leftHigh - leftLow) / 4;
 }
 
 
@@ -622,6 +637,10 @@ void WorkoutPlotZoomer::updateTextLabelValue(int value) {
             }
         }
     }
+    else {
+        m_lastValue = value;
+        fitAxisToLiveValues();
+    }
     ///------------------
 
 
@@ -642,8 +661,8 @@ void WorkoutPlotZoomer::updateTextLabelValue(int value) {
         else if( (diff > targetRange) ) {
             setCanvasColor(CANVAS_ABOVE);
         }
-        else if ( ((diff < targetRange) && (diff > (-targetRange)))) {
-            setCanvasColor(CANVAS_NEUTRAL);
+        else {
+            setCanvasColor(CANVAS_ON_TARGET);
         }
 
     }
@@ -655,9 +674,28 @@ void WorkoutPlotZoomer::setCanvasColor(CanvasColor color) {
         return;
     m_canvasColor = color;
 
-    // The surrounding metric card shows below/above target (side bar and
-    // value colour), so the graph keeps one calm background.
-    canvas()->setStyleSheet(" QwtPlotCanvas { background-color: rgb(31, 31, 37); }");
+    // Same palette as the card's side bar: red below, amber above, green on target.
+    switch (color) {
+    case CANVAS_BELOW:
+        canvas()->setStyleSheet(QStringLiteral(" QwtPlotCanvas { background-color: rgb(84, 34, 36); }"));
+        valueQwtText.setColor(QColor(0xff, 0x8a, 0x84));
+        break;
+    case CANVAS_ABOVE:
+        canvas()->setStyleSheet(QStringLiteral(" QwtPlotCanvas { background-color: rgb(84, 58, 22); }"));
+        valueQwtText.setColor(QColor(0xf2, 0xa3, 0x3a));
+        break;
+    case CANVAS_ON_TARGET:
+        canvas()->setStyleSheet(QStringLiteral(" QwtPlotCanvas { background-color: rgb(31, 31, 37); }"));
+        valueQwtText.setColor(QColor(0x3f, 0xb2, 0x7f));
+        break;
+    case CANVAS_NEUTRAL:
+    default:
+        canvas()->setStyleSheet(QStringLiteral(" QwtPlotCanvas { background-color: rgb(31, 31, 37); }"));
+        valueQwtText.setColor(Qt::white);
+        break;
+    }
+    if (qwtTextLabel)
+        qwtTextLabel->setText(valueQwtText);
 
     // QwtPlotCanvas caches the styled background (including the rounded-corner
     // border) in its backing store, which a bare setStyleSheet() does not
