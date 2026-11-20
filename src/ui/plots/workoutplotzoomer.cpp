@@ -205,8 +205,10 @@ void WorkoutPlotZoomer::init(GRAPH_TYPE graph, bool firstInit) {
         icon->valueText = "0";
 
 
+        // Before 00:00 and after the end: a light shade over the graph's own
+        // background (neutral or the off-target tint), not a solid black block.
         zone1 = new ZoneItem( "Zone Start");
-        zone1->setColor( Qt::black );
+        zone1->setColor( QColor(0, 0, 0, 70) );
         zone1->setInterval( -20, 0 );
         zone1->setVisible( true );
         zone1->attach( this );
@@ -236,11 +238,33 @@ void WorkoutPlotZoomer::init(GRAPH_TYPE graph, bool firstInit) {
     double secWorkout = Util::convertQTimeToSecD(workout.getDurationQTime());
     if (workout.getWorkoutNameEnum() != Workout::OPEN_RIDE) {
         zone2 = new ZoneItem( "Zone End");
-        zone2->setColor( Qt::black );
+        zone2->setColor( QColor(0, 0, 0, 70) );
         zone2->setInterval( secWorkout, secWorkout+20 );
         zone2->setVisible( true );
         zone2->attach( this );
     }
+
+    auto addEdgeMarker = [this](double timeSec, const QString &text, Qt::Alignment side) {
+        auto *marker = new QwtPlotMarker();
+        marker->setValue(timeSec, 0.0);
+        marker->setLineStyle(QwtPlotMarker::VLine);
+        marker->setLinePen(QColor(255, 255, 255, 110), 1.5);
+        QwtText label(text);
+        label.setColor(QColor(255, 255, 255, 150));
+        QFont font = label.font();
+        font.setPointSize(8);
+        font.setWeight(QFont::DemiBold);
+        label.setFont(font);
+        marker->setLabel(label);
+        marker->setLabelAlignment(side | Qt::AlignBottom);
+        marker->setLabelOrientation(Qt::Horizontal);
+        marker->setZ(4);
+        marker->attach(this);
+        lstPlotMarket.append(marker);
+    };
+    addEdgeMarker(0.0, tr("Start"), Qt::AlignRight);
+    if (workout.getWorkoutNameEnum() != Workout::OPEN_RIDE)
+        addEdgeMarker(secWorkout, tr("Finish"), Qt::AlignLeft);
 
 
 }
