@@ -821,19 +821,46 @@ void WorkoutDialog::updateRealTimeGraph(double totalTimeElapsed_msec) {
         achievementManager->checkLiveMinutes(elapsedMinutes);
     }
 
-    // The clock ticks at 40Hz, but each replot() is a full QWT canvas repaint of
-    // three plots — 120 repaints/sec for data that only changes a few times a
-    // second. Coalesce to kMiniGraphRefreshMs (~20fps): smooth scrolling at half
-    // the original work. Throttling on elapsed time (not a wall-clock read) keeps
-    // this pause-aware, and the curve samples appended by the sensor callbacks are
-    // picked up by the next replot regardless.
-    if (totalTimeElapsed_msec - lastMiniGraphReplot_msec < kMiniGraphRefreshMs)
-        return;
-    lastMiniGraphReplot_msec = totalTimeElapsed_msec;
+    // The clock only reports the time here; scrollMiniGraphs() draws. A value
+    // that did not move means the workout is paused (no interpolation then).
+    m_clockAdvancing = totalTimeElapsed_msec != m_lastClockElapsed_msec;
+    if (totalTimeElapsed_msec < m_lastScrolled_msec - 200)
+        m_lastScrolled_msec = -1.0;   // jumped back (seek to an earlier interval)
+    m_lastClockElapsed_msec = totalTimeElapsed_msec;
+    m_sinceClockTick.restart();
+    if (!m_miniGraphTimer) {
+        m_miniGraphTimer = new QTimer(this);
+        m_miniGraphTimer->setTimerType(Qt::PreciseTimer);
+        m_miniGraphTimer->setInterval(16);
+        connect(m_miniGraphTimer, &QTimer::timeout, this, &WorkoutDialog::scrollMiniGraphs);
+        m_miniGraphTimer->start();
+    }
+}
 
-    ui->wid_1_workoutPlot_HeartrateZoom->moveIntervalTime(totalTimeElapsed_msec);
-    ui->wid_2_workoutPlot_PowerZoom->moveIntervalTime(totalTimeElapsed_msec);
-    ui->wid_3_workoutPlot_CadenceZoom->moveIntervalTime(totalTimeElapsed_msec);
+void WorkoutDialog::scrollMiniGraphs()
+{
+    if (m_lastClockElapsed_msec < 0)
+        return;
+    // Between ticks, move on by the wall time since the last one (capped, so a
+    // late tick never lets the graph run ahead), and never step backwards.
+    double now_msec = m_lastClockElapsed_msec;
+    if (m_clockAdvancing)
+        now_msec += qMin<qint64>(m_sinceClockTick.elapsed(), 40);
+    now_msec = qMax(now_msec, m_lastScrolled_msec);
+    // Redraw only once the 30 s window has moved by a whole pixel: smooth, and
+    // no work spent on frames that would look identical.
+    const QWidget *canvas = ui->wid_2_workoutPlot_PowerZoom->canvas();
+    const double canvasWidthPx = qMax(1.0, canvas->width() * canvas->devicePixelRatioF());
+    const double msecPerPixel = 30000.0 / canvasWidthPx;
+    if (m_lastScrolled_msec >= 0 && now_msec - m_lastScrolled_msec < msecPerPixel)
+        return;
+    m_lastScrolled_msec = now_msec;
+
+    for (WorkoutPlotZoomer *zoomer : {ui->wid_1_workoutPlot_HeartrateZoom, ui->wid_2_workoutPlot_PowerZoom,
+                                      ui->wid_3_workoutPlot_CadenceZoom}) {
+        if (zoomer->isVisible())
+            zoomer->moveIntervalTime(now_msec);
+    }
 }
 
 

@@ -74,6 +74,7 @@ private :
     enum CanvasColor { CANVAS_NEUTRAL, CANVAS_BELOW, CANVAS_ABOVE };
     void setCanvasColor(CanvasColor color);
     int m_canvasColor = -1;
+    class QwtPlotZoneItem *m_tint = nullptr;
 
     void init(GRAPH_TYPE graph, bool firstInit);
     void clearPlot();

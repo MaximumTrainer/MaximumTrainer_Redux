@@ -2,6 +2,7 @@
 #define WORKOUTDIALOG_H
 
 #include <QDialog>
+#include <QElapsedTimer>
 #include <QTime>
 #include <QTimer>
 #include <QPointer>
@@ -463,8 +464,14 @@ private:
     // smooth, but the three scrolling mini-graphs only need a fraction of that
     // to look fluid (their data changes at the ~1-4Hz sensor rate). Coalesce
     // their replot() calls to this cadence instead of replotting 40x/sec.
-    static constexpr double kMiniGraphRefreshMs = 50.0; // ~20 fps
-    double lastMiniGraphReplot_msec = -kMiniGraphRefreshMs;
+    // The bottom mini-graphs scroll on their own ~60 fps timer, between the
+    // clock's 25 ms ticks, so frames are evenly spaced.
+    void scrollMiniGraphs();
+    QTimer        *m_miniGraphTimer = nullptr;
+    QElapsedTimer  m_sinceClockTick;
+    double         m_lastClockElapsed_msec = -1.0;
+    double         m_lastScrolled_msec = -1.0;
+    bool           m_clockAdvancing = false;
 
     QTime timeWorkoutRemaining;
     QTime timeElapsedTotal;
