@@ -1,6 +1,7 @@
 #ifndef POWERZONES_H
 #define POWERZONES_H
 
+#include <QBrush>
 #include <QColor>
 #include <QList>
 #include <QStringList>
@@ -19,6 +20,12 @@ QVector<int> boundsPct(const QList<int> &athleteZonesPct);
 int zoneForPct(double pct, const QVector<int> &bounds);
 
 QColor color(int zone);
+
+/// Fill for a block whose target goes from \a startPct to \a endPct of FTP:
+/// a flat zone colour, or for a ramp crossing zones a left-to-right gradient
+/// (relative to the shape's bounding box) that blends toward the next zone
+/// and switches to it where the target crosses the zone bound.
+QBrush brush(double startPct, double endPct, const QVector<int> &bounds, int alpha);
 
 /// "Z3 Tempo": the athlete's zone name when there is one for every zone,
 /// Coggan's names for the default 7 zones, else just "Z3".
