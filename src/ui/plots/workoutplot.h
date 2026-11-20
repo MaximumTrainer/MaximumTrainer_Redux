@@ -114,6 +114,8 @@ private:
 
     MyQwtPlotPicker *d_picker;
     MyQwtPickerMachine *pickerMachine;
+    QWidget *m_topLeftStrip = nullptr;
+    void updatePickerForPointer();
 
     // Difficulty (intensity) nudge control: two buttons around a read-only
     // label. Replaces a QSpinBox whose native +/- buttons mis-rendered under
