@@ -315,9 +315,9 @@ void myCreatorPlot::drawGraphIntervals() {
         /// POWER SHAPE
         lstPointsPower.clear();
         if (val.getPowerStepType() != Interval::NONE) {
-            // Each block takes its zone colour (a ramp: the zone of its midpoint).
             const QColor zoneColor = PowerZones::color(
                 PowerZones::zoneForPct((val.getFTP_start() + val.getFTP_end()) * 50.0, zoneBounds));
+            const QBrush zoneBrush = PowerZones::brush(val.getFTP_start() * 100.0, val.getFTP_end() * 100.0, zoneBounds, 200);
             /// POWER PARALLELOGRAM --------------------------------------------------------
             btnLeft = QPointF(time, val.getFTP_start()*ftp - val.getFTP_range() );
             topLeft = QPointF(time, val.getFTP_start()*ftp + val.getFTP_range() );
@@ -330,9 +330,9 @@ void myCreatorPlot::drawGraphIntervals() {
             lstPointsPower.append(topRight);
             lstPointsPower.append(btnRight);
             if (val.getPowerStepType() == Interval::PROGRESSIVE)
-                addShapeFromPoints("PARALLELOGRAM_POWER", zoneColor, lstPointsPower, 11, true, false);
+                addShapeFromPoints("PARALLELOGRAM_POWER", zoneColor, lstPointsPower, 11, true, false, zoneBrush);
             else
-                addShapeFromPoints("PARALLELOGRAM_POWER", zoneColor, lstPointsPower, 11, false, false);
+                addShapeFromPoints("PARALLELOGRAM_POWER", zoneColor, lstPointsPower, 11, false, false, zoneBrush);
         }
 
 
@@ -435,7 +435,8 @@ void myCreatorPlot::drawGraphIntervals() {
 
 
 void myCreatorPlot::addShapeFromPoints(const QString &title, const QColor &color, QList<QPointF> lstPoints,
-                                       int positionZ, bool antiliasing, bool isBackgroundItem) {
+                                       int positionZ, bool antiliasing, bool isBackgroundItem,
+                                       const QBrush &zoneBrush) {
 
     QwtPlotShapeItem  *item = new QwtPlotShapeItem(title);
     item->setRenderHint(QwtPlotItem::RenderAntialiased, antiliasing);
@@ -451,6 +452,8 @@ void myCreatorPlot::addShapeFromPoints(const QString &title, const QColor &color
     if (outline)
         pen.setStyle(Qt::DashLine);
     pen.setJoinStyle(Qt::MiterJoin);
+    if (zoneBrush.gradient())
+        pen.setBrush(zoneBrush);
     item->setPen(pen);
     item->setZ(positionZ);
     item->attach(this);
@@ -471,7 +474,7 @@ void myCreatorPlot::addShapeFromPoints(const QString &title, const QColor &color
 
     }
     else {
-        item->setBrush(fillColor);
+        item->setBrush(zoneBrush.style() == Qt::NoBrush ? QBrush(fillColor) : zoneBrush);
     }
 
 

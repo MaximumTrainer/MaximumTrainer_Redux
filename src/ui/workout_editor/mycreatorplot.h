@@ -52,7 +52,8 @@ public slots:
 private :
     void drawGraphIntervals();
     void addShapeFromPoints(const QString &title, const QColor &color, QList<QPointF> lstPoints,
-                            int positionZ, bool antiliasing, bool isBackgroundItem);
+                            int positionZ, bool antiliasing, bool isBackgroundItem,
+                            const QBrush &zoneBrush = QBrush());
     void init();
     void ajustScales();
 

@@ -308,9 +308,9 @@ void WorkoutPlotZoomer::drawGraphIntervalsCadence() {
             lstPointsCadenceTarget.append(topRight);
             lstPointsCadenceTarget.append(btnRight);
             if (val.getCadenceStepType() == Interval::PROGRESSIVE)
-                addShapeFromPoints("PARALLELOGRAM_CADENCE", colorTarget, lstPointsCadenceTarget, 11, true);
+                addShapeFromPoints("PARALLELOGRAM_CADENCE_TARGET_LINE", colorTarget, lstPointsCadenceTarget, 11, true);
             else
-                addShapeFromPoints("PARALLELOGRAM_CADENCE", colorTarget, lstPointsCadenceTarget, 11, false);
+                addShapeFromPoints("PARALLELOGRAM_CADENCE_TARGET_LINE", colorTarget, lstPointsCadenceTarget, 11, false);
 
         }
 
@@ -336,7 +336,8 @@ void WorkoutPlotZoomer::drawGraphIntervalsCadence() {
 void WorkoutPlotZoomer::drawGraphIntervalsPower() {
 
 
-    QColor colorPower = Util::getColor(Util::SQUARE_POWER);
+    const Account *zoneAccount = qApp->property("Account").value<Account*>();
+    const QVector<int> zoneBounds = PowerZones::boundsPct(zoneAccount ? zoneAccount->power_zones_pct : QList<int>{});
     QColor colorTarget = Qt::white;
 
 
@@ -378,10 +379,11 @@ void WorkoutPlotZoomer::drawGraphIntervalsPower() {
             lstPointsPower.append(topLeft);
             lstPointsPower.append(topRight);
             lstPointsPower.append(btnRight);
-            if (val.getPowerStepType() == Interval::PROGRESSIVE)
-                addShapeFromPoints("PARALLELOGRAM_POWER", colorPower, lstPointsPower, 10, true);
-            else
-                addShapeFromPoints("PARALLELOGRAM_POWER", colorPower, lstPointsPower, 10, false);
+            const QColor zoneColor = PowerZones::color(
+                PowerZones::zoneForPct((val.getFTP_start() + val.getFTP_end()) * 50.0, zoneBounds));
+            const QBrush zoneBrush = PowerZones::brush(val.getFTP_start() * 100.0, val.getFTP_end() * 100.0, zoneBounds, 200);
+            addShapeFromPoints("PARALLELOGRAM_POWER", zoneColor, lstPointsPower, 10,
+                               val.getPowerStepType() == Interval::PROGRESSIVE, zoneBrush);
 
 
             /// POWER TARGET LINE
@@ -690,7 +692,8 @@ void WorkoutPlotZoomer::targetChanged(double percentageTarget, int range ) {
 }
 
 
-void WorkoutPlotZoomer::addShapeFromPoints(const QString &title, const QColor &color, QList<QPointF> lstPoints, int positionZ, bool antiliasing) {
+void WorkoutPlotZoomer::addShapeFromPoints(const QString &title, const QColor &color, QList<QPointF> lstPoints, int positionZ, bool antiliasing,
+                                           const QBrush &zoneBrush) {
 
     QwtPlotShapeItem *item = new QwtPlotShapeItem(title);
 
@@ -700,11 +703,18 @@ void WorkoutPlotZoomer::addShapeFromPoints(const QString &title, const QColor &c
 
     QColor fillColor = color;
     fillColor.setAlpha(200);
-
-    QPen pen(color, 1);
+    // Same look as the main graph: cadence is an outline, power blocks take their zone colour.
+    const bool outline = title == QLatin1String("PARALLELOGRAM_CADENCE");
+    if (outline)
+        fillColor.setAlpha(40);
+    QPen pen(color, outline ? 1.5 : 1);
+    if (outline)
+        pen.setStyle(Qt::DashLine);
+    if (zoneBrush.gradient())
+        pen.setBrush(zoneBrush);
     pen.setJoinStyle(Qt::MiterJoin);
     item->setPen(pen);
-    item->setBrush(fillColor);
+    item->setBrush(zoneBrush.style() == Qt::NoBrush ? QBrush(fillColor) : zoneBrush);
     item->setZ(positionZ);
     item->attach(this);
 

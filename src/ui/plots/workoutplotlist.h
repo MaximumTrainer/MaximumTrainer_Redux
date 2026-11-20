@@ -28,7 +28,8 @@ public:
 private :
     void init();
     void drawGraphIntervals();
-    void addShapeFromPoints(const QString &title, const QColor &color, QList<QPointF> lstPoints, int positionZ, bool antiliasing);
+    void addShapeFromPoints(const QString &title, const QColor &color, QList<QPointF> lstPoints, int positionZ, bool antiliasing,
+                            const QBrush &zoneBrush = QBrush());
 
 
 private:

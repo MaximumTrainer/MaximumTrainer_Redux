@@ -181,6 +181,31 @@ private slots:
         QVERIFY(!RideComparison::compare(now, before).hasHeartRate);
     }
 
+    void powerZones_rampBrushSwitchesAtZoneBounds()
+    {
+        const QVector<int> coggan = PowerZones::boundsPct({});
+        const QBrush steady = PowerZones::brush(60, 70, coggan, 200);
+        QCOMPARE(steady.style(), Qt::SolidPattern);
+        QCOMPARE(steady.color().rgb(), PowerZones::color(1).rgb());
+
+        // 50 -> 80 %: Z1 until 55 % (1/6 of the way), Z2 until 75 %, then Z3.
+        const QBrush ramp = PowerZones::brush(50, 80, coggan, 200);
+        QCOMPARE(ramp.style(), Qt::LinearGradientPattern);
+        const QGradientStops stops = ramp.gradient()->stops();
+        QCOMPARE(stops.first().second.rgb(), PowerZones::color(0).rgb());
+        QCOMPARE(stops.last().second.rgb(), PowerZones::color(2).rgb());
+        QVERIFY(stops.at(1).second.rgb() != PowerZones::color(0).rgb());   // faded toward Z2
+        QVERIFY(qAbs(stops.at(1).first - 1.0 / 6) < 1e-9);
+        QCOMPARE(stops.at(2).second.rgb(), PowerZones::color(1).rgb());    // true Z2 from the bound
+        QCOMPARE(stops.size(), 6);
+        QCOMPARE(stops.at(4).second.rgb(), PowerZones::color(2).rgb());     // true Z3 from 75 %
+
+        // A cool-down runs the other way: starts Z3, ends Z1.
+        const QGradientStops down = PowerZones::brush(80, 50, coggan, 200).gradient()->stops();
+        QCOMPARE(down.first().second.rgb(), PowerZones::color(2).rgb());
+        QCOMPARE(down.last().second.rgb(), PowerZones::color(0).rgb());
+    }
+
     void rideSummary_zonesAndIntensity()
     {
         const QVector<int> coggan = PowerZones::boundsPct({});
