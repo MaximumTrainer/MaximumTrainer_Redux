@@ -392,7 +392,13 @@ void WorkoutPlot::init(bool firstInit) {
         gridLayout->setSpacing(0);
         gridLayout->setContentsMargins(0,0,0,0);
         gridLayout->addWidget(widgetDifficulty, 0, 1, 1, 1, Qt::AlignRight | Qt::AlignTop);
-        gridLayout->addWidget(labelAlertMessage, 0, 0, 0, 0, Qt::AlignLeft | Qt::AlignTop);
+        auto *topLeft = new QWidget(this);
+        topLeft->setAttribute(Qt::WA_TranslucentBackground);
+        topLeftLayout = new QVBoxLayout(topLeft);
+        topLeftLayout->setContentsMargins(0, 0, 0, 0);
+        topLeftLayout->setSpacing(4);
+        topLeftLayout->addWidget(labelAlertMessage, 0, Qt::AlignLeft);
+        gridLayout->addWidget(topLeft, 0, 0, 0, 0, Qt::AlignLeft | Qt::AlignTop);
         gridLayout->addWidget(labelMsg, 0, 0, 2, 2);
         gridLayout->addWidget(labelMsgInterval, 0, 0, 2, 2, Qt::AlignBottom);
         gridLayout->addWidget(labelNotice, 0, 0, 2, 2, Qt::AlignHCenter | Qt::AlignTop);
@@ -590,6 +596,12 @@ void WorkoutPlot::showNotice(const QString &text) {
     labelNotice->setText(text);
     labelNotice->show();
     labelNotice->fadeIn(300);
+}
+
+void WorkoutPlot::setTopLeftStrip(QWidget *strip) {
+    topLeftLayout->insertWidget(0, strip, 0, Qt::AlignLeft);
+    m_topLeftStrip = strip;
+    strip->installEventFilter(this);
 }
 
 void WorkoutPlot::hideNotice() {

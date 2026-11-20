@@ -196,6 +196,7 @@ mt_add_test(intervals_icu_integration_tests
 if(TARGET Qt6::Bluetooth)
     mt_add_test(btle_tests
         SOURCES ${LOGGER} "${SRC}/btle/btle_hub.cpp" "${SRC}/btle/simulator_hub.cpp"
+            "${SRC}/btle/sensor_connector.cpp" "${SRC}/btle/btle_sensor_store.cpp"
             btle/tst_btle_hub.cpp btle/btle_device_simulator.h
         QT Bluetooth
         INCLUDES "${SRC}/btle" "${SRC}/btle/zwift" "${SRC}/app")
@@ -258,6 +259,7 @@ mt_add_test(ui_navigation_tests QWT
 mt_add_test(ui_screens_tests QWT
     SOURCES ${LOGGER} ${APP_MODEL} ${CRED_STUB} ${REPEAT_WIDGET}
         "${SRC}/ui/components/faderlabel.cpp" "${SRC}/ui/components/shapefactory.cpp"
+        "${SRC}/ui/components/sensorstatusstrip.cpp"
         "${SRC}/ui/plots/curvedatacadence.cpp" "${SRC}/ui/plots/curvedataheartrate.cpp"
         "${SRC}/ui/plots/curvedatapower.cpp" "${SRC}/ui/plots/curvedataspeed.cpp"
         "${SRC}/ui/plots/workoutplot.cpp" "${SRC}/ui/plots/zoneitem.cpp"

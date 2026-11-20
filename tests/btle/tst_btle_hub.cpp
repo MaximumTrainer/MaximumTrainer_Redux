@@ -24,6 +24,7 @@
 #include "../../src/btle/btle_hub.h"
 #include "../../src/btle/btle_sensor_config.h"
 #include "../../src/btle/simulator_hub.h"
+#include "../../src/btle/sensor_connector.h"
 #include "../../src/model/intervalsummaryutil.h"
 #include "btle_device_simulator.h"
 
@@ -38,6 +39,42 @@ class TstBtleHub : public QObject
     Q_OBJECT
 
 private slots:
+    void sensorConnector_slotsSkipUnusableSensorsAndFollowMode()
+    {
+        auto saved = [](BtleSensorRole role, const QString &name, bool enabled = true) {
+            BtleSavedSensor sensor;
+            sensor.role = role;
+            sensor.name = name;
+            sensor.address = QStringLiteral("AA:BB:CC:00:00:0%1").arg(int(role));
+            sensor.enabled = enabled;
+            return sensor;
+        };
+        QMap<BtleSensorRole, BtleSavedSensor> sensors;
+        sensors.insert(BtleSensorRole::Trainer, saved(BtleSensorRole::Trainer, QStringLiteral("KICKR")));
+        sensors.insert(BtleSensorRole::Rower, saved(BtleSensorRole::Rower, QStringLiteral("PM5")));
+        sensors.insert(BtleSensorRole::HeartRate, saved(BtleSensorRole::HeartRate, QStringLiteral("HRM")));
+        sensors.insert(BtleSensorRole::Power, saved(BtleSensorRole::Power, QStringLiteral("Pedals"), false));
+        BtleSavedSensor nameless = saved(BtleSensorRole::Oxygen, QString());
+        sensors.insert(BtleSensorRole::Oxygen, nameless);
+
+        auto roles = [](const QVector<SensorConnector::Slot> &slotList) {
+            QList<BtleSensorRole> result;
+            for (const SensorConnector::Slot &slot : slotList) result.append(slot.role);
+            return result;
+        };
+        QCOMPARE(roles(SensorConnector::slotsFor(sensors, false)),
+                 (QList<BtleSensorRole>{BtleSensorRole::Trainer, BtleSensorRole::HeartRate}));
+        QCOMPARE(roles(SensorConnector::slotsFor(sensors, true)),
+                 (QList<BtleSensorRole>{BtleSensorRole::Rower, BtleSensorRole::HeartRate}));
+
+        SensorConnector connector(sensors, false);
+        QCOMPARE(connector.sensorSlots().size(), 2);
+        QVERIFY(!connector.anyConnected());
+        QVERIFY(connector.connectedHubs().isEmpty());
+        for (const SensorConnector::Slot &slot : connector.sensorSlots())
+            QCOMPARE(slot.status, SensorConnector::Status::Searching);
+    }
+
     // ── Test initialisation ──────────────────────────────────────────────────
     void init();
     void cleanup();

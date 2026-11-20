@@ -55,6 +55,9 @@
 #include "btle_scanner_dialog.h"
 #include "btle_sensor_store.h"
 #include "sensor_connect_dialog.h"
+#include "sensor_connector.h"
+#include "sensorstatusstrip.h"
+#include "zwift_click_manager.h"
 #endif
 #include "sensorswidget.h"
 #include "studiowidget.h"
@@ -949,33 +952,13 @@ void MainWindow::executeWorkout(Workout workout) {
         return;
     }
 
-    // If the user has saved sensors (Sensors tab), connect to all of them at
-    // once via the connection-status dialog. With no saved sensors we fall
-    // through to the legacy single-device scanner below.
+    // Saved sensors connect inside the workout window; with none saved, pick
+    // one device with the scanner below.
     {
         const QMap<BtleSensorRole, BtleSavedSensor> savedSensors = BtleSensorStore::loadAll();
-        if (!savedSensors.isEmpty()) {
-            SensorConnectDialog connectDlg(savedSensors, this);
-            connect(&connectDlg, &SensorConnectDialog::openSensorPreferences,
-                    this, [this, &connectDlg]() {
-                        // "Manage Sensors" – cancel the connect flow and switch
-                        // to the Sensors tab so the user can edit their devices.
-                        connectDlg.reject();
-                        ftb->setCurrentIndex(3);
-                    });
-            if (account->use_zwift_click)
-                connectDlg.enableZwiftClick();   // pair the controllers before the ride
-
-            if (connectDlg.exec() != QDialog::Accepted)
-                return;   // user cancelled / chose Manage Sensors
-
-            QMap<BtleSensorRole, BtleHub*> hubsByRole = connectDlg.connectedHubs();
-            if (!hubsByRole.isEmpty()) {
-                connectDlg.detachHubs();   // we now own the hubs
-                startWorkoutWithHubs(workout, hubsByRole, connectDlg.takeZwiftClickManager());
-                return;
-            }
-            // Empty result = "Skip": drop through to the legacy manual scanner.
+        if (!SensorConnector::slotsFor(savedSensors, account->rowing_mode).isEmpty()) {
+            startWorkoutConnectingSensors(workout, savedSensors);
+            return;
         }
     }
 
@@ -1192,9 +1175,8 @@ void MainWindow::startWorkoutWithConnectedHub(const Workout &workout, BtleHub *b
 
 
 #ifndef GC_WASM_BUILD
-void MainWindow::startWorkoutWithHubs(const Workout &workout,
-                                      const QMap<BtleSensorRole, BtleHub*> &hubsByRole,
-                                      ZwiftClickManager *zwiftClick)
+void MainWindow::startWorkoutConnectingSensors(const Workout &workout,
+                                               const QMap<BtleSensorRole, BtleSavedSensor> &savedSensors)
 {
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
@@ -1204,25 +1186,58 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
     w->setAttribute(Qt::WA_DeleteOnClose);
     w->setWindowModality(Qt::ApplicationModal);
 
-    QSet<BtleHub*> allHubs;
-    wireHubsToDialog(w, hubsByRole, allHubs);
-    w->adoptZwiftClickManager(zwiftClick);
+    auto *connector = new SensorConnector(savedSensors, account->rowing_mode, this);
+    SensorStatusStrip *strip = w->sensorStrip();
+    for (const SensorConnector::Slot &slot : connector->sensorSlots())
+        strip->addSensor(int(slot.role), BtleSensorStore::roleDisplayName(slot.role), slot.saved.name);
+    connect(connector, &SensorConnector::statusChanged, strip,
+            [strip](BtleSensorRole role, SensorConnector::Status status) {
+                strip->setState(int(role), SensorStatusStrip::State(int(status)));
+            });
+    connect(strip, &SensorStatusStrip::retryRequested, connector,
+            [connector](int key) { connector->retry(BtleSensorRole(key)); });
+
+    // Re-wire everything that is connected whenever a hub (re)connects, so the
+    // source priorities still hold: a dedicated HR strap or cadence sensor that
+    // comes up after the trainer takes over from the trainer's own reading.
+    connect(connector, &SensorConnector::hubConnected, w, [this, w, connector](BtleHub *connectedHub) {
+        for (BtleHub *hub : connector->hubs()) {
+            disconnect(hub, nullptr, w, nullptr);
+            disconnect(w, nullptr, hub, nullptr);
+            disconnect(hub, &BtleHub::signal_trainerProvidesHr, this, nullptr);
+        }
+        const QMap<BtleSensorRole, BtleHub*> connected = connector->connectedHubs();
+        QSet<BtleHub*> wiredHubs;
+        wireHubsToDialog(w, connected, wiredHubs);
+        const BtleSensorRole ftmsRole = account->rowing_mode ? BtleSensorRole::Rower : BtleSensorRole::Trainer;
+        if (connected.value(ftmsRole, nullptr) == connectedHub)
+            w->trainerConnected();
+    });
+
+    if (account->use_zwift_click) {
+        constexpr int kZwiftClickKey = 1000;
+        auto *click = new ZwiftClickManager();
+        strip->addSensor(kZwiftClickKey, tr("Zwift Click"));
+        connect(click, &ZwiftClickManager::connectionChanged, strip, [strip, click]() {
+            strip->setState(kZwiftClickKey, click->rightConnected() ? SensorStatusStrip::State::Connected
+                                                                    : SensorStatusStrip::State::Searching);
+        });
+        w->adoptZwiftClickManager(click);
+        click->start();
+    }
 
     connect(w, &WorkoutDialog::ftp_lthr_changed, ui->tab_workout1, &Main_WorkoutPage::updateTableViewMetrics);
     connect(w, &WorkoutDialog::ftpUserStudioChanged, this, &MainWindow::updateVecStudio);
-
-    connect(w, &QDialog::finished, this, [this, allHubs]() {
+    connect(w, &QDialog::finished, this, [this, connector]() {
         workoutOver();
-        for (BtleHub *hub : allHubs) {
-            hub->disconnectFromDevice();
-            delete hub;
-        }
+        delete connector;   // disconnects and frees every hub
     });
 
     attachPendingGroupSession(w);
     workoutExecuting();
     QApplication::restoreOverrideCursor();
     w->show();
+    connector->start();
 }
 
 // Wire one rider's connected hubs (keyed by role) to the dialog: shared

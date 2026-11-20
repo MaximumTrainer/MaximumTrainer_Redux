@@ -1,4 +1,5 @@
 #include "workoutdialog.h"
+#include "sensorstatusstrip.h"
 #include "setting_keys.h"
 #include "asyncdialogs.h"
 #include "virtual_gear.h"
@@ -1998,6 +1999,23 @@ void WorkoutDialog::sendSlopes(double slope) {
 
 // Virtual shifting (#293) — drive a single-cog trainer's resistance from a
 // rider-controlled gear instead of sending slope 0 (which spins out).
+SensorStatusStrip *WorkoutDialog::sensorStrip()
+{
+    if (!m_sensorStrip) {
+        m_sensorStrip = new SensorStatusStrip(this);
+        ui->widget_workoutPlot->setTopLeftStrip(m_sensorStrip);
+    }
+    return m_sensorStrip;
+}
+
+void WorkoutDialog::trainerConnected()
+{
+    enableTrainerControl();
+    stopErgSmoothing();
+    m_ergSmoothLast = 0;
+    targetPowerChanged_f(m_lastPowerTargetPct, m_lastPowerTargetRange);
+}
+
 void WorkoutDialog::showSimulatedDataNotice()
 {
     m_simulatedDataNotice = true;
@@ -2237,6 +2255,8 @@ void WorkoutDialog::ergSmoothStep()
 
 void WorkoutDialog::targetPowerChanged_f(double percentageTarget, int range) {
 
+    m_lastPowerTargetPct = percentageTarget;
+    m_lastPowerTargetRange = range;
 
     if (percentageTarget <= 0 || isUsingSlopeMode || !account->control_trainer_resistance) {
         // Single-cog trainers spin out at slope 0 (#293) — drive the virtual
