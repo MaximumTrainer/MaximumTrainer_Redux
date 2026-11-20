@@ -21,6 +21,7 @@
 #include "config_bootstrap.h"
 #include "environnement.h"
 #include "startup_trace.h"
+#include "stallwatchdog.h"
 
 #include <QElapsedTimer>
 #include <QSurfaceFormat>
@@ -134,6 +135,8 @@ int main(int argc, char *argv[]) {
         appHolder = std::make_unique<QApplication>(argc, argv);
     }
     QApplication &app = *appHolder;
+    if (app.arguments().contains(QLatin1String("--stall-check"), Qt::CaseInsensitive))
+        StallWatchdog::start();
 
     // Bundled UI font: one family with a deliberate weight scale on every
     // platform, instead of whatever each OS defaults to. Inter (SIL OFL,

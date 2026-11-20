@@ -28,7 +28,7 @@ endforeach()
 
 target_sources(mt_core PRIVATE
     # app
-    app/logger.cpp app/config_bootstrap.cpp app/startup_trace.cpp app/webengine_safe_mode.cpp
+    app/logger.cpp app/config_bootstrap.cpp app/startup_trace.cpp app/stallwatchdog.cpp app/webengine_safe_mode.cpp
     app/util.cpp app/updatenotifier.cpp app/globalvars.cpp app/simplecrypt.cpp app/networkmonitor.cpp
     app/qtmediaplayer.h
     # fitness
