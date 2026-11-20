@@ -666,15 +666,16 @@
         <h2>🎮 Simulation Mode</h2>
         <p>
           If you have no Bluetooth hardware available — or simply want to preview a new workout —
-          choose <strong>Simulation</strong> in the connection dialog. The built-in simulator
+          turn on <strong>Devices &rarr; Simulated Sensors</strong>. The built-in simulator
           generates realistic, gently drifting sensor values and responds to ERG load commands,
           giving you a full end-to-end test of the training logic without any physical devices.
         </p>
 
         <ol class="steps">
-          <li>When the connection method dialog appears, select <strong>Simulation</strong> instead of <em>BTLE Device</em>.</li>
-          <li>Choose a workout and press <strong>Start</strong>.</li>
-          <li>The simulator immediately begins emitting data — no hardware required.</li>
+          <li>Open the <strong>Devices</strong> tab and tick <strong>Use simulated sensors</strong>.</li>
+          <li>Choose a workout and start it. No Bluetooth device is connected; the workout window
+              shows <em>Using simulated data</em> in the middle of the graph as a reminder.</li>
+          <li>The simulator immediately begins emitting data. Untick the option to go back to your real sensors.</li>
         </ol>
 
         <div class="guide-table-wrap">
@@ -1014,7 +1015,7 @@
         <h3>Starting a workout</h3>
         <ol class="steps">
           <li>Select a workout in the main window and click <strong>Start Workout</strong> (or double-click it).</li>
-          <li>Choose your connection method: <strong>BTLE Device</strong> (real hardware) or <strong>Simulation</strong>.</li>
+          <li>Your saved sensors connect (or, with <strong>Devices &rarr; Simulated Sensors</strong> on, the simulator starts).</li>
           <li>The workout player opens and waits at the start line.</li>
           <li>It begins according to your <strong>start trigger</strong> (below) — by default, as soon as you start pedalling. You can also press <strong>Start</strong> (or <kbd>Space</kbd> / <kbd>Enter</kbd>) at any time.</li>
         </ol>

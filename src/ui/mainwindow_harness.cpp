@@ -37,7 +37,6 @@
 #include "xmlutil.h"
 #include "managerachievement.h"
 #include "simulator_hub.h"
-#include "dialog_connection_method.h"
 #include "networkmonitor.h"
 #include "dialogkeyboardshortcuts.h"
 #include "apptheme.h"

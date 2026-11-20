@@ -39,12 +39,6 @@
  *    canonical peer path  build/release/MaximumTrainer{.app|.exe}.
  *    The test is skipped gracefully when the binary is not found.
  *
- * 1. ConnectionDialog (DialogConnectionMethod)
- *    Verifies that clicking "Simulation" or "BTLE Device" accepts the
- *    dialog, emits QDialog::accepted(), and sets the correct
- *    DialogConnectionMethod::ConnectionMethod on the returned value.
- *    Uses QTest::mouseClick() and QSignalSpy.
- *
  * 2. WorkoutCreator — IntervalTableModel interactions
  *    Tests the GUI-level interval management model that backs the
  *    WorkoutCreator table view.  Exercises:

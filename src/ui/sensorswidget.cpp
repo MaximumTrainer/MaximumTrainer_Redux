@@ -30,6 +30,24 @@ SensorsWidget::SensorsWidget(QWidget *parent)
     reload();
 }
 
+void SensorsWidget::addSimulatedSensorsGroup(QVBoxLayout *layout)
+{
+    QGroupBox *simulatedGroup = new QGroupBox(tr("Simulated Sensors"), this);
+    QVBoxLayout *simulatedLayout = new QVBoxLayout(simulatedGroup);
+    simulatedLayout->setSpacing(4);
+    m_simulatedSensorsCheck = new QCheckBox(tr("Use simulated sensors (power, heart rate, cadence, speed)"), simulatedGroup);
+    m_simulatedSensorsCheck->setObjectName(QStringLiteral("checkSimulatedSensors"));
+    connect(m_simulatedSensorsCheck, &QCheckBox::toggled, this, &SensorsWidget::onSimulatedSensorsToggled);
+    simulatedLayout->addWidget(m_simulatedSensorsCheck);
+    QLabel *simulatedHint = new QLabel(
+        tr("Try the app without hardware: workouts run on generated data and no Bluetooth device is connected."),
+        simulatedGroup);
+    simulatedHint->setWordWrap(true);
+    simulatedHint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
+    simulatedLayout->addWidget(simulatedHint);
+    layout->addWidget(simulatedGroup);
+}
+
 void SensorsWidget::buildUi()
 {
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -49,6 +67,7 @@ void SensorsWidget::buildUi()
     unavailable->setWordWrap(true);
     unavailable->setStyleSheet(QStringLiteral("color: #777;"));
     mainLayout->addWidget(unavailable);
+    addSimulatedSensorsGroup(mainLayout);
     mainLayout->addStretch();
     return;
 #else
@@ -220,6 +239,7 @@ void SensorsWidget::buildUi()
 
     mainLayout->addWidget(batteryGroup);
 
+    addSimulatedSensorsGroup(mainLayout);
     mainLayout->addStretch();
 
     // The FTMS slot and control group follow the app mode (Rower vs Trainer).
@@ -230,6 +250,10 @@ void SensorsWidget::buildUi()
 
 void SensorsWidget::reload()
 {
+    if (m_account && m_simulatedSensorsCheck) {
+        QSignalBlocker b(m_simulatedSensorsCheck);
+        m_simulatedSensorsCheck->setChecked(m_account->use_simulated_sensors);
+    }
 #ifndef GC_WASM_BUILD
     const QMap<BtleSensorRole, BtleSavedSensor> saved = BtleSensorStore::loadAll();
     for (int i = 0; i < m_rows.size(); ++i) {
@@ -285,6 +309,14 @@ void SensorsWidget::onVirtualShiftingToggled(bool checked)
     if (!m_account)
         return;
     m_account->virtual_shifting = checked;
+    m_account->saveDisplayPrefs();
+}
+
+void SensorsWidget::onSimulatedSensorsToggled(bool checked)
+{
+    if (!m_account)
+        return;
+    m_account->use_simulated_sensors = checked;
     m_account->saveDisplayPrefs();
 }
 

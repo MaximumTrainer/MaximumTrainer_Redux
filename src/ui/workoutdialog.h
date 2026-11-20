@@ -73,6 +73,10 @@ public:
     /// for every BLE workout.  Solo hubs ignore the id (1 = solo rider).
     void enableTrainerControl();   // sets the solo id and reveals the gear indicator
 
+    /// Devices > Simulated Sensors is on: say so in the middle of the graph
+    /// until shortly after the workout starts.
+    void showSimulatedDataNotice();
+
     void showVideoPlayer(int choice);
 
     /// Group workout: shows the group column and holds the start until the
@@ -221,6 +225,7 @@ private slots:
 
 
 private:
+    bool m_simulatedDataNotice = false;
 
     void keyPressEvent(QKeyEvent *event) override;
     void showEvent(QShowEvent *event) override;
