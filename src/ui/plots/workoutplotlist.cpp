@@ -196,13 +196,14 @@ void WorkoutPlotList::addShapeFromPoints(const QString &title, const QColor &col
 
     QColor fillColor = color;
     fillColor.setAlpha(200);
-    // Cadence is an outline, so it never reads as a power zone block.
-    const bool outline = title == QLatin1String("PARALLELOGRAM_CADENCE");
+    // Cadence and heart rate are outlines, so they never read as a power zone block.
+    const bool outline = title == QLatin1String("PARALLELOGRAM_CADENCE")
+                         || title == QLatin1String("PARALLELOGRAM_HR");
     if (outline)
         fillColor.setAlpha(40);
     QColor penColor = color;
     if (outline)
-        penColor.setAlpha(170);   // thumbnails are too small for a dashed line
+        penColor.setAlpha(170);   // thumbnails are too small for dashed/dotted lines
     QPen pen(penColor, 1);
     pen.setJoinStyle(Qt::MiterJoin);
     if (zoneBrush.gradient())
