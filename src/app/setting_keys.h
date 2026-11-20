@@ -130,8 +130,8 @@ inline constexpr SettingKey<int> Type    {"Filter/typeFilter",    -1};
 } // namespace WorkoutFilter
 
 namespace WorkoutQueue {
-inline const SettingKey<QStringList> FilePaths {"workoutQueue/filePaths", QStringList()};
-inline const SettingKey<QStringList> Names     {"workoutQueue/names",     QStringList()};
+/// Retired (the workout queue was removed); the whole group is removed at load.
+inline const SettingKey<QStringList> RetiredGroup {"workoutQueue", QStringList()};
 } // namespace WorkoutQueue
 
 /// Last directory used by a file dialog; read with the home directory as default.

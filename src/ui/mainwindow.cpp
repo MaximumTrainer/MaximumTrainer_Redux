@@ -40,7 +40,6 @@
 #include "dialog_connection_method.h"
 #include "networkmonitor.h"
 #include "dialogkeyboardshortcuts.h"
-#include "workoutcountdowndialog.h"
 #include "apptheme.h"
 
 #include <QDir>
@@ -349,23 +348,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     if (auto *hw = qobject_cast<HistoryWidget*>(ui->historyWidget))
         hw->setAdherenceStore(m_adherenceStore);
 
-    // ── Workout Queue (#152) ─────────────────────────────────────────────────
-    m_workoutQueue = new WorkoutQueue(this);
-    m_queuePanel   = new QueuePanelWidget(m_workoutQueue, this);
-
-    m_queueDock = new QDockWidget(tr("Workout Queue"), this);
-    m_queueDock->setObjectName(QStringLiteral("workoutQueueDock"));
-    m_queueDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    m_queueDock->setWidget(m_queuePanel);
-    m_queueDock->setMinimumWidth(220);
-    addDockWidget(Qt::RightDockWidgetArea, m_queueDock);
-    m_queueDock->hide();
-
-    connect(ui->tab_workout1, &Main_WorkoutPage::addWorkoutToQueue,
-            this, &MainWindow::addWorkoutToQueue);
-    connect(m_queuePanel, &QueuePanelWidget::startQueueRequested,
-            this, &MainWindow::startWorkoutQueue);
-
 #ifdef GC_WASM_BUILD
     // Expose the demo-workout test hook so Playwright can drive the app into
     // the metric-dashboard view and verify QML rendering in the browser.
@@ -436,90 +418,6 @@ void MainWindow::goToWorkoutNameFilterFromIntervals(const QString &workoutName) 
     ftb->setCurrentIndex(0);
 }
 
-
-// Launch the queue from item #1 (triggered by the Start button). Dequeues the
-// first workout itself and runs it directly; the normal finished()→advance chain
-// then handles the rest. Dequeuing here is what prevents the double-run the issue
-// describes (where double-clicking a list row also re-ran it as queue item #1).
-void MainWindow::startWorkoutQueue()
-{
-    if (m_launchingWorkout || isInsideWorkout)
-        return;
-
-    // Take the next non-blank item atomically (see tryAdvanceWorkoutQueue).
-    QString name;
-    QString path;
-    while (!m_workoutQueue->isEmpty()) {
-        name = m_workoutQueue->name(0);
-        path = m_workoutQueue->dequeueFilePath();
-        if (!path.isEmpty())
-            break;
-    }
-    if (path.isEmpty())
-        return;
-
-    XmlUtil xml;
-    Workout first = xml.parseSingleWorkoutXml(path);
-    if (!first.getName().isEmpty()) {
-        executeWorkout(first);
-    } else {
-        AsyncDialogs::warning(this,
-                              tr("Queue Error"),
-                              tr("Could not load the queued workout:\n%1\n(%2)").arg(name, path));
-        tryAdvanceWorkoutQueue();
-    }
-}
-
-void MainWindow::tryAdvanceWorkoutQueue()
-{
-    // Take the next item NOW (atomically), skipping any blank entries. The
-    // event loop keeps running while the countdown below is open, so if we only
-    // read here and deferred the dequeue, a re-entrant advance could read the
-    // same item again or observe a half-updated queue — that produced the
-    // empty-path "Could not load the next queued workout" error.
-    QString nextName;
-    QString nextPath;
-    while (!m_workoutQueue->isEmpty()) {
-        nextName = m_workoutQueue->name(0);
-        nextPath = m_workoutQueue->dequeueFilePath();
-        if (!nextPath.isEmpty())
-            break;
-    }
-    if (nextPath.isEmpty())
-        return;
-
-    // Countdown runs via open() + finished — exec() is fatal on WASM.
-    auto *countdown = new WorkoutCountdownDialog(nextName, 60, this);
-    countdown->setAttribute(Qt::WA_DeleteOnClose);
-    connect(countdown, &QDialog::finished, this,
-            [this, countdown, nextName, nextPath](int result) {
-        if (result != QDialog::Accepted) {
-            // User chose "Cancel Queue" — clear the remaining queue so it
-            // doesn't auto-advance after subsequent workouts.
-            if (countdown->dialogResult() == WorkoutCountdownDialog::Result::Cancelled)
-                m_workoutQueue->clear();
-            return;
-        }
-
-        // Defer via singleShot so the dialog teardown fully unwinds before
-        // the next workout begins — avoids unbounded recursion with long queues.
-        QTimer::singleShot(0, this, [this, nextName, nextPath]() {
-            XmlUtil xmlNext;
-            Workout next = xmlNext.parseSingleWorkoutXml(nextPath);
-            if (!next.getName().isEmpty()) {
-                executeWorkout(next);
-            } else {
-                AsyncDialogs::warning(this,
-                                      tr("Queue Error"),
-                                      tr("Could not load the next queued workout:\n%1\n(%2)")
-                                          .arg(nextName, nextPath));
-                // The bad entry is already removed; keep the queue moving.
-                tryAdvanceWorkoutQueue();
-            }
-        });
-    });
-    countdown->open();
-}
 
 void MainWindow::workoutExecuting() {
 
@@ -953,18 +851,6 @@ void MainWindow::on_actionHistory_triggered()
 }
 
 
-void MainWindow::addWorkoutToQueue(const Workout &workout)
-{
-    m_workoutQueue->addWorkout(workout.getFilePath(), workout.getName());
-    m_queueDock->show();
-    ui->widget_bottomMenu->setGeneralMessage(
-        tr("\"%1\" added to queue (%2 workout(s)).")
-            .arg(workout.getName())
-            .arg(m_workoutQueue->count()),
-        4000);
-}
-
-
 void MainWindow::on_actionCreate_New_triggered()
 {
 
@@ -1201,8 +1087,6 @@ void MainWindow::startSimulatedWorkout(const Workout &workout)
             simHub->stopDecodingMsg();
             delete simHub;
         }
-        // Auto-advance to next queued workout if one exists
-        tryAdvanceWorkoutQueue();
     });
 
     for (SimulatorHub *simHub : simHubs)
@@ -1315,8 +1199,6 @@ void MainWindow::startWorkoutWithConnectedHub(const Workout &workout, BtleHub *b
         workoutOver();
         btleHub->disconnectFromDevice();
         delete btleHub;
-        // Auto-advance to next queued workout if one exists
-        tryAdvanceWorkoutQueue();
     });
 
     attachPendingGroupSession(w);
@@ -1354,8 +1236,6 @@ void MainWindow::startWorkoutWithHubs(const Workout &workout,
             hub->disconnectFromDevice();
             delete hub;
         }
-        // Auto-advance to next queued workout if one exists
-        tryAdvanceWorkoutQueue();
     });
 
     attachPendingGroupSession(w);
@@ -1483,7 +1363,6 @@ void MainWindow::startWorkoutWithStudioHubs(const Workout &workout,
             hub->disconnectFromDevice();
             delete hub;
         }
-        tryAdvanceWorkoutQueue();
     });
 
     attachPendingGroupSession(w);

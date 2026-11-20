@@ -40,7 +40,6 @@
 #include "dialog_connection_method.h"
 #include "networkmonitor.h"
 #include "dialogkeyboardshortcuts.h"
-#include "workoutcountdowndialog.h"
 #include "apptheme.h"
 
 #include <QDir>

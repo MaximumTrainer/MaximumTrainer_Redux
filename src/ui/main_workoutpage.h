@@ -42,7 +42,6 @@ signals :
     void editWorkout(Workout);
 
     void executeWorkout(Workout);
-    void addWorkoutToQueue(const Workout &workout);
     void hostGroupWorkout(const Workout &workout);
 
 
@@ -85,7 +84,6 @@ private slots:
     void deleteWorkout();
     void setAsDone();
     void openFolderWorkout();
-    void addToQueue();
 
 
 
@@ -116,7 +114,6 @@ private:
     QAction *actionDelete;
     QAction *actionSetAsDone;
     QAction *actionOpenFolder;
-    QAction *actionAddToQueue;
     QAction *actionRefresh;
     QModelIndex indexSourceSelected;
 };
