@@ -43,23 +43,21 @@ WorkoutHistorySummary FitActivityReader::readFile(const QString &filePath)
     }
 
     // Derive workout name from filename if not populated from session data
-    if (reader.m_summary.workoutName.isEmpty()) {
-        QString base = QFileInfo(filePath).completeBaseName();
-        // Filename format: yyyy-MM-dd(hh-mm-ss)-MT-username-WorkoutName
-        int idx = base.indexOf(QLatin1String("-MT-"));
-        if (idx >= 0) {
-            QString rest = base.mid(idx + 4); // skip "-MT-"
-            int dash = rest.indexOf(QLatin1Char('-'));
-            if (dash >= 0)
-                reader.m_summary.workoutName = rest.mid(dash + 1);
-            else
-                reader.m_summary.workoutName = std::move(rest);
-        } else {
-            reader.m_summary.workoutName = std::move(base);
-        }
-    }
+    if (reader.m_summary.workoutName.isEmpty())
+        reader.m_summary.workoutName = workoutNameFromFileName(filePath);
 
     return reader.m_summary;
+}
+
+QString FitActivityReader::workoutNameFromFileName(const QString &filePath)
+{
+    QString base = QFileInfo(filePath).completeBaseName();
+    const int idx = base.indexOf(QLatin1String("-MT-"));
+    if (idx < 0)
+        return base;
+    QString rest = base.mid(idx + 4); // skip "-MT-"
+    const int dash = rest.indexOf(QLatin1Char('-'));
+    return dash >= 0 ? rest.mid(dash + 1) : rest;
 }
 
 void FitActivityReader::OnMesg(fit::SessionMesg &mesg)

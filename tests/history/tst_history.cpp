@@ -143,6 +143,44 @@ private:
     };
 
 private slots:
+    void rideComparison_findsLastFullRideOfSameWorkout()
+    {
+        QCOMPARE(FitActivityReader::workoutNameFromFileName(
+                     QStringLiteral("/h/2026-07-09(09-24-28)-MT-icu_i601941-Crunch 3-2 Micro 40-20s.fit")),
+                 QStringLiteral("Crunch 3-2 Micro 40-20s"));
+
+        QTemporaryDir dir;
+        auto path = [&dir](const char *name) { return dir.filePath(QString::fromLatin1(name)); };
+        writeSampleFit(path("2026-11-01(10-00-00)-MT-user-Threshold.fit"), 600);   // the match
+        writeSampleFit(path("2026-11-05(10-00-00)-MT-user-Threshold.fit"), 60);    // abandoned: too short
+        writeSampleFit(path("2026-11-06(10-00-00)-MT-user-Other.fit"), 600);       // another workout
+        writeSampleFit(path("2026-11-10(10-00-00)-MT-user-Threshold.fit"), 600);   // this ride
+        writeSampleFit(path("2026-11-12(10-00-00)-MT-user-Threshold.fit"), 600);   // later: ignored
+        const QString current = path("2026-11-10(10-00-00)-MT-user-Threshold.fit");
+        QCOMPARE(RideComparison::previousRideFile(dir.path(), current, 600),
+                 path("2026-11-01(10-00-00)-MT-user-Threshold.fit"));
+        QVERIFY(RideComparison::previousRideFile(dir.path(), path("2026-11-01(10-00-00)-MT-user-Threshold.fit"), 600)
+                    .isEmpty());
+
+        WorkoutHistorySummary before;
+        before.valid = true;
+        before.normalizedPower = 200;
+        before.avgPowerW = 190;
+        before.avgHrBpm = 150;
+        before.tss = 50;
+        WorkoutHistorySummary now = before;
+        now.normalizedPower = 206;
+        now.avgHrBpm = 147;
+        now.tss = 53.5;
+        const RideComparison diff = RideComparison::compare(now, before);
+        QVERIFY(diff.valid && diff.hasPower && diff.hasHeartRate);
+        QCOMPARE(diff.npDeltaW, 6);
+        QCOMPARE(diff.hrDeltaBpm, -3);
+        QCOMPARE(diff.tssDelta, 3.5);
+        before.avgHrBpm = 0;
+        QVERIFY(!RideComparison::compare(now, before).hasHeartRate);
+    }
+
     void rideSummary_zonesAndIntensity()
     {
         const QVector<int> coggan = PowerZones::boundsPct({});

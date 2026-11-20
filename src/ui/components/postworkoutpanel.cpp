@@ -9,6 +9,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QLabel>
+#include <QLocale>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPushButton>
@@ -243,7 +244,8 @@ void PostWorkoutPanel::addRideSummary(QBoxLayout *layout)
 {
     if (fitFilePath.isEmpty())
         return;
-    const RideSummary ride = RideSummary::build(FitActivityReader::readFile(fitFilePath),
+    const WorkoutHistorySummary current = FitActivityReader::readFile(fitFilePath);
+    const RideSummary ride = RideSummary::build(current,
                                                 FitActivityDetailReader::readFile(fitFilePath),
                                                 account->FTP, PowerZones::boundsPct(account->power_zones_pct));
     if (!ride.valid)
@@ -273,6 +275,41 @@ void PostWorkoutPanel::addRideSummary(QBoxLayout *layout)
     for (int i = 0; i < tiles.size(); ++i)
         grid->addWidget(statTile(tiles.at(i).first, tiles.at(i).second, this), i / kColumns, i % kColumns);
     layout->addLayout(grid);
+
+    // Progress on the same workout: the last ride of it, side by side.
+    const QString previousFile = RideComparison::previousRideFile(Util::getSystemPathHistory(), fitFilePath,
+                                                                  current.durationSec);
+    if (!previousFile.isEmpty()) {
+        const RideComparison diff = RideComparison::compare(current, FitActivityReader::readFile(previousFile));
+        auto signedText = [](double value, const QString &unit) {
+            const int rounded = qRound(value);
+            const QString number = rounded > 0 ? QStringLiteral("+%1").arg(rounded)
+                                 : rounded < 0 ? QStringLiteral("\u2212%1").arg(-rounded)
+                                               : QStringLiteral("=");
+            return unit.isEmpty() || rounded == 0 ? number : number + QLatin1Char(' ') + unit;
+        };
+        auto coloured = [](const QString &text, int goodSign, int value) {
+            const QString color = value == 0 ? QStringLiteral("#c8c8d0")
+                                : (value > 0) == (goodSign > 0) ? QStringLiteral("#3fb27f") : QStringLiteral("#f2a33a");
+            return QStringLiteral("<b style=\"color:%1\">%2</b>").arg(color, text);
+        };
+        QStringList parts;
+        if (diff.hasPower)
+            parts << tr("NP %1").arg(coloured(signedText(diff.npDeltaW, tr("W")), +1, diff.npDeltaW));
+        if (diff.hasHeartRate)
+            parts << tr("Avg HR %1").arg(coloured(signedText(diff.hrDeltaBpm, tr("bpm")), -1, diff.hrDeltaBpm));
+        if (diff.tssDelta != 0.0 || diff.hasPower)
+            parts << tr("TSS %1").arg(coloured(signedText(diff.tssDelta, {}), 0, 0));
+        if (diff.valid && !parts.isEmpty()) {
+            const QString when = QLocale().toString(diff.previousStart.date(), QStringLiteral("d MMM"));
+            auto *row = new QLabel(QStringLiteral("<span style=\"color:#9a9aa6\">%1</span>&nbsp;&nbsp;&nbsp;%2")
+                                       .arg(tr("vs last time (%1)").arg(when),
+                                            parts.join(QStringLiteral("&nbsp;&nbsp;&nbsp;"))), this);
+            row->setTextFormat(Qt::RichText);
+            row->setStyleSheet(QStringLiteral("font-size: 10pt; color: #e8e8ee;"));
+            layout->addWidget(row);
+        }
+    }
 
     if (ride.hasPower && ride.zoneTotalSeconds() > 0) {
         auto *zonesHeader = new QLabel(account->power_zones_pct.isEmpty() ? tr("Time in power zones")
