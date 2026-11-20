@@ -988,7 +988,13 @@ void WorkoutPlot::addShapeFromPoints(const QString &title, const QColor &color, 
 
     QColor fillColor = color;
     fillColor.setAlpha(200);
-    QPen pen(color, 1);
+    // Cadence is an outline, so it never reads as a power zone block.
+    const bool outline = title == QLatin1String("PARALLELOGRAM_CADENCE");
+    if (outline)
+        fillColor.setAlpha(40);
+    QPen pen(color, outline ? 1.5 : 1);
+    if (outline)
+        pen.setStyle(Qt::DashLine);
     pen.setJoinStyle(Qt::MiterJoin);
     item->setPen(pen);
     item->setBrush(fillColor);

@@ -443,7 +443,13 @@ void myCreatorPlot::addShapeFromPoints(const QString &title, const QColor &color
 
     QColor fillColor = color;
     fillColor.setAlpha(200);
-    QPen pen(color, 0.1);
+    // Cadence is an outline, so it never reads as a power zone block.
+    const bool outline = !isBackgroundItem && title == QLatin1String("PARALLELOGRAM_CADENCE");
+    if (outline)
+        fillColor.setAlpha(40);
+    QPen pen(color, outline ? 1.5 : 0.1);
+    if (outline)
+        pen.setStyle(Qt::DashLine);
     pen.setJoinStyle(Qt::MiterJoin);
     item->setPen(pen);
     item->setZ(positionZ);
