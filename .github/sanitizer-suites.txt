@@ -14,6 +14,7 @@ config_bootstrap/config_bootstrap_tests
 settings/settings_tests
 webengine_safe_mode/webengine_safe_mode_tests
 history/history_tests
+workout_export/workout_export_tests
 btle/btle_tests
 integration/btle_api_tests
 integration/workout_parsing_tests

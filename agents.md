@@ -351,6 +351,7 @@ Each service and domain component has its own standalone Qt Test target
 | `config_bootstrap_tests` | `tests/config_bootstrap/` | First-run defaults, no overwrite on rerun, config_version upgrade, legacy migration before defaults, corrupt store left untouched, credential failures logged without values |
 | `logger_tests` | `tests/logger/` | Log level filtering, output format (timestamp/level/module/message), file write enable/disable |
 | `studio_tests` | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling formula, settings persistence |
+| `workout_export_tests` | `tests/workout_export/` | FIT workout export: steps from ramps / flat intervals, % FTP power, cadence, intensity, decodes as a FIT workout |
 
 **Build & run pattern (same for every service test):**
 
