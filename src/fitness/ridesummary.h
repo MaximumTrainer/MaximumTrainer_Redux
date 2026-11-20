@@ -32,4 +32,25 @@ struct RideSummary
                              int ftpWatts, const QVector<int> &zoneBoundsPct = {});
 };
 
+/// How this ride compares with the last ride of the same workout.
+struct RideComparison
+{
+    bool      valid           = false;
+    QDateTime previousStart;
+    bool      hasPower        = false;
+    bool      hasHeartRate    = false;
+    int       npDeltaW        = 0;
+    int       avgPowerDeltaW  = 0;
+    int       hrDeltaBpm      = 0;
+    double    tssDelta        = 0.0;
+
+    /// The most recent earlier ride in \a historyDir of the same workout as
+    /// \a currentFile, at least 80 % as long (so an abandoned attempt is not
+    /// used); empty when there is none.
+    static QString previousRideFile(const QString &historyDir, const QString &currentFile,
+                                    int currentDurationSec);
+    static RideComparison compare(const WorkoutHistorySummary &current,
+                                  const WorkoutHistorySummary &previous);
+};
+
 #endif // RIDESUMMARY_H

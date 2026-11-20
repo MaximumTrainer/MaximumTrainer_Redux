@@ -9,6 +9,8 @@ class FitActivityReader : public fit::SessionMesgListener
 {
 public:
     static WorkoutHistorySummary readFile(const QString &filePath);
+    /// Workout name from a history file name: yyyy-MM-dd(hh-mm-ss)-MT-username-WorkoutName.fit
+    static QString workoutNameFromFileName(const QString &filePath);
 
 private:
     void OnMesg(fit::SessionMesg &mesg) override;
