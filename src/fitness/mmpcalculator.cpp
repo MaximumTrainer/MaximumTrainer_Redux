@@ -1,4 +1,5 @@
 #include "mmpcalculator.h"
+#include "powerbests.h"
 
 #include <algorithm>
 #include <numeric>
@@ -90,38 +91,12 @@ QVector<int> MmpCalculator::readPowerSeries(const QString &fitFilePath)
 QVector<double> MmpCalculator::computeMmp(const QList<QString>  &fitFilePaths,
                                            const QVector<int>    &durations)
 {
-    const int nDur = durations.size();
-    QVector<double> best(nDur, 0.0);
-
+    QVector<double> best(durations.size(), 0.0);
     for (const QString &path : fitFilePaths) {
-        QVector<int> power = readPowerSeries(path);
-        const int n = power.size();
-        if (n == 0) continue;
-
-        for (int di = 0; di < nDur; ++di) {
-            const int D = durations[di];
-            if (D > n) continue; // file too short
-
-            // Compute initial window sum
-            long long windowSum = 0;
-            for (int i = 0; i < D; ++i)
-                windowSum += power[i];
-
-            double maxAvg = static_cast<double>(windowSum) / D;
-
-            // Slide window
-            for (int i = D; i < n; ++i) {
-                windowSum += power[i] - power[i - D];
-                double avg = static_cast<double>(windowSum) / D;
-                if (avg > maxAvg)
-                    maxAvg = avg;
-            }
-
-            if (maxAvg > best[di])
-                best[di] = maxAvg;
-        }
+        const QVector<double> ride = PowerBests::bestAverages(readPowerSeries(path), durations);
+        for (qsizetype index = 0; index < best.size(); ++index)
+            best[index] = std::max(best[index], ride[index]);
     }
-
     return best;
 }
 

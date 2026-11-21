@@ -1390,6 +1390,7 @@ void WorkoutDialog::workoutOver() {
     setWidgetsStopped(true);
 
     if (!account->enable_studio_mode) {
+        achievementManager->finishLiveRide();
         achievementManager->workoutCompleted(workout);
         if (m_groupRide) {
             achievementManager->recordEvent(AchievementCatalog::Events::GroupRide);

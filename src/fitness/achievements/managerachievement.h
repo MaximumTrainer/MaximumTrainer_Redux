@@ -6,6 +6,7 @@
 #include "achievement.h"
 #include "achievementcatalog.h"
 #include "achievementlivetracker.h"
+#include "personalbesttracker.h"
 #include "workout.h"
 
 /// Awards the local achievements (AchievementCatalog) and saves them
@@ -38,8 +39,11 @@ public slots:
     /// One recorded second of the solo rider (negative = no sensor data).
     void checkLiveSecond(double powerWatts, double cadenceRpm, double ftpWatts);
     void checkLiveDistance(double meters);
-    /// Clears the rolling peak-effort windows; call when a workout opens.
+    /// Clears the rolling peak-effort windows and loads the power bests the
+    /// ride is compared with (in the background); call when a workout opens.
     void startLiveRide();
+    /// Reports a power best still in progress; call when the ride ends.
+    void finishLiveRide();
 
 signals:
     void achievementCompleted(Achievement achievement);
@@ -48,9 +52,12 @@ signals:
 
 private:
     void award(const QString &key, bool announce);
+    void announceBests(const QVector<PersonalBestTracker::Event> &events);
 
     AchievementCatalog::HistoryStats m_stats;
     AchievementLiveTracker m_liveTracker;
+    PersonalBestTracker m_bestTracker;
+    int m_bestLoadGeneration = 0;
 };
 
 Q_DECLARE_METATYPE(ManagerAchievement*)

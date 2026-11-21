@@ -126,7 +126,8 @@ mt_add_test(history_tests
         "${SRC}/persistence/file/fitactivityreader.cpp"
         "${SRC}/persistence/file/fitactivitydetailreader.cpp"
         "${SRC}/ui/workouthistorymodel.cpp" "${SRC}/ui/historyfilterproxymodel.cpp"
-        "${SRC}/fitness/mmpcalculator.cpp" "${SRC}/fitness/ftpestimator.cpp"
+        "${SRC}/fitness/mmpcalculator.cpp" "${SRC}/fitness/powerbests.cpp"
+        "${SRC}/fitness/personalbesttracker.cpp" "${SRC}/fitness/ftpestimator.cpp"
         "${SRC}/fitness/weeklysummary.cpp" "${SRC}/fitness/ridesummary.cpp"
         "${SRC}/fitness/powerzones.cpp"
         history/tst_history.cpp
