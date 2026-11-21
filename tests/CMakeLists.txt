@@ -112,7 +112,7 @@ mt_add_test(achievements_tests
 
 mt_add_test(workout_logic_tests
     SOURCES "${SRC}/workout/sensorsecondaccumulator.cpp" "${SRC}/workout/maptesttracker.cpp"
-        "${SRC}/workout/targetalert.cpp"
+        "${SRC}/workout/targetalert.cpp" "${SRC}/workout/ergrescue.cpp"
         workout/tst_workout_logic.cpp
     INCLUDES "${SRC}/workout")
 
