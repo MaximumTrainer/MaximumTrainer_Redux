@@ -37,6 +37,7 @@
 #include "xmlutil.h"
 #include "managerachievement.h"
 #include "simulator_hub.h"
+#include <QKeyEvent>
 #include "networkmonitor.h"
 #include "dialogkeyboardshortcuts.h"
 #include "apptheme.h"
@@ -494,13 +495,21 @@ void MainWindow::screenshotNextStep()
 
     // ── Step 14: launch a Studio-mode workout with N simulated riders ─────
     case 14: {
-        setNumberUserStudio(15);
+        setNumberUserStudio(8);   // a full studio: 4 x 2 rider cards
         enableStudioMode(true);
         ftb->setCurrentIndex(0);
         ui->tabWidget_workout->setCurrentIndex(0);
 
         const int nbRiders = qBound(1, account->nb_user_studio, constants::nbMaxUserStudio);
-        const QVector<UserStudio> riders = prepareStudioRiders(true);
+        QVector<UserStudio> riders = prepareStudioRiders(true);
+        // A believable class: varied names and FTPs, so most riders sit on
+        // their own target and a couple are off it.
+        static const char *const names[] = {"Julie", "Marc", "Sam", "Chloe", "Nico", "Lea", "Tom", "Ines"};
+        static const int ftps[] = {330, 300, 345, 280, 335, 340, 325, 360};
+        for (int i = 0; i < riders.size() && i < 8; ++i) {
+            riders[i].setDisplayName(QString::fromLatin1(names[i]));
+            riders[i].setFTP(ftps[i]);
+        }
         m_ssWorkoutDlg = new WorkoutDialog(makeDemoWorkout(), lstRadio, riders, this);
 
         for (int i = 0; i < nbRiders; ++i) {
@@ -511,10 +520,14 @@ void MainWindow::screenshotNextStep()
             simHub->start();
             m_ssStudioHubs.append(simHub);
         }
+        m_ssWorkoutDlg->resize(1350, 800);
         m_ssWorkoutDlg->show();
         m_ssWorkoutDlg->raise();
         m_ssWorkoutDlg->activateWindow();
         QCoreApplication::processEvents();
+        // Start it, so the capture shows live numbers on every rider card.
+        QKeyEvent startKey(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+        QCoreApplication::sendEvent(m_ssWorkoutDlg, &startKey);
         break;
     }
 
