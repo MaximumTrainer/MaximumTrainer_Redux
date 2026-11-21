@@ -295,14 +295,30 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
     body->addLayout(rideColumn, 1);
     if (hasSide) {
         if (wide)
-            sidePanel->setFixedWidth(300);
+            sidePanel->setFixedWidth(340);
         body->addWidget(sidePanel, 0, Qt::AlignTop);
     }
     layout->addLayout(body);
     if (!wide || !hasSide)
         setMinimumWidth(520);
 
+    fitToContents();
+}
+
+// Status labels change after the panel is shown (upload progress, the "View
+// on ..." link). Their nested layout only relayouts on a posted event, so a
+// bare adjustSize() measured the old one-line text and clipped the link.
+void PostWorkoutPanel::fitToContents()
+{
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::LayoutRequest);
+    if (QLayout *panelLayout = layout())
+        panelLayout->activate();
     adjustSize();
+    if (const QWidget *host = parentWidget()) {
+        const int maxTop = qMax(0, host->height() - height());
+        const int maxLeft = qMax(0, host->width() - width());
+        move(qBound(0, x(), maxLeft), qBound(0, y(), maxTop));
+    }
 }
 
 // The ride's numbers and time in power zones, read back from its FIT file the
@@ -462,7 +478,7 @@ void PostWorkoutPanel::setProfileNote(const QString &text)
 {
     m_profileNote->setText(text);
     m_profileNote->setVisible(!text.isEmpty());
-    adjustSize();
+    fitToContents();
 }
 
 // Suggests a higher FTP when the recent rides show one (see FtpEstimator).
@@ -513,7 +529,7 @@ void PostWorkoutPanel::addFtpSuggestion(QBoxLayout *layout)
         later->setEnabled(false);
         m_ftpStatus->setText(tr("FTP left at %1 W.").arg(account->FTP));
         m_ftpStatus->show();
-        adjustSize();
+        fitToContents();
     });
 }
 
@@ -531,11 +547,11 @@ void PostWorkoutPanel::acceptFtp(int ftpWatts)
     // next login would put the old value back.
     if (account->intervals_icu_access_token.isEmpty() || account->intervals_icu_athlete_id.isEmpty()) {
         m_ftpStatus->setText(tr("✓ FTP updated to %1 W.").arg(ftpWatts));
-        adjustSize();
+        fitToContents();
         return;
     }
     m_ftpStatus->setText(tr("FTP updated to %1 W. Saving to Intervals.icu…").arg(ftpWatts));
-    adjustSize();
+    fitToContents();
     auto *sync = new IntervalsIcuFtpSync(account->intervals_icu_athlete_id,
                                          account->intervals_icu_access_token, ftpWatts, this);
     connect(sync, &IntervalsIcuFtpSync::finished, this, [this, ftpWatts](bool ok, const QString &error) {
@@ -544,7 +560,7 @@ void PostWorkoutPanel::acceptFtp(int ftpWatts)
         else
             m_ftpStatus->setText(tr("FTP updated to %1 W here, but saving it to Intervals.icu failed (%2). "
                                     "Your next login may restore the old value.").arg(ftpWatts).arg(error));
-        adjustSize();
+        fitToContents();
     });
     sync->start();
 }
@@ -560,7 +576,7 @@ void PostWorkoutPanel::setStravaPostStatus(const QString &text, bool retryable)
     // The manual button (if any) is re-enabled only when a retry makes sense.
     if (auto *btn = findChild<QPushButton*>("btnStrava"))
         btn->setEnabled(retryable);
-    adjustSize();
+    fitToContents();
 }
 
 void PostWorkoutPanel::uploadToStrava()
@@ -721,7 +737,7 @@ void PostWorkoutPanel::setIntervalsIcuPostStatus(const QString &text, bool retry
     }
     if (auto *btn = findChild<QPushButton*>("btnIntervalsIcu"))
         btn->setEnabled(retryable);
-    adjustSize();
+    fitToContents();
 }
 
 void PostWorkoutPanel::uploadToIntervalsIcu()

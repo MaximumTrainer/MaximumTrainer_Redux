@@ -12,9 +12,11 @@
 #include <QAction>
 #include <QKeyEvent>
 #include <QSettings>
+#include <QCursor>
 
 namespace {
-constexpr int kToolbarHideMs = 7000;
+constexpr int kToolbarHideMs = 3000;
+constexpr int kCursorPollMs  = 200;
 }
 
 WebBrowserView::WebBrowserView(QWidget *parent) : QWidget(parent)
@@ -44,7 +46,7 @@ WebBrowserView::WebBrowserView(QWidget *parent) : QWidget(parent)
                 // chrome so "fullscreen" means the whole workout video area
                 // (it reappears on mouse/keyboard activity as usual).
                 if (request.toggleOn())
-                    toolBar->hide();
+                    hideToolbar();
             });
 #endif
 
@@ -56,18 +58,24 @@ WebBrowserView::WebBrowserView(QWidget *parent) : QWidget(parent)
     toolBar->addSeparator();
     toolBar->addWidget(locationEdit);
 
-    gLayout->addWidget(toolBar, 0, 0, 1, 1);
-    gLayout->addWidget(webEngineView, 1, 0, 1, 1);
+    toolBar->setAutoFillBackground(true);
 
-    // The toolbar hides itself after a few idle seconds and reappears on any
-    // mouse/keyboard activity, so it does not cover the video during playback.
+    gLayout->addWidget(webEngineView, 0, 0, 1, 1);
+
     timerHideToolbar = new QTimer(this);
+    timerHideToolbar->setSingleShot(true);
     connect(timerHideToolbar, &QTimer::timeout, this, &WebBrowserView::hideToolbar);
+
+    // Mouse events over the page go to WebEngine's internal render widget, and
+    // Enter/Hover events also fire when nothing moved (the toolbar hiding under
+    // a still cursor, windows restacking), which kept re-showing the toolbar.
+    // Polling the real cursor position only reacts to actual movement.
+    timerCursorPoll = new QTimer(this);
+    connect(timerCursorPoll, &QTimer::timeout, this, &WebBrowserView::pollCursorActivity);
+
     hideToolbar();
 
     locationEdit->installEventFilter(this);
-    toolBar->installEventFilter(this);
-    webEngineView->installEventFilter(this);
 }
 
 WebBrowserView::~WebBrowserView() = default;
@@ -83,43 +91,71 @@ void WebBrowserView::loadHomePageIfNeeded()
 
 void WebBrowserView::hideToolbar()
 {
+    // Never yank the address bar away while the user is typing in it.
+    if (locationEdit->hasFocus() && toolBar->isVisible()) {
+        timerHideToolbar->start(kToolbarHideMs);
+        return;
+    }
     timerHideToolbar->stop();
     toolBar->setVisible(false);
 }
 
+void WebBrowserView::showToolbarForActivity()
+{
+    timerHideToolbar->start(kToolbarHideMs);
+    if (!toolBar->isVisible()) {
+        toolBar->setVisible(true);
+        toolBar->raise();
+    }
+}
+
+void WebBrowserView::pollCursorActivity()
+{
+    const QPoint cursorGlobalPos = QCursor::pos();
+    if (cursorGlobalPos == lastCursorGlobalPos)
+        return;
+    lastCursorGlobalPos = cursorGlobalPos;
+    if (window()->isActiveWindow() && rect().contains(mapFromGlobal(cursorGlobalPos)))
+        showToolbarForActivity();
+}
+
+void WebBrowserView::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    toolBar->setGeometry(0, 0, width(), toolBar->sizeHint().height());
+}
+
+void WebBrowserView::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    lastCursorGlobalPos = QCursor::pos();
+    timerCursorPoll->start(kCursorPollMs);
+}
+
+void WebBrowserView::hideEvent(QHideEvent *event)
+{
+    QWidget::hideEvent(event);
+    timerCursorPoll->stop();
+}
+
 bool WebBrowserView::eventFilter(QObject *watched, QEvent *event)
 {
-    Q_UNUSED(watched);
-
-    switch (event->type()) {
-    case QEvent::MouseMove:
-    case QEvent::Enter:
-    case QEvent::HoverEnter:
-    case QEvent::HoverMove:
-    case QEvent::KeyPress:
-        timerHideToolbar->start(kToolbarHideMs);
-        toolBar->setVisible(true);
-        break;
-    default:
-        break;
-    }
-
-    if (event->type() == QEvent::KeyPress) {
-        // Enter/Return in the address bar must navigate, not bubble up to the
-        // workout dialog (which would otherwise start/pause the workout).
+    if (watched == locationEdit && event->type() == QEvent::KeyPress) {
+        showToolbarForActivity();
         auto *key = static_cast<QKeyEvent*>(event);
         if (key->key() == Qt::Key_Enter || key->key() == Qt::Key_Return) {
             changeLocation();
             return true;
         }
     }
-
     return false;
 }
 
 void WebBrowserView::changeLocation()
 {
     webEngineView->load(QUrl::fromUserInput(locationEdit->text()));
+    // Hand focus to the page so the toolbar can auto-hide again.
+    webEngineView->setFocus();
 }
 
 void WebBrowserView::adjustLocation()

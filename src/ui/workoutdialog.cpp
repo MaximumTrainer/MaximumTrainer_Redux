@@ -27,6 +27,7 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QKeyEvent>
+#include <QApplication>
 #include <QScreen>
 #include <QGuiApplication>
 #include <QVBoxLayout>
@@ -3477,6 +3478,17 @@ void WorkoutDialog::connectDataWorkout() {
 
 }
 
+namespace {
+// WebEngine flags its focus widget as input-method enabled only while an
+// editable element in the page has focus, so this covers page text boxes too.
+bool focusIsTextInput()
+{
+    const QWidget *focusWidget = QApplication::focusWidget();
+    return focusWidget && focusWidget->testAttribute(Qt::WA_InputMethodEnabled)
+           && focusWidget->inputMethodQuery(Qt::ImEnabled).toBool();
+}
+}
+
 bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
 
     Q_UNUSED(watched);
@@ -3487,6 +3499,14 @@ bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
     // even when a child button holds focus, but goes false for modal dialogs.
     if(event->type() == QEvent::KeyPress && isActiveWindow()) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
+        // Typing in a text field (the browser address bar, or a search box
+        // inside the web page) needs Enter/Backspace/arrows for itself; only the
+        // function keys stay global there.
+        const int key = keyEvent->key();
+        const bool isEditingKey = key == Qt::Key_Enter || key == Qt::Key_Return || key == Qt::Key_Backspace
+                                  || key == Qt::Key_Up || key == Qt::Key_Down;
+        if (isEditingKey && focusIsTextInput())
+            return false;
         if(keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return ) {
             start_or_pause_workout();
             return true; // mark the event as handled

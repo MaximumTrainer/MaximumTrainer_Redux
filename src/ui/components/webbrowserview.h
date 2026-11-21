@@ -13,6 +13,9 @@ class QGridLayout;
 /// VLC video player (Preferences -> Video Player -> "WebView").  Wraps a
 /// QWebEngineView with a minimal auto-hiding toolbar (navigation + address bar)
 /// so the user can watch YouTube and other DRM-free sites during a workout.
+/// The toolbar floats over the page instead of sitting in the layout: showing
+/// or hiding it must never resize the page, or video sites re-layout (and
+/// visibly flicker) every time it toggles.
 ///
 /// Note: DRM-protected services (Netflix, Disney+, etc.) require the proprietary
 /// Widevine module, which cannot be bundled in this open-source build, so they
@@ -25,6 +28,13 @@ public:
     ~WebBrowserView() override;
 
     bool eventFilter(QObject *watched, QEvent *event) override;
+
+protected:
+    void resizeEvent(QResizeEvent *event) override;
+    void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
+
+public:
 
     /// Loads the user's configured home page (QSettings "webBrowserWorkout").
     /// No-op after the first successful load so switching display modes during
@@ -40,6 +50,8 @@ private slots:
     void adjustLocation();
     void updateUrlOfLineEdit(const QUrl &url);
     void hideToolbar();
+    void showToolbarForActivity();
+    void pollCursorActivity();
 
 private:
     QWebEngineView *webEngineView = nullptr;
@@ -47,6 +59,8 @@ private:
     QToolBar       *toolBar       = nullptr;
     QGridLayout    *gLayout       = nullptr;
     QTimer         *timerHideToolbar = nullptr;
+    QTimer         *timerCursorPoll  = nullptr;
+    QPoint          lastCursorGlobalPos;
 
     bool    homePageLoaded = false;
 };

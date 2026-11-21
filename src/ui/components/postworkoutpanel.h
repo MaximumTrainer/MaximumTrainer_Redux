@@ -45,6 +45,7 @@ private slots:
     void slotPostStravaStatusDone();
 
 private:
+    void fitToContents();
     void addRideSummary(QBoxLayout *layout);
     void addFtpSuggestion(QBoxLayout *layout);
     void addRideTrend(QBoxLayout *layout);

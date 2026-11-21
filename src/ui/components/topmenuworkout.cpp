@@ -13,6 +13,37 @@
 #include "util.h"
 
 namespace {
+// Proportional digits ("1" narrower than "0") made the ticking timers resize
+// every second and push the rest of the bar around. Tabular figures keep each
+// digit the same width where the font supports them; the reserved width
+// (widest digit in every slot) covers fonts that don't.
+void enableTabularDigits(QLabel *timerLabel)
+{
+    timerLabel->ensurePolished();
+    QFont timerFont = timerLabel->font();
+    timerFont.setFeature(QFont::Tag("tnum"), 1);
+    timerLabel->setFont(timerFont);
+}
+
+void setTimerText(QLabel *timerLabel, const QString &text)
+{
+    const QFontMetrics metrics = timerLabel->fontMetrics();
+    QChar widestDigit = QLatin1Char('0');
+    for (char digit = '1'; digit <= '9'; ++digit)
+        if (metrics.horizontalAdvance(QLatin1Char(digit)) > metrics.horizontalAdvance(widestDigit))
+            widestDigit = QLatin1Char(digit);
+    QString widestLayout = text;
+    for (QChar &character : widestLayout)
+        if (character.isDigit())
+            character = widestDigit;
+    const int reservedWidth = metrics.horizontalAdvance(widestLayout) + 2;
+    if (timerLabel->minimumWidth() != reservedWidth)
+        timerLabel->setMinimumWidth(reservedWidth);
+    timerLabel->setText(text);
+}
+}
+
+namespace {
 QIcon tintedStandardIcon(QStyle *style, QStyle::StandardPixmap sp,
                          const QSize& size, const QColor& color) {
     // Qt's title-bar standard pixmaps have differing native sizes (e.g. min and
@@ -110,6 +141,11 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     ui->label_intervalTime->setToolTip(tr("Interval Remaining"));
     ui->label_timeElapsed->setToolTip(tr("Elapsed time"));
     ui->label_remainingTime->setToolTip(tr("Workout Remaining"));
+    for (QLabel *timerLabel : {ui->label_timeElapsed, ui->label_remainingTime, ui->label_intervalTime}) {
+        enableTabularDigits(timerLabel);
+        timerLabel->setAlignment(Qt::AlignCenter);
+        setTimerText(timerLabel, timerLabel->text());
+    }
 
 
     ui->label_radioIcon->setPixmap(pixmapRadio);
@@ -436,17 +472,17 @@ void TopMenuWorkout::setMAPMode() {
 
 void TopMenuWorkout::setIntervalTime(QTime time) {
 
-    ui->label_intervalTime->setText(Util::showQTimeAsString(time));
+    setTimerText(ui->label_intervalTime, Util::showQTimeAsString(time));
 }
 
 void TopMenuWorkout::setWorkoutRemainingTime(QTime time) {
 
-    ui->label_remainingTime->setText(Util::showQTimeAsString(time));
+    setTimerText(ui->label_remainingTime, Util::showQTimeAsString(time));
 }
 
 void TopMenuWorkout::setWorkoutTime(QTime time) {
 
-    ui->label_timeElapsed->setText(Util::showQTimeAsString(time));
+    setTimerText(ui->label_timeElapsed, Util::showQTimeAsString(time));
 }
 
 
