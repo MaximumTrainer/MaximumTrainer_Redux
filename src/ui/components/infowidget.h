@@ -37,6 +37,9 @@ public:
     void setUseMiles(bool b);
 
     void setTrainerSpeedVisible(bool b);
+    /// Shows or hides the Avg / Max rows (interval and workout); without them
+    /// the box is just its title and current value, and can be much shorter.
+    void setStatsVisible(bool visible);
 
 
 signals:

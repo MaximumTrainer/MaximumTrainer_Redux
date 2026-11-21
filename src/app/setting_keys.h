@@ -117,6 +117,8 @@ inline constexpr SettingKey<int>  Splitter1  {"WorkoutDialog/splitter1",  35};
 inline constexpr SettingKey<int>  Splitter2  {"WorkoutDialog/splitter2",  39};
 inline constexpr SettingKey<int>  Splitter3  {"WorkoutDialog/splitter3",  24};
 inline constexpr SettingKey<bool> Fullscreen {"WorkoutDialog/fullscreen", false};
+/// Avg / Max rows in the metric cards (they also fold away when the pane is short).
+inline constexpr SettingKey<bool> ShowMetricStats {"WorkoutDialog/showMetricStats", true};
 } // namespace WorkoutDialog
 
 namespace ActivityDetailDialog {

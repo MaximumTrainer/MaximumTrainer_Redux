@@ -111,6 +111,14 @@ public:
 
     void setMessagePlot();
     void layoutBottomWidgets();
+    /// Folds the cards' Avg / Max rows away when the bottom pane is short or
+    /// the rider turned them off (right-click the pane).
+    void updateBottomCompaction();
+    static constexpr int kCompactPaneHeight = 130;
+    static constexpr int kStatsMinPaneHeight = 240;
+    static constexpr int kCompactGraphHeight = 50;
+    bool m_showMetricStats = true;
+    bool m_metricStatsShown = true;
     void applyStartTrigger(int trigger, double value, double threshold);
 
     ///timers
