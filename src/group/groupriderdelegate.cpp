@@ -81,7 +81,12 @@ void GroupRiderDelegate::paint(QPainter *painter, const QStyleOptionViewItem &op
 
     painter->setFont(detailFont);
     painter->setPen(secondaryText);
-    const QString detail = m_model->detailLine(row, nowMs);
+    QString detail = m_model->detailLine(row, nowMs);
+    // A fresh chat line takes the detail line's place for a few seconds.
+    if (const QString chat = m_model->recentChat(row, nowMs); !chat.isEmpty()) {
+        detail = QStringLiteral("💬 ") + chat;
+        painter->setPen(palette.color(QPalette::Highlight));
+    }
     painter->drawText(detailRect, Qt::AlignLeft | Qt::AlignVCenter,
                       QFontMetrics(detailFont).elidedText(detail, Qt::ElideRight, detailRect.width()));
 

@@ -292,6 +292,11 @@ bool GroupSimTest::renderPanelPreview(const QString &pngPath, int riderCount) {
         else model->updateTelemetry(telemetry, receivedAt);
     }
 
+    if (riderCount > 2) {
+        panel.showChat({roster[1].riderId, roster[1].name, QStringLiteral("Last one, hold on!")});
+        panel.showChat({roster[2].riderId, roster[2].name, QStringLiteral("Legs on fire 😅")});
+    }
+
     panel.resize(panel.width(), 852);
     panel.show();
     QCoreApplication::processEvents();

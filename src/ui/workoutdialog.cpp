@@ -2923,6 +2923,10 @@ void WorkoutDialog::keyPressEvent(QKeyEvent *event)
         if (!event->isAutoRepeat())
             reject();
         return;
+    case Qt::Key_T:
+        if (m_groupPanel && !event->isAutoRepeat())
+            m_groupPanel->focusChat();
+        return;
     case Qt::Key_Question:
     case Qt::Key_F1:
         if (!event->isAutoRepeat()) {

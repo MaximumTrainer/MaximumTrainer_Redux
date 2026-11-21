@@ -27,6 +27,8 @@ private slots:
     void clockOffsetUsesShortestRoundTrip();
     void clockOffsetIgnoresImpossibleSamples();
     void ridersModelPutsYouFirstThenJoinOrder();
+    void chatEncodesTrimmedAndCapped();
+    void chatDecodesAndShowsForAWhile();
     void ridersModelStates();
     void ridersModelDetailShowsBehindAndAhead();
     void ridersModelKeepsTelemetryAcrossRosterChanges();
@@ -186,6 +188,31 @@ void TstGroup::clockOffsetUsesShortestRoundTrip() {
 void TstGroup::clockOffsetIgnoresImpossibleSamples() {
     const QList<ClockSample> samples{{2000, 1990, 0}, {1000, 1010, 1505}};
     QCOMPARE(estimateServerOffsetMs(samples), std::optional<qint64>(500));
+}
+
+void TstGroup::chatEncodesTrimmedAndCapped() {
+    const QJsonObject sent = QJsonDocument::fromJson(
+        GroupProtocol::encodeChat(QStringLiteral("  hi all  ") + QString(200, QLatin1Char('x')))).object();
+    QCOMPARE(sent.value("type").toString(), QStringLiteral("chat"));
+    QVERIFY(sent.value("text").toString().startsWith(QStringLiteral("hi all  x")));
+    QCOMPARE(sent.value("text").toString().size(), GroupProtocol::kMaxChatLength);
+}
+
+void TstGroup::chatDecodesAndShowsForAWhile() {
+    const IncomingMessage message = decode(R"({"type":"chat","id":"r1","name":"Julie","text":"Last one!","at":1})");
+    QCOMPARE(message.type, MessageType::Chat);
+    QCOMPARE(message.chat.riderId, QStringLiteral("r1"));
+    QCOMPARE(message.chat.name, QStringLiteral("Julie"));
+    QCOMPARE(message.chat.text, QStringLiteral("Last one!"));
+
+    GroupRidersModel model;
+    model.setRoster(roster({"r1", "r2"}), "r2");
+    const qint64 now = 1'000'000;
+    model.setChat("r1", message.chat.text, now);
+    const int julie = model.rowAt(0).riderId == QLatin1String("r1") ? 0 : 1;
+    QCOMPARE(model.recentChat(model.rowAt(julie), now + 1000), QStringLiteral("Last one!"));
+    QVERIFY(model.recentChat(model.rowAt(julie), now + GroupRidersModel::kChatShownMs + 1).isEmpty());
+    QVERIFY(model.recentChat(model.rowAt(1 - julie), now).isEmpty());
 }
 
 void TstGroup::ridersModelPutsYouFirstThenJoinOrder() {

@@ -75,6 +75,19 @@ assert.equal(tel.id, hostWelcome.you);
 assert.equal(tel.p, 250);
 assert.equal(host.messages.some((m) => m.type === "tel"), false, "sender must not get its own telemetry");
 
+// Chat: cleaned, echoed to everyone (sender included), and rate limited.
+host.send({ type: "chat", text: "  Last one,\nhold on!  " + "x".repeat(200) });
+const heard = await rider.next((m) => m.type === "chat");
+assert.equal(heard.id, hostWelcome.you);
+assert.equal(heard.name, "Host");
+assert.ok(heard.text.startsWith("Last one, hold on! "));
+assert.equal(Array.from(heard.text).length, 120);
+assert.equal((await host.next((m) => m.type === "chat")).text, heard.text);
+host.send({ type: "chat", text: "too fast" });
+assert.equal((await host.next((m) => m.type === "error")).code, "chat_too_fast");
+host.send({ type: "chat", text: "   " });
+assert.equal((await host.next((m) => m.type === "error")).code, "bad_chat");
+
 // Rejoin with the token keeps the id and sees the stored workout and start time.
 rider.ws.close(4000);
 await rider.closed;

@@ -24,9 +24,13 @@ public:
         bool isReady = false;
         std::optional<GroupProtocol::RiderTelemetry> telemetry;
         qint64 lastTelemetryLocalMs = 0;
+        QString lastChat;
+        qint64 lastChatLocalMs = 0;
     };
 
     static constexpr qint64 kStaleAfterMs = 5000;
+    /// A chat line replaces the rider's detail line this long.
+    static constexpr qint64 kChatShownMs = 8000;
     static constexpr int kOnTargetTolerancePercent = 5;
     static constexpr int kBehindThresholdSeconds = 5;
 
@@ -39,6 +43,9 @@ public:
     void updateTelemetry(const GroupProtocol::RiderTelemetry &telemetry, qint64 nowLocalMs);
     /// Your own numbers come from the workout, not the relay.
     void updateOwnTelemetry(const GroupProtocol::RiderTelemetry &telemetry, qint64 nowLocalMs);
+    void setChat(const QString &riderId, const QString &text, qint64 nowLocalMs);
+    /// The rider's chat line while it is still shown, else empty.
+    QString recentChat(const RiderRow &row, qint64 nowLocalMs) const;
     /// Re-evaluates staleness; call about once a second.
     void tick(qint64 nowLocalMs);
 
