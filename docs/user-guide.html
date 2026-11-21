@@ -596,8 +596,12 @@
           <li>For a smart trainer, tick <strong>Control trainer resistance (ERG / FTMS)</strong> in the Smart Trainer section to enable automatic ERG resistance.</li>
         </ol>
         <p>
-          Saved sensors connect <strong>automatically when you start a workout</strong> — a green
-          indicator confirms each one is active — so you don't need to re-pair them each session.
+          Saved sensors connect <strong>automatically when you start a workout</strong>, so you don't
+          need to re-pair them each session. The workout window opens straight away with a chip per
+          sensor at the top left of the graph: grey <em>Searching…</em>, yellow <em>Connecting…</em>,
+          green <em>Connected</em>. A red chip (<em>Not found</em> or <em>Lost</em>) can be clicked to
+          try again. Once everything is connected the chips step aside, and come back if a sensor drops.
+          The workout waits for its start trigger, so nothing runs before your sensors are in.
         </p>
 
         <p>The app matches each role to the right Bluetooth LE service automatically:</p>
@@ -945,12 +949,11 @@
           <em>Smart Trainer</em> section of the <strong>Devices</strong> tab (off by default).
         </p>
         <ul>
-          <li><strong>Wake both controllers</strong> on the <em>Connecting Sensors</em> screen that opens
-              before the workout - press a button on each. Its <strong>Zwift Click</strong> row shows
-              <em>Searching…</em> until they connect, then <em>✓ Right connected</em> or <em>✓ Connected</em>
-              (both). That screen waits for you instead of starting on its own while the Click is still
-              missing. The left (-) controller only needs to be connected to keep the pair's link
-              stable; you control everything from the right.</li>
+          <li><strong>Wake both controllers</strong> once the workout window opens - press a button on
+              each. The <strong>Zwift Click</strong> chip at the top left of the graph shows
+              <em>Searching…</em> until the right controller connects, then <em>Connected</em>. The
+              left (-) controller only needs to be connected to keep the pair's link stable; you
+              control everything from the right.</li>
           <li>The Click transmits more weakly than a trainer: if it never shows as connected, move the
               computer (or a USB Bluetooth adapter on an extension cable) closer to the bike.</li>
           <li><strong>Only the right (+) controller is mapped:</strong>
@@ -1015,7 +1018,8 @@
         <h3>Starting a workout</h3>
         <ol class="steps">
           <li>Select a workout in the main window and click <strong>Start Workout</strong> (or double-click it).</li>
-          <li>Your saved sensors connect (or, with <strong>Devices &rarr; Simulated Sensors</strong> on, the simulator starts).</li>
+          <li>Your saved sensors connect inside the workout window, each shown as a chip at the top left of
+              the graph (or, with <strong>Devices &rarr; Simulated Sensors</strong> on, the simulator starts).</li>
           <li>The workout player opens and waits at the start line.</li>
           <li>It begins according to your <strong>start trigger</strong> (below) — by default, as soon as you start pedalling. You can also press <strong>Start</strong> (or <kbd>Space</kbd> / <kbd>Enter</kbd>) at any time.</li>
         </ol>
@@ -1380,7 +1384,15 @@
           <li>Toggle <strong>Studio Mode</strong> on.</li>
           <li>Set the <strong>number of riders</strong> — up to <strong>8</strong>, limited by simultaneous BLE connections.</li>
           <li>For each rider, set their name, FTP, and LTHR, scan and assign their sensors, and choose whether ERG/FTMS control is enabled.</li>
-          <li>Start a workout — each rider trains with their own sensors and gets their own live metrics panel. You can also <strong>Import</strong> / <strong>Export</strong> the whole studio configuration as JSON.</li>
+          <li>Start a workout. The workout window opens straight away and every rider's sensors connect
+              at once: until everyone is in (or you press Start) the video area shows a
+              <strong>Connecting sensors</strong> board with a card per rider ("19 of 22 connected"); a red
+              <em>Not found</em> or <em>Lost</em> line can be clicked to try again.</li>
+          <li>Each rider then has a card at the bottom: power with their own target in watts and zone,
+              cadence, heart rate, a dot per sensor, and a status line (<em>on target</em>,
+              <em>12 W above target</em>, or a lost sensor to click). The card's left edge turns amber
+              above target and red below. You can also <strong>Import</strong> / <strong>Export</strong>
+              the whole studio configuration as JSON.</li>
         </ol>
 
         <div class="callout">

@@ -84,11 +84,11 @@ public slots:
 
 #ifndef GC_WASM_BUILD
 private:
-    /// Launch the workout dialog wired to multiple already-connected BLE hubs,
-    /// one per saved sensor role. Used by the multi-device pairing flow.
-    void startWorkoutWithHubs(const Workout &workout,
-                              const QMap<BtleSensorRole, BtleHub*> &hubsByRole,
-                              ZwiftClickManager *zwiftClick = nullptr);
+    /// Open the workout window straight away and connect the saved sensors
+    /// inside it: a chip per sensor shows its state, and each hub is wired to
+    /// the workout as soon as it connects.
+    void startWorkoutConnectingSensors(const Workout &workout,
+                                       const QMap<BtleSensorRole, BtleSavedSensor> &savedSensors);
 
     /// Wire one rider's role→hub map to the dialog; distinct hubs accumulate in
     /// \a allHubs for cleanup. Shared by the solo and Studio launch paths.
@@ -97,10 +97,9 @@ private:
                           QSet<BtleHub*> &allHubs,
                           int riderIndex = 0);
 
-    /// Launch a Studio-mode workout with each rider's already-connected hubs
-    /// (tagged via BtleHub::setUserID). Pairs are (riderIndex, role→hub map).
-    void startWorkoutWithStudioHubs(const Workout &workout,
-                                    const QList<QPair<int, QMap<BtleSensorRole, BtleHub*>>> &riderHubs);
+    /// Studio: open the workout window straight away and connect every
+    /// rider's saved sensors inside it, all at once.
+    void startStudioWorkoutConnectingSensors(const Workout &workout);
 public slots:
 #endif
 

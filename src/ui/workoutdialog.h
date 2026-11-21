@@ -78,6 +78,20 @@ public:
     /// until shortly after the workout starts.
     void showSimulatedDataNotice();
 
+    /// Chips showing the sensors connecting for this ride (created on first use,
+    /// top-left of the main graph).
+    class SensorStatusStrip *sensorStrip();
+
+    /// Studio: the board that shows every rider's sensors connecting, in place
+    /// of the video area until all are in or the workout starts.
+    class StudioConnectionBoard *studioConnectionBoard();
+    /// Studio: rider \a rider's card (1-based), or nullptr.
+    UserStudioWidget *riderWidget(int rider) const;
+
+    /// A trainer was (re)wired after the workout opened: take control and send it
+    /// the current target, which was emitted before anyone was listening.
+    void trainerConnected();
+
     void showVideoPlayer(int choice);
 
     /// Group workout: shows the group column and holds the start until the
@@ -227,6 +241,11 @@ private slots:
 
 private:
     bool m_simulatedDataNotice = false;
+    class SensorStatusStrip *m_sensorStrip = nullptr;
+    class StudioConnectionBoard *m_connectionBoard = nullptr;
+    void foldConnectionBoard();
+    double m_lastPowerTargetPct = 0.0;
+    int m_lastPowerTargetRange = 0;
 
     void keyPressEvent(QKeyEvent *event) override;
     void showEvent(QShowEvent *event) override;

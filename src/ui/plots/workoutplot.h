@@ -21,6 +21,7 @@
 
 class QLabel;
 class QToolButton;
+class QVBoxLayout;
 
 
 class QwtPlotCurve;
@@ -60,6 +61,8 @@ public:
     void removeAlertMessage();
     /// Centred notice that stays until hideNotice().
     void showNotice(const QString &text);
+    /// Puts \a strip in the top-left corner, above the alert message.
+    void setTopLeftStrip(QWidget *strip);
     void hideNotice();
     void removeMainMessage();
 
@@ -145,6 +148,7 @@ private:
     FaderLabel *labelMsgInterval;
     FaderLabel *labelAlertMessage;
     FaderLabel *labelNotice = nullptr;
+    QVBoxLayout *topLeftLayout = nullptr;
     QWidget *widgetCanvas;
 
 

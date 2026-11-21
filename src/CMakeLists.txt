@@ -71,7 +71,7 @@ target_sources(mt_core PRIVATE
     ui/components/delegaterowhover.cpp
     ui/components/mytableview.cpp ui/components/shapefactory.cpp ui/components/infowidget.cpp
     ui/components/bottombar.cpp ui/components/topmenuworkout.cpp ui/components/balancewidget.cpp
-    ui/components/postworkoutpanel.cpp ui/components/workoutraceview.cpp ui/components/achievementtoast.cpp ui/components/metriccard.cpp ui/components/trendchart.cpp
+    ui/components/postworkoutpanel.cpp ui/components/workoutraceview.cpp ui/components/achievementtoast.cpp ui/components/metriccard.cpp ui/components/trendchart.cpp ui/components/sensorstatusstrip.cpp ui/components/studioconnectionboard.cpp
     ui/components/clickablelabel.cpp ui/components/fancytab.cpp ui/components/fancytabbar.cpp
     ui/components/stylehelper.cpp ui/components/faderlabel.cpp
     ui/components/tableviewhover.cpp ui/components/clock.cpp
@@ -80,7 +80,7 @@ target_sources(mt_core PRIVATE
     ui/components/webbrowserview.cpp ui/components/myqwebenginepage.h
     ui/components/infowidget.ui ui/components/bottombar.ui ui/components/topmenuworkout.ui
     ui/components/balancewidget.ui ui/components/infosworkout.ui
-    ui/components/oxygenwidget.ui ui/components/userstudiowidget.ui
+    ui/components/oxygenwidget.ui
     # ui/plots
     ui/plots/workoutplot.cpp ui/plots/workoutplotlist.cpp ui/plots/markeritem.cpp
     ui/plots/iconitem.cpp ui/plots/zoneitem.cpp ui/plots/workoutplotzoomer.cpp
@@ -109,7 +109,7 @@ else()
     target_sources(mt_core PRIVATE
         app/soundplayer.cpp
         btle/btle_hub.cpp btle/btle_scanner_dialog.cpp btle/btle_sensor_store.cpp
-        btle/sensor_connect_dialog.cpp
+        btle/sensor_connector.cpp
         btle/zwift/zwift_click_protocol.cpp btle/zwift/zwift_click_hub.cpp
         btle/zwift/zwift_click_manager.cpp btle/zwift/zwift_click_test.cpp)
     if(WIN32)

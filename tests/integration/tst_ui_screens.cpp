@@ -34,6 +34,8 @@
  */
 
 #include <QtTest/QtTest>
+#include <QToolButton>
+#include "sensorstatusstrip.h"
 #include <QApplication>
 #include <QWidget>
 #include <QVBoxLayout>
@@ -229,6 +231,34 @@ private slots:
     void cleanupTestCase()
     {
         qApp->setProperty("Account", QVariant());
+    }
+
+    void testSensorStrip_statesRetryAndAutoHide()
+    {
+        SensorStatusStrip strip;
+        strip.addSensor(1, QStringLiteral("Trainer"), QStringLiteral("KICKR CORE 5A2C"));
+        strip.addSensor(2, QStringLiteral("Heart Rate"));
+        strip.show();
+        QVERIFY(strip.chipText(1).startsWith(QStringLiteral("Trainer: KICKR CORE 5A2C · Searching")));
+
+        QSignalSpy retrySpy(&strip, &SensorStatusStrip::retryRequested);
+        auto *trainerChip = strip.findChild<QToolButton *>(QStringLiteral("sensorChip1"));
+        QVERIFY(trainerChip != nullptr);
+        trainerChip->click();
+        QCOMPARE(retrySpy.count(), 0);              // searching: nothing to retry
+
+        strip.setState(1, SensorStatusStrip::State::NotFound);
+        trainerChip->click();
+        QCOMPARE(retrySpy.count(), 1);
+        QCOMPARE(retrySpy.takeFirst().at(0).toInt(), 1);
+
+        strip.setState(1, SensorStatusStrip::State::Connected);
+        strip.setState(2, SensorStatusStrip::State::Connected);
+        QCOMPARE(strip.chipText(2), QStringLiteral("Heart Rate · Connected"));
+        QTRY_VERIFY_WITH_TIMEOUT(!strip.isVisible(), 7000);   // steps aside once all are in
+
+        strip.setState(2, SensorStatusStrip::State::Lost);
+        QVERIFY(strip.isVisible());                  // back as soon as one drops
     }
 
     void testSimulatedDataNotice_showsAndHides()

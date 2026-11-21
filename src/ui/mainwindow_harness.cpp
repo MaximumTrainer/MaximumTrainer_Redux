@@ -62,7 +62,6 @@
 #else
 #include "btle_scanner_dialog.h"
 #include "btle_sensor_store.h"
-#include "sensor_connect_dialog.h"
 #endif
 #include "sensorswidget.h"
 #include "studiowidget.h"
