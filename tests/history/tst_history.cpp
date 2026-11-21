@@ -362,6 +362,39 @@ private slots:
         QCOMPARE(total, 3);
     }
 
+    void weeklyGoal_progressAndStreak()
+    {
+        const QDate today(2026, 11, 18);  // a Wednesday; its week starts Monday 16th
+        const auto ride = [](const QDate &day, int minutes) {
+            WorkoutHistorySummary summary;
+            summary.startTime = QDateTime(day, QTime(7, 0));
+            summary.durationSec = minutes * 60;
+            summary.valid = true;
+            return summary;
+        };
+        QList<WorkoutHistorySummary> history{
+            ride(QDate(2026, 10, 20), 300),   // 4 weeks back: reached, but week 3 back breaks the run
+            ride(QDate(2026, 11, 3), 120), ride(QDate(2026, 11, 5), 180),  // 2 weeks back: 5 h
+            ride(QDate(2026, 11, 9), 299),    // last week: 4:59, within a minute of 5 h
+            ride(QDate(2026, 11, 16), 90),    // this week so far
+        };
+
+        QCOMPARE(WeeklySummary::goalProgress(history, today, 0.0).goalHours, 0.0);
+
+        WeeklySummary::GoalProgress progress = WeeklySummary::goalProgress(history, today, 5.0);
+        QCOMPARE(progress.goalHours, 5.0);
+        QCOMPARE(progress.hoursThisWeek, 1.5);
+        QVERIFY(!progress.reached);
+        QCOMPARE(progress.streakWeeks, 2);   // this week is still in progress
+
+        history.append(ride(QDate(2026, 11, 17), 210));
+        progress = WeeklySummary::goalProgress(history, today, 5.0);
+        QVERIFY(progress.reached);
+        QCOMPARE(progress.streakWeeks, 3);
+
+        QCOMPARE(WeeklySummary::goalProgress(history, today, 6.0).streakWeeks, 0);
+    }
+
     void ftpEstimate_rulesOfThumb()
     {
         QCOMPARE(FtpEstimator::ftpFromBest20(250.0), 238);
