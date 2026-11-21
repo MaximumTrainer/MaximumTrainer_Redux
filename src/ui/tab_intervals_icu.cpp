@@ -19,6 +19,7 @@ constexpr qint64 kActivateRefreshSeconds = 30;
 #include <QDebug>
 #include <QApplication>
 #include <QLabel>
+#include <QPushButton>
 #include <QLocale>
 #include <QTimer>
 
@@ -146,6 +147,16 @@ TabIntervalsIcu::TabIntervalsIcu(QWidget *parent)
             this, &TabIntervalsIcu::onLoadWorkoutClicked);
     connect(ui->pushButton_syncAll, &QPushButton::clicked,
             this, &TabIntervalsIcu::onSyncAllClicked);
+    m_thisWeekButton = new QPushButton(tr("This week"), this);
+    m_thisWeekButton->setToolTip(tr("Back to the current week"));
+    ui->horizontalLayout_nav->insertWidget(ui->horizontalLayout_nav->indexOf(ui->pushButton_nextWeek) + 1,
+                                           m_thisWeekButton);
+    connect(m_thisWeekButton, &QPushButton::clicked, this, [this] { showWeek(currentMonday()); });
+    updateWeekLabel();
+    connect(ui->tableWidget_calendar, &QTableWidget::cellDoubleClicked, this, [this](int row) {
+        if (row >= 0 && row < m_rowEventIds.size() && !m_rowEventIds[row].isEmpty() && !m_downloadReply)
+            onLoadWorkoutClicked();
+    });
     connect(ui->tableWidget_calendar,
             &QTableWidget::itemSelectionChanged, this, [this]() {
                 const int row =
@@ -322,25 +333,13 @@ void TabIntervalsIcu::onRefreshClicked()
 // ─────────────────────────────────────────────────────────────────────────────
 void TabIntervalsIcu::onPrevWeekClicked()
 {
-    m_weekStart = m_weekStart.addDays(-7);
-    updateWeekLabel();
-    ui->tableWidget_calendar->setRowCount(0);
-    m_rowEventIds.clear();
-    m_loadedWeek = QDate();
-    ui->pushButton_loadWorkout->setEnabled(false);
-    autoRefresh(0);
+    showWeek(m_weekStart.addDays(-7));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 void TabIntervalsIcu::onNextWeekClicked()
 {
-    m_weekStart = m_weekStart.addDays(7);
-    updateWeekLabel();
-    ui->tableWidget_calendar->setRowCount(0);
-    m_rowEventIds.clear();
-    m_loadedWeek = QDate();
-    ui->pushButton_loadWorkout->setEnabled(false);
-    autoRefresh(0);
+    showWeek(m_weekStart.addDays(7));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -354,10 +353,11 @@ void TabIntervalsIcu::onLoadWorkoutClicked()
     if (eventId.isEmpty())
         return;
 
-    if (m_downloadReply) {
-        m_downloadReply->abort();
-        m_downloadReply->deleteLater();
-        m_downloadReply = nullptr;
+    // Disconnect first: abort() emits finished(), whose handler nulls the member.
+    if (QNetworkReply *previous = std::exchange(m_downloadReply, nullptr)) {
+        previous->disconnect(this);
+        previous->abort();
+        previous->deleteLater();
     }
 
     setBusy(true);
@@ -495,6 +495,25 @@ void TabIntervalsIcu::updateWeekLabel()
     ui->label_week->setText(
         m_weekStart.toString("d MMM") + " – " +
         weekEnd.toString("d MMM yyyy"));
+    if (m_thisWeekButton)
+        m_thisWeekButton->setEnabled(m_weekStart != currentMonday() && ui->pushButton_prevWeek->isEnabled());
+}
+
+QDate TabIntervalsIcu::currentMonday()
+{
+    const QDate today = QDate::currentDate();
+    return today.addDays(1 - today.dayOfWeek());
+}
+
+void TabIntervalsIcu::showWeek(const QDate &monday)
+{
+    m_weekStart = monday;
+    updateWeekLabel();
+    ui->tableWidget_calendar->setRowCount(0);
+    m_rowEventIds.clear();
+    m_loadedWeek = QDate();
+    ui->pushButton_loadWorkout->setEnabled(false);
+    autoRefresh(0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -529,6 +548,18 @@ void TabIntervalsIcu::populateTable(
             row, 3, new QTableWidgetItem(durStr));
 
         m_rowEventIds.append(ev.isDownloadableWorkout() ? ev.id : QString());
+
+        // Intervals.icu gives a workout it could not read (no steps) no duration.
+        if (ev.isDownloadableWorkout() && ev.duration_sec <= 0) {
+            const QString why = tr("No steps in Intervals.icu (its graph there is empty). "
+                                   "Write each step as a duration and a target, for example 10m 80%.");
+            for (int column = 0; column < ui->tableWidget_calendar->columnCount(); ++column) {
+                if (QTableWidgetItem *item = ui->tableWidget_calendar->item(row, column)) {
+                    item->setForeground(palette().color(QPalette::PlaceholderText));
+                    item->setToolTip(why);
+                }
+            }
+        }
     }
 }
 
@@ -545,6 +576,7 @@ void TabIntervalsIcu::setBusy(bool busy)
     ui->pushButton_prevWeek->setEnabled(!busy);
     ui->pushButton_nextWeek->setEnabled(!busy);
     ui->pushButton_syncAll->setEnabled(!busy);
+    updateWeekLabel();   // "This week" follows the arrows
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
