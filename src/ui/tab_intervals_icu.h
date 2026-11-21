@@ -9,6 +9,8 @@
 
 #include "intervalsicuservice.h"
 
+class QLabel;
+
 namespace Ui {
 class TabIntervalsIcu;
 }
@@ -71,8 +73,10 @@ protected:
 
 private:
     /// Loads the displayed week while the tab is on screen, unless it is
-    /// already loaded and fresh (or \a force).
-    void autoRefresh(bool force);
+    /// already loaded and younger than \a maxAgeSeconds (0 = always).
+    void autoRefresh(qint64 maxAgeSeconds);
+    /// "Updated 2 min ago" next to the reload button.
+    void updateFreshnessLabel();
     void updateWeekLabel();
     void populateTable(const QList<IntervalsIcuService::CalendarEvent> &events);
     void setStatus(const QString &msg);
@@ -92,6 +96,7 @@ private:
     QDate m_fetchingWeek;      ///< week of the calendar request in flight
     QDate m_loadedWeek;        ///< week shown in the table
     QDateTime m_loadedAt;
+    QLabel *m_updatedLabel = nullptr;
 
     QNetworkReply *m_calendarReply  = nullptr;
     QNetworkReply *m_downloadReply  = nullptr;
