@@ -77,11 +77,15 @@ jobs:
         uses: actions/configure-pages@v6
         # NOTE: GitHub Pages must be enabled in repo Settings → Pages → Source: GitHub Actions
 
+      # Named per attempt: a re-run would otherwise upload a second
+      # "github-pages" artifact next to the first attempt's and deploy-pages
+      # refuses ("Multiple artifacts named github-pages"), so re-runs never worked.
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
           # Upload entire docs/ directory as GitHub Pages artifact
           path: docs/
+          name: github-pages-${{ github.run_attempt }}
 
       # deploy-pages can query the artifact API before the upload above is
       # visible ("No artifacts named github-pages were found"), which left the
@@ -90,6 +94,8 @@ jobs:
         id: deployment
         continue-on-error: true
         uses: actions/deploy-pages@v5
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
 
       - name: Wait before retrying the deploy
         if: steps.deployment.outcome == 'failure'
@@ -99,3 +105,5 @@ jobs:
         id: deployment_retry
         if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v5
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
