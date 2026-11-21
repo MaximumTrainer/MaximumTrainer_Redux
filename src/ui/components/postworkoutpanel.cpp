@@ -309,8 +309,8 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
 
     auto *keepRiding = new QPushButton(tr("Keep riding"), this);
     keepRiding->setObjectName("btnKeepRiding");
-    keepRiding->setToolTip(tr("Hide this summary and keep pedaling. The workout is already saved; "
-                              "extra riding is not recorded."));
+    keepRiding->setToolTip(tr("Fold this summary into a tab at the bottom and keep pedaling. "
+                              "The workout is already saved; extra riding is not recorded."));
     connect(keepRiding, &QPushButton::clicked, this, &PostWorkoutPanel::keepRidingRequested);
     layout->addSpacing(4);
     layout->addWidget(keepRiding, 0, Qt::AlignHCenter);

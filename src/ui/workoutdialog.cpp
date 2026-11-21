@@ -3106,19 +3106,67 @@ void WorkoutDialog::showPostWorkoutPanel()
                                              fitFilePath, fitFileName, fitFileDescription, this);
     connect(widgetPostWorkout, &PostWorkoutPanel::ftpUpdated, this, &WorkoutDialog::ftp_lthr_changed);
     connect(widgetPostWorkout, &PostWorkoutPanel::keepRidingRequested, this, [this]() {
-        widgetPostWorkout->hide();   // hidden, not deleted: uploads in flight still finish
+        minimizePostWorkoutPanel();
         if (m_freeRideAfterWorkout)
             ui->widget_workoutPlot->setDisplayIntervalMessage(
                 true, virtualShiftingActive() ? tr("Free ride - shift gears with ▲ / ▼")
                                               : tr("Free ride - flat road"), 6000);
     });
     widgetPostWorkout->setProfileNote(m_profileNote);
-    const QSize ps = size();   // centre over the whole workout dialog
-    const QSize ws = widgetPostWorkout->size();
-    widgetPostWorkout->move((ps.width()  - ws.width())  / 2,
-                            (ps.height() - ws.height()) / 2);
+    placePostWorkoutOverlays();
     widgetPostWorkout->show();
     widgetPostWorkout->raise();
+}
+
+// "Keep riding" folds the summary into a small tab at the bottom of the window;
+// the panel is only hidden, so uploads in flight still finish and their status
+// and links are there when it is reopened.
+void WorkoutDialog::minimizePostWorkoutPanel()
+{
+    if (!widgetPostWorkout)
+        return;
+    widgetPostWorkout->hide();
+    if (!m_summaryTab) {
+        m_summaryTab = new QPushButton(tr("▲  Workout summary"), this);
+        m_summaryTab->setObjectName(QStringLiteral("btnSummaryTab"));
+        m_summaryTab->setFocusPolicy(Qt::NoFocus);
+        m_summaryTab->setCursor(Qt::PointingHandCursor);
+        m_summaryTab->setToolTip(tr("Show the workout summary again"));
+        m_summaryTab->setStyleSheet(QStringLiteral(
+            "QPushButton#btnSummaryTab { background-color: rgba(20, 20, 24, 220); color: white;"
+            " border: 1px solid #4f8f5e; border-bottom: none; border-top-left-radius: 8px;"
+            " border-top-right-radius: 8px; padding: 6px 18px; font-weight: 600; }"
+            "QPushButton#btnSummaryTab:hover { background-color: rgba(46, 82, 53, 235); }"));
+        connect(m_summaryTab, &QPushButton::clicked, this, &WorkoutDialog::restorePostWorkoutPanel);
+    }
+    m_summaryTab->adjustSize();
+    placePostWorkoutOverlays();
+    m_summaryTab->show();
+    m_summaryTab->raise();
+}
+
+void WorkoutDialog::restorePostWorkoutPanel()
+{
+    if (!widgetPostWorkout)
+        return;
+    if (m_summaryTab)
+        m_summaryTab->hide();
+    placePostWorkoutOverlays();
+    widgetPostWorkout->show();
+    widgetPostWorkout->raise();
+}
+
+void WorkoutDialog::placePostWorkoutOverlays()
+{
+    const QSize dialogSize = size();
+    if (widgetPostWorkout) {
+        const QSize panelSize = widgetPostWorkout->size();
+        widgetPostWorkout->move(qMax(0, (dialogSize.width() - panelSize.width()) / 2),
+                                qMax(0, (dialogSize.height() - panelSize.height()) / 2));
+    }
+    if (m_summaryTab)
+        m_summaryTab->move((dialogSize.width() - m_summaryTab->width()) / 2,
+                           dialogSize.height() - m_summaryTab->height());
 }
 
 void WorkoutDialog::closeFitFiles(double timeElapSec) {
@@ -3488,7 +3536,8 @@ bool focusIsTextInput()
 
 bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
 
-    Q_UNUSED(watched);
+    if (watched == this && event->type() == QEvent::Resize && widgetPostWorkout)
+        placePostWorkoutOverlays();
 
 
     // Only act while this workout window is the active one (an app-level filter
