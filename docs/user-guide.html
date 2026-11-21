@@ -653,6 +653,30 @@
           </table>
         </div>
 
+        <h3 id="zwift-click">Zwift Click v2 controller</h3>
+        <p>
+          You can shift and control the workout with a <strong>Zwift Click v2</strong> controller. It
+          connects over its own Bluetooth link (separate from the trainer), so ERG/FTMS is unaffected.
+          Enable <strong>Use Zwift Click v2 controller (right side only)</strong> in the
+          <em>Smart Trainer</em> section of the <strong>Devices</strong> tab (off by default).
+        </p>
+        <ul>
+          <li><strong>Wake both controllers</strong> once the workout window opens - press a button on
+              each. The <strong>Zwift Click</strong> chip at the top left of the graph shows
+              <em>Searching…</em> until the right controller connects, then <em>Connected</em>. The
+              left (-) controller only needs to be connected to keep the pair's link stable; you
+              control everything from the right.</li>
+          <li>The Click transmits more weakly than a trainer: if it never shows as connected, move the
+              computer (or a USB Bluetooth adapter on an extension cable) closer to the bike.</li>
+          <li><strong>Only the right (+) controller is mapped:</strong>
+              <strong>Y</strong> = gear up, <strong>B</strong> = gear down,
+              <strong>A / Z</strong> = next / previous radio station,
+              <strong>+ paddle</strong> = start / pause the workout.</li>
+          <li>The <strong>left (-) controller is not supported yet</strong> - it currently has a
+              connection-drop issue that will be investigated in a later release. For now it serves only
+              to anchor the link so the right side stays solid.</li>
+        </ul>
+
         <div class="callout callout--warn">
           <strong>Important:</strong> For automatic ERG resistance, pair your smart trainer in the
           <strong>Trainer</strong> slot (it uses FTMS) and tick <strong>Control trainer resistance
@@ -663,6 +687,16 @@
         <div class="callout">
           <strong>Studio mode:</strong> in <a href="#studio-mode">Studio Mode</a> each rider has their
           own sensor slots, paired the same way from that rider's card.
+        </div>
+
+        <div class="callout callout--warn">
+          <strong>Reconnection:</strong> If your BLE device drops mid-workout (e.g. low battery),
+          Maximum Trainer <strong>pauses the session</strong> and tries to reconnect automatically,
+          so you're not penalised while it re-establishes the link.
+          <br /><br />
+          In the <strong>browser (WASM) version</strong>, if it can't reconnect on its own a
+          <strong>Reconnect</strong> overlay appears - click it to trigger a new Web Bluetooth scan
+          and re-pair your trainer.
         </div>
 
       </section>
@@ -755,13 +789,10 @@
           <li>The workout appears in your library list immediately, ready to start.</li>
         </ol>
 
-        <div class="callout">
-          <strong>Auto-upload:</strong> Enable <strong>Auto-upload completed activities to Intervals.icu</strong> in
-          <strong>Preferences → Intervals.icu</strong> to have them posted automatically when you
-          save a workout. An internet connection is required for sync and upload.
-          The WASM (browser) version operates in offline mode only and does not support Intervals.icu
-          sync.
-        </div>
+        <p>
+          Sync needs an internet connection. To send finished rides back to Intervals.icu, see
+          <a href="#uploading">Uploading</a>.
+        </p>
 
         <h3>Option B — Browse existing library</h3>
         <p>
@@ -936,35 +967,11 @@
         <ul>
           <li>A <strong>gear indicator (▼ N / 30 ▲)</strong> appears on the workout top bar.</li>
           <li>Shift with the <strong>Up / Down arrow keys</strong> or by clicking the on-screen
-              <strong>▲ / ▼</strong> arrows — a harder gear instantly raises resistance, like a real
-              drivetrain.</li>
+              <strong>▲ / ▼</strong> arrows (or a <a href="#zwift-click">Zwift Click</a>) - a harder gear
+              instantly raises resistance, like a real drivetrain.</li>
           <li>During an ERG power interval the indicator is hidden (the target power is in
               control); it reappears on free rides and test intervals, where the gears drive
               the resistance.</li>
-        </ul>
-
-        <h3>Zwift Click v2 controller</h3>
-        <p>
-          You can shift and control the workout with a <strong>Zwift Click v2</strong> controller. It
-          connects over its own Bluetooth link (separate from the trainer), so ERG/FTMS is unaffected.
-          Enable <strong>Use Zwift Click v2 controller (right side only)</strong> in the
-          <em>Smart Trainer</em> section of the <strong>Devices</strong> tab (off by default).
-        </p>
-        <ul>
-          <li><strong>Wake both controllers</strong> once the workout window opens - press a button on
-              each. The <strong>Zwift Click</strong> chip at the top left of the graph shows
-              <em>Searching…</em> until the right controller connects, then <em>Connected</em>. The
-              left (-) controller only needs to be connected to keep the pair's link stable; you
-              control everything from the right.</li>
-          <li>The Click transmits more weakly than a trainer: if it never shows as connected, move the
-              computer (or a USB Bluetooth adapter on an extension cable) closer to the bike.</li>
-          <li><strong>Only the right (+) controller is mapped:</strong>
-              <strong>Y</strong> = gear up, <strong>B</strong> = gear down,
-              <strong>A / Z</strong> = next / previous radio station,
-              <strong>+ paddle</strong> = start / pause the workout.</li>
-          <li>The <strong>left (-) controller is not supported yet</strong> - it currently has a
-              connection-drop issue that will be investigated in a later release. For now it serves only
-              to anchor the link so the right side stays solid.</li>
         </ul>
 
         <h3>ERG tips</h3>
@@ -1072,10 +1079,9 @@
 
         <h3>Settings during a workout</h3>
         <p>
-          Press the <strong>Settings</strong> gear in the workout player to adjust options without
-          interrupting the session: which metric widgets are shown and their style
-          (<strong>Detailed</strong> / <strong>Graph</strong> / <strong>Graph &amp; Detailed</strong>), which
-          timer elements appear, the start trigger, the Multimedia panel, and your Radios.
+          Press the <strong>Settings</strong> gear in the workout player to change options without
+          interrupting the session (widgets and their style, timers, start trigger, Multimedia panel,
+          Radios). See <a href="#workout-config">Workout settings (in the player)</a> for the full list.
         </p>
 
         <h3>The media panel</h3>
@@ -1102,15 +1108,6 @@
           or skip with the <a href="#tips">radio shortcuts</a>.
         </p>
 
-        <div class="callout callout--warn">
-          <strong>Reconnection:</strong> If your BLE device drops mid-workout (e.g. low battery),
-          Maximum Trainer <strong>pauses the session</strong> and tries to reconnect automatically,
-          so you're not penalised while it re-establishes the link.
-          <br /><br />
-          In the <strong>browser (WASM) version</strong>, if it can't reconnect on its own a
-          <strong>Reconnect</strong> overlay appears — click it to trigger a new Web Bluetooth scan
-          and re-pair your trainer.
-        </div>
       </section>
 
       <!-- ── Group Workouts ────────────────────────────────────── -->
@@ -1509,10 +1506,99 @@
           configuration steps, is still in the default file, so check both when the app fails early.
         </p>
 
+        <h3>Log size, crashes and bug reports</h3>
+        <p>
+          The log is capped: when it reaches 5 MB it is renamed to <code>MaximumTrainer.log.1</code>
+          (replacing the previous one) and a new file starts, so logs never use more than about 10 MB.
+          When reporting a bug that happened a while ago, attach both files.
+        </p>
+        <p>
+          On Windows, the log starts with each graphics adapter and its driver version. A crash also
+          logs the DLL and offset that faulted, the call stack (with function names and source lines
+          for the app's own code), and the graphics-driver and third-party DLLs loaded in the process,
+          such as overlays and antivirus hooks. It also writes <code>MaximumTrainer-crash.dmp</code>
+          next to the log file. Attach both to the bug report.
+        </p>
+        <p>
+          If the app crashes while the embedded web engine starts (the last log line reads
+          <code>during GlobalVars: QWebEngineProfile init</code>), the next launch starts it with GPU
+          acceleration off ("safe graphics") and keeps doing so until the app is updated; the first
+          launch of a new version tries the GPU again. That launch also saves the web engine's own log
+          in <code>MaximumTrainer-webengine.log</code> next to the app log; attach it too. Set
+          <code>MT_WEBENGINE_SAFE_MODE=0</code> to turn safe graphics off again,
+          <code>MT_WEBENGINE_SAFE_MODE=1</code> to force it on, or launch with
+          <code>--safe-graphics</code> to try it once. <code>MT_WEBENGINE_LOG=1</code> saves the web
+          engine's log on any launch.
+        </p>
+        <p>
+          The Windows build ships its own Visual C++ runtime (<code>msvcp140.dll</code>,
+          <code>vcruntime140*.dll</code>) next to <code>MaximumTrainer.exe</code>, because Qt 6.11
+          needs version 14.40 or newer and an older copy in <code>System32</code> makes the app crash
+          at startup with a fault in <code>MSVCP140.dll</code>. The log's <code>C++ runtime:</code>
+          line shows which copy was loaded.
+        </p>
+
         <div class="callout">
           <strong>Tip:</strong> Set the log level to <strong>Debug</strong> or <strong>Verbose</strong>
           before reproducing an issue, then send the log file when reporting a bug. Reset the level
           back to <strong>Info</strong> afterwards to keep the file small.
+        </div>
+
+        <h3>Troubleshooting</h3>
+        <div class="guide-table-wrap">
+          <table class="guide-table">
+            <thead><tr><th>Problem</th><th>Solution</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Sensor not appearing in BLE scanner</td>
+                <td>Wake the device (pedal / moisten HR strap), bring it closer, and click <strong>Rescan</strong>.</td>
+              </tr>
+              <tr>
+                <td>ERG resistance not changing</td>
+                <td>Ensure the trainer is connected with the <strong>FTMS (0x1826)</strong> profile, not a plain Power profile. A plain Power profile provides data but does not accept load commands.</td>
+              </tr>
+              <tr>
+                <td>ERG not working in browser (WASM) version</td>
+                <td>The browser version sends an FTMS Request Control handshake automatically after connection. If ERG commands are still ignored, disconnect and reconnect your trainer — some trainers require a fresh GATT connection to accept the control handshake.</td>
+              </tr>
+              <tr>
+                <td>Power readings seem inaccurate</td>
+                <td>Spin-down / calibrate the trainer from its own app, then reconnect in Maximum Trainer.</td>
+              </tr>
+              <tr>
+                <td>App won't connect after a BLE disconnect</td>
+                <td>Maximum Trainer pauses and retries automatically. If it can't reconnect, toggle Bluetooth off/on in your OS and use the <strong>Reconnect</strong> option.</td>
+              </tr>
+              <tr>
+                <td>Upload to Strava fails</td>
+                <td>Re-link your Strava account in Preferences → Strava. OAuth tokens expire; re-linking refreshes them.</td>
+              </tr>
+              <tr>
+                <td>No sound / internet radio silent on a fresh Windows install</td>
+                <td>Windows <strong>N editions</strong> ship without Media Foundation, which audio and video playback require. Install the free <strong>Media Feature Pack</strong> (Settings → Apps → Optional features) and restart the app.</td>
+              </tr>
+              <tr>
+                <td>Windows says "Windows protected your PC"</td>
+                <td>The release builds are not code-signed, so SmartScreen warns on first launch. Click <strong>More info → Run anyway</strong>.</td>
+              </tr>
+              <tr>
+                <td>macOS won't open the app</td>
+                <td>The app is not notarized, so Gatekeeper blocks it the first time. Open <strong>System Settings → Privacy &amp; Security</strong> and click <strong>Open Anyway</strong>, or run <code>xattr -dr com.apple.quarantine /Applications/MaximumTrainer.app</code>.</td>
+              </tr>
+              <tr>
+                <td>Linux AppImage doesn't start</td>
+                <td>AppImages need FUSE 2. Install <code>libfuse2t64</code> (Ubuntu 24.04+) or <code>libfuse2</code> (22.04), or run the AppImage with <code>--appimage-extract-and-run</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout">
+          <strong>Need more help?</strong> Visit the
+          <a href="https://github.com/MaximumTrainer/MaximumTrainer_Redux/discussions" target="_blank" rel="noopener">Community Discussions</a>
+          on GitHub, or open an
+          <a href="https://github.com/MaximumTrainer/MaximumTrainer_Redux/issues" target="_blank" rel="noopener">issue</a>
+          if you believe you've found a bug.
         </div>
 
       </section>
@@ -1599,62 +1685,6 @@
           </li>
         </ul>
 
-        <h3>Troubleshooting</h3>
-        <div class="guide-table-wrap">
-          <table class="guide-table">
-            <thead><tr><th>Problem</th><th>Solution</th></tr></thead>
-            <tbody>
-              <tr>
-                <td>Sensor not appearing in BLE scanner</td>
-                <td>Wake the device (pedal / moisten HR strap), bring it closer, and click <strong>Rescan</strong>.</td>
-              </tr>
-              <tr>
-                <td>ERG resistance not changing</td>
-                <td>Ensure the trainer is connected with the <strong>FTMS (0x1826)</strong> profile, not a plain Power profile. A plain Power profile provides data but does not accept load commands.</td>
-              </tr>
-              <tr>
-                <td>ERG not working in browser (WASM) version</td>
-                <td>The browser version sends an FTMS Request Control handshake automatically after connection. If ERG commands are still ignored, disconnect and reconnect your trainer — some trainers require a fresh GATT connection to accept the control handshake.</td>
-              </tr>
-              <tr>
-                <td>Power readings seem inaccurate</td>
-                <td>Spin-down / calibrate the trainer from its own app, then reconnect in Maximum Trainer.</td>
-              </tr>
-              <tr>
-                <td>App won't connect after a BLE disconnect</td>
-                <td>Maximum Trainer pauses and retries automatically. If it can't reconnect, toggle Bluetooth off/on in your OS and use the <strong>Reconnect</strong> option.</td>
-              </tr>
-              <tr>
-                <td>Upload to Strava fails</td>
-                <td>Re-link your Strava account in Preferences → Strava. OAuth tokens expire; re-linking refreshes them.</td>
-              </tr>
-              <tr>
-                <td>No sound / internet radio silent on a fresh Windows install</td>
-                <td>Windows <strong>N editions</strong> ship without Media Foundation, which audio and video playback require. Install the free <strong>Media Feature Pack</strong> (Settings → Apps → Optional features) and restart the app.</td>
-              </tr>
-              <tr>
-                <td>Windows says "Windows protected your PC"</td>
-                <td>The release builds are not code-signed, so SmartScreen warns on first launch. Click <strong>More info → Run anyway</strong>.</td>
-              </tr>
-              <tr>
-                <td>macOS won't open the app</td>
-                <td>The app is not notarized, so Gatekeeper blocks it the first time. Open <strong>System Settings → Privacy &amp; Security</strong> and click <strong>Open Anyway</strong>, or run <code>xattr -dr com.apple.quarantine /Applications/MaximumTrainer.app</code>.</td>
-              </tr>
-              <tr>
-                <td>Linux AppImage doesn't start</td>
-                <td>AppImages need FUSE 2. Install <code>libfuse2t64</code> (Ubuntu 24.04+) or <code>libfuse2</code> (22.04), or run the AppImage with <code>--appimage-extract-and-run</code>.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="callout">
-          <strong>Need more help?</strong> Visit the
-          <a href="https://github.com/MaximumTrainer/MaximumTrainer_Redux/discussions" target="_blank" rel="noopener">Community Discussions</a>
-          on GitHub, or open an
-          <a href="https://github.com/MaximumTrainer/MaximumTrainer_Redux/issues" target="_blank" rel="noopener">issue</a>
-          if you believe you've found a bug.
-        </div>
       </section>
 
       <!-- ── Platform Requirements ─────────────────────────────── -->
