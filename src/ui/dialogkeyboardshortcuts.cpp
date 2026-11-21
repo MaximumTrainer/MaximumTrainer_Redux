@@ -44,7 +44,6 @@ DialogKeyboardShortcuts::DialogKeyboardShortcuts(QWidget *parent)
         {tr("↑  /  ↓"),          tr("Virtual shift up / down (or difficulty if shifting is off)")},
         {tr("+  /  ="),          tr("Increase difficulty +5 %")},
         {tr("-"),                tr("Decrease difficulty -5 %")},
-        {tr("L  /  Backspace"),  tr("Manual lap")},
         {tr("F6 / F7 / F8"),     tr("Radio: previous / play-pause / next")},
         {tr("F11"),              tr("Toggle fullscreen")},
         {tr("?  /  F1"),         tr("Show keyboard shortcuts")},

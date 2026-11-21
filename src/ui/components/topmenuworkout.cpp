@@ -185,7 +185,6 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
     ui->pushButton_config->setFocusPolicy(Qt::NoFocus);
     ui->pushButton_expand->setFocusPolicy(Qt::NoFocus);
     ui->pushButton_start->setFocusPolicy(Qt::NoFocus);
-    ui->pushButton_lap->setFocusPolicy(Qt::NoFocus);
     ui->pushButton_exit->setFocusPolicy(Qt::NoFocus);
 
 
@@ -201,7 +200,6 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
 
     this->setMaximumHeight(35); //PushButton bigger on OSX, need more space
     ui->pushButton_start->setMinimumWidth(130);
-    ui->pushButton_lap->setMinimumWidth(130);
 
 #endif
 
@@ -427,17 +425,6 @@ void TopMenuWorkout::on_pushButton_start_clicked()
     emit startOrPause();
 
 
-}
-
-
-void TopMenuWorkout::setButtonLapVisible(bool visible) {
-    ui->pushButton_lap->setHidden(!visible);
-}
-
-
-void TopMenuWorkout::on_pushButton_lap_clicked()
-{
-    emit lap();
 }
 
 

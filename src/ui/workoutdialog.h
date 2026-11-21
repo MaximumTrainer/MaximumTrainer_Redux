@@ -189,7 +189,6 @@ public slots:
     void updateRealTimeGraph(double totalTimeElapsed_msec);
     void updatePausedTime(double totalTimePaused_msec);
 
-    void lapButtonPressed();
 
 
     void batteryStatusReceived(QString sensorType, int percentage);
