@@ -918,47 +918,25 @@ void MainWindow::executeWorkout(Workout workout) {
         return;
     }
 
-    // Saved sensors connect inside the workout window; with none saved, pick
-    // one device with the scanner below.
-    {
-        const QMap<BtleSensorRole, BtleSavedSensor> savedSensors = BtleSensorStore::loadAll();
-        if (!SensorConnector::slotsFor(savedSensors, account->rowing_mode).isEmpty()) {
-            startWorkoutConnectingSensors(workout, savedSensors);
+    // Saved sensors connect inside the workout window. With none paired, point
+    // the rider to the Devices page (or ride on without sensors).
+    const QMap<BtleSensorRole, BtleSavedSensor> savedSensors = BtleSensorStore::loadAll();
+    if (SensorConnector::slotsFor(savedSensors, account->rowing_mode).isEmpty() && !account->use_zwift_click) {
+        QMessageBox box(QMessageBox::Information, tr("No sensors paired"),
+                        tr("Pair your trainer and sensors on the Devices page once; after that they "
+                           "connect by themselves at every workout."),
+                        QMessageBox::NoButton, this);
+        box.setInformativeText(tr("No hardware? Turn on Simulated Sensors at the bottom of the Devices page."));
+        QPushButton *goToDevices = box.addButton(tr("Go to Devices"), QMessageBox::AcceptRole);
+        box.addButton(tr("Continue without sensors"), QMessageBox::RejectRole);
+        box.setDefaultButton(goToDevices);
+        box.exec();
+        if (box.clickedButton() == goToDevices) {
+            ftb->setCurrentIndex(3);
             return;
         }
     }
-
-    BtleScannerDialog scanner(this);
-    if (scanner.exec() != QDialog::Accepted || !scanner.hasSelection())
-        return;
-
-    QApplication::setOverrideCursor(Qt::WaitCursor);
-
-
-    BtleHub *btleHub = new BtleHub(this);
-
-    {
-        QEventLoop loop;
-        connect(btleHub, &BtleHub::deviceConnected,    &loop, &QEventLoop::quit);
-        connect(btleHub, &BtleHub::deviceDisconnected, &loop, &QEventLoop::quit);
-        connect(btleHub, &BtleHub::connectionError,
-                &loop, [&loop](const QString &) { loop.quit(); });
-        btleHub->connectToDevice(scanner.selectedDevice());
-
-        QApplication::restoreOverrideCursor();
-        loop.exec();
-    }
-
-    if (!btleHub->isConnected()) {
-        AsyncDialogs::warning(this,
-                              tr("Connection Failed"),
-                              tr("Could not connect to the selected Bluetooth device.\n"
-                                 "Please check the device is powered on and try again."));
-        delete btleHub;
-        return;
-    }
-
-    startWorkoutWithConnectedHub(workout, btleHub);
+    startWorkoutConnectingSensors(workout, savedSensors);
 #endif // GC_WASM_BUILD
 }
 
@@ -1153,15 +1131,17 @@ void MainWindow::startWorkoutConnectingSensors(const Workout &workout,
     w->setWindowModality(Qt::ApplicationModal);
 
     auto *connector = new SensorConnector(savedSensors, account->rowing_mode, this);
-    SensorStatusStrip *strip = w->sensorStrip();
-    for (const SensorConnector::Slot &slot : connector->sensorSlots())
-        strip->addSensor(int(slot.role), BtleSensorStore::roleDisplayName(slot.role), slot.saved.name);
-    connect(connector, &SensorConnector::statusChanged, strip,
-            [strip](BtleSensorRole role, SensorConnector::Status status) {
-                strip->setState(int(role), SensorStatusStrip::State(int(status)));
-            });
-    connect(strip, &SensorStatusStrip::retryRequested, connector,
-            [connector](int key) { connector->retry(BtleSensorRole(key)); });
+    SensorStatusStrip *strip = connector->isEmpty() && !account->use_zwift_click ? nullptr : w->sensorStrip();
+    if (strip) {
+        for (const SensorConnector::Slot &slot : connector->sensorSlots())
+            strip->addSensor(int(slot.role), BtleSensorStore::roleDisplayName(slot.role), slot.saved.name);
+        connect(connector, &SensorConnector::statusChanged, strip,
+                [strip](BtleSensorRole role, SensorConnector::Status status) {
+                    strip->setState(int(role), SensorStatusStrip::State(int(status)));
+                });
+        connect(strip, &SensorStatusStrip::retryRequested, connector,
+                [connector](int key) { connector->retry(BtleSensorRole(key)); });
+    }
 
     // Re-wire everything that is connected whenever a hub (re)connects, so the
     // source priorities still hold: a dedicated HR strap or cadence sensor that
