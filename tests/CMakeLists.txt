@@ -105,6 +105,7 @@ mt_add_test(workout_export_tests
 
 mt_add_test(achievements_tests
     SOURCES "${SRC}/fitness/achievements/achievementcatalog.cpp"
+        "${SRC}/fitness/achievements/achievementlivetracker.cpp"
         "${SRC}/fitness/achievements/achievementstore.cpp"
         achievements/tst_achievements.cpp
     INCLUDES "${SRC}/fitness/achievements" "${SRC}/model")

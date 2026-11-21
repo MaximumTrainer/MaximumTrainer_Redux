@@ -5,6 +5,7 @@
 
 #include "achievement.h"
 #include "achievementcatalog.h"
+#include "achievementlivetracker.h"
 #include "workout.h"
 
 /// Awards the local achievements (AchievementCatalog) and saves them
@@ -34,6 +35,11 @@ public slots:
     /// Live checks during a ride: elapsed minutes and current TSS.
     void checkLiveMinutes(int elapsedMinutes);
     void checkLiveTss(double tss);
+    /// One recorded second of the solo rider (negative = no sensor data).
+    void checkLiveSecond(double powerWatts, double cadenceRpm, double ftpWatts);
+    void checkLiveDistance(double meters);
+    /// Clears the rolling peak-effort windows; call when a workout opens.
+    void startLiveRide();
 
 signals:
     void achievementCompleted(Achievement achievement);
@@ -44,6 +50,7 @@ private:
     void award(const QString &key, bool announce);
 
     AchievementCatalog::HistoryStats m_stats;
+    AchievementLiveTracker m_liveTracker;
 };
 
 Q_DECLARE_METATYPE(ManagerAchievement*)

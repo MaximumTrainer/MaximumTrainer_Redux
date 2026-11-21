@@ -35,7 +35,7 @@ target_sources(mt_core PRIVATE
     fitness/mmpcalculator.cpp fitness/pmccalculator.cpp fitness/ftpestimator.cpp fitness/weeklysummary.cpp fitness/ridesummary.cpp fitness/powerzones.cpp
     fitness/achievements/achievement.cpp fitness/achievements/managerachievement.cpp
     fitness/achievements/achievementchecker.cpp fitness/achievements/achievementcatalog.cpp
-    fitness/achievements/achievementstore.cpp
+    fitness/achievements/achievementstore.cpp fitness/achievements/achievementlivetracker.cpp
     # model
     model/interval.cpp model/workout.cpp model/sortfilterproxymodel.cpp model/workouttablemodel.cpp
     model/sensor.cpp model/settings.cpp model/dataworkout.cpp model/intervaldata.cpp
