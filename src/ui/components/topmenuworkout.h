@@ -24,7 +24,6 @@ public:
     void setButtonStartReady(bool ready);
     void setWorkoutNameLabel(QString label);
 
-    void setButtonLapVisible(bool visible);
 
 
 
@@ -69,7 +68,6 @@ signals :
     void exit();
 
     void startOrPause();
-    void lap();
 
     //radio
     void prevRadio();
@@ -105,7 +103,6 @@ private slots:
 
     void setCurrentTime();
 
-    void on_pushButton_lap_clicked();
 
     void on_pushButton_prevRadio_clicked();
 

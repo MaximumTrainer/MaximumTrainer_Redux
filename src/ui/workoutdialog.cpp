@@ -27,6 +27,7 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QKeyEvent>
+#include <QApplication>
 #include <QScreen>
 #include <QGuiApplication>
 #include <QVBoxLayout>
@@ -412,7 +413,7 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     flags = flags | Qt::WindowTitleHint | Qt::WindowCloseButtonHint | Qt::WindowMinimizeButtonHint;
 #endif
     this->setWindowFlags(flags);
-    // App-level filter so workout hotkeys (start/pause, gear ▲▼, lap, …) work
+    // App-level filter so workout hotkeys (start/pause, gear ▲▼, …) work
     // regardless of which child widget holds focus — otherwise the arrow keys
     // get eaten by button focus-navigation instead of reaching us.
     qApp->installEventFilter(this);
@@ -423,7 +424,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     connect(ui->widget_topMenu, &TopMenuWorkout::expand, this, &WorkoutDialog::expandWindow);
     connect(ui->widget_topMenu, &TopMenuWorkout::exit, this, &WorkoutDialog::closeWindow);
     connect(ui->widget_topMenu, &TopMenuWorkout::startOrPause, this, &WorkoutDialog::start_or_pause_workout);
-    connect(ui->widget_topMenu, &TopMenuWorkout::lap, this, &WorkoutDialog::lapButtonPressed);
     // On-screen virtual-shift arrows mirror the Up/Down keys.
     connect(ui->widget_topMenu, &TopMenuWorkout::gearUp,   this, [this]{ shiftGear(+1); });
     connect(ui->widget_topMenu, &TopMenuWorkout::gearDown, this, [this]{ shiftGear(-1); });
@@ -583,9 +583,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
         isTestWorkout = false;
     }
 
-    // The lap / "Interval" button only makes sense in free ride (manual laps);
-    // structured workouts and tests advance intervals automatically, so hide it.
-    ui->widget_topMenu->setButtonLapVisible(workout.getWorkoutNameEnum() == Workout::OPEN_RIDE);
 
 
     initUI();
@@ -1064,29 +1061,6 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
 }
 
 
-void WorkoutDialog::lapButtonPressed() {
-
-    qInfo() << "Lap at" << timeElapsed_sec << "s";
-
-    if (isTestWorkout) {
-        return;
-    }
-
-    int intervalPausedTime_msec = totalTimePausedWorkout_msec - lastIntervalTotalTimePausedWorkout_msec;
-    changeIntervalsDataWorkout(lastIntervalEndTime_msec, timeElapsed_sec, intervalPausedTime_msec, false, false);
-
-    ui->widget_workoutPlot->addMarkerInterval(timeElapsed_sec);
-    ui->wid_1_workoutPlot_HeartrateZoom->addMarkerInterval(timeElapsed_sec);
-    ui->wid_2_workoutPlot_PowerZoom->addMarkerInterval(timeElapsed_sec);
-    ui->wid_3_workoutPlot_CadenceZoom->addMarkerInterval(timeElapsed_sec);
-    ui->widget_workoutPlot->replot();
-
-    if (workout.getWorkoutNameEnum() == Workout::OPEN_RIDE) {
-        timeInterval = QTime(0,0,0,0);
-        ui->widget_topMenu->setIntervalTime(timeInterval);
-    }
-}
-
 void WorkoutDialog::adjustWorkoutDifficulty(int percentageIncrease) {
 
     double diffFromActualDifficulty = percentageIncrease - currentWorkoutDifficultyPercentage;
@@ -1414,7 +1388,6 @@ void WorkoutDialog::workoutOver() {
 
     isWorkoutPaused = true;
     ui->widget_topMenu->setButtonStartReady(false);
-    ui->widget_topMenu->setButtonLapVisible(false);
     ui->widget_workoutPlot->setSpinBoxDisabled();
 
 
@@ -2897,10 +2870,6 @@ void WorkoutDialog::keyPressEvent(QKeyEvent *event)
     case Qt::Key_Minus:
         ui->widget_workoutPlot->adjustDifficultyBy(-5);
         return;
-    case Qt::Key_L:
-        if (!event->isAutoRepeat())
-            lapButtonPressed();
-        return;
     case Qt::Key_Escape:
         if (!event->isAutoRepeat())
             reject();
@@ -3477,6 +3446,17 @@ void WorkoutDialog::connectDataWorkout() {
 
 }
 
+namespace {
+// WebEngine flags its focus widget as input-method enabled only while an
+// editable element in the page has focus, so this covers page text boxes too.
+bool focusIsTextInput()
+{
+    const QWidget *focusWidget = QApplication::focusWidget();
+    return focusWidget && focusWidget->testAttribute(Qt::WA_InputMethodEnabled)
+           && focusWidget->inputMethodQuery(Qt::ImEnabled).toBool();
+}
+}
+
 bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
 
     Q_UNUSED(watched);
@@ -3487,6 +3467,14 @@ bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
     // even when a child button holds focus, but goes false for modal dialogs.
     if(event->type() == QEvent::KeyPress && isActiveWindow()) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
+        // Typing in a text field (the browser address bar, or a search box
+        // inside the web page) needs Enter and the arrows for itself; only the
+        // function keys stay global there.
+        const int key = keyEvent->key();
+        const bool isEditingKey = key == Qt::Key_Enter || key == Qt::Key_Return
+                                  || key == Qt::Key_Up || key == Qt::Key_Down;
+        if (isEditingKey && focusIsTextInput())
+            return false;
         if(keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return ) {
             start_or_pause_workout();
             return true; // mark the event as handled
@@ -3501,10 +3489,6 @@ bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
         else if (keyEvent->key() == Qt::Key_Down) {
             if (virtualShiftingActive()) shiftGear(-1);
             else emit decreaseDifficulty();
-            return true;
-        }
-        else if (keyEvent->key() == Qt::Key_Backspace) {
-            lapButtonPressed();
             return true;
         }
         // --- Fullscreen
