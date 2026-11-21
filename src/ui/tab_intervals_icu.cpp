@@ -1,4 +1,6 @@
 #include "tab_intervals_icu.h"
+
+#include <utility>
 #include "ui_tab_intervals_icu.h"
 
 #include <QDir>
@@ -173,7 +175,28 @@ void TabIntervalsIcu::refreshCredentials()
     }
 
     setCalendarAvailable(true);
-    setStatus(tr("Ready - click Refresh to load this week's schedule."));
+    setStatus(tr("Ready."));
+    autoRefresh(false);
+}
+
+void TabIntervalsIcu::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    autoRefresh(false);
+}
+
+void TabIntervalsIcu::autoRefresh(bool force)
+{
+    // A schedule older than this is fetched again when the tab is shown.
+    constexpr qint64 kFreshSeconds = 300;
+    if (!isVisible() || !m_calendarAvailable)
+        return;
+    if (m_calendarReply || m_downloadReply || m_syncCalendarReply || m_syncDownloadReply)
+        return;
+    if (!force && m_loadedWeek == m_weekStart && m_loadedAt.isValid()
+        && m_loadedAt.secsTo(QDateTime::currentDateTime()) < kFreshSeconds)
+        return;
+    onRefreshClicked();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -199,6 +222,7 @@ void TabIntervalsIcu::abortCalendarRequests()
 
 void TabIntervalsIcu::setCalendarAvailable(bool available, const QString &banner)
 {
+    m_calendarAvailable = available;
     ui->label_offline->setText(banner);
     ui->label_offline->setVisible(!available);
     for (QWidget *control : std::initializer_list<QWidget *>{
@@ -227,16 +251,17 @@ void TabIntervalsIcu::onRefreshClicked()
         return;
     }
 
-    // Abort any in-flight request
-    if (m_calendarReply) {
-        m_calendarReply->abort();
-        m_calendarReply->deleteLater();
-        m_calendarReply = nullptr;
+    // Drop any request in flight; disconnect first, as abort() emits finished().
+    if (QNetworkReply *previous = std::exchange(m_calendarReply, nullptr)) {
+        previous->disconnect(this);
+        previous->abort();
+        previous->deleteLater();
     }
 
     setBusy(true);
     setStatus(tr("Fetching calendar…"));
 
+    m_fetchingWeek = m_weekStart;
     const QDate newest = m_weekStart.addDays(6);
     m_calendarReply = m_service->fetchCalendar(m_weekStart, newest);
     if (!m_calendarReply) {
@@ -257,7 +282,9 @@ void TabIntervalsIcu::onPrevWeekClicked()
     updateWeekLabel();
     ui->tableWidget_calendar->setRowCount(0);
     m_rowEventIds.clear();
+    m_loadedWeek = QDate();
     ui->pushButton_loadWorkout->setEnabled(false);
+    autoRefresh(true);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -267,7 +294,9 @@ void TabIntervalsIcu::onNextWeekClicked()
     updateWeekLabel();
     ui->tableWidget_calendar->setRowCount(0);
     m_rowEventIds.clear();
+    m_loadedWeek = QDate();
     ui->pushButton_loadWorkout->setEnabled(false);
+    autoRefresh(true);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -332,6 +361,8 @@ void TabIntervalsIcu::onCalendarFetchFinished()
         IntervalsIcuService::parseEvents(data);
 
     populateTable(events);
+    m_loadedWeek = m_fetchingWeek;
+    m_loadedAt = QDateTime::currentDateTime();
 
     if (events.isEmpty()) {
         setStatus(tr("No events found for this week."));

@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QDate>
+#include <QDateTime>
 #include <QList>
 #include <QNetworkReply>
 
@@ -65,7 +66,13 @@ private slots:
     void onSyncCalendarFetched();
     void onSyncWorkoutDownloaded();
 
+protected:
+    void showEvent(QShowEvent *event) override;
+
 private:
+    /// Loads the displayed week while the tab is on screen, unless it is
+    /// already loaded and fresh (or \a force).
+    void autoRefresh(bool force);
     void updateWeekLabel();
     void populateTable(const QList<IntervalsIcuService::CalendarEvent> &events);
     void setStatus(const QString &msg);
@@ -81,6 +88,10 @@ private:
     IntervalsIcuService *m_service;
     QDate m_weekStart;   ///< Monday of the currently displayed week
     bool  m_networkOnline = true;
+    bool  m_calendarAvailable = false;
+    QDate m_fetchingWeek;      ///< week of the calendar request in flight
+    QDate m_loadedWeek;        ///< week shown in the table
+    QDateTime m_loadedAt;
 
     QNetworkReply *m_calendarReply  = nullptr;
     QNetworkReply *m_downloadReply  = nullptr;
