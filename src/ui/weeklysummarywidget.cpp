@@ -7,7 +7,10 @@
 #include <QToolTip>
 #include <QVBoxLayout>
 #include <QHelpEvent>
+#include <QApplication>
+#include <QMenu>
 
+#include "managerachievement.h"
 #include "workouthistorysummary.h"
 
 namespace {
@@ -113,6 +116,11 @@ WeeklySummaryWidget::WeeklySummaryWidget(QWidget *parent) : QWidget(parent)
     auto *row = new QHBoxLayout(this);
     row->setContentsMargins(0, 0, 0, 0);
     row->setSpacing(8);
+    m_goal  = makeTile(this, row);
+    m_goal->setMinimumWidth(150);
+    connect(m_goal, &QLabel::linkActivated, this, [this] { showGoalMenu(m_goal); });
+    if (auto *manager = qApp->property("ManagerAchievement").value<ManagerAchievement*>())
+        connect(manager, &ManagerAchievement::weeklyGoalChanged, this, &WeeklySummaryWidget::render);
     m_rides = makeTile(this, row);
     m_time  = makeTile(this, row);
     m_tss   = makeTile(this, row);
@@ -122,8 +130,51 @@ WeeklySummaryWidget::WeeklySummaryWidget(QWidget *parent) : QWidget(parent)
     setHistory({});
 }
 
+QString WeeklySummaryWidget::goalText(const WeeklySummary::GoalProgress &progress)
+{
+    const QString link = QStringLiteral("<a href='goal' style='color:#6ea8fe'>%1</a>");
+    if (progress.goalHours <= 0.0)
+        return link.arg(tr("Set a weekly goal"));
+    QString text = tr("%1 / %2 h").arg(hoursText(progress.hoursThisWeek), hoursText(progress.goalHours));
+    if (progress.reached)
+        text += QStringLiteral(" <span style='color:#3fb27f'>✓</span>");
+    if (progress.streakWeeks >= 2)
+        text += QStringLiteral(" · ") + tr("%n-week streak", "", progress.streakWeeks);
+    return text + QStringLiteral(" · ") + link.arg(tr("change"));
+}
+
+void WeeklySummaryWidget::showGoalMenu(QWidget *anchor)
+{
+    auto *manager = qApp->property("ManagerAchievement").value<ManagerAchievement*>();
+    if (!manager || !anchor)
+        return;
+    auto *menu = new QMenu(anchor);
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+    const double current = ManagerAchievement::weeklyGoalHours();
+    for (double hours : {2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0, 12.0, 15.0}) {
+        QAction *action = menu->addAction(tr("%1 h per week").arg(hours));
+        action->setCheckable(true);
+        action->setChecked(qFuzzyCompare(current, hours));
+        QObject::connect(action, &QAction::triggered, manager, [manager, hours] { manager->setWeeklyGoalHours(hours); });
+    }
+    menu->addSeparator();
+    QAction *none = menu->addAction(tr("No goal"));
+    none->setCheckable(true);
+    none->setChecked(current <= 0.0);
+    QObject::connect(none, &QAction::triggered, manager, [manager] { manager->setWeeklyGoalHours(0.0); });
+    // popup(), not exec(): exec() is fatal on WASM.
+    menu->popup(anchor->mapToGlobal(QPoint(0, anchor->height())));
+}
+
 void WeeklySummaryWidget::setHistory(const QList<WorkoutHistorySummary> &history)
 {
+    m_history = history;
+    render();
+}
+
+void WeeklySummaryWidget::render()
+{
+    const QList<WorkoutHistorySummary> &history = m_history;
     const QVector<WeeklySummary::Week> weeks =
         WeeklySummary::recentWeeks(history, QDate::currentDate(), kWeeks);
     const WeeklySummary::Week &now  = weeks.last();
@@ -133,6 +184,23 @@ void WeeklySummaryWidget::setHistory(const QList<WorkoutHistorySummary> &history
                               "<span style='font-size:16pt;font-weight:700'>%2</span> %3")
             .arg(caption, value, delta);
     };
+    const WeeklySummary::GoalProgress goal =
+        WeeklySummary::goalProgress(history, QDate::currentDate(), ManagerAchievement::weeklyGoalHours());
+    if (goal.goalHours <= 0.0) {
+        m_goal->setText(QStringLiteral("<span style='color:#9a9aa6;font-size:8pt'>%1</span><br>%2")
+                            .arg(tr("WEEKLY GOAL"), goalText(goal)));
+    } else {
+        QString detail = goal.reached ? QStringLiteral("<span style='color:#3fb27f'>✓ %1</span>").arg(tr("reached"))
+                                      : tr("%1 h to go").arg(hoursText(goal.goalHours - goal.hoursThisWeek));
+        if (goal.streakWeeks >= 2)
+            detail += QStringLiteral(" · ") + tr("%n-week streak", "", goal.streakWeeks);
+        detail += QStringLiteral(" · <a href='goal' style='color:#6ea8fe'>%1</a>").arg(tr("change"));
+        m_goal->setText(QStringLiteral("<span style='color:#9a9aa6;font-size:8pt'>%1</span><br>"
+                                       "<span style='font-size:16pt;font-weight:700'>%2</span>"
+                                       "<span style='color:#9a9aa6'> / %3 h</span><br>"
+                                       "<span style='font-size:8pt'>%4</span>")
+                            .arg(tr("WEEKLY GOAL"), hoursText(goal.hoursThisWeek), hoursText(goal.goalHours), detail));
+    }
     m_rides->setText(tile(tr("THIS WEEK · RIDES"), QString::number(now.rides), deltaText(now.rides, prev.rides)));
     m_time->setText(tile(tr("TIME"), hoursText(now.hours), deltaText(now.hours, prev.hours, 1, QStringLiteral(" h"))));
     m_tss->setText(tile(tr("TSS"), QString::number(qRound(now.tss)), deltaText(now.tss, prev.tss)));

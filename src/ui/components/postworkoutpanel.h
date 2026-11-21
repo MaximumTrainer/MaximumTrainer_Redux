@@ -49,6 +49,7 @@ private slots:
 private:
     void fitToContents();
     void addRideSummary(QBoxLayout *layout);
+    void addWeeklyGoal(QBoxLayout *layout);
     void addFtpSuggestion(QBoxLayout *layout);
     void addRideTrend(QBoxLayout *layout);
     void acceptFtp(int ftpWatts);

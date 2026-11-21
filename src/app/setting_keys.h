@@ -172,6 +172,8 @@ namespace Training {
 /// Highest FTP estimate the rider dismissed after a workout; only a higher
 /// estimate is suggested again.
 inline constexpr SettingKey<int> FtpSuggestionDismissedW {"training/ftpSuggestionDismissedW", 0};
+/// Riding hours per week the rider aims for; 0 = no goal.
+inline constexpr SettingKey<double> WeeklyGoalHours {"training/weeklyGoalHours", 0.0};
 } // namespace Training
 
 namespace Group {
