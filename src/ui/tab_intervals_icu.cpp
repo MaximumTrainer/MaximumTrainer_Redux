@@ -1,5 +1,14 @@
 #include "tab_intervals_icu.h"
+
+#include <utility>
 #include "ui_tab_intervals_icu.h"
+
+namespace {
+// Age after which the week is fetched again when the tab is shown, or when
+// the app comes back to the front (usually after editing the calendar).
+constexpr qint64 kShowRefreshSeconds = 300;
+constexpr qint64 kActivateRefreshSeconds = 30;
+} // namespace
 
 #include <QDir>
 #include <QFile>
@@ -9,6 +18,9 @@
 #include <QMessageBox>
 #include <QDebug>
 #include <QApplication>
+#include <QLabel>
+#include <QLocale>
+#include <QTimer>
 
 #include "account.h"
 #include "util.h"
@@ -108,6 +120,22 @@ TabIntervalsIcu::TabIntervalsIcu(QWidget *parent)
     g_intervalsTab = this;
     js_exposeIntervalsTestApi();
 #endif
+    // A small reload icon with the schedule's age, instead of a Refresh button:
+    // the week loads by itself.
+    ui->pushButton_refresh->setText(QString());
+    ui->pushButton_refresh->setFlat(true);
+    ui->pushButton_refresh->setToolTip(tr("Reload this week from Intervals.icu"));
+    m_updatedLabel = new QLabel(this);
+    m_updatedLabel->setStyleSheet(QStringLiteral("color: #8d8d8d;"));
+    ui->horizontalLayout_nav->insertWidget(ui->horizontalLayout_nav->indexOf(ui->pushButton_refresh), m_updatedLabel);
+    auto *freshnessTimer = new QTimer(this);
+    freshnessTimer->setInterval(30000);
+    connect(freshnessTimer, &QTimer::timeout, this, &TabIntervalsIcu::updateFreshnessLabel);
+    freshnessTimer->start();
+    connect(qApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState state) {
+        if (state == Qt::ApplicationActive)
+            autoRefresh(kActivateRefreshSeconds);
+    });
     connect(ui->pushButton_refresh,  &QPushButton::clicked,
             this, &TabIntervalsIcu::onRefreshClicked);
     connect(ui->pushButton_prevWeek, &QPushButton::clicked,
@@ -173,7 +201,45 @@ void TabIntervalsIcu::refreshCredentials()
     }
 
     setCalendarAvailable(true);
-    setStatus(tr("Ready - click Refresh to load this week's schedule."));
+    setStatus(tr("Ready."));
+    autoRefresh(kShowRefreshSeconds);
+}
+
+void TabIntervalsIcu::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    autoRefresh(kShowRefreshSeconds);
+}
+
+void TabIntervalsIcu::autoRefresh(qint64 maxAgeSeconds)
+{
+    if (!isVisible() || !m_calendarAvailable)
+        return;
+    if (m_calendarReply || m_downloadReply || m_syncCalendarReply || m_syncDownloadReply)
+        return;
+    if (maxAgeSeconds > 0 && m_loadedWeek == m_weekStart && m_loadedAt.isValid()
+        && m_loadedAt.secsTo(QDateTime::currentDateTime()) < maxAgeSeconds)
+        return;
+    onRefreshClicked();
+}
+
+void TabIntervalsIcu::updateFreshnessLabel()
+{
+    if (m_calendarReply) {
+        m_updatedLabel->setText(tr("Updating..."));
+        return;
+    }
+    if (!m_loadedAt.isValid() || m_loadedWeek != m_weekStart) {
+        m_updatedLabel->clear();
+        return;
+    }
+    const qint64 seconds = m_loadedAt.secsTo(QDateTime::currentDateTime());
+    if (seconds < 60)
+        m_updatedLabel->setText(tr("Updated just now"));
+    else if (seconds < 3600)
+        m_updatedLabel->setText(tr("Updated %n min ago", "", static_cast<int>(seconds / 60)));
+    else
+        m_updatedLabel->setText(tr("Updated at %1").arg(QLocale().toString(m_loadedAt.time(), QLocale::ShortFormat)));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -199,6 +265,7 @@ void TabIntervalsIcu::abortCalendarRequests()
 
 void TabIntervalsIcu::setCalendarAvailable(bool available, const QString &banner)
 {
+    m_calendarAvailable = available;
     ui->label_offline->setText(banner);
     ui->label_offline->setVisible(!available);
     for (QWidget *control : std::initializer_list<QWidget *>{
@@ -227,16 +294,18 @@ void TabIntervalsIcu::onRefreshClicked()
         return;
     }
 
-    // Abort any in-flight request
-    if (m_calendarReply) {
-        m_calendarReply->abort();
-        m_calendarReply->deleteLater();
-        m_calendarReply = nullptr;
+    // Drop any request in flight; disconnect first, as abort() emits finished().
+    if (QNetworkReply *previous = std::exchange(m_calendarReply, nullptr)) {
+        previous->disconnect(this);
+        previous->abort();
+        previous->deleteLater();
     }
 
     setBusy(true);
     setStatus(tr("Fetching calendar…"));
+    m_updatedLabel->setText(tr("Updating..."));
 
+    m_fetchingWeek = m_weekStart;
     const QDate newest = m_weekStart.addDays(6);
     m_calendarReply = m_service->fetchCalendar(m_weekStart, newest);
     if (!m_calendarReply) {
@@ -257,7 +326,9 @@ void TabIntervalsIcu::onPrevWeekClicked()
     updateWeekLabel();
     ui->tableWidget_calendar->setRowCount(0);
     m_rowEventIds.clear();
+    m_loadedWeek = QDate();
     ui->pushButton_loadWorkout->setEnabled(false);
+    autoRefresh(0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -267,7 +338,9 @@ void TabIntervalsIcu::onNextWeekClicked()
     updateWeekLabel();
     ui->tableWidget_calendar->setRowCount(0);
     m_rowEventIds.clear();
+    m_loadedWeek = QDate();
     ui->pushButton_loadWorkout->setEnabled(false);
+    autoRefresh(0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -321,6 +394,7 @@ void TabIntervalsIcu::onCalendarFetchFinished()
         setStatus(tr("Error fetching calendar: %1").arg(errMsg));
         m_calendarReply->deleteLater();
         m_calendarReply = nullptr;
+        updateFreshnessLabel();
         return;
     }
 
@@ -332,6 +406,9 @@ void TabIntervalsIcu::onCalendarFetchFinished()
         IntervalsIcuService::parseEvents(data);
 
     populateTable(events);
+    m_loadedWeek = m_fetchingWeek;
+    m_loadedAt = QDateTime::currentDateTime();
+    updateFreshnessLabel();
 
     if (events.isEmpty()) {
         setStatus(tr("No events found for this week."));
@@ -366,6 +443,17 @@ void TabIntervalsIcu::onWorkoutDownloadFinished()
 
     // Restore normal row selection
     ui->tableWidget_calendar->setSelectionMode(QAbstractItemView::SingleSelection);
+
+    // Intervals.icu exports an empty <workout/> when it could not read the
+    // steps (e.g. "10min 80%" instead of "10m 80%"): say so instead of saving
+    // a file the library then silently rejects.
+    if (ImporterWorkoutZwo::importFromByteArray(zwoData, m_pendingWorkoutName).getLstInterval().isEmpty()) {
+        LOG_WARN("TabIntervalsIcu", QStringLiteral("Workout '%1' has no steps in Intervals.icu; not imported")
+                                        .arg(m_pendingWorkoutName));
+        setStatus(tr("'%1' has no steps in Intervals.icu (its graph there is empty), so there is nothing to load. "
+                     "Write each step as a duration and a target, for example 10m 80%.").arg(m_pendingWorkoutName));
+        return;
+    }
 
     // Use the name captured when the download was started
     QString workoutName = m_pendingWorkoutName;

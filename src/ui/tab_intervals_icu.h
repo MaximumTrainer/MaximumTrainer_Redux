@@ -3,10 +3,13 @@
 
 #include <QWidget>
 #include <QDate>
+#include <QDateTime>
 #include <QList>
 #include <QNetworkReply>
 
 #include "intervalsicuservice.h"
+
+class QLabel;
 
 namespace Ui {
 class TabIntervalsIcu;
@@ -65,7 +68,15 @@ private slots:
     void onSyncCalendarFetched();
     void onSyncWorkoutDownloaded();
 
+protected:
+    void showEvent(QShowEvent *event) override;
+
 private:
+    /// Loads the displayed week while the tab is on screen, unless it is
+    /// already loaded and younger than \a maxAgeSeconds (0 = always).
+    void autoRefresh(qint64 maxAgeSeconds);
+    /// "Updated 2 min ago" next to the reload button.
+    void updateFreshnessLabel();
     void updateWeekLabel();
     void populateTable(const QList<IntervalsIcuService::CalendarEvent> &events);
     void setStatus(const QString &msg);
@@ -81,6 +92,11 @@ private:
     IntervalsIcuService *m_service;
     QDate m_weekStart;   ///< Monday of the currently displayed week
     bool  m_networkOnline = true;
+    bool  m_calendarAvailable = false;
+    QDate m_fetchingWeek;      ///< week of the calendar request in flight
+    QDate m_loadedWeek;        ///< week shown in the table
+    QDateTime m_loadedAt;
+    QLabel *m_updatedLabel = nullptr;
 
     QNetworkReply *m_calendarReply  = nullptr;
     QNetworkReply *m_downloadReply  = nullptr;
