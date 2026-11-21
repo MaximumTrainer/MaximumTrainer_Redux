@@ -398,6 +398,10 @@ private:
 
     // Post-workout upload panel and stored FIT file info
     class PostWorkoutPanel *widgetPostWorkout = nullptr;
+    class QPushButton *m_summaryTab = nullptr;   ///< minimized post-workout panel
+    void minimizePostWorkoutPanel();
+    void restorePostWorkoutPanel();
+    void placePostWorkoutOverlays();
     QString fitFilePath;
     QString fitFileName;
     QString fitFileDescription;
