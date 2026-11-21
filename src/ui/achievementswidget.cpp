@@ -53,6 +53,7 @@ QString progressText(const Definition &definition, double value)
     case Kind::WeekTss:     unit = QStringLiteral(" TSS"); break;
     case Kind::RideKcal:    unit = QStringLiteral(" kcal"); break;
     case Kind::StreakDays:  unit = QStringLiteral(" days"); break;
+    case Kind::GoalWeeks:   unit = QStringLiteral(" weeks"); break;
     default: break;
     }
     return number(qMin(value, definition.target)) + QStringLiteral(" / ") + number(definition.target) + unit;

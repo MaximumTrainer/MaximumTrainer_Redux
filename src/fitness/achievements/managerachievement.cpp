@@ -71,6 +71,7 @@ void ManagerAchievement::evaluateHistory(bool announce)
 {
     m_history = readHistory();
     m_stats = statsFrom(m_history);
+    m_stats.bestGoalWeeks = goalStreakWeeks(m_history, weeklyGoalHours());
     if (const Account *account = qApp->property("Account").value<Account*>();
         account && account->weight_kg > 0 && account->FTP > 0)
         m_stats.ftpWattsPerKg = account->FTP / account->weight_kg;
@@ -90,6 +91,7 @@ void ManagerAchievement::setWeeklyGoalHours(double hours)
     AppSettings::write(SettingKeys::Training::WeeklyGoalHours, std::max(0.0, hours));
     LOG_INFO("Achievements", QStringLiteral("weekly goal set to %1 h").arg(hours));
     emit weeklyGoalChanged();
+    evaluateHistory(false);   // goal streak achievements follow the goal
 }
 
 void ManagerAchievement::recordEvent(const QString &key)

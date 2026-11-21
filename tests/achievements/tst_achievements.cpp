@@ -33,6 +33,27 @@ class TstAchievements : public QObject
     Q_OBJECT
 
 private slots:
+    void goalStreak_consecutiveCalendarWeeks()
+    {
+        // Mondays: 2, 9, 16, 23 and 30 March 2026.
+        const QList<WorkoutHistorySummary> history{
+            ride(at(2, 7), 120), ride(at(8, 9), 60),     // 3:00
+            ride(at(10, 7), 179),                         // 2:59, within the minute of slack
+            ride(at(17, 7), 60),                          // 1:00
+            ride(at(24, 7), 200),
+            ride(at(31, 7), 180),
+        };
+        QCOMPARE(goalStreakWeeks(history, 0.0), 0);
+        QCOMPARE(goalStreakWeeks(history, 3.0), 2);
+        QCOMPARE(goalStreakWeeks(history, 1.0), 5);
+        QCOMPARE(goalStreakWeeks({ride(at(2, 7), 200), ride(at(23, 7), 200)}, 3.0), 1);  // a gap breaks the run
+
+        HistoryStats stats;
+        stats.bestGoalWeeks = 4;
+        QVERIFY(reached(*find(QStringLiteral("goal_weeks_4")), stats));
+        QVERIFY(!reached(*find(QStringLiteral("goal_weeks_12")), stats));
+    }
+
     void initTestCase()
     {
         QStandardPaths::setTestModeEnabled(true);
