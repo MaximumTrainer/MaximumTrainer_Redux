@@ -665,6 +665,16 @@
           own sensor slots, paired the same way from that rider's card.
         </div>
 
+        <div class="callout callout--warn">
+          <strong>Reconnection:</strong> If your BLE device drops mid-workout (e.g. low battery),
+          Maximum Trainer <strong>pauses the session</strong> and tries to reconnect automatically,
+          so you're not penalised while it re-establishes the link.
+          <br /><br />
+          In the <strong>browser (WASM) version</strong>, if it can't reconnect on its own a
+          <strong>Reconnect</strong> overlay appears - click it to trigger a new Web Bluetooth scan
+          and re-pair your trainer.
+        </div>
+
       </section>
 
       <!-- ── Simulation Mode ───────────────────────────────────── -->
@@ -1102,15 +1112,6 @@
           or skip with the <a href="#tips">radio shortcuts</a>.
         </p>
 
-        <div class="callout callout--warn">
-          <strong>Reconnection:</strong> If your BLE device drops mid-workout (e.g. low battery),
-          Maximum Trainer <strong>pauses the session</strong> and tries to reconnect automatically,
-          so you're not penalised while it re-establishes the link.
-          <br /><br />
-          In the <strong>browser (WASM) version</strong>, if it can't reconnect on its own a
-          <strong>Reconnect</strong> overlay appears — click it to trigger a new Web Bluetooth scan
-          and re-pair your trainer.
-        </div>
       </section>
 
       <!-- ── Group Workouts ────────────────────────────────────── -->
