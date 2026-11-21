@@ -1,5 +1,6 @@
 #include "workoutdialog.h"
 #include "sensorstatusstrip.h"
+#include "studioconnectionboard.h"
 #include "setting_keys.h"
 #include "asyncdialogs.h"
 #include "virtual_gear.h"
@@ -1534,6 +1535,7 @@ void WorkoutDialog::start_or_pause_workout() {
         ui->widget_workoutPlot->removeMainMessage();
         if (m_simulatedDataNotice)
             QTimer::singleShot(15000, this, [this]() { ui->widget_workoutPlot->hideNotice(); });
+        foldConnectionBoard();
         isWorkoutStarted = true;
         isWorkoutPaused = false;
         if (this->workout.getInterval(0).getDisplayMessage() != "")
@@ -2006,6 +2008,41 @@ SensorStatusStrip *WorkoutDialog::sensorStrip()
         ui->widget_workoutPlot->setTopLeftStrip(m_sensorStrip);
     }
     return m_sensorStrip;
+}
+
+StudioConnectionBoard *WorkoutDialog::studioConnectionBoard()
+{
+    if (!m_connectionBoard) {
+        m_connectionBoard = new StudioConnectionBoard(this);
+        auto *videoLayout = qobject_cast<QBoxLayout*>(ui->widgetVideo->parentWidget()->layout());
+        if (videoLayout)
+            videoLayout->insertWidget(videoLayout->indexOf(ui->widgetVideo), m_connectionBoard, 1);
+        ui->widgetVideo->hide();
+        connect(m_connectionBoard, &StudioConnectionBoard::allConnectedChanged, this, [this](bool allIn) {
+            if (allIn)
+                QTimer::singleShot(3000, this, [this]() {
+                    if (m_connectionBoard && m_connectionBoard->allConnected())
+                        foldConnectionBoard();
+                });
+        });
+    }
+    return m_connectionBoard;
+}
+
+void WorkoutDialog::foldConnectionBoard()
+{
+    if (!m_connectionBoard || !m_connectionBoard->isVisible())
+        return;
+    m_connectionBoard->hide();
+    if (!m_raceView)
+        ui->widgetVideo->show();
+}
+
+UserStudioWidget *WorkoutDialog::riderWidget(int rider) const
+{
+    if (!account->enable_studio_mode || rider < 1 || rider > account->nb_user_studio)
+        return nullptr;
+    return arrUserStudioWidget[rider - 1];
 }
 
 void WorkoutDialog::trainerConnected()
@@ -3220,14 +3257,13 @@ void WorkoutDialog::showIntervalSummaryOverlay(double avgPower, double avgHr, do
 void WorkoutDialog::createUserStudioWidget() {
 
 
-    // Rider boxes are laid out in a balanced, screen-adaptive grid. Each box
-    // stretches to fill its column (growing on wide displays, shrinking toward
-    // minBoxWidth on small ones) while keeping a fixed height so rows align.
+    // Rider cards are laid out in a balanced, screen-adaptive grid. Each card
+    // stretches to fill its column and keeps a fixed height so rows align.
     // Columns are capped at maxPerRow and balanced across the rows needed, so
-    // e.g. 15 riders → 5+5+5 and 10 → 5+5 rather than a full row plus a stub.
-    const int minBoxWidth = 290;
-    const int boxHeight    = 190;
-    const int maxPerRow    = 5;
+    // e.g. 8 riders -> 4+4 and 6 -> 3+3 rather than a full row plus a stub.
+    const int minBoxWidth = 300;
+    const int boxHeight    = UserStudioWidget::kCardHeight;
+    const int maxPerRow    = 4;
 
     const int nbRiders = account->nb_user_studio;
 
@@ -3239,9 +3275,13 @@ void WorkoutDialog::createUserStudioWidget() {
         const int columns      = qMax(1, (nbRiders + rowsNeeded - 1) / rowsNeeded);
 
         QGridLayout *glayout = static_cast<QGridLayout*>(ui->widget_allSpeedo->layout());
-        // Gap between boxes so each rider's outline reads as a separate card.
-        glayout->setHorizontalSpacing(10);
-        glayout->setVerticalSpacing(10);
+        glayout->setHorizontalSpacing(8);
+        glayout->setVerticalSpacing(8);
+        // Every row of cards always fits; the splitter takes the room from the
+        // video area above.
+        const QMargins margins = glayout->contentsMargins();
+        ui->widget_allSpeedo->setMinimumHeight(rowsNeeded * boxHeight + (rowsNeeded - 1) * 8
+                                               + margins.top() + margins.bottom());
 
         for (int i = 0; i < nbRiders; i++) {
             UserStudio myUserStudio = vecUserStudio.at(i);
@@ -3252,8 +3292,7 @@ void WorkoutDialog::createUserStudioWidget() {
                 riderName = tr("Rider%1").arg(i+1);
 
             arrUserStudioWidget[i] = new UserStudioWidget(i+1, riderName, myUserStudio.getFTP(), myUserStudio.getLTHR(), this);
-            arrUserStudioWidget[i]->setMinimumSize(minBoxWidth, boxHeight);
-            arrUserStudioWidget[i]->setMaximumHeight(boxHeight);
+            arrUserStudioWidget[i]->setMinimumWidth(minBoxWidth);
             arrUserStudioWidget[i]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
             if (myUserStudio.getHrID() < 1 && myUserStudio.getFecID() < 1)

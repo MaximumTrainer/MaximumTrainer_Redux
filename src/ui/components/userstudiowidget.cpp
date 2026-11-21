@@ -1,427 +1,372 @@
 #include "userstudiowidget.h"
-#include "ui_userstudiowidget.h"
 
-#include "myconstants.h"
-#include "util.h"
+#include <QApplication>
+#include <QEvent>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLocale>
+#include <QStyle>
+#include <QVBoxLayout>
 
+#include "account.h"
+#include "faderlabel.h"
+#include "powerzones.h"
 
-UserStudioWidget::~UserStudioWidget()
+namespace {
+const QString kGrey   = QStringLiteral("#9a9aa6");
+const QString kWhite  = QStringLiteral("#ececf0");
+const QString kGreen  = QStringLiteral("#3fb27f");
+const QString kAmber  = QStringLiteral("#f2a33a");
+const QString kRed    = QStringLiteral("#e5534b");
+const QString kYellow = QStringLiteral("#f2c230");
+
+QString dotColor(SensorStatusStrip::State state)
 {
-    delete ui;
+    switch (state) {
+    case SensorStatusStrip::State::Connected:  return kGreen;
+    case SensorStatusStrip::State::Connecting: return kYellow;
+    case SensorStatusStrip::State::NotFound:
+    case SensorStatusStrip::State::Lost:       return kRed;
+    case SensorStatusStrip::State::Searching:  break;
+    }
+    return kGrey;
 }
 
-
-UserStudioWidget::UserStudioWidget(int userID, QString displayName, double FTP, double LTHR, QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::UserStudioWidget)
+bool needsRetry(SensorStatusStrip::State state)
 {
-    ui->setupUi(this);
+    return state == SensorStatusStrip::State::NotFound || state == SensorStatusStrip::State::Lost;
+}
+} // namespace
 
-    int size = 20; //20x20
-    const qreal dpr = devicePixelRatioF();
-    QPixmap pixmapPower   = Util::loadIconForDpr(":/image/icon/power2", size, dpr);
-    QPixmap pixmapCadence = Util::loadIconForDpr(":/image/icon/crank2", size, dpr);
-    QPixmap pixmapHr      = Util::loadIconForDpr(":/image/icon/heart2", size, dpr);
-    QPixmap pixmapTarget  = Util::loadIconForDpr(":/image/icon/target", size - 5, dpr);
+UserStudioWidget::UserStudioWidget(int userID, QString displayName, double FTP, double LTHR, QWidget *parent)
+    : QFrame(parent)
+    , userID(userID)
+    , displayName(std::move(displayName))
+    , FTP(FTP)
+    , LTHR(LTHR)
+{
+    setObjectName(QStringLiteral("studioCard"));
+    setProperty("targetState", QStringLiteral("none"));
+    setStyleSheet(QStringLiteral(
+        "QFrame#studioCard { background-color: #26262d; border: 1px solid #34343d; border-radius: 12px; }"
+        "QFrame#studioCard[targetState=\"above\"] { border-left: 5px solid %1; }"
+        "QFrame#studioCard[targetState=\"below\"] { border-left: 5px solid %2; }"
+        "QFrame#studioCard QLabel { background: transparent; border: none; }").arg(kAmber, kRed));
+    setFixedHeight(kCardHeight);
 
+    auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(14, 8, 12, 8);
+    layout->setSpacing(2);
 
-    ui->label_image_power->setPixmap(pixmapPower);
-    ui->label_image_cadence->setPixmap(pixmapCadence);
-    ui->label_image_hr->setPixmap(pixmapHr);
-    ui->label_target->setPixmap(pixmapTarget);
-    ui->label_target_2->setPixmap(pixmapTarget);
-    ui->label_target_3->setPixmap(pixmapTarget);
-
-
-    ui->label_image_power->setToolTip(tr("Power - watts"));
-    ui->label_currentValuePower->setToolTip(tr("Power - watts"));
-    ui->label_targetPowerValue->setToolTip(tr("Target Power - watts"));
-    ui->label_target->setToolTip(tr("Target Power - watts"));
-    ui->label_diffFromTargetPower->setToolTip(tr("Difference from Target Power - watts"));
-
-    ui->label_image_cadence->setToolTip(tr("Cadence - rpm"));
-    ui->label_currentValueCadence->setToolTip(tr("Cadence - rpm"));
-    ui->label_targetCadenceValue->setToolTip(tr("Target Cadence - rpm"));
-    ui->label_target_2->setToolTip(tr("Target Cadence - rpm"));
-    ui->label_diffFromTargetCadence->setToolTip(tr("Difference from Target Cadence - rpm"));
-
-    ui->label_image_hr->setToolTip(tr("Heart Rate - bpm"));
-    ui->label_currentValueHr->setToolTip(tr("Heart Rate - bpm"));
-    ui->label_targetHrValue->setToolTip(tr("Target Heart Rate - bpm"));
-    ui->label_target_3->setToolTip(tr("Target Heart Rate - bpm"));
-    ui->label_diffFromTargetHr->setToolTip(tr("Difference from Target Heart Rate - bpm"));
-
-
-    this->userID = userID;
-    this->displayName =  displayName;
-    this->FTP = FTP;
-    this->LTHR = LTHR;
-
-
-    ui->label_userID->setText(QString::number(userID));
-    QString displayNameToShow = displayName;
+    auto *header = new QHBoxLayout;
+    header->setSpacing(10);
+    auto *name = new QLabel(QStringLiteral("%1  %2").arg(userID).arg(this->displayName.toHtmlEscaped()), this);
+    name->setStyleSheet(QStringLiteral("font: 600 10pt 'Inter'; color: %1;").arg(kWhite));
+    header->addWidget(name);
     if (FTP > 0) {
-        displayNameToShow = displayNameToShow + " - " + QString::number(FTP) + " W";
+        auto *ftp = new QLabel(tr("FTP %1").arg(qRound(FTP)), this);
+        ftp->setStyleSheet(QStringLiteral("font: 9pt 'Inter'; color: %1;").arg(kGrey));
+        header->addWidget(ftp);
     }
-    ui->label_displayName->setText(displayNameToShow);
+    m_ride = new QLabel(this);
+    m_ride->setStyleSheet(QStringLiteral("font: 9pt 'Inter'; color: %1;").arg(kGrey));
+    header->addWidget(m_ride);
+    header->addStretch();
+    m_dots = new QHBoxLayout;
+    m_dots->setSpacing(4);
+    header->addLayout(m_dots);
+    layout->addLayout(header);
 
+    auto *body = new QHBoxLayout;
+    body->setSpacing(18);
 
-    isStopped = true;
-    currentColorPower = 0;
-    currentColorCad = 0;
-    currentColorHr = 0;
+    m_powerBlock = new QWidget(this);
+    auto *powerLayout = new QVBoxLayout(m_powerBlock);
+    powerLayout->setContentsMargins(0, 0, 0, 0);
+    powerLayout->setSpacing(0);
+    auto *powerRow = new QHBoxLayout;
+    powerRow->setSpacing(4);
+    m_power = new QLabel(QStringLiteral("-"), m_powerBlock);
+    m_power->setStyleSheet(QStringLiteral("font: 700 26pt 'Inter'; color: %1;").arg(kWhite));
+    m_powerUnit = new QLabel(tr("W"), m_powerBlock);
+    m_powerUnit->setStyleSheet(QStringLiteral("font: 10pt 'Inter'; color: %1;").arg(kGrey));
+    powerRow->addWidget(m_power, 0, Qt::AlignBottom);
+    powerRow->addWidget(m_powerUnit, 0, Qt::AlignBottom);
+    powerRow->addStretch();
+    powerLayout->addLayout(powerRow);
+    auto *targetRow = new QHBoxLayout;
+    targetRow->setSpacing(8);
+    m_target = new QLabel(m_powerBlock);
+    m_target->setStyleSheet(QStringLiteral("font: 9pt 'Inter'; color: %1;").arg(kGrey));
+    m_zone = new QLabel(m_powerBlock);
+    m_zone->hide();
+    targetRow->addWidget(m_target);
+    targetRow->addWidget(m_zone);
+    targetRow->addStretch();
+    powerLayout->addLayout(targetRow);
+    body->addWidget(m_powerBlock, 0, Qt::AlignVCenter);
 
-    ui->frame_power->setStyleSheet(constants::stylesheetOK);
-    ui->frame_cadence->setStyleSheet(constants::stylesheetOK);
-    ui->frame_hr->setStyleSheet(constants::stylesheetOK);
+    auto *right = new QVBoxLayout;
+    right->setSpacing(2);
+    auto *metrics = new QHBoxLayout;
+    metrics->setSpacing(18);
+    m_cadBlock = metricBlock(tr("CADENCE"), m_cad, tr("rpm"));
+    m_hrBlock = metricBlock(tr("HEART RATE"), m_hr, tr("bpm"));
+    metrics->addWidget(m_cadBlock);
+    metrics->addWidget(m_hrBlock);
+    metrics->addStretch();
+    right->addLayout(metrics);
+    m_status = new QLabel(this);
+    m_status->setStyleSheet(QStringLiteral("font: 600 9pt 'Inter';"));
+    m_status->installEventFilter(this);
+    right->addWidget(m_status);
+    m_resultTest = new FaderLabel(this);
+    m_resultTest->setStyleSheet(QStringLiteral("font: 600 9pt 'Inter'; color: %1;").arg(kGreen));
+    m_resultTest->hide();
+    right->addWidget(m_resultTest);
+    body->addLayout(right, 1);
+    layout->addLayout(body, 1);
 
-
+    updateStatus();
+    updateTooltips();
 }
 
-
-void UserStudioWidget::setStopped(bool b) {
-    this->isStopped = b;
+QWidget *UserStudioWidget::metricBlock(const QString &caption, QLabel *&value, const QString &unit)
+{
+    auto *block = new QWidget(this);
+    auto *column = new QVBoxLayout(block);
+    column->setContentsMargins(0, 0, 0, 0);
+    column->setSpacing(0);
+    auto *captionLabel = new QLabel(caption, block);
+    captionLabel->setStyleSheet(QStringLiteral("font: 600 7.5pt 'Inter'; color: %1; letter-spacing: 1px;").arg(kGrey));
+    column->addWidget(captionLabel);
+    auto *row = new QHBoxLayout;
+    row->setSpacing(4);
+    value = new QLabel(QStringLiteral("-"), block);
+    value->setStyleSheet(QStringLiteral("font: 700 17pt 'Inter'; color: %1;").arg(kWhite));
+    auto *unitLabel = new QLabel(unit, block);
+    unitLabel->setStyleSheet(QStringLiteral("font: 8.5pt 'Inter'; color: %1;").arg(kGrey));
+    row->addWidget(value, 0, Qt::AlignBottom);
+    row->addWidget(unitLabel, 0, Qt::AlignBottom);
+    column->addLayout(row);
+    return block;
 }
 
-void UserStudioWidget::setPowerSectionHidden() {
-
-    ui->frame_power->setVisible(false);
+void UserStudioWidget::setStopped(bool b)
+{
+    isStopped = b;
+    updatePowerState();
 }
 
-void UserStudioWidget::setCadSectionHidden() {
+void UserStudioWidget::setPowerSectionHidden() { m_powerBlock->hide(); }
+void UserStudioWidget::setCadSectionHidden()   { m_cadBlock->hide(); }
+void UserStudioWidget::setHrSectionHidden()    { m_hrBlock->hide(); }
 
-    ui->frame_cadence->setVisible(false);
+void UserStudioWidget::setResultTest(QString text)
+{
+    m_resultTest->setText(text);
+    m_resultTest->show();
+    m_resultTest->fadeIn(1000);
 }
 
-void UserStudioWidget::setHrSectionHidden() {
-
-    ui->frame_hr->setVisible(false);
+void UserStudioWidget::addSensor(int key, const QString &name)
+{
+    auto *dot = new QLabel(QStringLiteral("●"), this);
+    dot->installEventFilter(this);
+    m_dots->addWidget(dot);
+    m_sensorDots.insert(key, dot);
+    m_sensorNames.insert(key, name);
+    setSensorState(key, SensorStatusStrip::State::Searching);
 }
 
-void UserStudioWidget::setPowerValue(int value) {
-
-    if(value < 0) {
-        ui->label_currentValuePower->setText("-");
+void UserStudioWidget::setSensorState(int key, SensorStatusStrip::State state)
+{
+    QLabel *dot = m_sensorDots.value(key, nullptr);
+    if (!dot)
         return;
+    m_sensorStates.insert(key, state);
+    dot->setStyleSheet(QStringLiteral("font-size: 11pt; color: %1;").arg(dotColor(state)));
+    dot->setCursor(needsRetry(state) ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    QString status;
+    switch (state) {
+    case SensorStatusStrip::State::Searching:  status = tr("searching"); break;
+    case SensorStatusStrip::State::Connecting: status = tr("connecting"); break;
+    case SensorStatusStrip::State::Connected:  status = tr("connected"); break;
+    case SensorStatusStrip::State::NotFound:   status = tr("not found, click to retry"); break;
+    case SensorStatusStrip::State::Lost:       status = tr("lost, click to retry"); break;
     }
-
-
-    ui->label_currentValuePower->setText(QString::number(value));
-
-    if (FTP < 0) {
-        return;
-    }
-
-    int diff = value - targetPower;
-    QString diff_str;
-
-    if (diff > 0) {
-        diff_str = "+" + QString::number(diff);
-    }
-    else {
-        diff_str = QString::number(diff);
-    }
-
-    if (diff != 0)
-        ui->label_diffFromTargetPower->setText(diff_str);
-    else {
-        ui->label_diffFromTargetPower->setText("");
-    }
-
-
-    if (isStopped) {
-        if (currentColorPower != 0) {
-            ui->frame_power->setStyleSheet(constants::stylesheetOK);
-            currentColorPower = 0;
-        }
-    }
-    else {
-        if (targetPower < 0) {
-            ui->frame_power->setStyleSheet(constants::stylesheetOK);
-            currentColorPower = 0;
-        }
-        else if ( (diff < (-targetPowerRange)) && (currentColorPower != -1) ) {
-            ui->frame_power->setStyleSheet(constants::stylesheetTooLow);
-            currentColorPower = -1;
-        }
-        else if( (diff > targetPowerRange) && (currentColorPower != 1) ) {
-            ui->frame_power->setStyleSheet(constants::stylesheetTooHigh);
-            currentColorPower = 1;
-        }
-        else if ( ((diff < targetPowerRange) && (diff > (-targetPowerRange))) && (currentColorPower != 0)) {
-            ui->frame_power->setStyleSheet(constants::stylesheetOK);
-            currentColorPower = 0;
-        }
-    }
+    dot->setToolTip(QStringLiteral("%1: %2").arg(m_sensorNames.value(key), status));
+    updateStatus();
 }
 
-void UserStudioWidget::setCadenceValue(int value) {
-
-    if(value < 0) {
-        ui->label_currentValueCadence->setText("-");
-        return;
-    }
-
-    ui->label_currentValueCadence->setText(QString::number(value));
-
-    int diff = value - targetCad;
-    QString diff_str;
-
-    if (diff > 0) {
-        diff_str = "+" + QString::number(diff);
-    }
-    else {
-        diff_str = QString::number(diff);
-    }
-
-    if (diff != 0)
-        ui->label_diffFromTargetCadence->setText(diff_str);
-    else {
-        ui->label_diffFromTargetCadence->setText("");
-    }
-
-    if (isStopped) {
-        if (currentColorCad != 0) {
-            ui->frame_cadence->setStyleSheet(constants::stylesheetOK);
-            currentColorCad = 0;
+bool UserStudioWidget::eventFilter(QObject *watched, QEvent *event)
+{
+    if (event->type() == QEvent::MouseButtonRelease) {
+        for (auto it = m_sensorStates.cbegin(); it != m_sensorStates.cend(); ++it) {
+            if (!needsRetry(it.value()))
+                continue;
+            // A dot retries its own sensor; the status line retries the first one in trouble.
+            if (watched == m_status || watched == m_sensorDots.value(it.key())) {
+                emit sensorRetryRequested(it.key());
+                return true;
+            }
         }
     }
-    else {
-        if (targetCad < 0) {
-            ui->frame_cadence->setStyleSheet(constants::stylesheetOK);
-            currentColorCad = 0;
-        }
-        else if ( (diff < (-targetCadRange)) && (currentColorCad != -1) ) {
-            ui->frame_cadence->setStyleSheet(constants::stylesheetTooLow);
-            currentColorCad = -1;
-        }
-        else if( (diff > targetCadRange) && (currentColorCad != 1) ) {
-            ui->frame_cadence->setStyleSheet(constants::stylesheetTooHigh);
-            currentColorCad = 1;
-        }
-        else if ( ((diff < targetCadRange) && (diff > (-targetCadRange))) && (currentColorCad != 0)) {
-            ui->frame_cadence->setStyleSheet(constants::stylesheetOK);
-            currentColorCad = 0;
-        }
-    }
+    return QFrame::eventFilter(watched, event);
 }
 
-
-void UserStudioWidget::setHrValue(int value) {
-
-    if(value < 0) {
-        ui->label_currentValueHr->setText("-");
-        return;
-    }
-
-    ui->label_currentValueHr->setText(QString::number(value));
-
-    if (LTHR < 0) {
-        return;
-    }
-
-    int diff = value - targetHr;
-    QString diff_str;
-
-    if (diff > 0) {
-        diff_str = "+" + QString::number(diff);
-    }
-    else {
-        diff_str = QString::number(diff);
-    }
-
-    if (diff != 0)
-        ui->label_diffFromTargetHr->setText(diff_str);
-    else {
-        ui->label_diffFromTargetHr->setText("");
-    }
-
-    if (isStopped) {
-        if (currentColorHr != 0) {
-            ui->frame_hr->setStyleSheet(constants::stylesheetOK);
-            currentColorHr = 0;
-        }
-    }
-    else {
-        if (targetHr < 0) {
-            ui->frame_hr->setStyleSheet(constants::stylesheetOK);
-            currentColorHr = 0;
-        }
-        else if ( (diff < (-targetHrRange)) && (currentColorHr != -1) ) {
-            ui->frame_hr->setStyleSheet(constants::stylesheetTooLow);
-            currentColorHr = -1;
-        }
-        else if( (diff > targetHrRange) && (currentColorHr != 1) ) {
-            ui->frame_hr->setStyleSheet(constants::stylesheetTooHigh);
-            currentColorHr = 1;
-        }
-        else if ( ((diff < targetHrRange) && (diff > (-targetHrRange))) && (currentColorHr != 0)) {
-            ui->frame_hr->setStyleSheet(constants::stylesheetOK);
-            currentColorHr = 0;
-        }
-    }
+void UserStudioWidget::setPowerValue(int value)
+{
+    powerValue = value;
+    m_power->setText(value < 0 ? QStringLiteral("-") : QString::number(value));
+    updatePowerState();
 }
 
-void UserStudioWidget::setTargetPower(double percentageFTP, int range) {
+void UserStudioWidget::setCadenceValue(int value)
+{
+    m_cad->setText(value < 0 ? QStringLiteral("-") : QString::number(value));
+}
 
+void UserStudioWidget::setHrValue(int value)
+{
+    m_hr->setText(value < 0 ? QStringLiteral("-") : QString::number(value));
+}
 
-    if (percentageFTP < 0 || FTP < 1) { //no target
-        ui->label_targetPowerValue->setVisible(false);
-        ui->label_diffFromTargetPower->setVisible(false);
-        ui->label_target->setVisible(false);
-        ui->label_spacer_power->setVisible(true);
-
-        targetPower = -1;
-    }
-    else {
-        ui->label_targetPowerValue->setVisible(true);
-        ui->label_diffFromTargetPower->setVisible(true);
-        ui->label_target->setVisible(true);
-        ui->label_spacer_power->setVisible(false);
-
-        targetPower = qRound(percentageFTP * FTP);
-        ui->label_targetPowerValue->setText(QString::number(targetPower));
-    }
+void UserStudioWidget::setTargetPower(double percentageFTP, int range)
+{
     targetPowerRange = range;
-
-
+    targetPowerPct = percentageFTP;
+    if (percentageFTP <= 0 || FTP < 1) {
+        targetPower = -1;
+        m_target->setText(QString());
+        m_zone->hide();
+    } else {
+        targetPower = qRound(percentageFTP * FTP);
+        m_target->setText(tr("target %1 W").arg(targetPower));
+        const Account *account = qApp->property("Account").value<Account*>();
+        const QVector<int> bounds = PowerZones::boundsPct(account ? account->power_zones_pct : QList<int>{});
+        const int zone = PowerZones::zoneForPct(percentageFTP * 100.0, bounds);
+        m_zone->setText(QStringLiteral("Z%1").arg(zone + 1));
+        m_zone->setStyleSheet(QStringLiteral("font: 700 8pt 'Inter'; color: #141418; background: %1;"
+                                             " border-radius: 7px; padding: 1px 10px;")
+                                  .arg(PowerZones::color(zone).name()));
+        m_zone->show();
+    }
+    updatePowerState();
 }
 
-void UserStudioWidget::setTargetCadence(int value, int range) {
-
-
-    if (value < 0) { //no target
-        ui->label_targetCadenceValue->setVisible(false);
-        ui->label_diffFromTargetCadence->setVisible(false);
-        ui->label_target_2->setVisible(false);
-        ui->label_spacer_cad->setVisible(true);
-    }
-    else {
-        ui->label_targetCadenceValue->setVisible(true);
-        ui->label_diffFromTargetCadence->setVisible(true);
-        ui->label_target_2->setVisible(true);
-        ui->label_spacer_cad->setVisible(false);
-    }
-
+void UserStudioWidget::setTargetCadence(int value, int range)
+{
     targetCad = value;
     targetCadRange = range;
-
-    ui->label_targetCadenceValue->setText(QString::number(targetCad));
+    updateTooltips();
 }
 
-
-void UserStudioWidget::setTargetHr(double percentageLTHR, int range) {
-
-
-    if (percentageLTHR < 0 || LTHR < 1) { //no target
-        ui->label_targetHrValue->setVisible(false);
-        ui->label_diffFromTargetHr->setVisible(false);
-        ui->label_target_3->setVisible(false);
-        ui->label_spacer_hr->setVisible(true);
-
-        targetHr = -1;
-    }
-    else {
-        ui->label_targetHrValue->setVisible(true);
-        ui->label_diffFromTargetHr->setVisible(true);
-        ui->label_target_3->setVisible(true);
-        ui->label_spacer_hr->setVisible(false);
-
-        targetHr = qRound(percentageLTHR * LTHR);
-        ui->label_targetHrValue->setText(QString::number(targetHr));
-    }
-
+void UserStudioWidget::setTargetHr(double percentageLTHR, int range)
+{
+    targetHr = percentageLTHR < 0 || LTHR < 1 ? -1 : qRound(percentageLTHR * LTHR);
     targetHrRange = range;
+    updateTooltips();
 }
 
-
-//POWER
-void UserStudioWidget::setMaxIntervalPower(double val) {
-
-    ui->label_maxIntervalPower->setText(QString::number(qRound(val)));
-}
-void UserStudioWidget::setMaxWorkoutPower(double val) {
-
-    ui->label_maxWorkoutPower->setText(QString::number(qRound(val)));
-}
-void UserStudioWidget::setAvgIntervalPower(double val) {
-
-
-    ui->label_avgIntervalPower->setText(QString::number(qRound(val)));
-}
-void UserStudioWidget::setAvgWorkoutPower(double val) {
-
-
-    ui->label_avgWorkoutPower->setText(QString::number(qRound(val)));
+void UserStudioWidget::updatePowerState()
+{
+    Target state = Target::None;
+    if (!isStopped && targetPower > 0 && powerValue >= 0) {
+        const int diff = powerValue - targetPower;
+        state = diff > targetPowerRange ? Target::Above : diff < -targetPowerRange ? Target::Below : Target::On;
+    }
+    if (state == powerState)
+        return;
+    powerState = state;
+    const QString color = state == Target::Above ? kAmber : state == Target::Below ? kRed : kWhite;
+    m_power->setStyleSheet(QStringLiteral("font: 700 26pt 'Inter'; color: %1;").arg(color));
+    updateStatus();
 }
 
-//CAD
-void UserStudioWidget::setMaxIntervalCad(double val) {
-
-    ui->label_maxIntervalCadence->setText(QString::number(qRound(val)));
-}
-void UserStudioWidget::setMaxWorkoutCad(double val) {
-
-    ui->label_maxWorkoutCadence->setText(QString::number(qRound(val)));
-}
-void UserStudioWidget::setAvgIntervalCad(double val) {
-
-
-    ui->label_avgIntervalCadence->setText(QString::number(qRound(val)));
-}
-void UserStudioWidget::setAvgWorkoutCad(double val) {
-
-
-    ui->label_avgWorkoutCadence->setText(QString::number(qRound(val)));
-}
-
-//HR
-void UserStudioWidget::setMaxIntervalHr(double val) {
-
-    ui->label_maxIntervalHr->setText(QString::number(qRound(val)));
-}
-void UserStudioWidget::setMaxWorkoutHr(double val) {
-
-    ui->label_maxWorkoutHr->setText(QString::number(qRound(val)));
-}
-void UserStudioWidget::setAvgIntervalHr(double val) {
-
-
-    ui->label_avgIntervalHr->setText(QString::number(qRound(val)));
-}
-void UserStudioWidget::setAvgWorkoutHr(double val) {
-
-
-    ui->label_avgWorkoutHr->setText(QString::number(qRound(val)));
+void UserStudioWidget::updateStatus()
+{
+    for (auto it = m_sensorStates.cbegin(); it != m_sensorStates.cend(); ++it) {
+        if (!needsRetry(it.value()))
+            continue;
+        const QString what = it.value() == SensorStatusStrip::State::Lost ? tr("%1 lost").arg(m_sensorNames.value(it.key()))
+                                                                          : tr("%1 not found").arg(m_sensorNames.value(it.key()));
+        m_status->setText(what + QStringLiteral(" - ") + tr("click to retry"));
+        m_status->setStyleSheet(QStringLiteral("font: 600 9pt 'Inter'; color: %1;").arg(kRed));
+        m_status->setCursor(Qt::PointingHandCursor);
+        setEdge(QStringLiteral("below"));   // a sensor in trouble shows even when on target
+        return;
+    }
+    setEdge(powerState == Target::Above ? QStringLiteral("above")
+            : powerState == Target::Below ? QStringLiteral("below") : QStringLiteral("none"));
+    m_status->setCursor(Qt::ArrowCursor);
+    QString text;
+    QString color = kGreen;
+    if (powerState == Target::Above) {
+        text = tr("%1 W above target").arg(powerValue - targetPower);
+        color = kAmber;
+    } else if (powerState == Target::Below) {
+        text = tr("%1 W below target").arg(targetPower - powerValue);
+        color = kRed;
+    } else if (powerState == Target::On) {
+        text = tr("on target");
+    }
+    m_status->setText(text);
+    m_status->setStyleSheet(QStringLiteral("font: 600 9pt 'Inter'; color: %1;").arg(color));
 }
 
-
-void UserStudioWidget::setNormalizedPower(double val) {
-
-    ui->label_np->setText(QString::number((int)val)); //do not show decimals
+void UserStudioWidget::setEdge(const QString &state)
+{
+    if (property("targetState").toString() == state)
+        return;
+    setProperty("targetState", state);
+    style()->unpolish(this);
+    style()->polish(this);
 }
 
-
-void UserStudioWidget::setIntensityFactor(double val) {
-
-    QString text =  locale.toString(val, 'f', 2);
-    ui->label_if->setText(text);
+void UserStudioWidget::updateRideLine()
+{
+    QStringList parts;
+    if (normalizedPower > 0)
+        parts << tr("NP %1").arg(qRound(normalizedPower));
+    if (qRound(tss) > 0)
+        parts << tr("TSS %1").arg(qRound(tss));
+    m_ride->setText(parts.join(QStringLiteral(" · ")));
 }
 
-
-void UserStudioWidget::setTrainingStressScore(double val) {
-
-    ui->label_tss->setText(QString::number((int)val)); //do not show decimals
+void UserStudioWidget::updateTooltips()
+{
+    const QLocale locale;
+    auto line = [&locale](const QString &label, double interval, double workout) {
+        return QStringLiteral("%1: %2 / %3").arg(label, locale.toString(qRound(interval)), locale.toString(qRound(workout)));
+    };
+    m_powerBlock->setToolTip(tr("Power (W), interval / workout") + QLatin1Char('\n')
+                             + line(tr("Avg"), avgIntervalPower, avgWorkoutPower) + QLatin1Char('\n')
+                             + line(tr("Max"), maxIntervalPower, maxWorkoutPower)
+                             + (intensityFactor > 0 ? QStringLiteral("\nIF %1").arg(locale.toString(intensityFactor, 'f', 2)) : QString())
+                             + (kcal > 0 ? QStringLiteral("\n%1 kcal").arg(qRound(kcal)) : QString()));
+    m_cadBlock->setToolTip((targetCad > 0 ? tr("Target %1 rpm").arg(targetCad) + QLatin1Char('\n') : QString())
+                           + line(tr("Avg"), avgIntervalCad, avgWorkoutCad) + QLatin1Char('\n')
+                           + line(tr("Max"), maxIntervalCad, maxWorkoutCad));
+    m_hrBlock->setToolTip((targetHr > 0 ? tr("Target %1 bpm").arg(targetHr) + QLatin1Char('\n') : QString())
+                          + line(tr("Avg"), avgIntervalHr, avgWorkoutHr) + QLatin1Char('\n')
+                          + line(tr("Max"), maxIntervalHr, maxWorkoutHr));
 }
 
+void UserStudioWidget::setMaxIntervalPower(double val) { maxIntervalPower = val; updateTooltips(); }
+void UserStudioWidget::setMaxWorkoutPower(double val)  { maxWorkoutPower = val; updateTooltips(); }
+void UserStudioWidget::setAvgIntervalPower(double val) { avgIntervalPower = val; updateTooltips(); }
+void UserStudioWidget::setAvgWorkoutPower(double val)  { avgWorkoutPower = val; updateTooltips(); }
+void UserStudioWidget::setMaxIntervalCad(double val)   { maxIntervalCad = val; updateTooltips(); }
+void UserStudioWidget::setMaxWorkoutCad(double val)    { maxWorkoutCad = val; updateTooltips(); }
+void UserStudioWidget::setAvgIntervalCad(double val)   { avgIntervalCad = val; updateTooltips(); }
+void UserStudioWidget::setAvgWorkoutCad(double val)    { avgWorkoutCad = val; updateTooltips(); }
+void UserStudioWidget::setMaxIntervalHr(double val)    { maxIntervalHr = val; updateTooltips(); }
+void UserStudioWidget::setMaxWorkoutHr(double val)     { maxWorkoutHr = val; updateTooltips(); }
+void UserStudioWidget::setAvgIntervalHr(double val)    { avgIntervalHr = val; updateTooltips(); }
+void UserStudioWidget::setAvgWorkoutHr(double val)     { avgWorkoutHr = val; updateTooltips(); }
 
-void UserStudioWidget::setCalories(double val) {
-
-    ui->label_kcal->setText(QString::number((int)val)); //do not show decimals
-}
-
-void UserStudioWidget::setResultTest(QString text) {
-
-    ui->label_resultTest->setText(text);
-    ui->label_resultTest->fadeIn(1000);
-}
+void UserStudioWidget::setNormalizedPower(double val)      { normalizedPower = val; updateRideLine(); }
+void UserStudioWidget::setIntensityFactor(double val)      { intensityFactor = val; updateTooltips(); }
+void UserStudioWidget::setTrainingStressScore(double val)  { tss = val; updateRideLine(); }
+void UserStudioWidget::setCalories(double val)             { kcal = val; updateTooltips(); }

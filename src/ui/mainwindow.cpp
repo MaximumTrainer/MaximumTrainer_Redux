@@ -54,9 +54,10 @@
 #else
 #include "btle_scanner_dialog.h"
 #include "btle_sensor_store.h"
-#include "sensor_connect_dialog.h"
 #include "sensor_connector.h"
 #include "sensorstatusstrip.h"
+#include "studioconnectionboard.h"
+#include "userstudiowidget.h"
 #include "zwift_click_manager.h"
 #endif
 #include "sensorswidget.h"
@@ -910,45 +911,10 @@ void MainWindow::executeWorkout(Workout workout) {
     }
 
     // ── BTLE Device path ─────────────────────────────────────────────────
-    // Studio mode: connect each rider's own saved sensor package in turn, tag
-    // every hub with that rider's id, then run the workout with all of them.
+    // Studio mode: every rider's saved sensors connect at once inside the
+    // workout window (connection board, then a dot per sensor on each card).
     if (account->enable_studio_mode) {
-        const int nbRiders = qBound(1, account->nb_user_studio, constants::nbMaxUserStudio);
-        QList<QPair<int, QMap<BtleSensorRole, BtleHub*>>> riderHubs;
-
-        for (int rider = 1; rider <= nbRiders; ++rider) {
-            const QMap<BtleSensorRole, BtleSavedSensor> saved = BtleSensorStore::loadAll(rider);
-            if (saved.isEmpty())
-                continue;   // rider configured no sensors — their box stays empty
-
-            SensorConnectDialog connectDlg(saved, this);
-            const QString riderName = (rider - 1 < vecUserStudio.size()
-                                       && !vecUserStudio.at(rider - 1).getDisplayName().trimmed().isEmpty())
-                                          ? vecUserStudio.at(rider - 1).getDisplayName().trimmed()
-                                          : tr("Rider%1").arg(rider);
-            connectDlg.setWindowTitle(tr("Connect sensors — %1").arg(riderName));
-
-            if (connectDlg.exec() != QDialog::Accepted) {
-                // Cancelled: tear down everything connected for earlier riders.
-                for (const QPair<int, QMap<BtleSensorRole, BtleHub*>> &done : riderHubs) {
-                    QSet<BtleHub*> uniq;
-                    for (BtleHub *hub : done.second) uniq.insert(hub);
-                    for (BtleHub *hub : uniq) { hub->disconnectFromDevice(); delete hub; }
-                }
-                return;
-            }
-
-            QMap<BtleSensorRole, BtleHub*> hubsByRole = connectDlg.connectedHubs();
-            if (!hubsByRole.isEmpty()) {
-                connectDlg.detachHubs();   // we now own the hubs
-                QSet<BtleHub*> uniq;
-                for (BtleHub *hub : hubsByRole) uniq.insert(hub);
-                for (BtleHub *hub : uniq) hub->setUserID(rider);
-                riderHubs.append({rider, hubsByRole});
-            }
-        }
-
-        startWorkoutWithStudioHubs(workout, riderHubs);
+        startStudioWorkoutConnectingSensors(workout);
         return;
     }
 
@@ -1334,36 +1300,85 @@ void MainWindow::wireHubsToDialog(WorkoutDialog *w,
                 &BtleHub::signal_oxygen, w, &WorkoutDialog::OxygenValueChanged);
 }
 
-// Studio variant: each rider already had its saved sensors connected and its
-// hubs tagged with setUserID(rider). Wire them all to one dialog.
-void MainWindow::startWorkoutWithStudioHubs(const Workout &workout,
-        const QList<QPair<int, QMap<BtleSensorRole, BtleHub*>>> &riderHubs)
+void MainWindow::startStudioWorkoutConnectingSensors(const Workout &workout)
 {
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
-    WorkoutDialog *w = new WorkoutDialog(workout, lstRadio, prepareStudioRiders(false));
+    const QVector<UserStudio> riders = prepareStudioRiders(false);
+    WorkoutDialog *w = new WorkoutDialog(workout, lstRadio, riders);
     w->setAttribute(Qt::WA_DeleteOnClose);
     w->setWindowModality(Qt::ApplicationModal);
 
-    QSet<BtleHub*> allHubs;
-    for (const QPair<int, QMap<BtleSensorRole, BtleHub*>> &rider : riderHubs)
-        wireHubsToDialog(w, rider.second, allHubs, rider.first);
+    QList<SensorConnector*> connectors;
+    StudioConnectionBoard *board = nullptr;
+    const int nbRiders = qBound(1, account->nb_user_studio, constants::nbMaxUserStudio);
+    for (int rider = 1; rider <= nbRiders; ++rider) {
+        auto *connector = new SensorConnector(BtleSensorStore::loadAll(rider), account->rowing_mode, this);
+        if (connector->isEmpty()) {
+            delete connector;   // no saved sensors: the rider's card stays empty
+            continue;
+        }
+        connector->setHubUserId(rider);
+        connectors.append(connector);
+        if (!board)
+            board = w->studioConnectionBoard();
+
+        const QString riderName = (rider - 1 < riders.size() && !riders.at(rider - 1).getDisplayName().trimmed().isEmpty())
+                                      ? riders.at(rider - 1).getDisplayName().trimmed()
+                                      : tr("Rider%1").arg(rider);
+        board->addRider(rider, riderName);
+        UserStudioWidget *card = w->riderWidget(rider);
+        for (const SensorConnector::Slot &slot : connector->sensorSlots()) {
+            const QString role = BtleSensorStore::roleDisplayName(slot.role);
+            board->addSensor(rider, int(slot.role), role, slot.saved.name);
+            if (card)
+                card->addSensor(int(slot.role), role);
+        }
+        connect(connector, &SensorConnector::statusChanged, w,
+                [board, card, rider](BtleSensorRole role, SensorConnector::Status status) {
+                    const auto state = SensorStatusStrip::State(int(status));
+                    board->setState(rider, int(role), state);
+                    if (card)
+                        card->setSensorState(int(role), state);
+                });
+        connect(board, &StudioConnectionBoard::retryRequested, connector,
+                [connector, rider](int boardRider, int key) {
+                    if (boardRider == rider)
+                        connector->retry(BtleSensorRole(key));
+                });
+        if (card)
+            connect(card, &UserStudioWidget::sensorRetryRequested, connector,
+                    [connector](int key) { connector->retry(BtleSensorRole(key)); });
+
+        // Same re-wiring as solo, per rider: everything this rider has connected.
+        connect(connector, &SensorConnector::hubConnected, w, [this, w, connector, rider](BtleHub *connectedHub) {
+            for (BtleHub *hub : connector->hubs()) {
+                disconnect(hub, nullptr, w, nullptr);
+                disconnect(w, nullptr, hub, nullptr);
+                disconnect(hub, &BtleHub::signal_trainerProvidesHr, this, nullptr);
+            }
+            const QMap<BtleSensorRole, BtleHub*> connected = connector->connectedHubs();
+            QSet<BtleHub*> wiredHubs;
+            wireHubsToDialog(w, connected, wiredHubs, rider);
+            const BtleSensorRole ftmsRole = account->rowing_mode ? BtleSensorRole::Rower : BtleSensorRole::Trainer;
+            if (connected.value(ftmsRole, nullptr) == connectedHub)
+                w->trainerConnected();
+        });
+    }
 
     connect(w, &WorkoutDialog::ftp_lthr_changed, ui->tab_workout1, &Main_WorkoutPage::updateTableViewMetrics);
     connect(w, &WorkoutDialog::ftpUserStudioChanged, this, &MainWindow::updateVecStudio);
-
-    connect(w, &QDialog::finished, this, [this, allHubs]() {
+    connect(w, &QDialog::finished, this, [this, connectors]() {
         workoutOver();
-        for (BtleHub *hub : allHubs) {
-            hub->disconnectFromDevice();
-            delete hub;
-        }
+        qDeleteAll(connectors);   // disconnects and frees every hub
     });
 
     attachPendingGroupSession(w);
     workoutExecuting();
     QApplication::restoreOverrideCursor();
     w->show();
+    for (SensorConnector *connector : connectors)
+        connector->start();
 }
 #endif // GC_WASM_BUILD
 

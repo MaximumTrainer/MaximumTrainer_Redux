@@ -97,10 +97,9 @@ private:
                           QSet<BtleHub*> &allHubs,
                           int riderIndex = 0);
 
-    /// Launch a Studio-mode workout with each rider's already-connected hubs
-    /// (tagged via BtleHub::setUserID). Pairs are (riderIndex, role→hub map).
-    void startWorkoutWithStudioHubs(const Workout &workout,
-                                    const QList<QPair<int, QMap<BtleSensorRole, BtleHub*>>> &riderHubs);
+    /// Studio: open the workout window straight away and connect every
+    /// rider's saved sensors inside it, all at once.
+    void startStudioWorkoutConnectingSensors(const Workout &workout);
 public slots:
 #endif
 
