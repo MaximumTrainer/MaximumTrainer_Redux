@@ -444,6 +444,17 @@ void TabIntervalsIcu::onWorkoutDownloadFinished()
     // Restore normal row selection
     ui->tableWidget_calendar->setSelectionMode(QAbstractItemView::SingleSelection);
 
+    // Intervals.icu exports an empty <workout/> when it could not read the
+    // steps (e.g. "10min 80%" instead of "10m 80%"): say so instead of saving
+    // a file the library then silently rejects.
+    if (ImporterWorkoutZwo::importFromByteArray(zwoData, m_pendingWorkoutName).getLstInterval().isEmpty()) {
+        LOG_WARN("TabIntervalsIcu", QStringLiteral("Workout '%1' has no steps in Intervals.icu; not imported")
+                                        .arg(m_pendingWorkoutName));
+        setStatus(tr("'%1' has no steps in Intervals.icu (its graph there is empty), so there is nothing to load. "
+                     "Write each step as a duration and a target, for example 10m 80%.").arg(m_pendingWorkoutName));
+        return;
+    }
+
     // Use the name captured when the download was started
     QString workoutName = m_pendingWorkoutName;
 
