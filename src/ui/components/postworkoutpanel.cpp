@@ -230,6 +230,13 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
     const bool hasIcu      = !account->intervals_icu_athlete_id.isEmpty() &&
                           (!account->intervals_icu_api_key.isEmpty() ||
                            !account->intervals_icu_access_token.isEmpty());
+    const auto uploadMode = [](bool linked, bool autoUpload) {
+        return !linked ? QStringLiteral("not linked")
+                       : autoUpload ? QStringLiteral("auto-upload") : QStringLiteral("manual button");
+    };
+    LOG_INFO("PostWorkoutPanel", QStringLiteral("Uploads: Strava %1, Intervals.icu %2")
+             .arg(uploadMode(hasStrava, account->strava_auto_upload),
+                  uploadMode(hasIcu, account->intervals_icu_auto_upload)));
 
     if (hasStrava || hasIcu) {
         auto *upHeader = new QLabel(tr("Upload activity"), this);
@@ -728,7 +735,9 @@ void PostWorkoutPanel::slotPostStravaStatusDone()
         } else {
             setStravaPostStatus(tr("✓ Uploaded to Strava"), false);
         }
-        LOG_INFO("PostWorkoutPanel", "Strava upload succeeded");
+        LOG_INFO("PostWorkoutPanel", activityId > 0
+                 ? QStringLiteral("Strava upload succeeded: https://www.strava.com/activities/%1").arg(activityId)
+                 : QStringLiteral("Strava upload succeeded (no activity id in status)"));
     } else {
         LOG_WARN("PostWorkoutPanel", QStringLiteral("Strava processing error: ") + QString::fromUtf8(statusBody));
         setStravaPostStatus(tr("✗ Strava could not process the activity: %1")
@@ -757,10 +766,15 @@ void PostWorkoutPanel::uploadToIntervalsIcu()
     svc->setCredentials(account->intervals_icu_api_key, account->intervals_icu_athlete_id);
     svc->setAccessToken(account->intervals_icu_access_token);
     const QString externalId = QFileInfo(fitFilePath).baseName();
+    LOG_INFO("PostWorkoutPanel", QStringLiteral("Intervals.icu upload: %1 (athlete %2, %3)")
+             .arg(fitFilePath, account->intervals_icu_athlete_id,
+                  account->intervals_icu_access_token.isEmpty() ? QStringLiteral("API key")
+                                                                : QStringLiteral("OAuth")));
     replyPostIntervalsIcuUpload = svc->uploadActivity(fitFilePath, fitFileName, externalId);
     svc->deleteLater();
 
     if (!replyPostIntervalsIcuUpload) {
+        LOG_WARN("PostWorkoutPanel", QStringLiteral("Intervals.icu upload could not start"));
         setIntervalsIcuPostStatus(tr("✗ Intervals.icu upload could not start — check your connection."), true);
         return;
     }
@@ -776,12 +790,14 @@ void PostWorkoutPanel::slotPostIntervalsIcuUploadDone()
     reply->deleteLater();
     replyPostIntervalsIcuUpload = nullptr;
 
+    const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     if (reply->error() != QNetworkReply::NoError) {
-        const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (httpStatus == 409) {
+            LOG_INFO("PostWorkoutPanel", QStringLiteral("Intervals.icu upload: activity already exists (HTTP 409)"));
             setIntervalsIcuPostStatus(tr("✓ Activity already on Intervals.icu"), false);
         } else {
-            LOG_WARN("PostWorkoutPanel", QStringLiteral("Intervals.icu upload failed: ") + reply->errorString());
+            LOG_WARN("PostWorkoutPanel", QStringLiteral("Intervals.icu upload failed (HTTP %1): %2 %3")
+                     .arg(httpStatus).arg(reply->errorString(), QString::fromUtf8(reply->readAll()).trimmed()));
             setIntervalsIcuPostStatus(tr("✗ Intervals.icu upload failed: %1").arg(reply->errorString()), true);
         }
         return;
@@ -805,6 +821,8 @@ void PostWorkoutPanel::slotPostIntervalsIcuUploadDone()
     } else {
         setIntervalsIcuPostStatus(tr("✓ Uploaded to Intervals.icu"), false);
     }
-    LOG_INFO("PostWorkoutPanel",
-             QStringLiteral("Intervals.icu upload succeeded (activity ") + activityId + QStringLiteral(")"));
+    LOG_INFO("PostWorkoutPanel", activityId.isEmpty()
+             ? QStringLiteral("Intervals.icu upload succeeded (HTTP %1, no activity id in response)").arg(httpStatus)
+             : QStringLiteral("Intervals.icu upload succeeded (HTTP %1): https://intervals.icu/activities/%2")
+                   .arg(httpStatus).arg(activityId));
 }
