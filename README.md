@@ -15,6 +15,14 @@ Prebuilt binaries for each release live on the [**Releases**](https://github.com
 | **macOS** | `MaximumTrainer-macos.dmg` | macOS 13+, Apple Silicon. Open and drag to Applications |
 | **Web (WASM)** | `MaximumTrainer-wasm.zip` | Chrome or Edge (needs Web Bluetooth) |
 
+### System requirements
+
+- **Windows:** Windows 10 version 1809 or later (the minimum for Qt 6.11); Windows 7, 8 and 8.1
+  are not supported. A Bluetooth 4.0+ adapter with a WDM-compatible driver; no special
+  permissions are needed.
+- **All platforms:** Bluetooth LE for sensors and trainers. See the User Guide's
+  [Platform Requirements](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html#platform-requirements).
+
 ### First launch
 
 The release builds are not code-signed, so each OS warns the first time you open them:
@@ -98,13 +106,6 @@ All three platforms are built and tested automatically via GitHub Actions CI (se
 > via `QSoundEffect`) and the embedded video + internet-radio player
 > (`QMediaPlayer` / `QVideoWidget` / `QAudioOutput`) use Qt's own
 > **QtMultimedia**.
-
-## Windows — Requirements
-
-- **Windows 10 version 1809 or later is required** (the minimum for Qt 6.11).
-  Windows 7, 8, and 8.1 are not supported.
-- A Bluetooth 4.0+ adapter with a WDM-compatible driver.
-- No special permissions or manifest entries are needed.
 
 ### Windows
 
@@ -238,58 +239,11 @@ room hosted in the app, to check the riders column with a full room.
 
 ## Log Files
 
-MaximumTrainer writes diagnostic messages (network errors, BLE events, OAuth login steps) to a log
-file. File logging is **enabled by default** on first launch; you can adjust the level or disable it
-in **Preferences → Logging**.
-
-| Platform | Default log file path | Fallback if the default folder is not writable |
-|----------|-----------------------|------------------------------------------------|
-| **Windows** | `%APPDATA%\MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log`<br/>(e.g. `C:\Users\YourName\AppData\Roaming\MaximumTrainer\MaximumTrainer_Redux\MaximumTrainer.log`) | `%TEMP%\MaximumTrainer.log`<br/>(e.g. `C:\Users\YourName\AppData\Local\Temp\MaximumTrainer.log`) |
-| **macOS** | `~/Library/Application Support/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log` | `$TMPDIR/MaximumTrainer.log`<br/>(a per-user folder under `/var/folders/…/T/`; run `echo $TMPDIR` in Terminal to see it) |
-| **Linux** | `~/.local/share/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log`<br/>(or `$XDG_DATA_HOME/MaximumTrainer/MaximumTrainer_Redux/MaximumTrainer.log` when `$XDG_DATA_HOME` is set) | `$TMPDIR/MaximumTrainer.log`, which is `/tmp/MaximumTrainer.log` when `$TMPDIR` is not set |
-| **Web (WASM)** | No log file; messages go to the browser's developer console | n/a |
-
-The log file is opened before the splash screen appears, and every startup step is logged as it
-begins and ends, so if the app hangs or crashes while starting, the last line of the log names the
-step that failed. If the default folder cannot be written, the log goes to the fallback file above
-and its first lines record the fallback. If neither can be written, messages go to stdout only.
-
-The log is capped: when it reaches 5 MB it is renamed to `MaximumTrainer.log.1` (replacing the
-previous one) and a new file starts, so logs never use more than about 10 MB. When reporting a
-bug that happened a while ago, attach both files.
-
-If you chose a custom path in **Preferences → Logging**, the app switches to it once the
-configuration has loaded. Anything logged before that point (the startup banner and the
-configuration steps) is still in the default file, so check both when the app fails early.
-
-On Windows, the log starts with each graphics adapter and its driver version. A crash also logs:
-- the DLL and offset that faulted
-- the call stack, with function names and source lines for the app's own code
-  (`MaximumTrainer.pdb` ships next to the exe)
-- the graphics-driver and third-party DLLs loaded in the process, such as overlays and antivirus hooks
-
-It also writes `MaximumTrainer-crash.dmp` next to the log file. Attach both to the bug report.
-
-If the app crashes while the embedded web engine starts (the last log line reads
-`during GlobalVars: QWebEngineProfile init`), the next launch starts it with GPU acceleration
-off ("safe graphics") and keeps doing so until the app is updated; the first launch of a new
-version tries the GPU again. That launch also saves the web engine's own log in
-`MaximumTrainer-webengine.log` next to the app log; attach it too. Set `MT_WEBENGINE_SAFE_MODE=0`
-to turn safe graphics off again, `MT_WEBENGINE_SAFE_MODE=1` to force it on, or launch with
-`--safe-graphics` to try it once. `MT_WEBENGINE_LOG=1` saves the web engine's log on any launch.
-
-The Windows build ships its own Visual C++ runtime (`msvcp140.dll`, `vcruntime140*.dll`) next to
-`MaximumTrainer.exe`, because Qt 6.11 needs version 14.40 or newer and an older copy in
-`System32` makes the app crash at startup with a fault in `MSVCP140.dll`. The log's
-`C++ runtime:` line shows which copy was loaded.
-
-Set the log level to **Debug** before reproducing an issue (or launch with `--debug`, or `/debug` on
-Windows), then attach the log file to your bug report.
-The **Open log file** button in the Logging settings page opens the file directly in your default text editor.
-
-For full troubleshooting guidance see the
-[User Guide — Log Files & Troubleshooting](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html#log-files)
-section.
+MaximumTrainer writes a diagnostic log (network errors, BLE events, OAuth login steps), enabled by
+default. Where to find it, how it rotates, what a crash writes and what to attach to a bug report
+are covered in the
+[User Guide - Log Files & Troubleshooting](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html#log-files).
+Launch with `--debug` (or `/debug` on Windows) for Debug-level detail from the first line.
 
 ## Credits
 
