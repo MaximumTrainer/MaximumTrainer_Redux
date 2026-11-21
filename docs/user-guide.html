@@ -1425,20 +1425,20 @@
       <section class="guide-section" id="log-files">
         <h2>🗒️ Log Files &amp; Troubleshooting</h2>
         <p>
-          Maximum Trainer writes diagnostic messages to a log file whenever file logging is enabled
-          in <strong>Preferences → Logging</strong>. The log captures
-          all network request errors, BLE connection events, and OAuth login steps, making it the
-          first place to look when something goes wrong.
+          Maximum Trainer writes diagnostic messages to a log file. File logging is
+          <strong>on by default</strong>; the log captures network request errors, BLE connection
+          events, and OAuth login steps, making it the first place to look when something goes wrong.
         </p>
 
-        <h3>Enabling the log file</h3>
-        <ol>
-          <li>Open <strong>Preferences</strong>.</li>
-          <li>Select the <strong>Logging</strong> category.</li>
-          <li>Tick <strong>Write log to file</strong>.</li>
-          <li>Optionally change the log file path with the <strong>Browse…</strong> button.</li>
-          <li>Click <strong>OK</strong> — logging starts immediately.</li>
-        </ol>
+        <h3>Logging settings</h3>
+        <p>
+          In <strong>Preferences → Logging</strong> you can set the <strong>Minimum level</strong>
+          (Verbose, Debug, Info, Warning, Error; Info is the default), turn
+          <strong>Write log to file</strong> off or back on, and pick another file with
+          <strong>Browse…</strong>. The line under the path shows the default file for your computer.
+          Debug adds developer diagnostics; Verbose also records every trainer command and
+          acknowledgement and each second of the workout clock, so use it only while reproducing an issue.
+        </p>
         <p>
           Use the <strong>Open log file</strong> button to open the current log in your default
           text editor at any time.

@@ -458,19 +458,7 @@ QWidget *DialogMainWindowConfig::createLoggingPage()
         QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     const QString defaultLogPath = defaultLogDir + QStringLiteral("/MaximumTrainer.log");
 
-#if defined(Q_OS_WIN)
-    // Double %% is intentional: tr() uses QString::arg() which treats % as
-    // a placeholder; %% produces the literal % character in the displayed text,
-    // so the user sees the correct Windows environment variable syntax %APPDATA%.
-    const QString osHint = tr("Windows default: %%APPDATA%%\\MaximumTrainer\\MaximumTrainer.log\n"
-                               "(%1)").arg(defaultLogPath);
-#elif defined(Q_OS_MAC)
-    const QString osHint = tr("macOS default: ~/Library/Application Support/MaximumTrainer/MaximumTrainer.log\n"
-                               "(%1)").arg(defaultLogPath);
-#else
-    const QString osHint = tr("Linux default: ~/.local/share/MaximumTrainer/MaximumTrainer.log\n"
-                               "(%1)").arg(defaultLogPath);
-#endif
+    const QString osHint = tr("Default: %1").arg(QDir::toNativeSeparators(defaultLogPath));
 
     m_labelLogPathHint = new QLabel(osHint, fileGroup);
     m_labelLogPathHint->setWordWrap(true);
