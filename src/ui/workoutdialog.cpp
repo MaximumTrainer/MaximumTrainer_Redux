@@ -72,6 +72,8 @@ namespace {
 
 WorkoutDialog::~WorkoutDialog() {
 
+    if (m_freeRideAfterWorkout && virtualShiftingActive())
+        emit setLoad(trainerControlUserId, 0);
 
     emit stopDecodingMsgHub();
 
@@ -1372,11 +1374,7 @@ void WorkoutDialog::workoutOver() {
 
     isWorkoutOver = true;
     stopErgSmoothing();
-
-    // Release virtual-shifting resistance so the trainer doesn't hold a load
-    // after the workout ends (it would otherwise persist until disconnect).
-    if (virtualShiftingActive())
-        emit setLoad(trainerControlUserId, 0);
+    startFreeRideAfterWorkout();
 
     if (raceController) raceController->finishRace();   // finish line + celebration
 
@@ -2051,14 +2049,34 @@ bool WorkoutDialog::virtualShiftingActive() const {
 // ERG only owns an interval when the checkbox is on AND there's a positive power
 // target (a structured power interval). Then gears are inactive ("ERG").
 bool WorkoutDialog::ergOwnsThisInterval() const {
-    return account && account->control_trainer_resistance
+    return account && !m_freeRideAfterWorkout && account->control_trainer_resistance
         && !isUsingSlopeMode && currentTargetPower > 0;
 }
 
 // Gears are the active resistance source whenever a trainer is controllable, the
 // workout isn't over, and ERG isn't currently owning the interval.
 bool WorkoutDialog::gearsDriveNow() const {
-    return virtualShiftingActive() && !isWorkoutOver && !ergOwnsThisInterval();
+    return virtualShiftingActive() && (!isWorkoutOver || m_freeRideAfterWorkout) && !ergOwnsThisInterval();
+}
+
+// Once the workout is saved the rider can keep pedaling (cool-down): the trainer
+// leaves ERG for the virtual gears, or a flat road without virtual shifting.
+// Nothing after the finish is recorded.
+void WorkoutDialog::startFreeRideAfterWorkout() {
+    if (account->enable_studio_mode || trainerControlUserId == -1)
+        return;
+    m_freeRideAfterWorkout = true;
+    if (virtualShiftingActive()) {
+        sendGearLoad();
+        // The clock no longer ticks once the workout is over; keep re-sending so
+        // ERG-fallback trainers follow cadence like a real gear.
+        m_freeRideGearTimer = new QTimer(this);
+        connect(m_freeRideGearTimer, &QTimer::timeout, this, &WorkoutDialog::sendGearLoad);
+        m_freeRideGearTimer->start(1000);
+    } else {
+        sendSlopes(0);
+    }
+    updateGearIndicator();
 }
 
 int WorkoutDialog::gearTargetWatts(int gear, double cadence) const {
@@ -2268,7 +2286,8 @@ void WorkoutDialog::targetPowerChanged_f(double percentageTarget, int range) {
     m_lastPowerTargetPct = percentageTarget;
     m_lastPowerTargetRange = range;
 
-    if (percentageTarget <= 0 || isUsingSlopeMode || !account->control_trainer_resistance) {
+    if (percentageTarget <= 0 || isUsingSlopeMode || !account->control_trainer_resistance
+            || m_freeRideAfterWorkout) {
         // Single-cog trainers spin out at slope 0 (#293) — drive the virtual
         // gear's resistance instead when trainer control is available.
         if (virtualShiftingActive())
@@ -3086,6 +3105,13 @@ void WorkoutDialog::showPostWorkoutPanel()
     widgetPostWorkout = new PostWorkoutPanel(account, earnedAchievements,
                                              fitFilePath, fitFileName, fitFileDescription, this);
     connect(widgetPostWorkout, &PostWorkoutPanel::ftpUpdated, this, &WorkoutDialog::ftp_lthr_changed);
+    connect(widgetPostWorkout, &PostWorkoutPanel::keepRidingRequested, this, [this]() {
+        widgetPostWorkout->hide();   // hidden, not deleted: uploads in flight still finish
+        if (m_freeRideAfterWorkout)
+            ui->widget_workoutPlot->setDisplayIntervalMessage(
+                true, virtualShiftingActive() ? tr("Free ride - shift gears with ▲ / ▼")
+                                              : tr("Free ride - flat road"), 6000);
+    });
     widgetPostWorkout->setProfileNote(m_profileNote);
     const QSize ps = size();   // centre over the whole workout dialog
     const QSize ws = widgetPostWorkout->size();

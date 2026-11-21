@@ -34,6 +34,8 @@ public:
 signals:
     /// The rider accepted a detected FTP; zones and targets need recomputing.
     void ftpUpdated(int ftpWatts);
+    /// The rider dismissed the summary to keep pedaling after the workout.
+    void keepRidingRequested();
 
 private slots:
     void uploadToStrava();

@@ -319,6 +319,9 @@ private:
     bool gearsDriveNow() const;                   // gears are the active resistance source
     int  gearTargetWatts(int gear, double cadence) const;
     void sendGearLoad();                          // emit setLoad for current gear
+    void startFreeRideAfterWorkout();             // trainer -> gears / flat road once finished
+    bool m_freeRideAfterWorkout = false;
+    QTimer *m_freeRideGearTimer = nullptr;
     void shiftGear(int delta);                    // +1 up / -1 down, re-sends
     void updateGearIndicator();                   // refresh the top-bar gear UI
 
