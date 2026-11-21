@@ -14,9 +14,33 @@
 #include <QSettings>
 #include <QCursor>
 
+#include "logger.h"
+
 namespace {
 constexpr int kToolbarHideMs = 3000;
 constexpr int kCursorPollMs  = 200;
+
+#ifndef GC_WASM_BUILD
+// Qt's default page forwards every console message of the site (YouTube logs
+// hundreds per ride) into the app log as warnings. They say nothing about the
+// app, so keep them out of the normal log.
+class BrowserPage : public QWebEnginePage
+{
+public:
+    using QWebEnginePage::QWebEnginePage;
+
+protected:
+    void javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level, const QString &message,
+                                  int lineNumber, const QString &sourceID) override
+    {
+        const QString line = QStringLiteral("JS [%1:%2] %3").arg(sourceID).arg(lineNumber).arg(message);
+        if (level == ErrorMessageLevel)
+            LOG_DEBUG("WebBrowser", line);
+        else
+            LOG_VERBOSE("WebBrowser", line);
+    }
+};
+#endif
 }
 
 WebBrowserView::WebBrowserView(QWidget *parent) : QWidget(parent)
@@ -29,6 +53,9 @@ WebBrowserView::WebBrowserView(QWidget *parent) : QWidget(parent)
                                 locationEdit->sizePolicy().verticalPolicy());
 
     webEngineView = new QWebEngineView(this);
+#ifndef GC_WASM_BUILD
+    webEngineView->setPage(new BrowserPage(webEngineView));
+#endif
     webEngineView->settings()->setAttribute(QWebEngineSettings::PluginsEnabled, true);
     // Without FullScreenSupportEnabled + an accepted fullScreenRequested,
     // YouTube greys out its fullscreen button ("Full screen is unavailable").

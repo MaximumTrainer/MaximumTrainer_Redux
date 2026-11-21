@@ -217,7 +217,7 @@ void BtleHub::sendFtmsCommand(const QByteArray &cmd)
     // the wire or queued — re-sending would be pure BLE noise (the ERG
     // smoothing layer re-emits unchanged targets every second during ramps).
     if (cmd == m_ftmsLastAckedCmd && !m_ftmsOpInFlight && m_ftmsPendingCmd.isEmpty()) {
-        LOG_DEBUG("BtleHub", QStringLiteral("FTMS duplicate of confirmed op 0x%1 skipped")
+        LOG_VERBOSE("BtleHub", QStringLiteral("FTMS duplicate of confirmed op 0x%1 skipped")
                                  .arg(quint8(cmd[0]), 2, 16, QLatin1Char('0')));
         return;
     }
@@ -241,7 +241,7 @@ void BtleHub::writeFtmsCommandNow(const QByteArray &cmd)
     m_ftmsLastSentCmd = cmd;
     m_ftmsService->writeCharacteristic(cp, cmd,
                                        QLowEnergyService::WriteWithResponse);
-    LOG_DEBUG("BtleHub", QStringLiteral("FTMS op 0x%1 sent (%2 bytes)")
+    LOG_VERBOSE("BtleHub", QStringLiteral("FTMS op 0x%1 sent (%2 bytes)")
                              .arg(quint8(cmd[0]), 2, 16, QLatin1Char('0'))
                              .arg(cmd.size()));
     if (m_ftmsOpTimeout)
@@ -510,7 +510,7 @@ void BtleHub::handleFtmsControlPointResponse(const QByteArray &value)
         LOG_INFO("BtleHub", QStringLiteral("FTMS control granted by trainer"));
     } else {
         m_ftmsLastAckedCmd = m_ftmsLastSentCmd;
-        LOG_DEBUG("BtleHub", QStringLiteral("FTMS op 0x%1 acknowledged by trainer")
+        LOG_VERBOSE("BtleHub", QStringLiteral("FTMS op 0x%1 acknowledged by trainer")
                                  .arg(requestOp, 2, 16, QLatin1Char('0')));
     }
 

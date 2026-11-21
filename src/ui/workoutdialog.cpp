@@ -911,13 +911,10 @@ void WorkoutDialog::checkMAPTestOver() {
 
 void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
 
-    // Diagnostic (temporary): the log timestamps on this line reveal whether the
-    // Clock ticks faster than real time (the "workout / race finishes instantly"
-    // report seen on one PC). Normally one line per real second with clockElapsed
-    // incrementing by 1; a burst of lines, or clockElapsed jumping, points at the
-    // Clock / QElapsedTimer.
-    qDebug() << "[update1sec] clockElapsed=" << totalTimeElapsed_sec
-             << "interval" << currentInterval << "/" << workout.getNbInterval();
+    // One line per real second; a burst, or clockElapsed jumping, points at the
+    // Clock / QElapsedTimer ("workout finishes instantly" reports).
+    LOG_VERBOSE("WorkoutDialog", QStringLiteral("[update1sec] clockElapsed=%1 interval %2 / %3")
+                .arg(totalTimeElapsed_sec).arg(currentInterval).arg(workout.getNbInterval()));
 
     int totalTimeElapsed_sec_i = (int)totalTimeElapsed_sec;
 
@@ -3154,7 +3151,8 @@ void WorkoutDialog::closeAndDeleteFitFile() {
 
 void WorkoutDialog::changeIntervalsDataWorkout(double timeStarted, double timeNow, int timePaused_msec, bool workoutOver, bool testInterval) {
 
-    qDebug () << "changeIntervalsDataWorkout! - timeStarted" << timeStarted << "timeNow" << timeNow << "timePaused_msec" << timePaused_msec << "workoutOver" << workoutOver << "testInterval" << testInterval;
+    LOG_VERBOSE("WorkoutDialog", QStringLiteral("changeIntervalsDataWorkout timeStarted %1 timeNow %2 paused_msec %3 over %4 test %5")
+                .arg(timeStarted).arg(timeNow).arg(timePaused_msec).arg(workoutOver).arg(testInterval));
 
     // Capture interval summary stats BEFORE changeInterval() resets them.
     double summaryAvgPower = 0.0, summaryAvgHr = 0.0, summaryAvgCad = 0.0;

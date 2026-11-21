@@ -331,7 +331,13 @@ void Logger::loadConfig()
                          static_cast<int>(LogLevel::Off));
     if (m_debugSwitch)
         clamped = qMin(clamped, static_cast<int>(LogLevel::Debug));
+    const LogLevel previousLevel = logLevel();
     setLogLevel(static_cast<LogLevel>(clamped));
+    // The startup banner prints the level in effect before the preferences load.
+    if (logLevel() != previousLevel)
+        log(LogLevel::Info, QStringLiteral("Logger"),
+            QStringLiteral("Log level now %1 (Preferences > Logging)")
+                .arg(QLatin1String(levelTag(logLevel()))));
 
 #ifndef Q_OS_WASM
     if (!fileOn) {
