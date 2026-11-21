@@ -8,6 +8,7 @@
 #include "achievementlivetracker.h"
 #include "personalbesttracker.h"
 #include "workout.h"
+#include "workouthistorysummary.h"
 
 /// Awards the local achievements (AchievementCatalog) and saves them
 /// (AchievementStore). History-based ones are evaluated from the ride history,
@@ -28,6 +29,12 @@ public:
 
     /// Ride-history totals from the last evaluateHistory(), for progress bars.
     const AchievementCatalog::HistoryStats &historyStats() const { return m_stats; }
+    /// The rides read by the last evaluateHistory() (startup and after each ride).
+    const QList<WorkoutHistorySummary> &history() const { return m_history; }
+
+    /// Riding hours per week the rider aims for (0 = none); setting it emits weeklyGoalChanged.
+    static double weeklyGoalHours();
+    void setWeeklyGoalHours(double hours);
 
 public slots:
     /// FTP test, MAP test and Target Maniac checks at the end of a workout.
@@ -49,12 +56,14 @@ signals:
     void achievementCompleted(Achievement achievement);
     /// Anything was earned (announced or not); the achievements page refreshes.
     void achievementsChanged();
+    void weeklyGoalChanged();
 
 private:
     void award(const QString &key, bool announce);
     void announceBests(const QVector<PersonalBestTracker::Event> &events);
 
     AchievementCatalog::HistoryStats m_stats;
+    QList<WorkoutHistorySummary> m_history;
     AchievementLiveTracker m_liveTracker;
     PersonalBestTracker m_bestTracker;
     int m_bestLoadGeneration = 0;

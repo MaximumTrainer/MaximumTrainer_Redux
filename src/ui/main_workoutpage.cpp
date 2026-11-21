@@ -1,4 +1,12 @@
 #include "main_workoutpage.h"
+
+#include <QDate>
+#include <QLabel>
+#include <QTimer>
+
+#include "managerachievement.h"
+#include "weeklysummary.h"
+#include "weeklysummarywidget.h"
 #include <QFileInfo>
 #include <QRegularExpression>
 #include <QStandardPaths>
@@ -37,6 +45,7 @@ Main_WorkoutPage::Main_WorkoutPage(QWidget *parent) : QWidget(parent), ui(new Ui
     this->settings = qApp->property("User_Settings").value<Settings*>();
 
     loadFilterFields();
+    setupWeeklyGoal();
 
 
     tableModel = new WorkoutTableModel(this);
@@ -599,3 +608,32 @@ void Main_WorkoutPage::exportForBikeComputer()
            "% of FTP, so they follow the FTP set on your bike computer.").arg(QFileInfo(path).fileName()));
 }
 #endif
+
+
+void Main_WorkoutPage::setupWeeklyGoal() {
+
+    m_weeklyGoalLabel = new QLabel(this);
+    m_weeklyGoalLabel->setObjectName(QStringLiteral("labelWeeklyGoal"));
+    m_weeklyGoalLabel->setTextFormat(Qt::RichText);
+    m_weeklyGoalLabel->setToolTip(tr("Riding time this week against your weekly goal"));
+    ui->horizontalLayout->insertWidget(0, m_weeklyGoalLabel);
+    connect(m_weeklyGoalLabel, &QLabel::linkActivated, this, [this] {
+        WeeklySummaryWidget::showGoalMenu(m_weeklyGoalLabel);
+    });
+    // The achievement manager is created after this page, and reads the ride
+    // history at startup and after each ride.
+    QTimer::singleShot(0, this, [this] {
+        auto *manager = qApp->property("ManagerAchievement").value<ManagerAchievement*>();
+        if (!manager)
+            return;
+        const auto refresh = [this, manager] {
+            const WeeklySummary::GoalProgress goal = WeeklySummary::goalProgress(
+                manager->history(), QDate::currentDate(), ManagerAchievement::weeklyGoalHours());
+            m_weeklyGoalLabel->setText(QStringLiteral("🎯 ") + (goal.goalHours > 0.0 ? tr("This week: ") : QString())
+                                       + WeeklySummaryWidget::goalText(goal));
+        };
+        connect(manager, &ManagerAchievement::achievementsChanged, this, refresh);
+        connect(manager, &ManagerAchievement::weeklyGoalChanged, this, refresh);
+        refresh();
+    });
+}

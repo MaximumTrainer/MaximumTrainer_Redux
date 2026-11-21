@@ -25,6 +25,7 @@
 #include "ftpestimator.h"
 #include "powerzones.h"
 #include "ridesummary.h"
+#include "weeklysummary.h"
 #include "intervalsicuftpsync.h"
 #include "setting_keys.h"
 #include "intervalsicuservice.h"
@@ -223,6 +224,7 @@ PostWorkoutPanel::PostWorkoutPanel(Account *account, const QList<Achievement> &e
         }
     }
 
+    addWeeklyGoal(side);
     addFtpSuggestion(side);
 
     // — Upload section —
@@ -339,6 +341,38 @@ void PostWorkoutPanel::fitToContents()
 
 // The ride's numbers and time in power zones, read back from its FIT file the
 // same way History does.
+void PostWorkoutPanel::addWeeklyGoal(QBoxLayout *layout)
+{
+    const auto *manager = qApp->property("ManagerAchievement").value<ManagerAchievement*>();
+    const double goalHours = ManagerAchievement::weeklyGoalHours();
+    if (!manager || goalHours <= 0.0)
+        return;
+    // The history already includes this ride (re-read when its file was saved).
+    const WeeklySummary::GoalProgress goal =
+        WeeklySummary::goalProgress(manager->history(), QDate::currentDate(), goalHours);
+    const auto hours = [](double value) {
+        const int minutes = qRound(value * 60);
+        return QStringLiteral("%1:%2").arg(minutes / 60).arg(minutes % 60, 2, 10, QLatin1Char('0'));
+    };
+    QString text;
+    if (goal.reached) {
+        text = tr("🎯  Weekly goal reached: %1 / %2 h").arg(hours(goal.hoursThisWeek), hours(goalHours));
+        if (goal.streakWeeks >= 2)
+            text += QStringLiteral(" · ") + tr("%n-week streak", "", goal.streakWeeks);
+    } else {
+        const int minutesLeft = qMax(1, qRound((goalHours - goal.hoursThisWeek) * 60));
+        text = tr("🎯  Weekly goal: %1 / %2 h, %3 to go")
+                   .arg(hours(goal.hoursThisWeek), hours(goalHours),
+                        minutesLeft >= 60 ? tr("%1 h").arg(hours(minutesLeft / 60.0)) : tr("%n min", "", minutesLeft));
+    }
+    auto *label = new QLabel(text, this);
+    label->setObjectName(QStringLiteral("labelWeeklyGoal"));
+    label->setWordWrap(true);
+    label->setStyleSheet(goal.reached ? QStringLiteral("font-size: 10pt; color: #3fb27f; font-weight: bold;")
+                                      : QStringLiteral("font-size: 10pt;"));
+    layout->addWidget(label);
+}
+
 void PostWorkoutPanel::addRideSummary(QBoxLayout *layout)
 {
     if (fitFilePath.isEmpty())

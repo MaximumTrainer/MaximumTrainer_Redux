@@ -15,6 +15,7 @@
 #include "logger.h"
 #include "mmpcalculator.h"
 #include "powerbests.h"
+#include "setting_keys.h"
 #include "util.h"
 #include "workouthistorysummary.h"
 
@@ -68,7 +69,8 @@ void ManagerAchievement::award(const QString &key, bool announce)
 
 void ManagerAchievement::evaluateHistory(bool announce)
 {
-    m_stats = statsFrom(readHistory());
+    m_history = readHistory();
+    m_stats = statsFrom(m_history);
     if (const Account *account = qApp->property("Account").value<Account*>();
         account && account->weight_kg > 0 && account->FTP > 0)
         m_stats.ftpWattsPerKg = account->FTP / account->weight_kg;
@@ -76,6 +78,18 @@ void ManagerAchievement::evaluateHistory(bool announce)
         if (reached(definition, m_stats))
             award(definition.key, announce);
     emit achievementsChanged();
+}
+
+double ManagerAchievement::weeklyGoalHours()
+{
+    return AppSettings::read(SettingKeys::Training::WeeklyGoalHours);
+}
+
+void ManagerAchievement::setWeeklyGoalHours(double hours)
+{
+    AppSettings::write(SettingKeys::Training::WeeklyGoalHours, std::max(0.0, hours));
+    LOG_INFO("Achievements", QStringLiteral("weekly goal set to %1 h").arg(hours));
+    emit weeklyGoalChanged();
 }
 
 void ManagerAchievement::recordEvent(const QString &key)

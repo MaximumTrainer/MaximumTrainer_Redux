@@ -98,6 +98,8 @@ private slots:
 
 
 private:
+    void setupWeeklyGoal();
+    QLabel *m_weeklyGoalLabel = nullptr;
     QString nameFilter;
     QString planFilter;
     QString creatorFilter;
