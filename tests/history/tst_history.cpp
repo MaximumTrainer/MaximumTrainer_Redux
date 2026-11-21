@@ -3,6 +3,9 @@
 #include <QTemporaryDir>
 #include <QDateTime>
 #include <QtEndian>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include <fstream>
 #include <cmath>
@@ -26,6 +29,9 @@
 #include "historyfilterproxymodel.h"
 #include "ftpestimator.h"
 #include "weeklysummary.h"
+#include "mmpcalculator.h"
+#include "personalbesttracker.h"
+#include "powerbests.h"
 
 // Garmin FIT epoch (1989-12-31 UTC) offset from the Unix epoch, in seconds.
 static constexpr qint64 FIT_EPOCH_OFFSET = 631065600LL;
@@ -523,6 +529,144 @@ private slots:
         QCOMPARE(d.laps.first().avgPowerW, 205);
         QCOMPARE(d.laps.first().maxPowerW, 260);
         QCOMPARE(d.laps.first().normalizedPower, 215);
+    }
+
+    // ── Power bests: per-ride curve, periods, cache ──────────────────────────
+    void powerBests_slidingWindowAverages()
+    {
+        const QVector<int> power{100, 300, 500, 300, 100};
+        const QVector<double> best = PowerBests::bestAverages(power, {1, 2, 3, 6});
+        QCOMPARE(best[0], 500.0);
+        QCOMPARE(best[1], 400.0);
+        QCOMPARE(best[2], (300.0 + 500.0 + 300.0) / 3.0);
+        QCOMPARE(best[3], 0.0);  // longer than the ride
+    }
+
+    void powerBests_periodKeepsTheRideOfEachBest()
+    {
+        const QDateTime now = QDateTime::currentDateTime();
+        const auto ride = [](const QDateTime &date, const QString &name, double fiveSec) {
+            PowerBests::Ride r;
+            r.summary.startTime = date;
+            r.summary.workoutName = name;
+            r.bests = QVector<double>(MMP_DURATIONS.size(), 0.0);
+            r.bests[MMP_DURATIONS.indexOf(5)] = fiveSec;
+            return r;
+        };
+        const QList<PowerBests::Ride> rides{ride(now.addDays(-200), QStringLiteral("old"), 900),
+                                            ride(now.addDays(-10), QStringLiteral("recent"), 700),
+                                            ride(QDateTime(), QStringLiteral("undated"), 1000)};
+        const qsizetype index = MMP_DURATIONS.indexOf(5);
+
+        const QVector<PowerBests::Effort> allTime = PowerBests::bestEfforts(rides);
+        QCOMPARE(allTime[index].watts, 1000.0);
+        QCOMPARE(allTime[index].workoutName, QStringLiteral("undated"));
+
+        const QVector<PowerBests::Effort> recent = PowerBests::bestEfforts(rides, now.addDays(-90));
+        QCOMPARE(recent[index].watts, 700.0);
+        QCOMPARE(recent[index].workoutName, QStringLiteral("recent"));
+    }
+
+    void powerBests_cacheSkipsDecodingAndNoticesChanges()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        PowerBests::setCacheFilePathForTesting(dir.filePath(QStringLiteral("cache/bests.json")));
+        const QString path = dir.filePath(QStringLiteral("ride.fit"));
+        writeSampleFit(path, 60);  // power 200..259 W
+        WorkoutHistorySummary summary;
+        summary.filePath = path;
+        const qsizetype fiveSec = MMP_DURATIONS.indexOf(5);
+
+        QList<PowerBests::Ride> rides = PowerBests::loadRides({summary});
+        QCOMPARE(rides.size(), 1);
+        QCOMPARE(rides.first().bests[fiveSec], 257.0);  // 255..259
+        QVERIFY(QFile::exists(PowerBests::cacheFilePath()));
+
+        // Tamper with the cache: a second load must read it instead of the file.
+        QFile cache(PowerBests::cacheFilePath());
+        QVERIFY(cache.open(QIODevice::ReadOnly));
+        QJsonObject root = QJsonDocument::fromJson(cache.readAll()).object();
+        cache.close();
+        QJsonObject cachedRides = root.value(QStringLiteral("rides")).toObject();
+        QCOMPARE(cachedRides.size(), 1);
+        QJsonArray values = cachedRides.begin().value().toArray();
+        values[fiveSec] = 999;
+        cachedRides.insert(cachedRides.begin().key(), values);
+        root.insert(QStringLiteral("rides"), cachedRides);
+        QVERIFY(cache.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        cache.write(QJsonDocument(root).toJson());
+        cache.close();
+        QCOMPARE(PowerBests::loadRides({summary}).first().bests[fiveSec], 999.0);
+
+        // A rewritten ride (new size) is decoded again.
+        writeSampleFit(path, 90);
+        QCOMPARE(PowerBests::loadRides({summary}).first().bests[fiveSec], 287.0);
+
+        // Deleted rides drop out of the cache.
+        PowerBests::loadRides({});
+        QVERIFY(cache.open(QIODevice::ReadOnly));
+        QVERIFY(!cache.readAll().contains("ride.fit"));
+        PowerBests::setCacheFilePathForTesting(QString());
+    }
+
+    // ── Live personal bests ──────────────────────────────────────────────────
+    static QVector<PersonalBestTracker::Event> feed(PersonalBestTracker &tracker, const QVector<double> &watts)
+    {
+        QVector<PersonalBestTracker::Event> events;
+        for (double w : watts)
+            events += tracker.addSecond(w);
+        return events;
+    }
+
+    void personalBest_reportsThePeakOnceTheEffortEnds()
+    {
+        PersonalBestTracker tracker;
+        tracker.start({{5, 500, 800}});
+        // 5 s at 600 W, rising to 650 W, then easy riding.
+        QVERIFY(feed(tracker, {600, 600, 600, 600, 600}).isEmpty());
+        QVERIFY(feed(tracker, {650, 650}).isEmpty());
+        const QVector<PersonalBestTracker::Event> events = feed(tracker, {100, 100, 100});
+        QCOMPARE(events.size(), 1);
+        QCOMPARE(events.first().seconds, 5);
+        QCOMPARE(events.first().watts, 620.0);  // 600,600,600,650,650
+        QCOMPARE(events.first().previousWatts, 500.0);
+        QVERIFY(!events.first().allTime);
+        // The same level does not fire again in this ride.
+        QVERIFY(feed(tracker, {700, 700, 700, 700, 700, 0, 0, 0}).isEmpty());
+    }
+
+    void personalBest_allTimeUpgradesAfterARecentBest()
+    {
+        PersonalBestTracker tracker;
+        tracker.start({{5, 500, 800}});
+        QCOMPARE(feed(tracker, {600, 600, 600, 600, 600, 0, 0, 0}).size(), 1);
+        const QVector<PersonalBestTracker::Event> events = feed(tracker, {900, 900, 900, 900, 900, 0, 0, 0});
+        QCOMPARE(events.size(), 1);
+        QVERIFY(events.first().allTime);
+        QCOMPARE(events.first().watts, 900.0);
+        QCOMPARE(events.first().previousWatts, 800.0);
+    }
+
+    void personalBest_quietWithoutEarlierRidesOrTies()
+    {
+        PersonalBestTracker tracker;
+        tracker.start({{5, 0, 0}, {60, 300, 300}});
+        // 300.4 W rounds to the 300 W record, and 5 s has nothing to beat.
+        QVERIFY(feed(tracker, QVector<double>(120, 300.4)).isEmpty());
+        QVERIFY(tracker.finish().isEmpty());
+    }
+
+    void personalBest_finishReportsAnEffortInProgress()
+    {
+        PersonalBestTracker tracker;
+        tracker.start({{5, 400, 0}});
+        QVERIFY(feed(tracker, {-1, 500, 500, 500, 500, 500}).isEmpty());
+        const QVector<PersonalBestTracker::Event> events = tracker.finish();
+        QCOMPARE(events.size(), 1);
+        QCOMPARE(events.first().watts, 500.0);
+        QVERIFY(!events.first().allTime);
+        QVERIFY(PersonalBestTracker().addSecond(1000).isEmpty());  // not started
     }
 
     // ── TSS aggregation: PmcCalculator ───────────────────────────────────────

@@ -69,7 +69,7 @@ void HistoryWidget::setupUi()
     m_deleteAction = m_contextMenu->addAction(QIcon(QStringLiteral(":/image/icon/delete")), tr("Delete"));
     connect(m_deleteAction, &QAction::triggered, this, &HistoryWidget::deleteSelected);
 
-    m_cpBtn = new QPushButton(tr("Critical Power Curve"), histTab);
+    m_cpBtn = new QPushButton(tr("Power Curve"), histTab);
     connect(m_cpBtn, &QPushButton::clicked, this, &HistoryWidget::openCriticalPowerDialog);
 
     m_pmcBtn = new QPushButton(tr("Performance Chart"), histTab);
