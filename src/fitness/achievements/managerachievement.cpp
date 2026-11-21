@@ -83,3 +83,21 @@ void ManagerAchievement::checkLiveTss(double tss)
         if (definition.kind == Kind::RideTss && tss >= definition.target)
             award(definition.key, true);
 }
+
+void ManagerAchievement::checkLiveSecond(double powerWatts, double cadenceRpm, double ftpWatts)
+{
+    for (const QString &key : m_liveTracker.addSecond(powerWatts, cadenceRpm, ftpWatts))
+        award(key, true);
+}
+
+void ManagerAchievement::checkLiveDistance(double meters)
+{
+    for (const Definition &definition : all())
+        if (definition.kind == Kind::RideKm && meters / 1000.0 >= definition.target)
+            award(definition.key, true);
+}
+
+void ManagerAchievement::startLiveRide()
+{
+    m_liveTracker.reset();
+}

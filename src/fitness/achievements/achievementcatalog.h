@@ -8,10 +8,11 @@ struct WorkoutHistorySummary;
 
 /// The local achievement list and the rules to earn them. Most achievements are
 /// derived from the ride history (so rides done before this feature count);
-/// "event" ones are recorded when the moment happens (an FTP test, a MAP step).
+/// "event" ones are recorded when the moment happens (an FTP test, a MAP step),
+/// and "peak" ones are checked every second of a ride (AchievementLiveTracker).
 namespace AchievementCatalog {
 
-enum class Category { Milestones, Endurance, Consistency, Fitness, Special };
+enum class Category { Milestones, Endurance, Consistency, Fitness, Power, Special };
 
 enum class Kind {
     RideCount,       ///< number of rides
@@ -20,6 +21,7 @@ enum class Kind {
     RideMinutes,     ///< one ride of at least N minutes
     RideTss,         ///< one ride with TSS >= N
     RideKcal,        ///< one ride with >= N kcal
+    RideKm,          ///< one ride of at least N km
     WeekTss,         ///< >= N TSS within any 7 days
     WeekRides,       ///< >= N rides within any 7 days
     WeekHours,       ///< >= N hours within any 7 days
@@ -32,6 +34,9 @@ enum class Kind {
     EarlyBird,       ///< a ride starting before 7:00
     NightOwl,        ///< a ride starting at 21:00 or later
     Event,           ///< recorded when it happens (tests, FTP raise, group ride)
+    PeakPower,       ///< average of at least N watts over `seconds`, live
+    PeakFtpPercent,  ///< average of at least N x FTP over `seconds`, live
+    PeakCadence,     ///< average of at least N rpm over `seconds`, live
 };
 
 struct Definition {
@@ -41,6 +46,7 @@ struct Definition {
     Category category;
     Kind     kind;
     double   target;       ///< threshold for the kind (unused for Event)
+    int      seconds = 0;  ///< effort length for the Peak kinds
 };
 
 /// Every achievement, in display order.
@@ -56,6 +62,7 @@ struct HistoryStats {
     int    longestMinutes = 0;
     double maxRideTss     = 0.0;
     int    maxRideKcal    = 0;
+    double maxRideKm      = 0.0;
     double bestWeekTss    = 0.0;
     int    bestWeekRides  = 0;
     double bestWeekHours  = 0.0;
@@ -73,6 +80,9 @@ HistoryStats statsFrom(const QList<WorkoutHistorySummary> &history);
 
 /// True for the yes/no kinds that have no meaningful progress bar.
 bool isYesNo(const Definition &definition);
+
+/// True for the Peak kinds, earned only from live ride data (never from history).
+bool isLive(const Definition &definition);
 
 /// Current value towards \a definition (0 for Event achievements).
 double progress(const Definition &definition, const HistoryStats &stats);

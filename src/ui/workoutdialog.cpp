@@ -133,6 +133,7 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     this->settings = qApp->property("User_Settings").value<Settings*>();
     this->soundPlayer =  qApp->property("SoundPlayer").value<SoundPlayer*>();
     this->achievementManager = qApp->property("ManagerAchievement").value<ManagerAchievement*>();
+    achievementManager->startLiveRide();
     this->workout = workout;
     this->vecUserStudio = vecUserStudio;
     soundPlayer->setVolume(account->sound_player_vol);
@@ -1582,6 +1583,8 @@ void WorkoutDialog::sendLastSecondData(int seconds) {
     }
     else {
         recordRiderSecond(0, seconds);
+        const RiderSecond &second = m_secondSamples.rider(0);
+        achievementManager->checkLiveSecond(second.power, second.cadence, account->FTP);
     }
 
     // Re-send the gear's load each second so faster/slower pedaling changes
@@ -3461,6 +3464,8 @@ void WorkoutDialog::connectDataWorkout() {
     connect(arrDataWorkout[0], &DataWorkout::intensityFactorChanged, ui->wid_5_infoWorkout, &infosWorkout::IF_Changed);
     connect(arrDataWorkout[0], &DataWorkout::tssChanged, ui->wid_5_infoWorkout, &infosWorkout::TSS_Changed);
     connect(arrDataWorkout[0], &DataWorkout::tssChanged, achievementManager, &ManagerAchievement::checkLiveTss);
+    connect(arrDataWorkout[0], &DataWorkout::totalDistanceChanged, achievementManager,
+            &ManagerAchievement::checkLiveDistance);
     connect(arrDataWorkout[0], &DataWorkout::caloriesWorkoutChanged, ui->wid_5_infoWorkout, &infosWorkout::calories_Changed);
     connect(arrDataWorkout[0], &DataWorkout::totalDistanceChanged, ui->wid_5_infoWorkout, &infosWorkout::distanceChanged);
     // Mirror the workout's real ride distance into the race HUD so the game's

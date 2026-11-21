@@ -46,7 +46,8 @@ QString progressText(const Definition &definition, double value)
     case Kind::TotalHours:
     case Kind::WeekHours:   unit = QStringLiteral(" h");   break;
     case Kind::WattsPerKg:  unit = QStringLiteral(" W/kg"); break;
-    case Kind::TotalKm:     unit = QStringLiteral(" km");  break;
+    case Kind::TotalKm:
+    case Kind::RideKm:      unit = QStringLiteral(" km");  break;
     case Kind::RideMinutes: unit = QStringLiteral(" min"); break;
     case Kind::RideTss:
     case Kind::WeekTss:     unit = QStringLiteral(" TSS"); break;
@@ -201,7 +202,7 @@ void AchievementsWidget::render()
     m_overall->setValue(earnedCount);
 
     for (Category category : {Category::Milestones, Category::Endurance, Category::Consistency,
-                              Category::Fitness, Category::Special}) {
+                              Category::Fitness, Category::Power, Category::Special}) {
         auto *section = new QWidget(m_content);
         auto *sectionLayout = new QVBoxLayout(section);
         sectionLayout->setContentsMargins(0, 0, 0, 0);

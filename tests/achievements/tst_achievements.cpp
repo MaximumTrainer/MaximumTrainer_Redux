@@ -4,6 +4,7 @@
 #include <QTimeZone>
 
 #include "achievementcatalog.h"
+#include "achievementlivetracker.h"
 #include "achievementstore.h"
 #include "workouthistorysummary.h"
 
@@ -53,7 +54,7 @@ private slots:
             QVERIFY(!definition.description.isEmpty());
             QCOMPARE(find(definition.key), &definition);
         }
-        QCOMPARE(categories.size(), 5);
+        QCOMPARE(categories.size(), 6);
         QVERIFY(find(Events::FtpRaised));
         QVERIFY(!find(QStringLiteral("nope")));
     }
@@ -125,6 +126,87 @@ private slots:
         QCOMPARE(progress(*find(QStringLiteral("rides_50")), stats), 10.0);
         // Event achievements are never reached from history.
         QVERIFY(!reached(*find(Events::FirstTest), stats));
+    }
+
+    void rideKm_fromHistoryAndNotLive()
+    {
+        const HistoryStats stats = statsFrom({ride(at(2, 8), 70, 0, 31.5), ride(at(3, 8), 40, 0, 12.0)});
+        QCOMPARE(stats.maxRideKm, 31.5);
+        QVERIFY(reached(*find(QStringLiteral("ride_km_30")), stats));
+        QVERIFY(!reached(*find(QStringLiteral("ride_km_50")), stats));
+        QVERIFY(!isLive(*find(QStringLiteral("ride_km_30"))));
+    }
+
+    void live_peaksAreNeverReachedFromHistory()
+    {
+        HistoryStats stats;
+        stats.rides = 500;
+        stats.maxRideKm = 500;
+        for (const Definition &definition : all()) {
+            if (!isLive(definition))
+                continue;
+            QVERIFY2(definition.seconds > 0, qPrintable(definition.key));
+            QVERIFY(isYesNo(definition));
+            QVERIFY2(!reached(definition, stats), qPrintable(definition.key));
+        }
+        QVERIFY(isLive(*find(QStringLiteral("sprint_600"))));
+    }
+
+    void tracker_sprintFiresOnTheFifthSecondOnce()
+    {
+        AchievementLiveTracker tracker;
+        for (int second = 0; second < 4; ++second)
+            QVERIFY(!tracker.addSecond(650, 95, 250).contains(QStringLiteral("sprint_600")));
+        QCOMPARE(tracker.addSecond(650, 95, 250), QStringList{QStringLiteral("sprint_600")});
+        for (int second = 0; second < 10; ++second)
+            QVERIFY(!tracker.addSecond(650, 95, 250).contains(QStringLiteral("sprint_600")));
+        tracker.reset();
+        for (int second = 0; second < 4; ++second)
+            tracker.addSecond(650, 95, 250);
+        QVERIFY(tracker.addSecond(650, 95, 250).contains(QStringLiteral("sprint_600")));
+    }
+
+    void tracker_usesTheRollingAverage()
+    {
+        AchievementLiveTracker tracker;
+        QStringList fired;
+        for (double watts : {700.0, 700.0, 700.0, 700.0, 200.0})
+            fired += tracker.addSecond(watts, 90, 250);
+        QVERIFY(fired.contains(QStringLiteral("sprint_600")));   // (4 x 700 + 200) / 5 = 600
+
+        AchievementLiveTracker shortEffort;
+        fired.clear();
+        for (double watts : {0.0, 900.0, 900.0, 900.0, -1.0, 0.0})
+            fired += shortEffort.addSecond(watts, 90, 250);
+        QVERIFY(!fired.contains(QStringLiteral("sprint_600")));  // best 5 s window: 2,700 / 5 = 540 W
+    }
+
+    void tracker_ftpRelativeNeedsAnFtp()
+    {
+        AchievementLiveTracker noFtp;
+        QStringList fired;
+        for (int second = 0; second < 120; ++second)
+            fired += noFtp.addSecond(400, 90, 0);
+        QVERIFY(!fired.contains(QStringLiteral("ftp150_1min")));
+
+        AchievementLiveTracker tracker;
+        for (int second = 0; second < 59; ++second)
+            QVERIFY(!tracker.addSecond(300, 90, 200).contains(QStringLiteral("ftp150_1min")));
+        QVERIFY(tracker.addSecond(300, 90, 200).contains(QStringLiteral("ftp150_1min")));
+    }
+
+    void tracker_cadenceIgnoresPowerAndMissingData()
+    {
+        AchievementLiveTracker tracker;
+        QStringList fired;
+        for (int second = 0; second < 9; ++second)
+            fired += tracker.addSecond(100, 145, 250);
+        fired += tracker.addSecond(100, -1, 250);   // dropout counts as 0 rpm
+        QVERIFY(!fired.contains(QStringLiteral("cadence_140")));
+        for (int second = 0; second < 10; ++second)
+            fired += tracker.addSecond(100, 145, 250);
+        QVERIFY(fired.contains(QStringLiteral("cadence_140")));
+        QVERIFY(!fired.contains(QStringLiteral("sprint_600")));
     }
 
     void store_unlocksOnceWithItsDate()

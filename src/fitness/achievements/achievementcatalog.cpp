@@ -43,6 +43,9 @@ QList<Definition> buildList()
         {"tss_200",       tr("Epic Day"),            tr("Score 200 TSS or more in one workout."),   C::Endurance, K::RideTss, 200},
         {"kcal_1000",     tr("Furnace"),             tr("Burn 1,000 kcal in one workout."),         C::Endurance, K::RideKcal, 1000},
         {"kcal_2000",     tr("Inferno"),             tr("Burn 2,000 kcal in one workout."),         C::Endurance, K::RideKcal, 2000},
+        {"ride_km_30",    tr("Thirty Up"),           tr("Ride 30 km in one workout."),              C::Endurance, K::RideKm, 30},
+        {"ride_km_50",    tr("Half Century"),        tr("Ride 50 km in one workout."),              C::Endurance, K::RideKm, 50},
+        {"ride_km_100",   tr("Indoor Century"),      tr("Ride 100 km in one workout."),             C::Endurance, K::RideKm, 100},
         {"week_tss_500",  tr("Big Week"),            tr("Score 500 TSS within 7 days."),            C::Endurance, K::WeekTss, 500},
         {"week_tss_800",  tr("Overload Week"),       tr("Score 800 TSS within 7 days."),            C::Endurance, K::WeekTss, 800},
         {"week_hours_10", tr("Volume Week"),         tr("Ride 10 hours within 7 days."),            C::Endurance, K::WeekHours, 10},
@@ -63,6 +66,19 @@ QList<Definition> buildList()
         {"wkg_3",              tr("Rising Climber"),   tr("Reach an FTP of 3.0 W/kg."),             C::Fitness, K::WattsPerKg, 3.0},
         {"wkg_4",              tr("Climber"),          tr("Reach an FTP of 4.0 W/kg."),             C::Fitness, K::WattsPerKg, 4.0},
         {"wkg_5",              tr("Mountain Goat"),    tr("Reach an FTP of 5.0 W/kg."),             C::Fitness, K::WattsPerKg, 5.0},
+        // Power & cadence: earned the moment the effort is done (ERG holds the
+        // target, so these come from free rides, slope and test intervals).
+        {"sprint_600",    tr("Sprinter"),            tr("Hold 600 W for 5 seconds."),               C::Power, K::PeakPower, 600, 5},
+        {"sprint_800",    tr("Rocket Legs"),         tr("Hold 800 W for 5 seconds."),               C::Power, K::PeakPower, 800, 5},
+        {"sprint_1000",   tr("Kilowatt Club"),       tr("Hold 1,000 W for 5 seconds."),             C::Power, K::PeakPower, 1000, 5},
+        {"sprint_1200",   tr("Track Sprinter"),      tr("Hold 1,200 W for 5 seconds."),             C::Power, K::PeakPower, 1200, 5},
+        {"ftp150_1min",   tr("Over the Top"),        tr("Hold 150% of your FTP for 1 minute."),     C::Power, K::PeakFtpPercent, 1.5, 60},
+        {"ftp120_5min",   tr("VO2 Smasher"),         tr("Hold 120% of your FTP for 5 minutes."),    C::Power, K::PeakFtpPercent, 1.2, 300},
+        {"ftp100_20min",  tr("Threshold Hold"),      tr("Hold your FTP for 20 minutes."),           C::Power, K::PeakFtpPercent, 1.0, 1200},
+        {"ftp90_60min",   tr("Hour of Power"),       tr("Hold 90% of your FTP for 1 hour."),        C::Power, K::PeakFtpPercent, 0.9, 3600},
+        {"cadence_120",   tr("Spin Doctor"),         tr("Hold 120 rpm for 30 seconds."),            C::Power, K::PeakCadence, 120, 30},
+        {"cadence_140",   tr("Washing Machine"),     tr("Hold 140 rpm for 10 seconds."),            C::Power, K::PeakCadence, 140, 10},
+        {"cadence_100_10min", tr("High Revs"),       tr("Hold 100 rpm for 10 minutes."),            C::Power, K::PeakCadence, 100, 600},
         // Special
         {Events::TargetManiac, tr("Target Maniac"),    tr("Finish a workout with power, power balance, cadence and heart rate targets."), C::Special, K::Event, 0},
         {Events::GroupRide,    tr("Better Together"),  tr("Finish a group workout."),               C::Special, K::Event, 0},
@@ -112,6 +128,7 @@ QString categoryName(Category category)
     case Category::Endurance:   return tr("Endurance");
     case Category::Consistency: return tr("Consistency");
     case Category::Fitness:     return tr("Fitness");
+    case Category::Power:       return tr("Power & Cadence");
     case Category::Special:     return tr("Special");
     }
     return QString();
@@ -128,6 +145,7 @@ HistoryStats statsFrom(const QList<WorkoutHistorySummary> &history)
         stats.longestMinutes = std::max(stats.longestMinutes, ride.durationSec / 60);
         stats.maxRideTss     = std::max(stats.maxRideTss, ride.tss);
         stats.maxRideKcal    = std::max(stats.maxRideKcal, ride.calories);
+        stats.maxRideKm      = std::max(stats.maxRideKm, ride.totalDistanceKm);
         if (!ride.startTime.isValid())
             continue;
         const QDateTime local = ride.startTime.toLocalTime();
@@ -166,6 +184,7 @@ double progress(const Definition &definition, const HistoryStats &stats)
     case Kind::RideMinutes: return stats.longestMinutes;
     case Kind::RideTss:     return stats.maxRideTss;
     case Kind::RideKcal:    return stats.maxRideKcal;
+    case Kind::RideKm:      return stats.maxRideKm;
     case Kind::WeekTss:     return stats.bestWeekTss;
     case Kind::WeekRides:   return stats.bestWeekRides;
     case Kind::StreakDays:  return stats.bestStreakDays;
@@ -177,9 +196,18 @@ double progress(const Definition &definition, const HistoryStats &stats)
     case Kind::WattsPerKg:  return stats.ftpWattsPerKg;
     case Kind::EarlyBird:   return stats.earlyBird ? 1 : 0;
     case Kind::NightOwl:    return stats.nightOwl ? 1 : 0;
-    case Kind::Event:       return 0;
+    case Kind::Event:
+    case Kind::PeakPower:
+    case Kind::PeakFtpPercent:
+    case Kind::PeakCadence: return 0;
     }
     return 0;
+}
+
+bool isLive(const Definition &definition)
+{
+    return definition.kind == Kind::PeakPower || definition.kind == Kind::PeakFtpPercent
+           || definition.kind == Kind::PeakCadence;
 }
 
 bool isYesNo(const Definition &definition)
@@ -187,6 +215,7 @@ bool isYesNo(const Definition &definition)
     switch (definition.kind) {
     case Kind::Event: case Kind::EarlyBird: case Kind::NightOwl:
     case Kind::WeekendDouble: case Kind::NewYear: case Kind::Christmas:
+    case Kind::PeakPower: case Kind::PeakFtpPercent: case Kind::PeakCadence:
         return true;
     default:
         return false;
@@ -195,7 +224,8 @@ bool isYesNo(const Definition &definition)
 
 bool reached(const Definition &definition, const HistoryStats &stats)
 {
-    return definition.kind != Kind::Event && progress(definition, stats) >= definition.target;
+    return definition.kind != Kind::Event && !isLive(definition)
+           && progress(definition, stats) >= definition.target;
 }
 
 } // namespace AchievementCatalog
