@@ -7,6 +7,7 @@
 #include "achievementcatalog.h"
 #include "achievementlivetracker.h"
 #include "personalbesttracker.h"
+#include "powerbests.h"
 #include "workout.h"
 #include "workouthistorysummary.h"
 
@@ -52,21 +53,36 @@ public slots:
     /// Reports a power best still in progress; call when the ride ends.
     void finishLiveRide();
 
+public:
+    /// The rider's best power per tracked duration (5 s to 20 min), all time
+    /// and over the last 90 days. Worked out in the background after each
+    /// evaluateHistory(); empty until then.
+    struct PersonalRecord {
+        int seconds = 0;
+        PowerBests::Effort allTime;
+        PowerBests::Effort recent;
+    };
+    const QVector<PersonalRecord> &personalRecords() const { return m_personalRecords; }
+
 signals:
     void achievementCompleted(Achievement achievement);
     /// Anything was earned (announced or not); the achievements page refreshes.
     void achievementsChanged();
     void weeklyGoalChanged();
+    void personalRecordsChanged();
 
 private:
     void award(const QString &key, bool announce);
     void announceBests(const QVector<PersonalBestTracker::Event> &events);
+    void refreshPersonalRecords();
 
     AchievementCatalog::HistoryStats m_stats;
     QList<WorkoutHistorySummary> m_history;
     AchievementLiveTracker m_liveTracker;
     PersonalBestTracker m_bestTracker;
     int m_bestLoadGeneration = 0;
+    QVector<PersonalRecord> m_personalRecords;
+    int m_recordsGeneration = 0;
 };
 
 Q_DECLARE_METATYPE(ManagerAchievement*)
