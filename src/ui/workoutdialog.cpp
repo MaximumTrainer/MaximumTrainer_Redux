@@ -2093,7 +2093,8 @@ void WorkoutDialog::updateErgRescue(const RiderSecond &second) {
     if (m_ergRescueHoldOff > 0)
         --m_ergRescueHoldOff;
     switch (m_ergRescue.addSecond(ergWantedNow(), second.cadence, second.power, currentTargetPower,
-                                  currentTargetCadence, m_ergRescueHoldOff == 0)) {
+                                  currentTargetCadence,
+                                  m_ergRescueHoldOff == 0 && account->erg_low_cadence_release)) {
     case ErgRescue::Action::Release:
         LOG_INFO("WorkoutDialog", QStringLiteral("ERG released: %1 rpm for %2 s (target %3 W)")
                                       .arg(qRound(second.cadence)).arg(ErgRescue::kSeconds).arg(currentTargetPower));
