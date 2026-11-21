@@ -50,16 +50,20 @@ jobs:
       # mirror fails fast. A mirror can resolve yet refuse connections (kernel.org,
       # 2026-11-13), so probe it with a real request before using it.
       run: |
+        mirrors=""
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
           if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
-            echo "Using http://$host/ubuntu/"
-            echo "http://$host/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
-            sudo grep -rl 'azure\.archive\.ubuntu\.com\|//archive\.ubuntu\.com\|//security\.ubuntu\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
-              | xargs -r sudo sed -i -E "s#https?://(azure\.archive|archive|security)\.ubuntu\.com/ubuntu/?#http://$host/ubuntu/#g" || true
-            break
+            mirrors="$mirrors http://$host/ubuntu/"
           fi
         done
-        printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99-ci-timeouts
+        [ -n "$mirrors" ] || mirrors=" http://azure.archive.ubuntu.com/ubuntu/ http://archive.ubuntu.com/ubuntu/"
+        # Every mirror that answered, in order: apt's mirror+file method fails over
+        # down the list per download, so one dying mid-install no longer fails the job.
+        echo "Using:$mirrors"
+        printf '%s\n' $mirrors | sudo tee /etc/apt/apt-mirrors.txt
+        sudo grep -rl 'azure\.archive\.ubuntu\.com\|//archive\.ubuntu\.com\|//security\.ubuntu\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
+          | xargs -r sudo sed -i -E "s#https?://(azure\.archive|archive|security)\.ubuntu\.com/ubuntu/?#mirror+file:/etc/apt/apt-mirrors.txt#g" || true
+        printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::ForceIPv4 "true";\n' | sudo tee /etc/apt/apt.conf.d/99-ci-timeouts
 
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
