@@ -413,3 +413,14 @@ void InfoWidget::updateZonePill(double targetFraction)
                                   .arg(PowerZones::color(zone).name()));
     m_zonePill->show();
 }
+
+void InfoWidget::setStatsVisible(bool visible) {
+
+    for (QWidget *label : std::initializer_list<QWidget *>{
+             ui->label_AverageTxt, ui->label_MaximumTxt,
+             ui->label_AvgIntervalTxt, ui->label_avgInterval, ui->label_maxInterval,
+             ui->label_WorkoutTxt, ui->label_avgWorkout, ui->label_maxWorkout})
+        label->setVisible(visible);
+    // The .ui minimum height makes room for the rows.
+    setMinimumHeight(visible ? 140 : 0);
+}

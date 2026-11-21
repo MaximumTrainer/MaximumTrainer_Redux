@@ -23,6 +23,7 @@
 
 #include <stdexcept>
 
+#include <QMenu>
 #include <QLibrary>
 #include <QMessageBox>
 #include <QMouseEvent>
@@ -762,9 +763,25 @@ void WorkoutDialog::layoutBottomWidgets() {
     QHBoxLayout *horizontalLayout = static_cast<QHBoxLayout*>(ui->horizontalLayout_Bottom->layout());
     QWidget *host = horizontalLayout->parentWidget();
     horizontalLayout->setSpacing(8);
-    // Numbers and a readable live graph in each card; the splitter keeps the
-    // bottom pane at least this tall even with older saved pane sizes.
-    ui->widget_allSpeedo->setMinimumHeight(290);
+    // The pane can be dragged down to the cards' title and value: below
+    // kStatsMinPaneHeight the Avg / Max rows fold away and the graphs shrink.
+    ui->widget_allSpeedo->setMinimumHeight(kCompactPaneHeight);
+    ui->widget_allSpeedo->installEventFilter(this);
+    ui->widget_allSpeedo->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->widget_allSpeedo, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
+        auto *menu = new QMenu(this);
+        menu->setAttribute(Qt::WA_DeleteOnClose);
+        QAction *stats = menu->addAction(tr("Show averages and max"));
+        stats->setCheckable(true);
+        stats->setChecked(m_showMetricStats);
+        connect(stats, &QAction::toggled, this, [this](bool on) {
+            m_showMetricStats = on;
+            AppSettings::write(SettingKeys::WorkoutDialog::ShowMetricStats, on);
+            updateBottomCompaction();
+        });
+        menu->popup(ui->widget_allSpeedo->mapToGlobal(pos));
+    });
+    m_showMetricStats = AppSettings::read(SettingKeys::WorkoutDialog::ShowMetricStats);
 
     // One card per metric: the info box on top and its live graph below, in a
     // fixed order. The per-metric display options still show/hide the parts.
@@ -777,7 +794,7 @@ void WorkoutDialog::layoutBottomWidgets() {
             part->setMaximumWidth(QWIDGETSIZE_MAX);
             const bool isGraph = qobject_cast<WorkoutPlotZoomer *>(part) != nullptr;
             if (isGraph)
-                part->setMinimumHeight(105);
+                part->setMinimumHeight(kCompactGraphHeight);
             metricCard->addPart(part, isGraph ? 1 : 0);
         }
         if (!caption.isEmpty())
@@ -801,6 +818,18 @@ void WorkoutDialog::layoutBottomWidgets() {
     card({ui->wid_4_infoBoxSpeed}, 2, nullptr, m_speedTrend);
     card({ui->wid_5_infoWorkout}, 1, nullptr, nullptr, tr("WORKOUT"));
     card({ui->wid_oxygen}, 1, nullptr, m_oxygenTrend, tr("MUSCLE O₂"));
+    updateBottomCompaction();
+}
+
+void WorkoutDialog::updateBottomCompaction() {
+
+    const bool stats = m_showMetricStats && ui->widget_allSpeedo->height() >= kStatsMinPaneHeight;
+    if (stats == m_metricStatsShown)
+        return;
+    m_metricStatsShown = stats;
+    for (InfoWidget *info : {ui->wid_1_infoBoxHr, ui->wid_2_infoBoxPower,
+                             ui->wid_3_infoBoxCadence, ui->wid_4_infoBoxSpeed})
+        info->setStatsVisible(stats);
 }
 
 
@@ -3538,6 +3567,8 @@ bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
 
     if (watched == this && event->type() == QEvent::Resize && widgetPostWorkout)
         placePostWorkoutOverlays();
+    if (watched == ui->widget_allSpeedo && event->type() == QEvent::Resize)
+        updateBottomCompaction();
 
 
     // Only act while this workout window is the active one (an app-level filter
