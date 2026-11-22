@@ -35,6 +35,21 @@ QList<WorkoutHistorySummary> readHistory()
     return history;
 }
 
+QVector<ManagerAchievement::PersonalRecord> loadPersonalRecords()
+{
+    const QList<PowerBests::Ride> rides = PowerBests::loadRides(readHistory());
+    const QVector<PowerBests::Effort> allTime = PowerBests::bestEfforts(rides);
+    const QVector<PowerBests::Effort> recent = PowerBests::bestEfforts(
+        rides, QDateTime::currentDateTime().addDays(-PersonalBestTracker::kRecentDays));
+    QVector<ManagerAchievement::PersonalRecord> records;
+    for (int seconds : PersonalBestTracker::trackedDurations()) {
+        const qsizetype index = MMP_DURATIONS.indexOf(seconds);
+        if (index >= 0)
+            records.append({seconds, allTime[index], recent[index]});
+    }
+    return records;
+}
+
 QVector<PersonalBestTracker::Record> loadBestRecords()
 {
     const QList<PowerBests::Ride> rides = PowerBests::loadRides(readHistory());
@@ -49,6 +64,29 @@ QVector<PersonalBestTracker::Record> loadBestRecords()
     }
     return records;
 }
+
+/// Runs \a work on a worker thread and hands its result to \a done on
+/// \a owner's thread (synchronously on WASM, which has no worker threads).
+// The analyzer cannot see QObject parent ownership: the watcher is a child
+// of owner and deletes itself when the work finishes.
+// NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks)
+template <typename Work, typename Done>
+void runInBackground(QObject *owner, Work work, Done done)
+{
+#ifdef GC_WASM_BUILD
+    Q_UNUSED(owner)
+    done(work());
+#else
+    using Result = decltype(work());
+    auto *watcher = new QFutureWatcher<Result>(owner);
+    QObject::connect(watcher, &QFutureWatcherBase::finished, owner, [watcher, done] {
+        done(watcher->result());
+        watcher->deleteLater();
+    });
+    watcher->setFuture(QtConcurrent::run(work));
+#endif
+}
+// NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
 
 } // namespace
 
@@ -79,6 +117,7 @@ void ManagerAchievement::evaluateHistory(bool announce)
         if (reached(definition, m_stats))
             award(definition.key, announce);
     emit achievementsChanged();
+    refreshPersonalRecords();
 }
 
 double ManagerAchievement::weeklyGoalHours()
@@ -159,17 +198,20 @@ void ManagerAchievement::startLiveRide()
                            .arg(qRound(record.recentWatts)).arg(qRound(record.allTimeWatts));
         LOG_INFO("Achievements", QStringLiteral("power bests (90-day/all-time): ") + summary.join(QStringLiteral(", ")));
     };
-#ifdef GC_WASM_BUILD
-    begin(loadBestRecords());
-#else
     // Decoding rides that are not cached yet can take a few seconds.
-    auto *watcher = new QFutureWatcher<QVector<PersonalBestTracker::Record>>(this);
-    connect(watcher, &QFutureWatcherBase::finished, this, [watcher, begin] {
-        begin(watcher->result());
-        watcher->deleteLater();
-    });
-    watcher->setFuture(QtConcurrent::run(loadBestRecords));
-#endif
+    runInBackground(this, loadBestRecords, begin);
+}
+
+void ManagerAchievement::refreshPersonalRecords()
+{
+    const int generation = ++m_recordsGeneration;
+    const auto apply = [this, generation](const QVector<PersonalRecord> &records) {
+        if (generation != m_recordsGeneration)
+            return;
+        m_personalRecords = records;
+        emit personalRecordsChanged();
+    };
+    runInBackground(this, loadPersonalRecords, apply);
 }
 
 void ManagerAchievement::finishLiveRide()

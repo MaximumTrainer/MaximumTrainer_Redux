@@ -11,9 +11,17 @@
 #include <QScrollArea>
 #include <QVBoxLayout>
 
+#include <QDir>
+#include <QPushButton>
+
+#include "account.h"
 #include "achievementcatalog.h"
 #include "achievementstore.h"
+#include "criticalpowerdialog.h"
+#include "fitactivityreader.h"
 #include "managerachievement.h"
+#include "personalbesttracker.h"
+#include "util.h"
 
 using namespace AchievementCatalog;
 
@@ -106,9 +114,102 @@ AchievementsWidget::AchievementsWidget(QWidget *parent) : QWidget(parent)
     scroll->setWidget(m_content);
     mainLayout->addWidget(scroll, 1);
 
-    if (m_manager)
+    if (m_manager) {
         connect(m_manager, &ManagerAchievement::achievementsChanged, this, &AchievementsWidget::render);
+        connect(m_manager, &ManagerAchievement::personalRecordsChanged, this, &AchievementsWidget::render);
+    }
     render();
+}
+
+QWidget *AchievementsWidget::buildRecordsSection(QWidget *parent)
+{
+    auto *section = new QWidget(parent);
+    auto *sectionLayout = new QVBoxLayout(section);
+    sectionLayout->setContentsMargins(0, 0, 0, 0);
+    sectionLayout->setSpacing(8);
+
+    auto *headingRow = new QHBoxLayout();
+    auto *heading = new QLabel(tr("Personal records"), section);
+    QFont headingFont = heading->font();
+    headingFont.setBold(true);
+    headingFont.setPointSizeF(headingFont.pointSizeF() + 1);
+    heading->setFont(headingFont);
+    headingRow->addWidget(heading);
+    headingRow->addStretch();
+    auto *curve = new QPushButton(tr("Power Curve"), section);
+    curve->setToolTip(tr("Your best power for every duration, by period"));
+    connect(curve, &QPushButton::clicked, this, &AchievementsWidget::openPowerCurve);
+    headingRow->addWidget(curve);
+    sectionLayout->addLayout(headingRow);
+
+    const auto *account = qApp->property("Account").value<Account*>();
+    const double weightKg = account ? account->weight_kg : 0.0;
+    auto *grid = new QGridLayout();
+    grid->setHorizontalSpacing(10);
+    const QVector<ManagerAchievement::PersonalRecord> records =
+        m_manager ? m_manager->personalRecords() : QVector<ManagerAchievement::PersonalRecord>{};
+    for (int column = 0; column < PersonalBestTracker::trackedDurations().size(); ++column) {
+        const int seconds = PersonalBestTracker::trackedDurations().at(column);
+        ManagerAchievement::PersonalRecord record;
+        for (const auto &candidate : records)
+            if (candidate.seconds == seconds)
+                record = candidate;
+
+        auto *card = new QFrame(section);
+        card->setObjectName(QStringLiteral("recordCard"));
+        card->setStyleSheet(QStringLiteral(
+            "QFrame#recordCard { border: 1px solid palette(mid); border-radius: 10px; background: palette(base); }"));
+        auto *layout = new QVBoxLayout(card);
+        layout->setContentsMargins(12, 10, 12, 10);
+        layout->setSpacing(2);
+        auto *caption = new QLabel(PersonalBestTracker::durationLabel(seconds), card);
+        caption->setStyleSheet(QStringLiteral("color: #9a9aa6; font-size: 8pt;"));
+        layout->addWidget(caption);
+        if (record.allTime.watts <= 0) {
+            auto *none = new QLabel(tr("No power data yet"), card);
+            none->setStyleSheet(QStringLiteral("color: #8a8a94;"));
+            layout->addWidget(none);
+        } else {
+            QString value = QStringLiteral("<span style='font-size:18pt;font-weight:700'>%1</span> W")
+                                .arg(qRound(record.allTime.watts));
+            if (weightKg > 0)
+                value += QStringLiteral(" <span style='color:#9a9aa6'>· %1 W/kg</span>")
+                             .arg(QString::number(record.allTime.watts / weightKg, 'f', 1));
+            auto *watts = new QLabel(value, card);
+            watts->setTextFormat(Qt::RichText);
+            layout->addWidget(watts);
+            auto *when = new QLabel(QStringLiteral("%1 · %2").arg(
+                QLocale().toString(record.allTime.date.date(), QStringLiteral("d MMM yyyy")),
+                record.allTime.workoutName), card);
+            when->setStyleSheet(QStringLiteral("color: #8a8a94; font-size: 9pt;"));
+            when->setToolTip(when->text());
+            layout->addWidget(when);
+            auto *recent = new QLabel(record.recent.watts > 0
+                ? tr("Last 90 days: %1 W").arg(qRound(record.recent.watts))
+                : tr("Last 90 days: no ride"), card);
+            recent->setStyleSheet(QStringLiteral("color: #8a8a94; font-size: 9pt;"));
+            layout->addWidget(recent);
+        }
+        grid->addWidget(card, 0, column);
+        grid->setColumnStretch(column, 1);
+    }
+    sectionLayout->addLayout(grid);
+    return section;
+}
+
+void AchievementsWidget::openPowerCurve()
+{
+    QList<WorkoutHistorySummary> history;
+    const QDir dir(Util::getSystemPathHistory());
+    for (const QString &file : dir.entryList({QStringLiteral("*.fit")}, QDir::Files)) {
+        const WorkoutHistorySummary summary = FitActivityReader::readFile(dir.filePath(file));
+        if (summary.valid)
+            history.append(summary);
+    }
+    // open(), not exec(): exec() is fatal on WASM.
+    auto *dialog = new CriticalPowerDialog(history, this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->open();
 }
 
 void AchievementsWidget::reload()
@@ -201,6 +302,8 @@ void AchievementsWidget::render()
     m_summary->setText(tr("%1 of %2 earned").arg(earnedCount).arg(all().size()));
     m_overall->setRange(0, all().size());
     m_overall->setValue(earnedCount);
+
+    m_sections->addWidget(buildRecordsSection(m_content));
 
     for (Category category : {Category::Milestones, Category::Endurance, Category::Consistency,
                               Category::Fitness, Category::Power, Category::Special}) {

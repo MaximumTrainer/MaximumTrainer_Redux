@@ -23,6 +23,9 @@ public:
 private:
     void render();
     QWidget *buildCard(const QString &key, QWidget *parent);
+    /// "Personal records": best 5 s to 20 min power, all time and 90 days.
+    QWidget *buildRecordsSection(QWidget *parent);
+    void openPowerCurve();
 
     ManagerAchievement *m_manager     = nullptr;
     QLabel             *m_summary     = nullptr;
