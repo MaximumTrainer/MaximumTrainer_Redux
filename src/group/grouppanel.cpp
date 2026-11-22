@@ -7,6 +7,8 @@
 #include <QClipboard>
 #include <QDateTime>
 #include <QHBoxLayout>
+#include <QLineEdit>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QListView>
 #include <QPushButton>
@@ -78,6 +80,21 @@ GroupPanel::GroupPanel(GroupSession *session, QWidget *parent)
     m_waitingLabel->setWordWrap(true);
     layout->addWidget(m_waitingLabel);
 
+    m_chatFeed = new QLabel(this);
+    m_chatFeed->setObjectName(QStringLiteral("groupChatFeed"));
+    m_chatFeed->setTextFormat(Qt::RichText);
+    m_chatFeed->setWordWrap(true);
+    m_chatFeed->hide();
+    layout->addWidget(m_chatFeed);
+
+    m_chatEdit = new QLineEdit(this);
+    m_chatEdit->setObjectName(QStringLiteral("groupChatEdit"));
+    m_chatEdit->setPlaceholderText(tr("Message the group (T)"));
+    m_chatEdit->setMaxLength(GroupProtocol::kMaxChatLength);
+    m_chatEdit->setClearButtonEnabled(true);
+    m_chatEdit->installEventFilter(this);
+    layout->addWidget(m_chatEdit);
+
     m_refreshTimer = new QTimer(this);
     m_refreshTimer->setInterval(500);
     connect(m_refreshTimer, &QTimer::timeout, this, [this] {
@@ -103,6 +120,13 @@ GroupPanel::GroupPanel(GroupSession *session, QWidget *parent)
             m_ridersModel->updateTelemetry(telemetry, QDateTime::currentMSecsSinceEpoch());
         });
         connect(m_session, &GroupSession::stateChanged, this, &GroupPanel::refreshStatus);
+        connect(m_session, &GroupSession::chatReceived, this, &GroupPanel::showChat);
+        connect(m_session, &GroupSession::relayError, this, [this](const QString &code) {
+            if (code == QLatin1String("chat_too_fast"))
+                appendFeedLine(QStringLiteral("<i style='color:#9a9aa6'>%1</i>").arg(tr("One message every 2 seconds.")));
+            else if (code == QLatin1String("chat_hourly_limit"))
+                appendFeedLine(QStringLiteral("<i style='color:#9a9aa6'>%1</i>").arg(tr("Message limit reached (60 an hour).")));
+        });
         m_ridersModel->setRoster(m_session->roster(), m_session->riderId());
     }
 
@@ -168,4 +192,55 @@ void GroupPanel::refreshStatus() {
         return;
     }
     m_statusLabel->setText(tr("Share the code. Riders appear here when they join."));
+}
+
+void GroupPanel::focusChat() {
+    m_chatEdit->setFocus(Qt::ShortcutFocusReason);
+}
+
+void GroupPanel::showChat(const GroupProtocol::ChatMessage &message) {
+    const bool mine = m_session && message.riderId == m_session->riderId();
+    const QString name = mine ? tr("You") : message.name;
+    m_ridersModel->setChat(message.riderId, message.text, QDateTime::currentMSecsSinceEpoch());
+    appendFeedLine(QStringLiteral("<b>%1:</b> %2").arg(name.toHtmlEscaped(), message.text.toHtmlEscaped()));
+}
+
+void GroupPanel::appendFeedLine(const QString &html) {
+    // The last few lines only: riders glance at it between efforts.
+    constexpr int kFeedLines = 3;
+    m_feedLines.append(html);
+    while (m_feedLines.size() > kFeedLines)
+        m_feedLines.removeFirst();
+    m_chatFeed->setText(m_feedLines.join(QStringLiteral("<br>")));
+    m_chatFeed->show();
+}
+
+void GroupPanel::sendChat() {
+    const QString text = m_chatEdit->text().trimmed();
+    if (!text.isEmpty() && m_session)
+        m_session->sendChat(text);   // shown when the relay echoes it back
+    leaveChat();
+}
+
+void GroupPanel::leaveChat() {
+    m_chatEdit->clear();
+    // Back to the workout so Space, the arrows and Enter work again.
+    if (QWidget *workout = window())
+        workout->setFocus(Qt::OtherFocusReason);
+}
+
+bool GroupPanel::eventFilter(QObject *watched, QEvent *event) {
+    // Enter and Esc must not reach the workout window (pause / close).
+    if (watched == m_chatEdit && event->type() == QEvent::KeyPress) {
+        const int key = static_cast<QKeyEvent *>(event)->key();
+        if (key == Qt::Key_Return || key == Qt::Key_Enter) {
+            sendChat();
+            return true;
+        }
+        if (key == Qt::Key_Escape) {
+            leaveChat();
+            return true;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }

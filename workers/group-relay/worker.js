@@ -10,11 +10,22 @@ const MAX_NAME_LENGTH = 24;
 const MAX_WORKOUT_BYTES = 64 * 1024;
 const MAX_MESSAGE_BYTES = MAX_WORKOUT_BYTES + 1024;
 const MIN_TELEMETRY_INTERVAL_MS = 300;
+// Chat anti-flood, per rider (survives reconnects): keep in sync with the app.
+const MAX_CHAT_LENGTH = 120;
+const MIN_CHAT_INTERVAL_MS = 2000;
+const MAX_CHAT_PER_HOUR = 60;
 const EMPTY_ROOM_TTL_MS = 30 * 60 * 1000;
 const MAX_ROOM_AGE_MS = 12 * 60 * 60 * 1000;
 const CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // Crockford base32
 const CODE_LENGTH = 4;
 const CREATE_ATTEMPTS = 8;
+
+// Trimmed, single-line, at most MAX_CHAT_LENGTH characters; "" when unusable.
+function cleanChatText(raw) {
+  if (typeof raw !== "string") return "";
+  const flat = raw.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim();
+  return Array.from(flat).slice(0, MAX_CHAT_LENGTH).join("");
+}
 
 function randomCode() {
   const bytes = new Uint8Array(CODE_LENGTH);
@@ -158,6 +169,7 @@ export class GroupRoom {
       if (rejoinToken && rider.token === rejoinToken) riderId = id;
     }
 
+    let chat = null;
     if (!riderId) {
       if (this.connectedRiderIds().length >= MAX_RIDERS) {
         return refuse("room_full", { max: MAX_RIDERS });
@@ -166,7 +178,11 @@ export class GroupRoom {
       this.riders[riderId] = { token: randomToken(), name, joinedAt: now };
     } else {
       this.riders[riderId].name = name;
-      for (const old of this.socketsFor(riderId)) old.close(4001, "replaced");
+      for (const old of this.socketsFor(riderId)) {
+        // Reconnecting must not reset the chat limits.
+        chat = old.deserializeAttachment().chat || chat;
+        old.close(4001, "replaced");
+      }
     }
 
     if (!this.meta.hostId) this.meta.hostId = riderId;
@@ -177,7 +193,7 @@ export class GroupRoom {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ riderId, ready: false, sensors: {}, lastTelemetryAt: 0 });
+    server.serializeAttachment({ riderId, ready: false, sensors: {}, lastTelemetryAt: 0, chat });
 
     this.send(server, {
       type: "welcome",
@@ -293,6 +309,29 @@ export class GroupRoom {
         this.meta.startAt = at;
         await this.saveMeta();
         this.broadcast({ type: "start", at });
+        return;
+      }
+
+      case "chat": {
+        const text = cleanChatText(message.text);
+        if (!text) { this.error(ws, "bad_chat"); return; }
+        const rider = this.riders[att.riderId];
+        if (!rider) return;
+        const now = Date.now();
+        // Counted in the socket attachment (carried over on rejoin, a few
+        // bytes against its 2 KB cap), so chat costs no storage writes.
+        const chat = att.chat && now - att.chat.windowStart < 60 * 60 * 1000
+          ? att.chat : { windowStart: now, count: 0, last: 0 };
+        if (now - chat.last < MIN_CHAT_INTERVAL_MS) { this.error(ws, "chat_too_fast"); return; }
+        if (chat.count >= MAX_CHAT_PER_HOUR) { this.error(ws, "chat_hourly_limit"); return; }
+        chat.count += 1;
+        chat.last = now;
+        att.chat = chat;
+        ws.serializeAttachment(att);
+        // Kept in the Worker's logs (3 days) so abuse can be reviewed.
+        console.log(JSON.stringify({ event: "chat", room: this.meta.code, rider: att.riderId,
+                                     name: rider.name, text }));
+        this.broadcast({ type: "chat", id: att.riderId, name: rider.name, text, at: now });
         return;
       }
 

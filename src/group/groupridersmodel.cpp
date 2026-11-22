@@ -63,6 +63,19 @@ void GroupRidersModel::updateOwnTelemetry(const RiderTelemetry &telemetry, qint6
     if (m_rows.size() > 1) emit dataChanged(index(1), index(int(m_rows.size()) - 1));
 }
 
+void GroupRidersModel::setChat(const QString &riderId, const QString &text, qint64 nowLocalMs) {
+    const int row = rowOf(riderId);
+    if (row < 0) return;
+    m_rows[row].lastChat = text;
+    m_rows[row].lastChatLocalMs = nowLocalMs;
+    emit dataChanged(index(row), index(row));
+}
+
+QString GroupRidersModel::recentChat(const RiderRow &row, qint64 nowLocalMs) const {
+    if (row.lastChat.isEmpty() || nowLocalMs - row.lastChatLocalMs > kChatShownMs) return QString();
+    return row.lastChat;
+}
+
 void GroupRidersModel::tick(qint64 nowLocalMs) {
     m_nowLocalMs = nowLocalMs;
     if (!m_rows.isEmpty()) emit dataChanged(index(0), index(int(m_rows.size()) - 1));

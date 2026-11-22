@@ -31,6 +31,7 @@ public:
     void shareWorkout(const GroupProtocol::SharedWorkout &workout);   // host only
     void startIn(int delayMs);                                       // host only
     void sendTelemetry(const GroupProtocol::RiderTelemetry &telemetry);
+    void sendChat(const QString &text);
     /// Kill the socket without a close handshake, as a network drop would.
     void dropConnectionForTesting() { m_socket.abort(); }
 
@@ -60,6 +61,8 @@ signals:
     /// again with a corrected time if the clock estimate improves before it.
     void startScheduled(qint64 localStartMs);
     void telemetryReceived(const GroupProtocol::RiderTelemetry &telemetry);
+    /// Every accepted line, yours included (the relay echoes it back).
+    void chatReceived(const GroupProtocol::ChatMessage &message);
     void clockSynchronized(qint64 serverOffsetMs, qint64 roundTripMs);
     /// Relay refused or reported a problem ("room_not_found", "room_full", "host_only", ...).
     void relayError(const QString &errorCode);

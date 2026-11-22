@@ -94,6 +94,11 @@ void GroupSession::sendTelemetry(const RiderTelemetry &telemetry) {
     send(encodeTelemetry(telemetry));
 }
 
+void GroupSession::sendChat(const QString &text) {
+    if (m_state != State::Connected || text.trimmed().isEmpty()) return;
+    send(encodeChat(text));
+}
+
 void GroupSession::openSocket(const QUrl &url) {
     m_leaving = false;
     setState(m_everJoined ? State::Reconnecting : State::Connecting);
@@ -176,6 +181,10 @@ void GroupSession::onTextMessage(const QString &frame) {
         qCWarning(lcGroup) << "relay error" << message.errorCode << message.errorDetail;
         emit relayError(message.errorCode);
         if (isFatalJoinError(message.errorCode)) leave();
+        break;
+    case MessageType::Chat:
+        if (!message.chat.text.isEmpty())
+            emit chatReceived(message.chat);
         break;
     case MessageType::Keepalive:
     case MessageType::Unknown:

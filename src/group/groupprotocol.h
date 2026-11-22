@@ -61,13 +61,24 @@ struct Welcome {
     std::optional<SharedWorkout> workout;
 };
 
+/// A chat line as the relay forwards it (already trimmed and length-capped).
+struct ChatMessage {
+    QString riderId;
+    QString name;
+    QString text;
+};
+
+/// Kept in sync with the relay (workers/group-relay/worker.js).
+inline constexpr int kMaxChatLength = 120;
+inline constexpr int kMinChatIntervalMs = 2000;
+
 struct ClockSample {
     qint64 localSendMs = 0;
     qint64 localReceiveMs = 0;
     qint64 serverMs = 0;
 };
 
-enum class MessageType { Unknown, Welcome, Roster, Workout, Start, Telemetry, Pong, Error, Keepalive };
+enum class MessageType { Unknown, Welcome, Roster, Workout, Start, Telemetry, Pong, Error, Keepalive, Chat };
 
 struct IncomingMessage {
     MessageType type = MessageType::Unknown;
@@ -80,6 +91,7 @@ struct IncomingMessage {
     ClockSample pong;            // localSendMs + serverMs; caller fills localReceiveMs
     QString errorCode;
     QString errorDetail;
+    ChatMessage chat;
 };
 
 QString normalizeRoomCode(const QString &userInput);   // "grp-7kq2" -> "7KQ2", empty if invalid
@@ -94,6 +106,7 @@ QByteArray encodeWorkout(const SharedWorkout &workout);
 QByteArray encodeStart(qint64 startAtServerMs);
 QByteArray encodeTelemetry(const RiderTelemetry &telemetry);
 QByteArray encodeLeave();
+QByteArray encodeChat(const QString &text);
 
 IncomingMessage decode(const QByteArray &frame);
 

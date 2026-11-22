@@ -121,6 +121,11 @@ QByteArray encodeLeave() {
     return toFrame({{QStringLiteral("type"), QStringLiteral("leave")}});
 }
 
+QByteArray encodeChat(const QString &text) {
+    return toFrame({{QStringLiteral("type"), QStringLiteral("chat")},
+                    {QStringLiteral("text"), text.trimmed().left(kMaxChatLength)}});
+}
+
 QString statusToWire(RiderStatus status) {
     switch (status) {
     case RiderStatus::Paused: return QStringLiteral("paused");
@@ -199,6 +204,11 @@ IncomingMessage decode(const QByteArray &frame) {
         message.errorDetail = object.value(QStringLiteral("detail")).toString();
     } else if (type == QLatin1String("keepalive")) {
         message.type = MessageType::Keepalive;
+    } else if (type == QLatin1String("chat")) {
+        message.type = MessageType::Chat;
+        message.chat.riderId = object.value(QStringLiteral("id")).toString();
+        message.chat.name = object.value(QStringLiteral("name")).toString();
+        message.chat.text = object.value(QStringLiteral("text")).toString().left(kMaxChatLength);
     }
     return message;
 }

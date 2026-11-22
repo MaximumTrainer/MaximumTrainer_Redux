@@ -10,3 +10,15 @@ class_name = "GroupRoom"
 [[migrations]]
 tag                = "v1"
 new_sqlite_classes = ["GroupRoom"]
+
+# Chat lines are written to the Worker's logs (dashboard > Workers >
+# mt-group-relay > Logs) so abuse can be reviewed; kept 3 days on the Free
+# plan. Invocation logs stay off: every telemetry frame is an invocation
+# (~1/s per rider), which would use up the Free plan's daily log allowance.
+# The chat console.log is the only log line the relay writes.
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = false
