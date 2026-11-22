@@ -31,6 +31,7 @@ enum class Kind {
     Christmas,       ///< a ride on December 25
     WattsPerKg,      ///< FTP of at least N W/kg (from the profile)
     StreakDays,      ///< rides on N consecutive days
+    GoalWeeks,       ///< weekly riding goal reached N weeks in a row
     EarlyBird,       ///< a ride starting before 7:00
     NightOwl,        ///< a ride starting at 21:00 or later
     Event,           ///< recorded when it happens (tests, FTP raise, group ride)
@@ -72,11 +73,16 @@ struct HistoryStats {
     bool   christmas      = false;
     double ftpWattsPerKg  = 0.0;   ///< filled in from the profile, not the history
     int    bestStreakDays = 0;
+    int    bestGoalWeeks  = 0;     ///< filled in with goalStreakWeeks(), needs the goal
     bool   earlyBird      = false;
     bool   nightOwl       = false;
 };
 
 HistoryStats statsFrom(const QList<WorkoutHistorySummary> &history);
+
+/// Longest run of consecutive calendar weeks (Monday to Sunday) with at least
+/// \a goalHours of riding (a minute of slack); 0 without a goal.
+int goalStreakWeeks(const QList<WorkoutHistorySummary> &history, double goalHours);
 
 /// True for the yes/no kinds that have no meaningful progress bar.
 bool isYesNo(const Definition &definition);

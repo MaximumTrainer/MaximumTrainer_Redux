@@ -53,6 +53,10 @@ QList<Definition> buildList()
         {"streak_3",      tr("On a Roll"),           tr("Ride 3 days in a row."),                   C::Consistency, K::StreakDays, 3},
         {"streak_7",      tr("Unstoppable"),         tr("Ride 7 days in a row."),                   C::Consistency, K::StreakDays, 7},
         {"streak_14",     tr("Fortnight on Fire"),   tr("Ride 14 days in a row."),                  C::Consistency, K::StreakDays, 14},
+        {"goal_weeks_1",  tr("Goal Getter"),         tr("Reach your weekly riding goal."),          C::Consistency, K::GoalWeeks, 1},
+        {"goal_weeks_4",  tr("Month on Target"),     tr("Reach your weekly goal 4 weeks in a row."), C::Consistency, K::GoalWeeks, 4},
+        {"goal_weeks_12", tr("Quarter Strong"),      tr("Reach your weekly goal 12 weeks in a row."), C::Consistency, K::GoalWeeks, 12},
+        {"goal_weeks_26", tr("Half-Year Hero"),      tr("Reach your weekly goal 26 weeks in a row."), C::Consistency, K::GoalWeeks, 26},
         {"week_rides_5",  tr("Five a Week"),         tr("Complete 5 workouts within 7 days."),      C::Consistency, K::WeekRides, 5},
         {"month_rides_20",tr("Habit Formed"),        tr("Complete 20 workouts within 30 days."),    C::Consistency, K::MonthRides, 20},
         {"weekend_double",tr("Weekend Warrior"),     tr("Ride on the Saturday and Sunday of the same weekend."), C::Consistency, K::WeekendDouble, 1},
@@ -175,6 +179,33 @@ HistoryStats statsFrom(const QList<WorkoutHistorySummary> &history)
     return stats;
 }
 
+int goalStreakWeeks(const QList<WorkoutHistorySummary> &history, double goalHours)
+{
+    if (goalHours <= 0.0)
+        return 0;
+    QMap<QDate, double> hoursByMonday;
+    for (const WorkoutHistorySummary &ride : history) {
+        if (!ride.startTime.isValid())
+            continue;
+        const QDate day = ride.startTime.toLocalTime().date();
+        hoursByMonday[day.addDays(1 - day.dayOfWeek())] += ride.durationSec / 3600.0;
+    }
+    int best = 0;
+    int run = 0;
+    QDate previous;
+    for (auto it = hoursByMonday.cbegin(); it != hoursByMonday.cend(); ++it) {
+        if (it.value() < goalHours - 1.0 / 60.0) {
+            run = 0;
+            previous = QDate();
+            continue;
+        }
+        run = (previous.isValid() && previous.addDays(7) == it.key()) ? run + 1 : 1;
+        best = std::max(best, run);
+        previous = it.key();
+    }
+    return best;
+}
+
 double progress(const Definition &definition, const HistoryStats &stats)
 {
     switch (definition.kind) {
@@ -188,6 +219,7 @@ double progress(const Definition &definition, const HistoryStats &stats)
     case Kind::WeekTss:     return stats.bestWeekTss;
     case Kind::WeekRides:   return stats.bestWeekRides;
     case Kind::StreakDays:  return stats.bestStreakDays;
+    case Kind::GoalWeeks:   return stats.bestGoalWeeks;
     case Kind::WeekHours:   return stats.bestWeekHours;
     case Kind::MonthRides:  return stats.bestMonthRides;
     case Kind::WeekendDouble: return stats.weekendDouble ? 1 : 0;
