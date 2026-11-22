@@ -288,3 +288,11 @@ mt_add_test(workout_ui_tests QWT
     QT Gui Widgets Network
     INCLUDES ${APP_INCLUDES})
 endif()
+
+# Suites that need the whole app (a real WorkoutDialog).
+if(TARGET mt_core)
+mt_add_test(workout_dialog_tests
+    SOURCES workout_dialog/tst_workout_dialog_erg.cpp
+    QT Gui Widgets
+    LIBS mt_core mt_gameplugin)
+endif()

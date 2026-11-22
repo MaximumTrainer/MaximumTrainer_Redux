@@ -187,7 +187,7 @@ void SensorsWidget::buildUi()
     ergRampRow->addStretch();
     trainerLayout->addLayout(ergRampRow);
 
-    m_ergRescueCheck = new QCheckBox(tr("Release ERG when cadence drops below 40 rpm"), trainerGroup);
+    m_ergRescueCheck = new QCheckBox(tr("Release ERG when cadence drops below 40 rpm or the workout is paused"), trainerGroup);
     m_ergRescueCheck->setToolTip(tr("Stops ERG from stalling you: the trainer switches to free ride until "
                                     "you spin up again, then ERG comes back.\n"
                                     "Intervals with a cadence target use 15 rpm under that target."));

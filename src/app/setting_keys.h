@@ -23,8 +23,8 @@ inline constexpr SettingKey<double> WeightKg                 {"account/weight_kg
 inline constexpr SettingKey<int>    NbSecShowInterval        {"account/nb_sec_show_interval",        ConfigDefaults::NbSecShowInterval};
 inline constexpr SettingKey<int>    NbSecShowIntervalBefore  {"account/nb_sec_show_interval_before", ConfigDefaults::NbSecShowIntervalBefore};
 inline constexpr SettingKey<int>    ErgSmoothingDurationS    {"account/erg_smoothing_duration_s",    ConfigDefaults::ErgSmoothingDurationS};
-/// Release ERG when cadence stalls (see ErgRescue); a pause always releases it.
-inline constexpr SettingKey<bool>   ErgLowCadenceRelease     {"account/erg_low_cadence_release",     true};
+/// Release ERG when cadence stalls or the workout is paused (see ErgRescue).
+inline constexpr SettingKey<bool>   ErgLowCadenceRelease     {"account/erg_low_cadence_release",     false};
 inline constexpr SettingKey<bool>   SensorDropoutEnabled     {"account/sensor_dropout_enabled",      ConfigDefaults::SensorDropoutEnabled};
 inline constexpr SettingKey<int>    SensorDropoutTimeoutS    {"account/sensor_dropout_timeout_s",    ConfigDefaults::SensorDropoutTimeoutS};
 inline constexpr SettingKey<int>    BatteryWarningThreshold  {"account/battery_warning_threshold",   ConfigDefaults::BatteryWarningThreshold};
