@@ -73,8 +73,12 @@ namespace {
 
 WorkoutDialog::~WorkoutDialog() {
 
-    if (m_freeRideAfterWorkout && virtualShiftingActive())
-        emit setLoad(trainerControlUserId, 0);
+    if (m_freeRideAfterWorkout && virtualShiftingActive()) {
+        if (m_trainerSupportsResistanceLevel)
+            emit setResistance(trainerControlUserId, 0);
+        else
+            emit setLoad(trainerControlUserId, 0);
+    }
 
     emit stopDecodingMsgHub();
 

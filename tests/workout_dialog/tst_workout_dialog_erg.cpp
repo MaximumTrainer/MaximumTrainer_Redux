@@ -126,6 +126,50 @@ private slots:
         QVERIFY(!freshAccount.erg_low_cadence_release);
     }
 
+    // ERG off in Devices: the trainer must never get a target-power command,
+    // whether the rider uses virtual gears or a flat road.
+    void ergOff_neverSendsErgCommand_data()
+    {
+        QTest::addColumn<bool>("virtualShifting");
+        QTest::addColumn<bool>("ergRescue");
+        QTest::newRow("virtual gears") << true << false;
+        QTest::newRow("virtual gears, rescue on") << true << true;
+        QTest::newRow("flat road") << false << false;
+        QTest::newRow("flat road, rescue on") << false << true;
+    }
+
+    void ergOff_neverSendsErgCommand()
+    {
+        QFETCH(bool, virtualShifting);
+        QFETCH(bool, ergRescue);
+        m_account->FTP = kFtpWatts;
+        m_account->control_trainer_resistance = false;
+        m_account->erg_low_cadence_release = ergRescue;
+        m_account->virtual_shifting = virtualShifting;
+        m_account->erg_smoothing_duration_s = 3;
+        m_account->enable_studio_mode = false;
+        m_account->display_video = 0;
+        m_account->isOffline = true;
+
+        m_dialog = new WorkoutDialog(makeErgWorkout(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+        m_loads = new QSignalSpy(m_dialog, &WorkoutDialog::setLoad);
+        m_slopes = new QSignalSpy(m_dialog, &WorkoutDialog::setSlope);
+        m_resistances = new QSignalSpy(m_dialog, &WorkoutDialog::setResistance);
+        m_dialog->setResistanceLevelSupported(true);
+        m_dialog->enableTrainerControl();
+
+        m_dialog->start_or_pause_workout();   // start
+        QTest::qWait(2500);                   // clock ticks re-send the gear
+        m_dialog->start_or_pause_workout();   // pause
+        m_dialog->start_or_pause_workout();   // resume
+        QTest::qWait(1500);
+        QVERIFY(sentFreeRide());
+        QVERIFY2(m_loads->isEmpty(), "ERG off sent a target-power (ERG) command");
+        delete m_dialog;                      // closing must not send one either
+        m_dialog = nullptr;
+        QVERIFY2(m_loads->isEmpty(), "ERG off sent a target-power (ERG) command on close");
+    }
+
     void rescueOff_pauseAndResumeKeepErg()
     {
         openDialog(false, false, 0);
