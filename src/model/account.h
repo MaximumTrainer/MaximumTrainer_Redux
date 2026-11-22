@@ -19,6 +19,7 @@ public:
     void saveNbSecShowInterval(int nbSec);
     void saveNbSecShowIntervalBefore(int nbSec);
     void saveErgSmoothingDuration(int seconds);
+    void saveErgLowCadenceRelease(bool enabled);
     /// Persist athlete profile (FTP / LTHR / weight) locally so it survives a
     /// restart and offline use. Edited from the Preferences dialog.
     void saveProfileFields(int ftp, int lthr, double weightKg);
@@ -108,6 +109,7 @@ public:
     bool use_zwift_click;          ///< Opt-in (default off): read a Zwift Click v2 RIGHT controller over a direct BLE connection (separate from the trainer; ERG unaffected). Left controller unsupported (needs Zwift's proprietary unlock).
     bool use_simulated_sensors = false;  ///< Workouts run on generated sensor data (no hardware), set on the Devices page.
     int erg_smoothing_duration_s;  ///< Ramp duration (seconds) for ERG setpoint transitions; 0 = disabled.
+    bool erg_low_cadence_release = true;  ///< Leave ERG for free ride on a cadence stall.
 
     /// Battery warning threshold (issue #156): warn when a sensor's battery
     /// drops at or below this percentage (default 20, range 5–50).

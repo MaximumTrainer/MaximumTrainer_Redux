@@ -187,6 +187,16 @@ void SensorsWidget::buildUi()
     ergRampRow->addStretch();
     trainerLayout->addLayout(ergRampRow);
 
+    m_ergRescueCheck = new QCheckBox(tr("Release ERG when cadence drops below 40 rpm"), trainerGroup);
+    m_ergRescueCheck->setToolTip(tr("Stops ERG from stalling you: the trainer switches to free ride until "
+                                    "you spin up again, then ERG comes back.\n"
+                                    "Intervals with a cadence target use 15 rpm under that target."));
+    connect(m_ergRescueCheck, &QCheckBox::toggled, this, [this](bool enabled) {
+        if (m_account)
+            m_account->saveErgLowCadenceRelease(enabled);
+    });
+    trainerLayout->addWidget(m_ergRescueCheck);
+
 
     mainLayout->addWidget(trainerGroup);
 
@@ -279,6 +289,10 @@ void SensorsWidget::reload()
         if (m_ergRampSpin) {
             QSignalBlocker b(m_ergRampSpin);
             m_ergRampSpin->setValue(m_account->erg_smoothing_duration_s);
+        }
+        if (m_ergRescueCheck) {
+            QSignalBlocker b(m_ergRescueCheck);
+            m_ergRescueCheck->setChecked(m_account->erg_low_cadence_release);
         }
         if (m_dropoutEnabledCheck) {
             QSignalBlocker b(m_dropoutEnabledCheck);

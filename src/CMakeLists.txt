@@ -50,7 +50,7 @@ target_sources(mt_core PRIVATE
     persistence/file/fitactivityreader.cpp persistence/file/fitactivitydetailreader.cpp
     persistence/file/importerworkout.cpp persistence/file/importerworkoutzwo.cpp
     # workout
-    workout/workoututil.cpp workout/sensorsecondaccumulator.cpp workout/maptesttracker.cpp workout/targetalert.cpp
+    workout/workoututil.cpp workout/ergrescue.cpp workout/sensorsecondaccumulator.cpp workout/maptesttracker.cpp workout/targetalert.cpp
     # group workouts
     group/groupprotocol.cpp group/groupsession.cpp group/groupridecoordinator.cpp
     group/groupsimtest.cpp group/groupworkoutcodec.cpp group/grouppanel.cpp

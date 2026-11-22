@@ -75,6 +75,7 @@ private:
     QCheckBox *m_simulatedSensorsCheck = nullptr;
     QLabel    *m_zwiftClickHint = nullptr;
     QSpinBox  *m_ergRampSpin            = nullptr;
+    QCheckBox *m_ergRescueCheck         = nullptr;
     QCheckBox *m_dropoutEnabledCheck    = nullptr;
     QSpinBox  *m_dropoutTimeoutSpin     = nullptr;
     QSpinBox  *m_batteryThresholdSpin   = nullptr;

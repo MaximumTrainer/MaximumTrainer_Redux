@@ -1537,6 +1537,7 @@ void WorkoutDialog::start_or_pause_workout() {
         foldConnectionBoard();
         isWorkoutStarted = true;
         isWorkoutPaused = false;
+        m_ergRescueHoldOff = kErgRescueHoldOffSeconds;
         if (this->workout.getInterval(0).getDisplayMessage() != "")
             ui->widget_workoutPlot->setDisplayIntervalMessage(true, this->workout.getInterval(0).getDisplayMessage(), account->nb_sec_show_interval);
         setWidgetsStopped(false);
@@ -1553,6 +1554,7 @@ void WorkoutDialog::start_or_pause_workout() {
         ui->widget_topMenu->setButtonStartPaused(true);
         ui->widget_workoutPlot->removeMainMessage();
         isWorkoutPaused = false;
+        m_ergRescueHoldOff = kErgRescueHoldOffSeconds;
 
         // Clear dropout state if user manually resumes
         if (m_dropoutPaused) {
@@ -1576,6 +1578,13 @@ void WorkoutDialog::start_or_pause_workout() {
         ui->widget_topMenu->setButtonStartPaused(false);
         isWorkoutPaused = true;
         stopErgSmoothing();
+        // Holding the ERG target while stopped makes restarting brutal (a stall
+        // auto-pauses under the cadence trigger); ride free until spun up again.
+        if (ergWantedNow() && !m_ergRescue.active()) {
+            m_ergRescue.release();
+            applyErgRelease();
+            LOG_INFO("WorkoutDialog", QStringLiteral("ERG released while paused"));
+        }
         setWidgetsStopped(true);
         setMessagePlot();
         emit pauseClock();
@@ -1612,6 +1621,7 @@ void WorkoutDialog::sendLastSecondData(int seconds) {
         recordRiderSecond(0, seconds);
         const RiderSecond &second = m_secondSamples.rider(0);
         achievementManager->checkLiveSecond(second.power, second.cadence, account->FTP);
+        updateErgRescue(second);
     }
 
     // Re-send the gear's load each second so faster/slower pedaling changes
@@ -2078,8 +2088,52 @@ bool WorkoutDialog::virtualShiftingActive() const {
 
 // ERG only owns an interval when the checkbox is on AND there's a positive power
 // target (a structured power interval). Then gears are inactive ("ERG").
+void WorkoutDialog::updateErgRescue(const RiderSecond &second) {
+
+    if (m_ergRescueHoldOff > 0)
+        --m_ergRescueHoldOff;
+    switch (m_ergRescue.addSecond(ergWantedNow(), second.cadence, second.power, currentTargetPower,
+                                  currentTargetCadence,
+                                  m_ergRescueHoldOff == 0 && account->erg_low_cadence_release)) {
+    case ErgRescue::Action::Release:
+        LOG_INFO("WorkoutDialog", QStringLiteral("ERG released: %1 rpm for %2 s (target %3 W)")
+                                      .arg(qRound(second.cadence)).arg(ErgRescue::kSeconds).arg(currentTargetPower));
+        applyErgRelease();
+        ui->widget_workoutPlot->setDisplayIntervalMessage(
+            true, tr("Low cadence: ERG paused. Spin up and it comes back."), kErgRescueMessageSeconds);
+        break;
+    case ErgRescue::Action::Resume:
+        LOG_INFO("WorkoutDialog", QStringLiteral("ERG resumed at %1 rpm, %2 W").arg(qRound(second.cadence))
+                                      .arg(qRound(second.power)));
+        // Ramp up from what the rider makes now, not from the old target.
+        stopErgSmoothing();
+        m_ergSmoothLast = qMax(0.0, second.power);
+        targetPowerChanged_f(m_lastPowerTargetPct, m_lastPowerTargetRange);
+        ui->widget_workoutPlot->setDisplayIntervalMessage(true, tr("ERG back on"), 3);
+        break;
+    case ErgRescue::Action::None:
+        break;
+    }
+}
+
+bool WorkoutDialog::ergWantedNow() const {
+    return trainerControlUserId != -1 && account->control_trainer_resistance && !isUsingSlopeMode
+        && currentTargetPower > 0 && !m_freeRideAfterWorkout && !isWorkoutOver
+        && !account->enable_studio_mode;
+}
+
+// The trainer leaves ERG for free ride (virtual gears, or a flat road).
+void WorkoutDialog::applyErgRelease() {
+    stopErgSmoothing();
+    if (virtualShiftingActive())
+        sendGearLoad();
+    else
+        sendSlopes(0);
+    updateGearIndicator();
+}
+
 bool WorkoutDialog::ergOwnsThisInterval() const {
-    return account && !m_freeRideAfterWorkout && account->control_trainer_resistance
+    return account && !m_freeRideAfterWorkout && !m_ergRescue.active() && account->control_trainer_resistance
         && !isUsingSlopeMode && currentTargetPower > 0;
 }
 
@@ -2317,7 +2371,7 @@ void WorkoutDialog::targetPowerChanged_f(double percentageTarget, int range) {
     m_lastPowerTargetRange = range;
 
     if (percentageTarget <= 0 || isUsingSlopeMode || !account->control_trainer_resistance
-            || m_freeRideAfterWorkout) {
+            || m_freeRideAfterWorkout || m_ergRescue.active()) {
         // Single-cog trainers spin out at slope 0 (#293) — drive the virtual
         // gear's resistance instead when trainer control is available.
         if (virtualShiftingActive())

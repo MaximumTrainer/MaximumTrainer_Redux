@@ -2,6 +2,8 @@
 #define WORKOUTDIALOG_H
 
 #include <QDialog>
+
+#include "ergrescue.h"
 #include <QElapsedTimer>
 #include <QTime>
 #include <QTimer>
@@ -572,7 +574,16 @@ private:
     QTimer    *m_ergSmoothTimer   = nullptr;
     double     m_ergSmoothFrom    = 0.0;    ///< Starting watts when ramp began
     double     m_ergSmoothTo      = 0.0;    ///< Target watts for the ramp
-    double     m_ergSmoothLast    = 0.0;    ///< Most-recently emitted watts (for mid-ramp retargeting)
+    double     m_ergSmoothLast    = 0.0;
+    /// Low-cadence ERG release (see ErgRescue), and seconds it stays off
+    /// after a start or resume while the rider spins up.
+    ErgRescue  m_ergRescue;
+    int        m_ergRescueHoldOff = 0;
+    static constexpr int kErgRescueHoldOffSeconds = 15;
+    static constexpr int kErgRescueMessageSeconds = 600;  // until ERG is back
+    void updateErgRescue(const RiderSecond &second);
+    bool ergWantedNow() const;
+    void applyErgRelease();    ///< Most-recently emitted watts (for mid-ramp retargeting)
     int        m_ergSmoothStep    = 0;      ///< Steps elapsed so far
     int        m_ergSmoothSteps   = 0;      ///< Total steps in current ramp
     int        m_ergSmoothDeviceId   = -1;     ///< device id to target
