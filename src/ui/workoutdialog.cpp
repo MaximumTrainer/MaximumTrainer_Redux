@@ -73,8 +73,12 @@ namespace {
 
 WorkoutDialog::~WorkoutDialog() {
 
-    if (m_freeRideAfterWorkout && virtualShiftingActive())
-        emit setLoad(trainerControlUserId, 0);
+    if (m_freeRideAfterWorkout && virtualShiftingActive()) {
+        if (m_trainerSupportsResistanceLevel)
+            emit setResistance(trainerControlUserId, 0);
+        else
+            emit setLoad(trainerControlUserId, 0);
+    }
 
     emit stopDecodingMsgHub();
 
@@ -1555,6 +1559,13 @@ void WorkoutDialog::start_or_pause_workout() {
         ui->widget_workoutPlot->removeMainMessage();
         isWorkoutPaused = false;
         m_ergRescueHoldOff = kErgRescueHoldOffSeconds;
+        // Resuming is the rider saying they are ready: waiting for the recovery
+        // check here left the trainer in free ride, where watts climb with cadence.
+        if (m_ergRescue.active()) {
+            m_ergRescue.reset();
+            restoreErg(m_secondSamples.rider(0).power);
+            LOG_INFO("WorkoutDialog", QStringLiteral("ERG restored on resume"));
+        }
 
         // Clear dropout state if user manually resumes
         if (m_dropoutPaused) {
@@ -1580,7 +1591,7 @@ void WorkoutDialog::start_or_pause_workout() {
         stopErgSmoothing();
         // Holding the ERG target while stopped makes restarting brutal (a stall
         // auto-pauses under the cadence trigger); ride free until spun up again.
-        if (ergWantedNow() && !m_ergRescue.active()) {
+        if (account->erg_low_cadence_release && ergWantedNow() && !m_ergRescue.active()) {
             m_ergRescue.release();
             applyErgRelease();
             LOG_INFO("WorkoutDialog", QStringLiteral("ERG released while paused"));
@@ -2105,11 +2116,7 @@ void WorkoutDialog::updateErgRescue(const RiderSecond &second) {
     case ErgRescue::Action::Resume:
         LOG_INFO("WorkoutDialog", QStringLiteral("ERG resumed at %1 rpm, %2 W").arg(qRound(second.cadence))
                                       .arg(qRound(second.power)));
-        // Ramp up from what the rider makes now, not from the old target.
-        stopErgSmoothing();
-        m_ergSmoothLast = qMax(0.0, second.power);
-        targetPowerChanged_f(m_lastPowerTargetPct, m_lastPowerTargetRange);
-        ui->widget_workoutPlot->setDisplayIntervalMessage(true, tr("ERG back on"), 3);
+        restoreErg(second.power);
         break;
     case ErgRescue::Action::None:
         break;
@@ -2120,6 +2127,17 @@ bool WorkoutDialog::ergWantedNow() const {
     return trainerControlUserId != -1 && account->control_trainer_resistance && !isUsingSlopeMode
         && currentTargetPower > 0 && !m_freeRideAfterWorkout && !isWorkoutOver
         && !account->enable_studio_mode;
+}
+
+// Ramps from what the rider makes now, not from the old target. The trainer is
+// in free ride, so the load must be sent even when it equals the rider's watts,
+// and a rider who has stopped ramps up from nothing rather than jumping in.
+void WorkoutDialog::restoreErg(double riderWatts) {
+    stopErgSmoothing();
+    const double fromWatts = qMax(1.0, riderWatts);
+    m_ergSmoothLast = qRound(fromWatts) == currentTargetPower ? -1.0 : fromWatts;
+    targetPowerChanged_f(m_lastPowerTargetPct, m_lastPowerTargetRange);
+    ui->widget_workoutPlot->setDisplayIntervalMessage(true, tr("ERG back on"), 3);
 }
 
 // The trainer leaves ERG for free ride (virtual gears, or a flat road).
