@@ -10,6 +10,7 @@
 #include "intervalsicuservice.h"
 
 class QLabel;
+class QPushButton;
 
 namespace Ui {
 class TabIntervalsIcu;
@@ -78,6 +79,9 @@ private:
     /// "Updated 2 min ago" next to the reload button.
     void updateFreshnessLabel();
     void updateWeekLabel();
+    /// Shows the week starting on \a monday and loads it.
+    void showWeek(const QDate &monday);
+    static QDate currentMonday();
     void populateTable(const QList<IntervalsIcuService::CalendarEvent> &events);
     void setStatus(const QString &msg);
     void setBusy(bool busy);
@@ -97,6 +101,7 @@ private:
     QDate m_loadedWeek;        ///< week shown in the table
     QDateTime m_loadedAt;
     QLabel *m_updatedLabel = nullptr;
+    QPushButton *m_thisWeekButton = nullptr;
 
     QNetworkReply *m_calendarReply  = nullptr;
     QNetworkReply *m_downloadReply  = nullptr;
