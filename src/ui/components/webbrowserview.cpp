@@ -3,6 +3,10 @@
 
 #include <QWebEngineView>
 #include <QWebEnginePage>
+#ifndef GC_WASM_BUILD
+#include <QWebEngineProfile>
+#include <QWebEngineProfileBuilder>
+#endif
 #include <QWebEngineSettings>
 #include <QWebEngineFullScreenRequest>
 #include <QGridLayout>
@@ -13,6 +17,7 @@
 #include <QKeyEvent>
 #include <QSettings>
 #include <QCursor>
+#include <QApplication>
 
 #include "logger.h"
 
@@ -21,6 +26,17 @@ constexpr int kToolbarHideMs = 3000;
 constexpr int kCursorPollMs  = 200;
 
 #ifndef GC_WASM_BUILD
+// Qt 6's default profile is off the record, so a YouTube sign-in was lost on
+// every restart. One on-disk profile is shared by all workout browsers.
+QWebEngineProfile *workoutBrowserProfile()
+{
+    static QWebEngineProfile *profile =
+        QWebEngineProfileBuilder()
+            .setPersistentCookiesPolicy(QWebEngineProfile::ForcePersistentCookies)
+            .createProfile(QStringLiteral("WorkoutBrowser"), qApp);
+    return profile;
+}
+
 // Qt's default page forwards every console message of the site (YouTube logs
 // hundreds per ride) into the app log as warnings. They say nothing about the
 // app, so keep them out of the normal log.
@@ -54,7 +70,7 @@ WebBrowserView::WebBrowserView(QWidget *parent) : QWidget(parent)
 
     webEngineView = new QWebEngineView(this);
 #ifndef GC_WASM_BUILD
-    webEngineView->setPage(new BrowserPage(webEngineView));
+    webEngineView->setPage(new BrowserPage(workoutBrowserProfile(), webEngineView));
 #endif
     webEngineView->settings()->setAttribute(QWebEngineSettings::PluginsEnabled, true);
     // Without FullScreenSupportEnabled + an accepted fullScreenRequested,
