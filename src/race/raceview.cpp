@@ -28,8 +28,8 @@ const QColor kGradeSteep(0xd6, 0x55, 0x3d);
 constexpr double kTopBarHeight = 40.0;
 constexpr double kStandingsWidth = 300.0;
 constexpr double kRowHeight = 30.0;
-constexpr double kNowCardWidth = 640.0;
-constexpr double kNowCardHeight = 112.0;
+constexpr double kNowCardWidth = 560.0;
+constexpr double kNowCardHeight = 130.0;
 constexpr double kRoadWidthPx = 80.0;   // four riders abreast
 constexpr double kNameRangeM = 30.0;   // riders this close get a name tag, where it fits
 constexpr double kZoomHalfM = 90.0;    // the map shows 180 m around you
@@ -475,15 +475,16 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
     painter.drawRoundedRect(card, 10, 10);
 
     const double wattsPerKg = you.powerW / you.riderKg;
-    struct Cell { QString label; QString value; QString unit; QColor colour; };
+    struct Cell { QString label; QString value; QString unit; QColor colour; QString sub; QColor subColour; };
     const QColor text = palette().color(QPalette::Text);
     auto orDash = [](int value) { return value > 0 ? QString::number(value) : QStringLiteral("-"); };
+    // W/kg sits under the power, in the power cell.
     const Cell cells[] = {
-        {tr("POWER"), QString::number(qRound(you.powerW)), tr("W"), text},
-        {tr("W/KG"), QString::number(wattsPerKg, 'f', 1), QString(), aboveRedLine(wattsPerKg) ? kAboveThreshold : text},
-        {tr("CADENCE"), orDash(m_cadenceRpm), tr("rpm"), text},
-        {tr("HEART RATE"), orDash(m_heartRateBpm), tr("bpm"), text},
-        {tr("SPEED"), QString::number(you.speedMps * 3.6, 'f', 1), tr("km/h"), text},
+        {tr("POWER"), QString::number(qRound(you.powerW)), tr("W"), text,
+         tr("%1 W/kg").arg(wattsPerKg, 0, 'f', 1), aboveRedLine(wattsPerKg) ? kAboveThreshold : text},
+        {tr("CADENCE"), orDash(m_cadenceRpm), tr("rpm"), text, QString(), text},
+        {tr("HEART RATE"), orDash(m_heartRateBpm), tr("bpm"), text, QString(), text},
+        {tr("SPEED"), QString::number(you.speedMps * 3.6, 'f', 1), tr("km/h"), text, QString(), text},
     };
     QFont labelFont = font();
     labelFont.setPointSizeF(font().pointSizeF() * 0.8);
@@ -493,11 +494,14 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
     valueFont.setPointSizeF(font().pointSizeF() * 2.1);
     QFont unitFont = font();
     unitFont.setPointSizeF(font().pointSizeF() * 0.95);
+    QFont subFont = font();
+    subFont.setBold(true);
+    subFont.setPointSizeF(font().pointSizeF() * 1.15);
     const int cellCount = static_cast<int>(std::size(cells));
     const double cellWidth = (card.width() - 24) / cellCount;
     for (int index = 0; index < cellCount; ++index) {
         const Cell &cell = cells[index];
-        const QRectF box(card.left() + 12 + index * cellWidth, card.top() + 8, cellWidth, 62);
+        const QRectF box(card.left() + 12 + index * cellWidth, card.top() + 8, cellWidth, 82);
         if (index > 0) {
             painter.setPen(QPen(palette().color(QPalette::Mid), 1));
             painter.drawLine(QPointF(box.left(), box.top() + 6), QPointF(box.left(), box.bottom() - 4));
@@ -519,6 +523,11 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
             painter.setPen(palette().color(QPalette::PlaceholderText));
             painter.drawText(QRectF(valueBox.right() + 4, valueBox.top() + 8, unitWidth, valueBox.height()),
                              Qt::AlignLeft | Qt::AlignVCenter, cell.unit);
+        }
+        if (!cell.sub.isEmpty()) {
+            painter.setFont(subFont);
+            painter.setPen(cell.subColour);
+            painter.drawText(QRectF(box.left(), valueBox.bottom(), box.width(), 22), Qt::AlignHCenter | Qt::AlignVCenter, cell.sub);
         }
     }
 

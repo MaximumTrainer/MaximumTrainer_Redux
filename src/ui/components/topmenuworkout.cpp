@@ -72,21 +72,6 @@ QIcon tintedStandardIcon(QStyle *style, QStyle::StandardPixmap sp,
     return QIcon(out);
 }
 
-// Recolour an alpha-shaped resource glyph to @color. Use only for icons that
-// carry their shape in the alpha channel (not opaque-background PNGs).
-QIcon tintedPixmapIcon(const QString& resourcePath, const QColor& color) {
-    QPixmap source(resourcePath);
-    if (source.isNull())
-        return QIcon();
-    QPixmap out(source.size());
-    out.fill(Qt::transparent);
-    QPainter p(&out);
-    p.drawPixmap(0, 0, source);
-    p.setCompositionMode(QPainter::CompositionMode_SourceIn);
-    p.fillRect(out.rect(), color);
-    p.end();
-    return QIcon(out);
-}
 }
 
 
@@ -164,11 +149,14 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
 
     // Window/config controls: render light icons on the always-dark toolbar,
     // instead of the legacy opaque-black PNGs that the dark theme broke.
-    // Config uses the alpha-shaped fa-gear glyph; the window controls use Qt's
-    // standard title-bar pixmaps. All tinted light to match the media buttons.
+    // Config is a plain text button; the window controls use Qt's standard
+    // title-bar pixmaps, tinted light to match the media buttons.
     const QSize ctrlIconSize(20, 20);
-    ui->pushButton_config->setIcon(tintedPixmapIcon(":/image/icon/crank2", iconColor));
-    ui->pushButton_config->setIconSize(ctrlIconSize);
+    ui->pushButton_config->setIcon(QIcon());
+    ui->pushButton_config->setText(tr("Config"));
+    ui->pushButton_config->setMinimumWidth(0);
+    ui->pushButton_config->setMaximumWidth(QWIDGETSIZE_MAX);
+    changeConfigIcon(false);
     ui->pushButton_expand->setIcon(tintedStandardIcon(style(), QStyle::SP_TitleBarMaxButton, ctrlIconSize, iconColor));
     ui->pushButton_expand->setIconSize(ctrlIconSize);
     ui->pushButton_exit->setIcon(tintedStandardIcon(style(), QStyle::SP_TitleBarCloseButton, ctrlIconSize, iconColor));
@@ -385,11 +373,10 @@ void TopMenuWorkout::updateExpandIcon() {
 
 void TopMenuWorkout::changeConfigIcon(bool insideConfig) {
 
-    // Tinted gear glyph (see constructor). Brighten when the config dialog is
-    // open to signal the active state, instead of swapping PNGs.
-    const QColor color = insideConfig ? QColor(255, 255, 255) : QColor(230, 230, 230);
-    ui->pushButton_config->setIcon(tintedPixmapIcon(":/image/icon/crank2", color));
-    ui->pushButton_config->setIconSize(QSize(20, 20));
+    // Brighter and bold while the config dialog is open.
+    ui->pushButton_config->setStyleSheet(insideConfig
+        ? QStringLiteral("QPushButton { color: white; font-weight: bold; padding: 0 8px; }")
+        : QStringLiteral("QPushButton { color: #e6e6e6; padding: 0 8px; }"));
 }
 
 
