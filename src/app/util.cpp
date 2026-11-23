@@ -636,8 +636,11 @@ void Util::parseJsonIntervalsIcuAthlete(const QString &data)
                                 ? QString()
                                 : QStringLiteral(" ") + account->last_name);
 
-    // Weight — Intervals.icu stores in kilograms.
-    const double weight = obj.value(QStringLiteral("weight")).toDouble(-1.0);
+    // Weight in kilograms. The weight set in Intervals.icu's settings comes as
+    // icu_weight; the plain "weight" field is older and can be stale or missing.
+    double weight = obj.value(QStringLiteral("icu_weight")).toDouble(-1.0);
+    if (weight <= 0.0)
+        weight = obj.value(QStringLiteral("weight")).toDouble(-1.0);
     if (weight > 0.0)
         account->weight_kg = weight;
 

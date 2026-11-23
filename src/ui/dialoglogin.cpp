@@ -636,7 +636,10 @@ void DialogLogin::slotFinishedIntervalsIcuAthlete()
     if (netError == QNetworkReply::NoError) {
         const QByteArray data = replyIntervalsIcuAthlete->readAll();
         Util::parseJsonIntervalsIcuAthlete(QString::fromUtf8(data));
-        LOG_INFO("DialogLogin", QStringLiteral("Intervals.icu athlete profile retrieved successfully"));
+        // Keep the synced weight, so it survives a session without a sync.
+        account->saveProfileFields(account->FTP, account->LTHR, account->weight_kg);
+        LOG_INFO("DialogLogin", QStringLiteral("Intervals.icu athlete profile retrieved successfully (weight %1 kg)")
+                                    .arg(account->weight_kg, 0, 'f', 1));
     } else {
         LOG_WARN("DialogLogin",
                  QStringLiteral("Intervals.icu athlete fetch failed (HTTP %1): ").arg(httpStatus)
