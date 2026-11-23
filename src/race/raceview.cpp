@@ -172,10 +172,6 @@ void RaceView::paintEvent(QPaintEvent *)
 void RaceView::paintTopBar(QPainter &painter, const QRectF &area) const
 {
     const RaceCourse &course = m_race->course();
-    const RaceSimulation::Rider &you = m_race->you();
-    const double done = std::clamp(you.distanceM, 0.0, course.totalDistanceM());
-    const double share = done / course.totalDistanceM();
-
     painter.fillRect(area, palette().color(QPalette::Base));
     QFont titleFont = font();
     titleFont.setBold(true);
