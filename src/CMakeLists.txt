@@ -53,7 +53,7 @@ target_sources(mt_core PRIVATE
     group/groupsimtest.cpp group/groupworkoutcodec.cpp group/grouppanel.cpp
     group/joingroupdialog.cpp group/groupridersmodel.cpp group/groupriderdelegate.cpp
     # race
-    race/racecourse.cpp race/racebot.cpp race/racesimulation.cpp
+    race/racecourse.cpp race/racebot.cpp race/racesimulation.cpp race/raceview.cpp
     # ui
     ui/mainwindow.cpp ui/mainwindow_harness.cpp ui/workoutdialog.cpp ui/main_workoutpage.cpp
     ui/dialogconfig.cpp ui/dialoglogin.cpp ui/z_stylesheet.cpp
