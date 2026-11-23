@@ -51,7 +51,6 @@ protected:
     void resizeEvent(QResizeEvent *event) override;
 
 private:
-    void paintTopBar(QPainter &painter, const QRectF &area) const;
     void paintRoute(QPainter &painter, const QRectF &area) const;
     void paintOverview(QPainter &painter, const QRectF &mapArea) const;
     void paintProgressPanel(QPainter &painter, const QRectF &mapArea) const;

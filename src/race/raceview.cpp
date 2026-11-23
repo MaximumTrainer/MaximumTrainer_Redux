@@ -26,7 +26,6 @@ const QColor kGradeMid(0xe0, 0xc3, 0x41);
 const QColor kGradeHard(0xe8, 0xa2, 0x3a);
 const QColor kGradeSteep(0xd6, 0x55, 0x3d);
 
-constexpr double kTopBarHeight = 40.0;
 constexpr double kStandingsWidth = 300.0;
 constexpr double kRowHeight = 30.0;
 constexpr double kNowCardWidth = 600.0;
@@ -149,15 +148,13 @@ void RaceView::paintEvent(QPaintEvent *)
 
     const QRectF all = rect();
     const double profileHeight = std::clamp(all.height() * 0.28, 110.0, 180.0);
-    const QRectF topBar(all.left(), all.top(), all.width(), kTopBarHeight);
     const QRectF profile(all.left(), all.bottom() - profileHeight, all.width(), profileHeight);
-    const double middleTop = topBar.bottom();
+    const double middleTop = all.top();
     const double middleHeight = profile.top() - middleTop;
     const double standingsWidth = std::min(kStandingsWidth, all.width() * 0.38);
     const QRectF map(all.left(), middleTop, all.width() - standingsWidth, middleHeight);
     const QRectF standings(map.right(), middleTop, standingsWidth, middleHeight);
 
-    paintTopBar(painter, topBar);
     paintRoute(painter, map);
     paintProgressPanel(painter, map);
     paintNowPanel(painter, map);
@@ -167,22 +164,6 @@ void RaceView::paintEvent(QPaintEvent *)
     paintProfile(painter, profile);
     if (m_race->youFinished())
         paintFinish(painter, map);
-}
-
-void RaceView::paintTopBar(QPainter &painter, const QRectF &area) const
-{
-    const RaceCourse &course = m_race->course();
-    painter.fillRect(area, palette().color(QPalette::Base));
-    QFont titleFont = font();
-    titleFont.setBold(true);
-    titleFont.setPointSizeF(font().pointSizeF() * 1.1);
-    painter.setFont(titleFont);
-    painter.setPen(palette().color(QPalette::Text));
-    const QRectF titleArea = area.adjusted(14, 0, -area.width() * 0.45, 0);
-    painter.drawText(titleArea, Qt::AlignVCenter | Qt::AlignLeft,
-                     QFontMetrics(titleFont).elidedText(course.name() + QStringLiteral(" · ") + course.place(),
-                                                        Qt::ElideRight, static_cast<int>(titleArea.width())));
-
 }
 
 void RaceView::paintProgressPanel(QPainter &painter, const QRectF &mapArea) const
@@ -199,12 +180,19 @@ void RaceView::paintProgressPanel(QPainter &painter, const QRectF &mapArea) cons
     painter.setBrush(fill);
     painter.drawRoundedRect(panel, 8, 8);
 
+    QFont nameFont = font();
+    nameFont.setBold(true);
+    painter.setFont(nameFont);
+    painter.setPen(palette().color(QPalette::Text));
+    const QRectF nameRow(panel.left() + 12, panel.top() + 6, panel.width() - 24, 20);
+    painter.drawText(nameRow, Qt::AlignLeft | Qt::AlignVCenter,
+                     QFontMetrics(nameFont).elidedText(course.name(), Qt::ElideRight, static_cast<int>(nameRow.width())));
+
     QFont big = font();
     big.setBold(true);
     big.setPointSizeF(font().pointSizeF() * 1.35);
     painter.setFont(big);
-    painter.setPen(palette().color(QPalette::Text));
-    const QRectF top(panel.left() + 12, panel.top() + 6, panel.width() - 24, 26);
+    const QRectF top(panel.left() + 12, nameRow.bottom() + 2, panel.width() - 24, 26);
     if (course.isLoop()) {
         const int lap = std::min(course.laps(), static_cast<int>(done / course.lapDistanceM()) + 1);
         painter.drawText(top, Qt::AlignLeft | Qt::AlignVCenter, tr("Lap %1/%2").arg(lap).arg(course.laps()));
@@ -226,7 +214,7 @@ void RaceView::paintProgressPanel(QPainter &painter, const QRectF &mapArea) cons
 
 QRectF RaceView::progressPanelRect(const QRectF &mapArea) const
 {
-    return {mapArea.left() + 12, mapArea.top() + 12, 260, 76};
+    return {mapArea.left() + 12, mapArea.top() + 12, 260, 100};
 }
 
 void RaceView::updateDisplayOrder()
@@ -266,10 +254,7 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
     const QRectF bounds = zoomBounds();
     painter.save();
     painter.setClipRect(area);
-    // Centre the road in the space left of the card, so the card never hides you.
-    const QRectF mapArea = area;
-    const QRectF roadArea(mapArea.left(), mapArea.top(),
-                          std::max(200.0, nowCardRect(mapArea).left() - 10 - mapArea.left()), mapArea.height());
+    const QRectF &roadArea = area;   // you are in the middle of the map
 
     QPainterPath road;
     for (int index = 0; index < course.points().size(); ++index) {
@@ -485,12 +470,15 @@ void RaceView::paintOverview(QPainter &painter, const QRectF &mapArea) const
 
 QRectF RaceView::nowCardRect(const QRectF &mapArea) const
 {
-    // Middle right of the map, next to the road, so a glance from your dot to
-    // your numbers is short. Kept below the panels in the top right corner.
-    const double width = std::min(kNowCardWidth, mapArea.width() * 0.5);
+    // Almost centred, just right of your dot (which sits in the middle of the
+    // map), so a glance from your dot to your numbers is short. See-through,
+    // so riders passing under it stay visible. Kept below the top-right panels.
+    constexpr double kRightOfYourDot = 60.0;
+    const double left = mapArea.center().x() + kRightOfYourDot;
+    const double width = std::min(kNowCardWidth, mapArea.right() - 12 - left);
     const double belowPanels = gearPanelRect(mapArea).bottom() + 10;
     const double top = std::max(mapArea.center().y() - kNowCardHeight / 2, belowPanels);
-    return {mapArea.right() - width - 12, std::min(top, mapArea.bottom() - kNowCardHeight - 8), width, kNowCardHeight};
+    return {left, std::min(top, mapArea.bottom() - kNowCardHeight - 8), width, kNowCardHeight};
 }
 
 void RaceView::setRedLineWattsPerKg(double wattsPerKg)
@@ -525,7 +513,7 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
     // changing number never pushes the others around.
     const QRectF card = nowCardRect(mapArea);
     QColor fill = palette().color(QPalette::Base);
-    fill.setAlpha(240);
+    fill.setAlpha(165);   // see-through: riders under the card stay visible
     painter.setPen(QPen(palette().color(QPalette::Mid), 1));
     painter.setBrush(fill);
     painter.drawRoundedRect(card, 10, 10);
