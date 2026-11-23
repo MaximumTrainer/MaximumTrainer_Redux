@@ -70,5 +70,12 @@ for src in "$SHOTS"/*.png; do
   fi
 done
 
+# The course race view is rendered on its own (a bot race ridden at 3 W/kg).
+if [[ -f "$DEST/screenshot_course_race.png" ]]; then
+  MT_PREVIEW_DARK=1 "$BIN" --race-shot "$DEST/screenshot_course_race.png" alpe-dhuez 2400
+  echo "  updated screenshot_course_race.png"
+  updated=$((updated + 1))
+fi
+
 echo "Done. $updated image(s) updated."
 echo "Review with 'git diff --stat docs/assets/screenshots' and commit what you want."

@@ -2,6 +2,11 @@
 #define MAINWINDOW_H
 
 #include <QPointer>
+#include "racebot.h"
+#include "racecourse.h"
+
+class CoursesPage;
+#include <optional>
 #include <QMainWindow>
 #include <QNetworkReply>
 #include <QThread>
@@ -101,6 +106,18 @@ public slots:
 
 private:
     AchievementsWidget *m_achievementsPage = nullptr;
+    CoursesPage *m_coursesPage = nullptr;
+    /// Left-bar positions, set when the bar is built. Use these, never numbers.
+    struct LeftTabs {
+        int workout = 0;
+        int courses = 1;
+        int intervals = 2;
+        int studio = 3;
+        int devices = 4;
+        int history = 5;
+        int achievements = 6;
+    } m_tabs;
+    QVector<int> m_tabToPage;   // left-bar tab -> stackedWidget_menu page
     /// Simulator-fed workout launch (the "Simulation" connection method).
     /// Shared by the desktop synchronous flow and the WASM async chain.
     void connectSimulatorHub(class SimulatorHub *hub, WorkoutDialog *dialog);
@@ -235,6 +252,9 @@ private:
 
     void startGroupWorkout(const Workout &workout, GroupSession *session);
     void attachPendingGroupSession(WorkoutDialog *dialog);
+    void rideCourse(const RaceCourse &course, double riderWeightKg, const RaceBot::FieldSettings &bots);
+    std::optional<RaceCourse> m_pendingRaceCourse;
+    RaceBot::FieldSettings m_pendingRaceBots;
     bool canRideInGroup(const Workout &workout);
     QString groupDisplayName() const;
     QPointer<GroupSession> m_pendingGroupSession;

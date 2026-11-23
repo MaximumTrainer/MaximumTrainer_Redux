@@ -183,6 +183,13 @@ namespace Group {
 inline const SettingKey<QString> RelayUrl {"group_relay_url", QString()};
 } // namespace Group
 
+namespace Courses {
+/// The bot field last chosen on the Courses page.
+inline constexpr SettingKey<int>    Bots          {"courses/bots",            20};
+inline constexpr SettingKey<double> MinWattsPerKg {"courses/min_watts_per_kg", 2.2};
+inline constexpr SettingKey<double> MaxWattsPerKg {"courses/max_watts_per_kg", 4.0};
+} // namespace Courses
+
 namespace Legacy {
 /// Strava token expiry was also written under displayPrefs/ (and only read from
 /// there); read as a fallback so the value survives the move to account/.

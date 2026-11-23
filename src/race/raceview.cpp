@@ -204,8 +204,9 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
     const double lapStart = course.isLoop() ? std::floor(std::max(0.0, you.distanceM) / course.lapDistanceM()) * course.lapDistanceM() : 0.0;
     QPainterPath ridden;
     bool started = false;
-    for (double distance = lapStart; distance <= you.distanceM; distance += 20.0) {
-        const QPointF point = routePoint(distance, area);
+    const int samples = static_cast<int>((you.distanceM - lapStart) / 20.0);
+    for (int sample = 0; sample <= samples; ++sample) {
+        const QPointF point = routePoint(lapStart + sample * 20.0, area);
         started ? ridden.lineTo(point) : ridden.moveTo(point);
         started = true;
     }
@@ -468,14 +469,16 @@ void RaceView::paintProfile(QPainter &painter, const QRectF &area) const
     const double segmentM = std::max(kProfileMinSegmentM, course.lapDistanceM() / kProfileBands);
     painter.setPen(Qt::NoPen);
     painter.setRenderHint(QPainter::Antialiasing, false);   // no seams between bands
-    for (double from = 0.0; from < total; from += segmentM) {
+    const int bands = static_cast<int>(std::ceil(total / segmentM));
+    for (int band = 0; band < bands; ++band) {
+        const double from = band * segmentM;
         const double to = std::min(total, from + segmentM);
         const double grade = (course.elevationAt(to) - course.elevationAt(from)) / (to - from);
-        QPolygonF band;
-        band << QPointF(toX(from), plot.bottom()) << QPointF(toX(from), toY(course.elevationAt(from)))
-             << QPointF(toX(to), toY(course.elevationAt(to))) << QPointF(toX(to), plot.bottom());
+        QPolygonF shape;
+        shape << QPointF(toX(from), plot.bottom()) << QPointF(toX(from), toY(course.elevationAt(from)))
+              << QPointF(toX(to), toY(course.elevationAt(to))) << QPointF(toX(to), plot.bottom());
         painter.setBrush(gradeColor(grade));
-        painter.drawPolygon(band);
+        painter.drawPolygon(shape);
     }
     painter.setRenderHint(QPainter::Antialiasing, true);
 

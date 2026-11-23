@@ -28,7 +28,7 @@ std::optional<RaceCourse> RaceCourse::fromJson(const QByteArray &json)
     course.m_laps = std::max(1, object.value(QStringLiteral("laps")).toInt(1));
     course.m_loop = object.value(QStringLiteral("loop")).toBool(false);
     course.m_points.reserve(rawPoints.size());
-    for (const QJsonValue &value : rawPoints) {
+    for (const auto &value : rawPoints) {
         const QJsonArray row = value.toArray();
         if (row.size() < 4)
             return std::nullopt;
@@ -104,7 +104,9 @@ std::optional<RaceCourse::Climb> RaceCourse::nextClimb(double raceDistanceM, dou
 {
     const double end = std::min(totalDistanceM(), raceDistanceM + lookAheadM + 5000.0);
     double climbStart = -1.0;
-    for (double distance = raceDistanceM; distance <= end; distance += kClimbScanStepM) {
+    const int steps = static_cast<int>((end - raceDistanceM) / kClimbScanStepM);
+    for (int step = 0; step <= steps; ++step) {
+        const double distance = raceDistanceM + step * kClimbScanStepM;
         const bool steep = gradeAt(distance) >= minGrade;
         if (steep && climbStart < 0.0) {
             if (distance - raceDistanceM > lookAheadM)

@@ -44,6 +44,7 @@ private slots:
     void drafting_savesMoreOnTheFlatThanOnAClimb();
 
     void defaultField_hasAPaceGroupAndASpread();
+    void customField_followsCountAndRange();
     void bots_atTheSameWattsPerKgRideTogether();
     void youAtThreeWattsPerKg_canFollowThePaceGroupAndDraft();
     void youAtThreeWattsPerKg_climbWithThePaceGroup();
@@ -184,6 +185,32 @@ void TstRace::defaultField_hasAPaceGroupAndASpread()
     QCOMPARE(paceGroup, 6);
     QCOMPARE(lowest, 2.2);
     QCOMPARE(highest, 4.0);
+}
+
+void TstRace::customField_followsCountAndRange()
+{
+    const QVector<RaceBot> forty = RaceBot::field({40, 1.5, 5.0}, 1);
+    QCOMPARE(forty.size(), 40);
+    QCOMPARE(std::count_if(forty.cbegin(), forty.cend(), [](const RaceBot &bot) {
+        return bot.name().startsWith(QStringLiteral("Pace")); }), 12);
+    QSet<QString> names;
+    for (const RaceBot &bot : forty) {
+        QVERIFY(bot.wattsPerKg() >= 1.5 && bot.wattsPerKg() <= 5.0);
+        names.insert(bot.name());
+    }
+    QCOMPARE(names.size(), 40);   // every bot is told apart in the standings
+
+    // A range above 3.0 W/kg moves the pace group to the bottom of it.
+    const QVector<RaceBot> strong = RaceBot::field({10, 3.5, 4.5}, 2);
+    QCOMPARE(strong.constFirst().wattsPerKg(), 3.5);
+
+    // Reversed limits are read the right way round; tiny fields have no pace group.
+    for (const RaceBot &bot : RaceBot::field({2, 4.0, 2.0}, 3)) {
+        QVERIFY(!bot.name().startsWith(QStringLiteral("Pace")));
+        QVERIFY(bot.wattsPerKg() >= 2.0 && bot.wattsPerKg() <= 4.0);
+    }
+    QCOMPARE(RaceBot::field({0, 2.0, 4.0}, 4).size(), 0);
+    QCOMPARE(RaceBot::field({500, 2.0, 4.0}, 4).size(), RaceBot::kMaxBots);
 }
 
 void TstRace::bots_atTheSameWattsPerKgRideTogether()

@@ -524,6 +524,7 @@ responsibility (all listed in `src/CMakeLists.txt`):
 | `src/btle/` | BLE HAL (hub + scanner + simulator) | `model` |
 | `src/persistence/` | DAOs + file readers/writers | `model`, `fitness` |
 | `src/fitness/` | FIT SDK (`mt_fit` target) + Achievement logic | `model` |
+| `src/race/` | Courses: course files (`resources/courses`, built by `tools/courses/build_course.py`), race physics, bots, race view, Courses page | `fitness` |
 | `src/ui/` | All UI: MainWindow, WorkoutDialog, plots, editors | All above |
 | `src/app/` | Entry point + global state (media, audio, utils) | `ui`, `btle`, `model` |
 

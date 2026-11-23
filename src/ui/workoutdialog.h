@@ -4,7 +4,9 @@
 #include <QDialog>
 
 #include "ergrescue.h"
+#include "racebot.h"
 #include <QElapsedTimer>
+#include <memory>
 #include <QTime>
 #include <QTimer>
 #include <QPointer>
@@ -48,6 +50,9 @@ class AchievementToast;      // in-workout "Achievement unlocked" banner
 class TrendChart;            // live 30 s trend in a metric card
 class GroupSession;
 class GroupPanel;
+class RaceCourse;
+class RaceSimulation;
+class RaceView;
 class GroupRideCoordinator;
 
 namespace Ui {
@@ -96,6 +101,12 @@ public:
     /// Group workout: shows the group column and holds the start until the
     /// host's shared start time. The session is owned by the caller.
     void setGroupSession(GroupSession *session);
+
+    /// Bot race (hidden RACEBETA test): replaces the video and graph with the
+    /// race view, races you against the bot field and drives the trainer's
+    /// slope from the road. Call on a free ride, before the dialog is shown.
+    void setRace(const RaceCourse &course, const RaceBot::FieldSettings &bots);
+    const RaceSimulation *race() const { return m_race.get(); }
 
     void showHeartRateDisplayWidget(int display);
     void showPowerDisplayWidget(int display);
@@ -505,6 +516,15 @@ private:
 
     GroupPanel *m_groupPanel = nullptr;
     GroupRideCoordinator *m_groupRide = nullptr;
+
+    void stepRace();
+    double raceTrainerSlopePercent() const;
+    std::unique_ptr<RaceSimulation> m_race;
+    RaceView *m_raceView = nullptr;
+    QTimer *m_raceTimer = nullptr;
+    QElapsedTimer m_raceClock;
+    int m_racePowerW = 0;
+    qint64 m_racePowerAtMs = 0;
     bool testResultShown;
     /// One automatic refresh-and-retry when a Strava upload answers 401.
 

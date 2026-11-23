@@ -296,6 +296,11 @@ mt_add_test(workout_dialog_tests
     QT Gui Widgets
     LIBS mt_core)
 
+mt_add_test(race_dialog_tests
+    SOURCES workout_dialog/tst_workout_dialog_race.cpp
+    QT Gui Widgets
+    LIBS mt_core)
+
 mt_add_test(join_group_dialog_tests
     SOURCES join_group_dialog/tst_join_group_dialog.cpp
     QT Gui Widgets
