@@ -36,7 +36,7 @@ completed activities to the Garmin FIT format.
 | Serialisation | Garmin FIT SDK, TCX, GPX, XML |
 | Hardware protocols | BLE (Qt Bluetooth) |
 | Audio/Video | QtMultimedia (`QMediaPlayer` video + radio, `QSoundEffect` sound effects), platform stubs for WASM |
-| Build system | CMake (`CMakeLists.txt`, Ninja); RetroRace.qml is a compiled QML module |
+| Build system | CMake (`CMakeLists.txt`, Ninja) |
 | CI/CD | GitHub Actions (Linux · Windows · macOS · WebAssembly) |
 
 ---
@@ -524,7 +524,6 @@ responsibility (all listed in `src/CMakeLists.txt`):
 | `src/btle/` | BLE HAL (hub + scanner + simulator) | `model` |
 | `src/persistence/` | DAOs + file readers/writers | `model`, `fitness` |
 | `src/fitness/` | FIT SDK (`mt_fit` target) + Achievement logic | `model` |
-| `src/game/` | Retro race QML module (`mt_game`, `MaximumTrainer.Game`) | `fitness/fit` |
 | `src/ui/` | All UI: MainWindow, WorkoutDialog, plots, editors | All above |
 | `src/app/` | Entry point + global state (media, audio, utils) | `ui`, `btle`, `model` |
 
@@ -670,7 +669,7 @@ the defunct server JSON with no remaining reader — `height_cm`, `bike_type`,
 **removed**. `wheel_circ` was always the constructor default (no UI to change
 it), so the wheel circumference is now a fixed constant (`BtleHub::DEFAULT_WHEEL_CIRC_MM`,
 700c) feeding the CSC speed calc. `bike_weight_kg` was kept — it's added to
-rider weight for the race-physics / virtual-speed rider params.
+rider weight for the virtual-speed rider params.
 
 **Speed is always virtual.** Indoor speed is derived from power via
 `CyclingPhysics` for both solo and Studio riders (`Clock` emits per-rider

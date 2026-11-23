@@ -5,9 +5,6 @@ target_sources(mt_fit PRIVATE ${MT_FIT_SOURCES})
 target_include_directories(mt_fit PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/fitness/fit")
 set_target_properties(mt_fit PROPERTIES POSITION_INDEPENDENT_CODE ON AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
-# ── Retro ghost race: compiled QML module (MaximumTrainer.Game) ──────────────
-add_subdirectory(game)
-
 mt_write_app_version_header("${CMAKE_CURRENT_BINARY_DIR}/generated")
 
 if(NOT MT_BUILD_APP)
@@ -20,7 +17,7 @@ endif()
 add_library(mt_core OBJECT)
 
 set(MT_SOURCE_DIRS
-    app btle btle/zwift fitness fitness/fit fitness/achievements game group model
+    app btle btle/zwift fitness fitness/fit fitness/achievements group model
     persistence/db persistence/file ui ui/components ui/plots ui/workout_editor workout)
 foreach(dir IN LISTS MT_SOURCE_DIRS)
     list(APPEND MT_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/${dir}")
@@ -71,7 +68,7 @@ target_sources(mt_core PRIVATE
     ui/components/delegaterowhover.cpp
     ui/components/mytableview.cpp ui/components/shapefactory.cpp ui/components/infowidget.cpp
     ui/components/bottombar.cpp ui/components/topmenuworkout.cpp ui/components/balancewidget.cpp
-    ui/components/postworkoutpanel.cpp ui/components/workoutraceview.cpp ui/components/achievementtoast.cpp ui/components/metriccard.cpp ui/components/trendchart.cpp ui/components/sensorstatusstrip.cpp ui/components/studioconnectionboard.cpp
+    ui/components/postworkoutpanel.cpp ui/components/achievementtoast.cpp ui/components/metriccard.cpp ui/components/trendchart.cpp ui/components/sensorstatusstrip.cpp ui/components/studioconnectionboard.cpp
     ui/components/clickablelabel.cpp ui/components/fancytab.cpp ui/components/fancytabbar.cpp
     ui/components/stylehelper.cpp ui/components/faderlabel.cpp
     ui/components/tableviewhover.cpp ui/components/clock.cpp
@@ -128,9 +125,11 @@ target_compile_definitions(mt_core PUBLIC
 mt_set_warnings(mt_core)
 
 target_link_libraries(mt_core PUBLIC
-    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::PrintSupport
-    Qt6::Quick Qt6::QuickWidgets Qt6::Qml Qt6::WebSockets
-    Qwt::Qwt mt_fit mt_game)
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::PrintSupport Qt6::WebSockets
+    Qwt::Qwt mt_fit)
+# An object library's objects reach only its direct dependents, so hand the FIT
+# SDK objects on to whatever links mt_core.
+target_link_libraries(mt_core INTERFACE $<TARGET_OBJECTS:mt_fit>)
 foreach(module Concurrent Bluetooth WebEngineWidgets WebEngineCore)
     if(TARGET Qt6::${module})
         target_link_libraries(mt_core PUBLIC Qt6::${module})
@@ -166,7 +165,7 @@ endif()
 
 # ── Executable ───────────────────────────────────────────────────────────────
 qt_add_executable(MaximumTrainer WIN32 MACOSX_BUNDLE app/main.cpp)
-target_link_libraries(MaximumTrainer PRIVATE mt_core mt_gameplugin)
+target_link_libraries(MaximumTrainer PRIVATE mt_core)
 mt_set_warnings(MaximumTrainer)
 set_target_properties(MaximumTrainer PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${MT_APP_OUTPUT_DIR}"

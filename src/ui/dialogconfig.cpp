@@ -400,18 +400,10 @@ void DialogConfig::initUi() {
     ui->comboBox_displayCadence->setCurrentIndex(account->display_cadence - 1);
     ui->comboBox_displayPowerBalance->setCurrentIndex(account->display_power_balance);
 
-    // The Game (index 2) is single-rider (no use in multi-rider studio) and
-    // makes no sense in free ride (no targets/finish) — drop it from the
-    // selector in both cases so it can't be picked.
-    const bool freeRide = parentDialog
-            && parentDialog->workout.getWorkoutNameEnum() == Workout::OPEN_RIDE;
-    if ((account->enable_studio_mode || freeRide) && ui->comboBox_displayVideo->count() > 2)
-        ui->comboBox_displayVideo->removeItem(2);
-    ui->comboBox_displayVideo->setCurrentIndex(
-        qMin(account->display_video, ui->comboBox_displayVideo->count() - 1));
-    // Home-page URL applies to the Web Browser option only (index 1), not Game.
-    ui->label_homePage->setVisible(account->display_video == 1);
-    ui->lineEdit_homePage->setVisible(account->display_video == 1);
+    const bool webBrowser = account->display_video == 1;
+    ui->comboBox_displayVideo->setCurrentIndex(webBrowser ? 1 : 0);
+    ui->label_homePage->setVisible(webBrowser);
+    ui->lineEdit_homePage->setVisible(webBrowser);
 
     ui->lineEdit_homePage->setText(AppSettings::readWorkoutBrowserHomePage());
 

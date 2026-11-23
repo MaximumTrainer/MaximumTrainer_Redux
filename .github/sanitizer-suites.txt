@@ -8,7 +8,6 @@ intervals_icu/intervals_icu_dao_bearer_tests
 intervals_icu/intervals_icu_oauth_exchange_tests
 strava/strava_tests
 group/group_tests
-game/game_tests
 credential_store/credential_store_tests
 config_bootstrap/config_bootstrap_tests
 settings/settings_tests

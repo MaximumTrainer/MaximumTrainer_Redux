@@ -41,7 +41,7 @@ LD_LIBRARY_PATH=/tmp/qwt6/lib ./build/release/MaximumTrainer
 ```
 
 - Local Qt is the Qt 6.10 system install (`qmake6` only matters for building QWT). CI pins Qt **6.11.3** (interim - 6.11 is not LTS; 6.12.0 is blocked: its Windows WebEngine package is a July pre-release build that cannot load against the final qtbase, so wait for 6.12.1, see #332) - local Qt may differ.
-- **Layout:** root `CMakeLists.txt` + `cmake/` helpers; `src/CMakeLists.txt` lists every app source (`mt_core` object library + `MaximumTrainer` executable); `src/game` is the `MaximumTrainer.Game` QML module (RetroRace.qml compiled by qmlcachegen; keep it typed: `pragma ComponentBehavior: Bound`, typed functions, `FINAL` controller properties); `tests/CMakeLists.txt` declares each suite with `mt_add_test`. **Adding a source file means adding it to the CMake list.**
+- **Layout:** root `CMakeLists.txt` + `cmake/` helpers; `src/CMakeLists.txt` lists every app source (`mt_core` object library + `MaximumTrainer` executable); `tests/CMakeLists.txt` declares each suite with `mt_add_test`. **Adding a source file means adding it to the CMake list.**
 - **Options:** `MT_BUILD_APP=OFF` (suites only, no QWT/WebEngine), `MT_WERROR=ON` (CI), `MT_SANITIZE="address;undefined"`.
 - **Incremental builds:** `cmake --build build`. Ninja tracks dependencies, so no clean builds are needed after config changes.
 

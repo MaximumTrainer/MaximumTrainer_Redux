@@ -180,7 +180,7 @@ jobs:
       run: pip install "clang-tidy==${CLANG_TIDY_VERSION}"
 
     # No ccache: a launcher prefix confuses clang-tidy's driver detection.
-    # Building the app generates the moc/uic/qmlcachegen sources it includes.
+    # Building the app generates the moc/uic sources it includes.
     - name: Build and record compile commands
       run: |
         cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DQWT_INSTALL="$QWT_DIR" -DMT_BUILD_TESTS=OFF

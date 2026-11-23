@@ -1,6 +1,6 @@
 #include "clock.h"
 #include "myconstants.h"
-#include "cyclingphysics.h"   // shared power→speed model (also used by the retro race)
+#include "cyclingphysics.h"
 
 
 Clock::Clock(QString objectName, QObject *parent) :
@@ -140,9 +140,8 @@ void Clock::timerSpeedTimeout() {
         double fractionSecond = diffTime / 1000.0;
 
         // One pass per rider (1 solo, up to nbMaxUserStudio in Studio): integrate
-        // each rider's flat-road power→speed via the shared CyclingPhysics model
-        // (the same one the retro race uses, so virtual speed and the race agree),
-        // then emit it. Uses rider+bike mass (weightKG) and the rider's CdA.
+        // each rider's flat-road power→speed via the CyclingPhysics model, then
+        // emit it. Uses rider+bike mass (weightKG) and the rider's CdA.
         for (int i=0; i<nbUser; i++) {
             currentSpeedMS[i] = CyclingPhysics::stepSpeed(
                 currentSpeedMS[i], currentPowerWatts[i], weightKG[i], cda[i], fractionSecond);

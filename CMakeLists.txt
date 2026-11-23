@@ -35,15 +35,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(MT_APP_OUTPUT_DIR "${CMAKE_BINARY_DIR}/release" CACHE PATH "App binary output directory")
 set(MT_TEST_OUTPUT_DIR "${CMAKE_BINARY_DIR}/tests" CACHE PATH "Test binary output directory")
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets Network Quick Qml)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets Network)
 if(MT_BUILD_APP)
-    find_package(Qt6 REQUIRED COMPONENTS PrintSupport QuickWidgets WebSockets)
+    find_package(Qt6 REQUIRED COMPONENTS PrintSupport WebSockets)
 endif()
 find_package(Qt6 QUIET OPTIONAL_COMPONENTS
-    PrintSupport QuickWidgets WebSockets Concurrent Bluetooth WebEngineWidgets WebEngineCore
+    PrintSupport WebSockets Concurrent Bluetooth WebEngineWidgets WebEngineCore
     Multimedia MultimediaWidgets UiTools Test)
 qt_standard_project_setup(REQUIRES 6.5)
-qt_policy(SET QTP0004 NEW)
 
 include(cmake/Qwt.cmake)
 include(cmake/Warnings.cmake)
