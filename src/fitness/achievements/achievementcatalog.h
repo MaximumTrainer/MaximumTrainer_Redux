@@ -12,7 +12,7 @@ struct WorkoutHistorySummary;
 /// and "peak" ones are checked every second of a ride (AchievementLiveTracker).
 namespace AchievementCatalog {
 
-enum class Category { Milestones, Endurance, Consistency, Fitness, Power, Special };
+enum class Category { Milestones, Endurance, Consistency, Fitness, Power, Courses, Special };
 
 enum class Kind {
     RideCount,       ///< number of rides
@@ -105,6 +105,8 @@ inline const QString GroupRide     = QStringLiteral("group_ride");
 inline const QString GroupHost     = QStringLiteral("group_host");
 inline const QString GroupJoin     = QStringLiteral("group_join");
 inline const QString StudioHost    = QStringLiteral("studio_host");
+/// Crossing the finish line of a course (Courses tab); one per course id.
+inline QString courseFinished(const QString &courseId) { return QStringLiteral("course_") + courseId; }
 }
 
 } // namespace AchievementCatalog

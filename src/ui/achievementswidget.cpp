@@ -306,7 +306,7 @@ void AchievementsWidget::render()
     m_sections->addWidget(buildRecordsSection(m_content));
 
     for (Category category : {Category::Milestones, Category::Endurance, Category::Consistency,
-                              Category::Fitness, Category::Power, Category::Special}) {
+                              Category::Fitness, Category::Power, Category::Courses, Category::Special}) {
         auto *section = new QWidget(m_content);
         auto *sectionLayout = new QVBoxLayout(section);
         sectionLayout->setContentsMargins(0, 0, 0, 0);

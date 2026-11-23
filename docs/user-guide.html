@@ -393,6 +393,7 @@
         <li><a href="#workout-player">The Workout Player</a></li>
         <li><a href="#during-workout">During a Workout</a></li>
         <li><a href="#group-workouts">Group Workouts</a></li>
+        <li><a href="#courses">Courses (Beta)</a></li>
 
         <li class="toc-section">Post-Workout</li>
         <li><a href="#saving-activity">Saving Your Activity</a></li>
@@ -449,6 +450,11 @@
             <div class="card-icon">👥</div>
             <h4>Group Workouts</h4>
             <p>Ride the same workout with friends over the internet, each at their own FTP. <a href="#group-workouts">How it works</a></p>
+          </div>
+          <div class="guide-card">
+            <div class="card-icon">⛰️</div>
+            <h4>Courses (Beta)</h4>
+            <p>Ride Alpe d'Huez, Mont Ventoux or the Longchamp loop against bots, and draft on their wheels. <a href="#courses">How it works</a></p>
           </div>
         </div>
 
@@ -1197,6 +1203,61 @@
         </div>
       </section>
 
+      <!-- ── Courses ───────────────────────────────────────────── -->
+      <section class="guide-section" id="courses">
+        <h2>⛰️ Courses (Beta)</h2>
+        <p>
+          Ride a real road against 20 computer riders. Your speed comes from your power, your
+          weight and the slope of the road, and your trainer follows the road's gradient.
+        </p>
+
+        <figure class="guide-screenshot">
+          <img src="assets/screenshots/screenshot_course_race.png"
+               alt="A course in progress: the route seen from above with numbered rider dots, the standings, and the whole course coloured by gradient" />
+          <figcaption>Riding Alpe d'Huez against the bots</figcaption>
+        </figure>
+
+        <h3>Riding a course</h3>
+        <ol class="steps">
+          <li>Click <strong>Courses</strong> in the left bar.</li>
+          <li>Find a course in the list or with the search box: the <strong>Longchamp loop</strong> in Paris (flat,
+              6 laps), <strong>Alpe d'Huez</strong> or <strong>Mont Ventoux</strong> from Bédoin.</li>
+          <li>Check <strong>Your weight</strong>: it is taken from your profile and sets your speed on the climbs.
+              Changing it here updates your profile.</li>
+          <li>Set the number of <strong>Bots</strong> (20 by default, up to 50) and their <strong>Bot strength</strong>
+              range in W/kg (2.2 to 4.0 by default).</li>
+          <li><strong>Double-click</strong> the course (or press <kbd>Enter</kbd>), choose your connection method as
+              for any workout, and start pedalling.</li>
+        </ol>
+
+        <h3>On the road</h3>
+        <ul>
+          <li><strong>Pace bots.</strong> About a third of the bots, called <em>Pace 1</em>, <em>Pace 2</em> and so on,
+              ride together at 3.0 W/kg (or the nearest end of your range). The others are spread evenly across the
+              range.</li>
+          <li><strong>Drafting.</strong> Ride right behind another rider to save effort: the closer you are, the more
+              you save (most at 1 m or less, nothing beyond 10 m), and more riders in front shelter you more. The card
+              shows the wheel you are on, the gap and the power you save. Drafting is worth a lot on the flat and very
+              little on a steep climb.</li>
+          <li><strong>The map</strong> follows you, with the riders just ahead and behind as numbered dots (you are
+              orange); the small map in the corner shows the whole course. The standings list each rider's W/kg and
+              how far ahead or behind you they are.
+              The card under your dot shows your speed, your W/kg (red above your FTP) and who you are drafting; a
+              dot's border flashes red during a sprint (1.5 times your FTP per kg or more). The
+              <strong>gradient profile</strong> along the bottom colours the whole course from green (flat) to red
+              (over 9 %), with the grade and altitude where you are.</li>
+          <li><strong>Trainer.</strong> A smart trainer follows the road at 50 % difficulty: a 10 % ramp feels like 5 %.
+              Your speed still uses the real gradient.</li>
+          <li>Your ride is saved and uploaded like any other activity. Crossing the finish line earns that
+              course's achievement.</li>
+        </ul>
+
+        <div class="callout">
+          <strong>Beta:</strong> courses are solo rides against bots for now, and not available in Studio Mode.
+          Map data &copy; OpenStreetMap contributors; elevation from EU-DEM (Copernicus).
+        </div>
+      </section>
+
       <!-- ── Saving ────────────────────────────────────────────── -->
       <section class="guide-section" id="saving-activity">
         <h2>💾 Saving Your Activity</h2>
@@ -1276,7 +1337,7 @@
         <p>
           MaximumTrainer awards 64 achievements, saved on your computer. Open the
           <strong>Achievements</strong> tab (trophy icon in the left sidebar) to see them by
-          category - Milestones, Endurance, Consistency, Fitness, Power &amp; Cadence and Special: earned ones show the
+          category - Milestones, Endurance, Consistency, Fitness, Power &amp; Cadence, Courses and Special: earned ones show the
           date, locked ones show how to earn them and your progress (for example
           <em>7 / 10 workouts</em>).
         </p>

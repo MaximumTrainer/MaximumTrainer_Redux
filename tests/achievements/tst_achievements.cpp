@@ -75,7 +75,7 @@ private slots:
             QVERIFY(!definition.description.isEmpty());
             QCOMPARE(find(definition.key), &definition);
         }
-        QCOMPARE(categories.size(), 6);
+        QCOMPARE(categories.size(), 7);
         QVERIFY(find(Events::FtpRaised));
         QVERIFY(!find(QStringLiteral("nope")));
     }

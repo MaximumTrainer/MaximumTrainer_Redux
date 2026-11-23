@@ -328,6 +328,9 @@ void TstSettings::testUiStateKeys_onDiskNamesAndDefaults()
     checkKey(Login::LastLoggedKey,      "SettingsGeneral/lastLoggedKey",      QString());
     checkKey(Login::IntervalsIcuProfileSyncedAt, "intervalsIcu/profileSyncedAt", QString());
     checkKey(Group::RelayUrl, "group_relay_url", QString());
+    checkKey(Courses::Bots, "courses/bots", 20);
+    checkKey(Courses::MinWattsPerKg, "courses/min_watts_per_kg", 2.2);
+    checkKey(Courses::MaxWattsPerKg, "courses/max_watts_per_kg", 4.0);
 }
 
 void TstSettings::testUiStateKeys_roundTripValueTypes()

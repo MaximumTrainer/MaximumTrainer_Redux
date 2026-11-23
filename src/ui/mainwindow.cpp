@@ -67,6 +67,7 @@
 #include "groupsession.h"
 #include "groupworkoutcodec.h"
 #include "joingroupdialog.h"
+#include "coursespage.h"
 
 #ifdef GC_WASM_BUILD
 #include <emscripten.h>
@@ -156,21 +157,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ftb = new FancyTabBar(FancyTabBar::TabBarPosition::Left, ui->widget_fancyMenu);
     ftb->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    // Tab indices match the pages in stackedWidget_menu.
-    ftb->insertTab(0, QIcon(account->rowing_mode ? ":/image/icon/rower"
-                                                  : ":/image/icon/workoutMan"), tr("Workout"));
-    ftb->insertTab(1, QIcon(":/image/icon/intervals"),   tr("Intervals.icu"));
-    ftb->insertTab(2, QIcon(":/image/icon/studio"), tr("Studio"));
-    ftb->insertTab(3, QIcon(":/image/icon/bluetooth"), tr("Devices"));
-    ftb->insertTab(4, QIcon(":/image/icon/chart"), tr("History"));
-    ftb->insertTab(5, QIcon(":/image/icon/trophy"), tr("Achievements"));
-
-    ftb->setTabEnabled(0, true);
-    ftb->setTabEnabled(1, true);
-    ftb->setTabEnabled(2, true);
-    ftb->setTabEnabled(3, true);
-    ftb->setTabEnabled(4, true);
-    ftb->setTabEnabled(5, true);
+    // Stacked pages: Workout 0, Intervals 1, Studio 2, History 3, Sensors 4,
+    // Achievements 5 and Courses 6 (both added below).
+    int nextTab = 0;
+    auto addTab = [&](int &slot, int page, const QIcon &icon, const QString &label) {
+        slot = nextTab++;
+        ftb->insertTab(slot, icon, label);
+        m_tabToPage.append(page);
+    };
+    addTab(m_tabs.workout, 0, QIcon(account->rowing_mode ? ":/image/icon/rower" : ":/image/icon/workoutMan"), tr("Workout"));
+    addTab(m_tabs.courses, 6, CoursesPage::tabIcon(), tr("Courses"));
+    addTab(m_tabs.intervals, 1, QIcon(":/image/icon/intervals"), tr("Intervals.icu"));
+    addTab(m_tabs.studio, 2, QIcon(":/image/icon/studio"), tr("Studio"));
+    addTab(m_tabs.devices, 4, QIcon(":/image/icon/bluetooth"), tr("Devices"));
+    addTab(m_tabs.history, 3, QIcon(":/image/icon/chart"), tr("History"));
+    addTab(m_tabs.achievements, 5, QIcon(":/image/icon/trophy"), tr("Achievements"));
+    for (int tab = 0; tab < nextTab; ++tab)
+        ftb->setTabEnabled(tab, true);
 
 
     ftb->setCurrentIndex(0);
@@ -198,6 +201,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QTimer::singleShot(0, achievementManager, [achievementManager]() { achievementManager->evaluateHistory(false); });
     m_achievementsPage = new AchievementsWidget(ui->stackedWidget_menu);
     ui->stackedWidget_menu->addWidget(m_achievementsPage);   // page 5, after the .ui pages
+    m_coursesPage = new CoursesPage(ui->stackedWidget_menu);
+    m_coursesPage->setProfileWeightKg(account->weight_kg);
+    ui->stackedWidget_menu->addWidget(m_coursesPage);     // page 6
+    connect(m_coursesPage, &CoursesPage::rideRequested, this, &MainWindow::rideCourse);
 
 
     //Parse Workouts
@@ -436,24 +443,22 @@ void MainWindow::workoutOver() {
 void MainWindow::leftMenuChanged(int tabSelected) {
 
 
-    // Tabs: 0 Workout, 1 Intervals.icu, 2 Studio, 3 Devices, 4 History, 5 Achievements.
-    // Stacked pages: Workout 0, Intervals 1, Studio 2, History 3, Sensors 4, Achievements 5.
-    static const int tabToPage[] = {0, 1, 2, 4, 3, 5};
-    const int pageIndex = (tabSelected >= 0 && tabSelected < 6)
-                              ? tabToPage[tabSelected]
-                              : tabSelected;
-    ui->stackedWidget_menu->setCurrentIndex(pageIndex);
+    if (tabSelected < 0 || tabSelected >= m_tabToPage.size())
+        return;
+    ui->stackedWidget_menu->setCurrentIndex(m_tabToPage.at(tabSelected));
     currentIndexLeftMenu = tabSelected;
 
     // Refresh saved sensors each time the Devices tab is opened.
-    if (tabSelected == 3) {
+    if (tabSelected == m_tabs.devices) {
         if (auto *sw = qobject_cast<SensorsWidget*>(ui->sensorsWidget))
             sw->reload();
     }
-    if (tabSelected == 5 && m_achievementsPage)
+    if (tabSelected == m_tabs.achievements && m_achievementsPage)
         m_achievementsPage->reload();
     // Refresh studio settings each time the Studio tab is opened.
-    if (tabSelected == 2) {
+    if (tabSelected == m_tabs.courses && m_coursesPage)
+        m_coursesPage->setProfileWeightKg(account->weight_kg);
+    if (tabSelected == m_tabs.studio) {
         if (auto *sw = qobject_cast<StudioWidget*>(ui->studioWidget))
             sw->reload();
     }
@@ -581,7 +586,8 @@ void MainWindow::enableStudioMode(bool enable) {
 
     // Disable the Devices tab while in studio mode: sensor pairing is
     // per-rider and not meaningful in the multi-rider studio view.
-    ftb->setTabEnabled(3, !enable);
+    ftb->setTabEnabled(m_tabs.devices, !enable);
+    ftb->setTabEnabled(m_tabs.courses, !enable);   // the bot race is single-rider
 
     // Persist so the toggle state survives a restart (saveDisplayPrefs writes
     // enable_studio_mode + nb_user_studio together).
@@ -918,7 +924,7 @@ void MainWindow::executeWorkout(Workout workout) {
         box.setDefaultButton(goToDevices);
         box.exec();
         if (box.clickedButton() == goToDevices) {
-            ftb->setCurrentIndex(3);
+            ftb->setCurrentIndex(m_tabs.devices);
             return;
         }
     }
@@ -1407,17 +1413,16 @@ void MainWindow::on_actionMultiple_Workouts_triggered()
 
 void MainWindow::onNetworkOnlineChanged(bool isOnline)
 {
-    // Enable or disable the Intervals.icu sidebar tab (index 1).
-    // setTabEnabled grays out the tab entry when offline so users see it is
+    // Gray out the Intervals.icu tab when offline so users see it is
     // temporarily unavailable rather than it simply vanishing.
-    ftb->setTabEnabled(1, isOnline);
+    ftb->setTabEnabled(m_tabs.intervals, isOnline);
 
     // If the user is currently on the Intervals.icu tab and we just went
     // offline, navigate back to the Workout tab so they land on something
     // functional.
-    if (!isOnline && currentIndexLeftMenu == 1) {
-        ftb->setCurrentIndex(0);
-        leftMenuChanged(0);
+    if (!isOnline && currentIndexLeftMenu == m_tabs.intervals) {
+        ftb->setCurrentIndex(m_tabs.workout);
+        leftMenuChanged(m_tabs.workout);
     }
 }
 
@@ -1505,6 +1510,20 @@ void MainWindow::showJoinGroupDialog() {
     dialog->open();
 }
 
+void MainWindow::rideCourse(const RaceCourse &course, double riderWeightKg, const RaceBot::FieldSettings &bots) {
+    if (isInsideWorkout || m_launchingWorkout) return;
+    if (std::abs(riderWeightKg - account->weight_kg) >= 0.05)
+        account->saveProfileFields(account->FTP, account->LTHR, riderWeightKg);
+    QList<Interval> lstInterval;
+    lstInterval.append(Interval());
+    Workout ride("null", Workout::OPEN_RIDE, lstInterval, course.name(), "MaximumTrainer",
+                 tr("%1 against bots").arg(course.place()), "-", Workout::T_OTHERS);
+    m_pendingRaceCourse = course;
+    m_pendingRaceBots = bots;
+    executeWorkout(ride);
+    m_pendingRaceCourse.reset();   // a cancelled launch never attached it
+}
+
 void MainWindow::startGroupWorkout(const Workout &workout, GroupSession *session) {
     session->setParent(this);
     m_pendingGroupSession = session;
@@ -1521,6 +1540,10 @@ void MainWindow::startGroupWorkout(const Workout &workout, GroupSession *session
 }
 
 void MainWindow::attachPendingGroupSession(WorkoutDialog *dialog) {
+    if (m_pendingRaceCourse) {
+        dialog->setRace(*m_pendingRaceCourse, m_pendingRaceBots);
+        m_pendingRaceCourse.reset();
+    }
     if (!m_pendingGroupSession) return;
     GroupSession *session = m_pendingGroupSession;
     m_pendingGroupSession = nullptr;

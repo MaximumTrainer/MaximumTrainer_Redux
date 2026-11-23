@@ -17,7 +17,7 @@ endif()
 add_library(mt_core OBJECT)
 
 set(MT_SOURCE_DIRS
-    app btle btle/zwift fitness fitness/fit fitness/achievements group model
+    app btle btle/zwift fitness fitness/fit fitness/achievements group model race
     persistence/db persistence/file ui ui/components ui/plots ui/workout_editor workout)
 foreach(dir IN LISTS MT_SOURCE_DIRS)
     list(APPEND MT_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/${dir}")
@@ -52,6 +52,8 @@ target_sources(mt_core PRIVATE
     group/groupprotocol.cpp group/groupsession.cpp group/groupridecoordinator.cpp
     group/groupsimtest.cpp group/groupworkoutcodec.cpp group/grouppanel.cpp
     group/joingroupdialog.cpp group/groupridersmodel.cpp group/groupriderdelegate.cpp
+    # race
+    race/racecourse.cpp race/racebot.cpp race/racesimulation.cpp race/raceview.cpp race/coursespage.cpp
     # ui
     ui/mainwindow.cpp ui/mainwindow_harness.cpp ui/workoutdialog.cpp ui/main_workoutpage.cpp
     ui/dialogconfig.cpp ui/dialoglogin.cpp ui/z_stylesheet.cpp

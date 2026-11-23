@@ -33,6 +33,9 @@
 #include <QUrl>
 #include "zwift_click_test.h"
 #include "groupsimtest.h"
+#include "racesimulation.h"
+#include "raceview.h"
+#include "apptheme.h"
 #endif
 
 
@@ -301,6 +304,30 @@ int main(int argc, char *argv[]) {
         const QString outPath = idx + 1 < cliArgs.size() ? cliArgs.at(idx + 1) : QStringLiteral("group-panel.png");
         const int riders = idx + 2 < cliArgs.size() && cliArgs.at(idx + 2).toInt() > 0 ? cliArgs.at(idx + 2).toInt() : 20;
         return GroupSimTest::renderPanelPreview(outPath, riders) ? 0 : 1;
+    }
+
+    // --race-shot out.png [course] [seconds]: ride a bot race at 3 W/kg for the
+    // given time and save the race view (layout check without a trainer).
+    if (cliArgs.contains(QLatin1String("--race-shot"))) {
+        splash.hide();
+        const int idx = cliArgs.indexOf(QLatin1String("--race-shot"));
+        const QString outPath = idx + 1 < cliArgs.size() ? cliArgs.at(idx + 1) : QStringLiteral("race.png");
+        const QString courseId = idx + 2 < cliArgs.size() ? cliArgs.at(idx + 2) : QStringLiteral("longchamp");
+        const double seconds = idx + 3 < cliArgs.size() ? cliArgs.at(idx + 3).toDouble() : 600.0;
+        const auto course = RaceCourse::fromFile(QStringLiteral(":/courses/%1.json").arg(courseId));
+        if (!course) return 1;
+        if (qEnvironmentVariableIsSet("MT_PREVIEW_DARK")) qApp->setPalette(AppTheme::darkPalette());
+        constexpr double kRiderKg = 72.0;
+        RaceSimulation race(*course, QStringLiteral("You"), kRiderKg, RaceSimulation::kBotBikeMassKg, 0.30);
+        for (const RaceBot &bot : RaceBot::defaultField(42)) race.addBot(bot);
+        const int ticks = static_cast<int>(seconds * 4.0);   // 0.25 s steps
+        for (int tick = 0; tick < ticks && !race.youFinished(); ++tick) {
+            race.setYourPower(3.0 * kRiderKg);
+            race.step(0.25);
+        }
+        RaceView view(&race);
+        view.resize(1350, 640);
+        return view.grab().save(outPath) ? 0 : 1;
     }
 
     // --group-sim [riders] [seconds] [--relay URL] [--join CODE]: headless

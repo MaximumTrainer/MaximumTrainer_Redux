@@ -365,9 +365,12 @@ void MainWindow::screenshotNextStep()
             dconfig->hide();
             qInfo() << "Screenshot: settings (Preferences dialog)";
         }
-        // Capture the Bluetooth Sensors page (FancyTabBar index 3), which hosts
-        // sensor pairing plus the trainer/sensor settings.
-        ftb->setCurrentIndex(3);
+        ftb->setCurrentIndex(m_tabs.courses);
+        QCoreApplication::processEvents();
+        grab().save(m_ssOutputDir + QLatin1String("/screenshot_courses.png"), "PNG");
+        qInfo() << "Screenshot: courses";
+        // The Devices page hosts sensor pairing plus the trainer/sensor settings.
+        ftb->setCurrentIndex(m_tabs.devices);
         QCoreApplication::processEvents();
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_sensors.png"), "PNG");
         qInfo() << "Screenshot: sensors";
@@ -426,7 +429,7 @@ void MainWindow::screenshotNextStep()
     // ── Step 6: capture the Studio tab off (switch only) then on ─────────
     case 6: {
         StudioWidget *sw = qobject_cast<StudioWidget*>(ui->studioWidget);
-        ftb->setCurrentIndex(2);
+        ftb->setCurrentIndex(m_tabs.studio);
 
         // Off: only the Studio Mode switch row should show, pinned at the top.
         enableStudioMode(false);
@@ -454,7 +457,7 @@ void MainWindow::screenshotNextStep()
 
     // ── Step 8: switch to Intervals.icu tab (tab 1) ─────────────────────
     case 8:
-        ftb->setCurrentIndex(1);
+        ftb->setCurrentIndex(m_tabs.intervals);
         raise();
         activateWindow();
         QCoreApplication::processEvents();
@@ -473,7 +476,7 @@ void MainWindow::screenshotNextStep()
 
     // ── Step 12: switch to History tab (tab 4) ────────────────────────────
     case 12:
-        ftb->setCurrentIndex(4);
+        ftb->setCurrentIndex(m_tabs.history);
         raise();
         activateWindow();
         QCoreApplication::processEvents();

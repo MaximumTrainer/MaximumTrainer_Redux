@@ -402,6 +402,11 @@ void TopMenuWorkout::setWorkoutNameLabel(QString label) {
 }
 
 
+void TopMenuWorkout::setStartLabel(const QString &label) {
+    ui->pushButton_start->setText(label);
+}
+
+
 void TopMenuWorkout::setButtonStartPaused(bool showPause) {
 
 

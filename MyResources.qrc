@@ -133,6 +133,11 @@
     <qresource prefix="/data">
         <file>resources/data/default_radios.json</file>
     </qresource>
+    <qresource prefix="/courses">
+        <file alias="longchamp.json">resources/courses/longchamp.json</file>
+        <file alias="alpe-dhuez.json">resources/courses/alpe-dhuez.json</file>
+        <file alias="mont-ventoux.json">resources/courses/mont-ventoux.json</file>
+    </qresource>
     <qresource prefix="/fonts">
         <file>resources/fonts/Inter-Regular.ttf</file>
         <file>resources/fonts/Inter-SemiBold.ttf</file>

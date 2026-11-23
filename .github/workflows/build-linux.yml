@@ -251,13 +251,13 @@ jobs:
         cmake --build build --target \
           logger_tests apptheme_tests intervals_icu_tests importer_workout_zwo_tests \
           intervals_icu_dao_bearer_tests intervals_icu_oauth_exchange_tests strava_tests \
-          group_tests credential_store_tests config_bootstrap_tests settings_tests \
+          group_tests race_tests credential_store_tests config_bootstrap_tests settings_tests \
           webengine_safe_mode_tests history_tests studio_tests workout_export_tests \
           intervals_icu_integration_tests
 
     - name: Run unit suites
       run: |
-        ctest --test-dir build --output-on-failure -j"$(nproc)" -R '^(logger|apptheme|intervals_icu|importer_workout_zwo|intervals_icu_dao_bearer|intervals_icu_oauth_exchange|strava|group|credential_store|config_bootstrap|settings|webengine_safe_mode|history|studio|workout_export)_tests$'
+        ctest --test-dir build --output-on-failure -j"$(nproc)" -R '^(logger|apptheme|intervals_icu|importer_workout_zwo|intervals_icu_dao_bearer|intervals_icu_oauth_exchange|strava|group|race|credential_store|config_bootstrap|settings|webengine_safe_mode|history|studio|workout_export)_tests$'
 
     - name: Run Intervals.icu live integration tests
       run: |
@@ -459,6 +459,7 @@ jobs:
                  build/tests/ui_navigation_tests \
                  build/tests/workout_dialog_tests \
                  build/tests/join_group_dialog_tests \
+                 build/tests/race_dialog_tests \
                  build/release/MaximumTrainer
 
     - name: Start Xvfb
@@ -486,6 +487,9 @@ jobs:
     - name: Join group dialog tests
       # Needs an active window for keyboard focus; Xvfb has no window manager.
       run: QT_QPA_PLATFORM=offscreen ./build/tests/join_group_dialog_tests -v2
+
+    - name: Bot race in the workout dialog
+      run: QT_QPA_PLATFORM=offscreen ./build/tests/race_dialog_tests -v2
 
     - name: UI navigation tests
       # MT_NO_NETWORK=1 disables all outbound network calls in the launched

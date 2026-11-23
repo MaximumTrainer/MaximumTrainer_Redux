@@ -63,6 +63,8 @@
 #include "groupsession.h"
 #include "grouppanel.h"
 #include "groupridecoordinator.h"
+#include "raceview.h"
+#include "racesimulation.h"
 
 namespace {
 }
@@ -441,6 +443,13 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     ui->splitter->setStyleSheet(
         QStringLiteral("QSplitter::handle:vertical { background: #3a3f4b; }"
                        "QSplitter::handle:vertical:hover { background: #5a6473; }"));
+    // When the window grows (maximised or fullscreen after it opens), the
+    // extra height goes to the video/race area and the interval graph; the
+    // toolbar and the bottom metric pane keep the height the rider gave them.
+    ui->splitter->setStretchFactor(0, 0);
+    ui->splitter->setStretchFactor(1, 1);
+    ui->splitter->setStretchFactor(2, 1);
+    ui->splitter->setStretchFactor(3, 0);
 
 
     connect(this, &WorkoutDialog::increaseDifficulty, ui->widget_workoutPlot, &WorkoutPlot::increaseDifficulty);
@@ -983,7 +992,7 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
         if (virtualShiftingActive())
             sendGearLoad();
         else
-            sendSlopes(0);
+            sendSlopes(m_race ? raceTrainerSlopePercent() : 0);
         return;
     }
 
@@ -1828,6 +1837,10 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
         return;
 
     if (userID == 1 && m_groupRide) m_groupRide->recordPower(value);
+    if (userID == 1 && m_race) {
+        m_racePowerW = value;
+        m_racePowerAtMs = QDateTime::currentMSecsSinceEpoch();
+    }
 
     // Track for sensor dropout detection (non-studio, user 1 only)
     if (!account->enable_studio_mode && isWorkoutStarted && !isWorkoutOver)
@@ -2018,7 +2031,10 @@ void WorkoutDialog::foldConnectionBoard()
     if (!m_connectionBoard || !m_connectionBoard->isVisible())
         return;
     m_connectionBoard->hide();
-    ui->widgetVideo->show();
+    if (m_raceView)
+        m_raceView->show();
+    else
+        ui->widgetVideo->show();
 }
 
 UserStudioWidget *WorkoutDialog::riderWidget(int rider) const
@@ -2536,6 +2552,13 @@ WebBrowserView *WorkoutDialog::ensureWebPlayer() {
 // first time the Web Browser view is shown.
 void WorkoutDialog::showVideoPlayer(int choice) {
 
+    if (m_raceView) {
+        if (webPlayer) webPlayer->pauseVideo();
+        ui->widget_webPlayer->setVisible(false);
+        ui->widgetVideo->setVisible(false);
+        return;
+    }
+
     /// Standard
     if (choice != 1) {
         // Hiding the view stops rendering but not playback, so pause it too or
@@ -2905,6 +2928,22 @@ void WorkoutDialog::showEvent(QShowEvent *event) {
 
     QDialog::showEvent(event);
 
+    // In a course the graph is hidden and Qt would share its space out, the
+    // bottom pane included. Once laid out, give the bottom pane its saved
+    // height back and the race view the rest.
+    if (m_race)
+        QTimer::singleShot(0, this, [this]() {
+            QList<int> sizes = ui->splitter->sizes();
+            if (sizes.size() < 4)
+                return;
+            const int bottom = AppSettings::read(QSettings(), SettingKeys::WorkoutDialog::Splitter3);
+            const int shared = sizes.at(1) + sizes.at(2) + sizes.at(3);
+            sizes[3] = std::clamp(bottom, 0, shared);
+            sizes[2] = 0;
+            sizes[1] = shared - sizes[3];
+            ui->splitter->setSizes(sizes);
+        });
+
     // Build and load the web player once, in the background, just after the
     // dialog is mapped — while its container is still hidden, so the native
     // window is realized invisibly and switching to it later never flickers the
@@ -3023,6 +3062,13 @@ void WorkoutDialog::saveInterface() {
     AppSettings::write(settings, Keys::Size, size());
     AppSettings::write(settings, Keys::Pos, pos());
 
+    // A course hides the interval graph: keep only the bottom pane's height,
+    // which normal workouts share; the graph's own size stays as it was.
+    if (m_race) {
+        AppSettings::write(settings, Keys::Splitter3, ui->splitter->sizes().at(3));
+        AppSettings::write(settings, Keys::Fullscreen, isFullScreen());
+        return;
+    }
     const QList<int> sizeNow = ui->splitter->sizes();
     AppSettings::write(settings, Keys::Splitter0, sizeNow.at(0));
     AppSettings::write(settings, Keys::Splitter1, sizeNow.at(1));
@@ -3599,6 +3645,62 @@ void WorkoutDialog::showNormalWin() {
 }
 
 
+
+void WorkoutDialog::setRace(const RaceCourse &course, const RaceBot::FieldSettings &bots) {
+    constexpr quint32 kFieldSeed = 2026;
+    const double riderKg = account->weight_kg;
+    const QString name = account->display_name.trimmed().isEmpty() ? tr("You") : account->display_name.trimmed();
+    m_race = std::make_unique<RaceSimulation>(course, name, riderKg, account->bike_weight_kg, account->userCda);
+    for (const RaceBot &bot : RaceBot::field(bots, kFieldSeed))
+        m_race->addBot(bot);
+
+    m_raceView = new RaceView(m_race.get(), ui->widgetVideo->parentWidget());
+    if (riderKg > 0.0)
+        m_raceView->setRedLineWattsPerKg(account->FTP / riderKg);   // above FTP: red
+    if (auto *videoLayout = qobject_cast<QBoxLayout*>(ui->widgetVideo->parentWidget()->layout()))
+        videoLayout->insertWidget(videoLayout->indexOf(ui->widgetVideo), m_raceView, 1);
+    ui->widget_workoutPlot->hide();
+    ui->widget_topMenu->setStartLabel(tr("Start Course"));
+    ui->widget_topMenu->setWorkoutNameLabel(course.name());
+    showVideoPlayer(0);
+
+    m_raceTimer = new QTimer(this);
+    m_raceTimer->setInterval(40);   // 25 frames a second, so riders glide
+    connect(m_raceTimer, &QTimer::timeout, this, &WorkoutDialog::stepRace);
+    m_raceClock.start();
+    m_raceTimer->start();
+    qInfo() << "Bot race on" << course.id() << "rider" << riderKg << "kg," << bots.count << "bots"
+            << bots.minWattsPerKg << "-" << bots.maxWattsPerKg << "W/kg";
+}
+
+void WorkoutDialog::stepRace() {
+    // Dropped sensor: no power for 3 s counts as freewheeling.
+    constexpr qint64 kPowerStaleMs = 3000;
+    const double dtSec = m_raceClock.restart() / 1000.0;
+    // Your W/kg shows while you warm up, before the race moves.
+    const bool fresh = QDateTime::currentMSecsSinceEpoch() - m_racePowerAtMs <= kPowerStaleMs;
+    m_race->setYourPower(fresh ? m_racePowerW : 0);
+    if (!isWorkoutStarted || isWorkoutPaused || isWorkoutOver || m_race->youFinished()) {
+        m_raceView->update();
+        return;
+    }
+    // Cap a stalled event loop at one second so nobody teleports.
+    m_race->step((std::min)(dtSec, 1.0));
+    if (const std::optional<double> finish = m_race->you().finishTimeSec) {
+        qInfo() << "Bot race finished" << m_race->yourPosition() << "of" << m_race->riders().size()
+                << "in" << *finish << "s";
+        achievementManager->recordEvent(AchievementCatalog::Events::courseFinished(m_race->course().id()));
+    }
+    m_raceView->update();
+}
+
+double WorkoutDialog::raceTrainerSlopePercent() const {
+    // Everyone rides the same 50 % trainer difficulty, like Zwift's default.
+    constexpr double kTrainerDifficulty = 0.5;
+    if (!m_race || m_race->youFinished())
+        return 0.0;
+    return m_race->course().gradeAt((std::max)(0.0, m_race->you().distanceM)) * 100.0 * kTrainerDifficulty;
+}
 
 void WorkoutDialog::setGroupSession(GroupSession *session) {
     if (!session) return;

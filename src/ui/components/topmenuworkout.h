@@ -35,6 +35,8 @@ public:
     void setIntervalTime(QTime time);
     void setWorkoutRemainingTime(QTime time);
     void setWorkoutTime(QTime time);
+    /// The start button's label before the first start ("Start Workout").
+    void setStartLabel(const QString &label);
 
     void showIntervalRemaining(bool);
     void showWorkoutRemaining(bool);

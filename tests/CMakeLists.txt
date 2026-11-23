@@ -153,6 +153,12 @@ mt_add_test(group_tests
     INCLUDES "${TST}/group" "${SRC}/group")
 endif()
 
+mt_add_test(race_tests
+    SOURCES "${SRC}/race/racecourse.cpp" "${SRC}/race/racebot.cpp" "${SRC}/race/racesimulation.cpp"
+        race/tst_race.cpp
+    INCLUDES "${SRC}/race" "${SRC}/fitness"
+    DEFINES MT_COURSES_DIR="${CMAKE_SOURCE_DIR}/resources/courses")
+
 # ── Intervals.icu / ZWO ──────────────────────────────────────────────────────
 mt_add_test(intervals_icu_tests
     SOURCES ${LOGGER} "${SRC}/persistence/db/intervals_icu_api.cpp"
@@ -287,6 +293,11 @@ endif()
 if(TARGET mt_core)
 mt_add_test(workout_dialog_tests
     SOURCES workout_dialog/tst_workout_dialog_erg.cpp
+    QT Gui Widgets
+    LIBS mt_core)
+
+mt_add_test(race_dialog_tests
+    SOURCES workout_dialog/tst_workout_dialog_race.cpp
     QT Gui Widgets
     LIBS mt_core)
 
