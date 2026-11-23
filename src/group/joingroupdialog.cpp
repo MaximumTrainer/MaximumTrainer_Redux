@@ -40,11 +40,14 @@ JoinGroupDialog::JoinGroupDialog(const QUrl &relayBaseUrl, const QString &defaul
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Cancel, this);
     m_joinButton = buttons->addButton(tr("Join"), QDialogButtonBox::AcceptRole);
+    m_joinButton->setDefault(true);
+    // Joining disables the inputs and focus lands on Cancel; as an auto-default
+    // button it would then take the Enter press that started the join.
+    buttons->button(QDialogButtonBox::Cancel)->setAutoDefault(false);
     layout->addWidget(buttons);
 
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(m_joinButton, &QPushButton::clicked, this, &JoinGroupDialog::join);
-    connect(m_codeEdit, &QLineEdit::returnPressed, this, &JoinGroupDialog::join);
     m_codeEdit->setFocus();
 }
 
