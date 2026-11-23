@@ -37,20 +37,6 @@ ROUTERS = {
 }
 
 COURSES = {
-    "gastown": {
-        "name": "Gastown loop",
-        "place": "Vancouver, Canada",
-        "laps": 2,
-        "loop": True,
-        "router": "bike",
-        "dem": "srtm30m",   # EU-DEM covers Europe only
-        # Water St -> Maple Tree Square -> Cordova St -> Cambie St: the
-        # downtown block the Gastown Grand Prix criterium races around.
-        "waypoints": [
-            (49.28470, -123.10980), (49.28380, -123.10440), (49.28300, -123.10460),
-            (49.28390, -123.10990), (49.28470, -123.10980),
-        ],
-    },
     "longchamp": {
         "name": "Longchamp loop",
         "place": "Bois de Boulogne, Paris, France",

@@ -41,7 +41,8 @@ public:
                                   const QString &name,
                                   const QString &description,
                                   bool onTrainer    = true,
-                                  const QString &activityType = QStringLiteral("ride"));
+                                  const QString &activityType = QStringLiteral("ride"),
+                                  const QString &kind = QStringLiteral("Workout"));
 
     /// Poll the status of a pending Strava upload.
     /// GET https://www.strava.com/api/v3/uploads/{uploadId}

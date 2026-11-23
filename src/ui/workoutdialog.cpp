@@ -3093,7 +3093,7 @@ void WorkoutDialog::checkFitFileCreated() {
     if (fitFilename != "") {
         fitFilePath        = fitFilename;
         fitFileName        = workout.getName();
-        fitFileDescription = workout.getDescription();
+        fitFileDescription = m_race ? m_race->course().place() : workout.getDescription();
         // The new ride is in the history now: count it towards the totals.
         if (!account->enable_studio_mode)
             achievementManager->evaluateHistory();
@@ -3120,6 +3120,8 @@ void WorkoutDialog::showPostWorkoutPanel()
     // Parent to the whole dialog, not the bottom widget pane.
     widgetPostWorkout = new PostWorkoutPanel(account, earnedAchievements,
                                              fitFilePath, fitFileName, fitFileDescription, this);
+    if (m_race)
+        widgetPostWorkout->setActivityKind(QStringLiteral("Course"));
     connect(widgetPostWorkout, &PostWorkoutPanel::ftpUpdated, this, &WorkoutDialog::ftp_lthr_changed);
     connect(widgetPostWorkout, &PostWorkoutPanel::keepRidingRequested, this, [this]() {
         minimizePostWorkoutPanel();

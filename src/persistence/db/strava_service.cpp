@@ -41,7 +41,8 @@ QNetworkReply* StravaService::uploadActivity(const QString &filePath,
                                               const QString &name,
                                               const QString &description,
                                               bool onTrainer,
-                                              const QString &activityType)
+                                              const QString &activityType,
+                                             const QString &kind)
 {
     auto *mgr = networkManager();
     if (!mgr) return nullptr;
@@ -55,8 +56,9 @@ QNetworkReply* StravaService::uploadActivity(const QString &filePath,
     const QString fileName = fileInfo.fileName();
     LOG_INFO("StravaService", QStringLiteral("uploadActivity: ") + filePath);
 
-    const QString attribution = QStringLiteral(
-        "Logged with MaximumTrainer — a free and open source training app: "
+    // "Workout logged with ..." or "Course logged with ...".
+    const QString attribution = kind + QStringLiteral(
+        " logged with MaximumTrainer - a free and open source cycling app: "
         "https://github.com/MaximumTrainer/MaximumTrainer_Redux");
     const QString fullDescription = description.isEmpty()
         ? attribution

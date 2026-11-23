@@ -1515,7 +1515,7 @@ void MainWindow::rideCourse(const RaceCourse &course, const RaceBot::FieldSettin
     QList<Interval> lstInterval;
     lstInterval.append(Interval());
     Workout ride("null", Workout::OPEN_RIDE, lstInterval, course.name(), "MaximumTrainer",
-                 tr("%1 against bots").arg(course.place()), "-", Workout::T_OTHERS);
+                 course.place(), "-", Workout::T_OTHERS);
     m_pendingRaceCourse = course;
     m_pendingRaceBots = bots;
     executeWorkout(ride);

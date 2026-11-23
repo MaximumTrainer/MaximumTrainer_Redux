@@ -663,7 +663,7 @@ void PostWorkoutPanel::doStravaUpload()
     StravaService svc;
     svc.setAccessToken(account->strava_access_token);
     replyPostStravaUpload = svc.uploadActivity(fitFilePath, fitFileName, fitFileDescription,
-                                               /*onTrainer*/ true);
+                                               /*onTrainer*/ true, QStringLiteral("ride"), m_activityKind);
     if (!replyPostStravaUpload) {
         setStravaPostStatus(tr("Upload to Strava (Failed — Retry)"), true);
         return;

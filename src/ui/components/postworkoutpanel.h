@@ -23,6 +23,8 @@ class PostWorkoutPanel : public QWidget
     Q_OBJECT
 
 public:
+    /// "Workout" or "Course", for the "... logged with MaximumTrainer" line.
+    void setActivityKind(const QString &kind) { m_activityKind = kind; }
     PostWorkoutPanel(Account *account, const QList<Achievement> &earnedAchievements,
                      const QString &fitFilePath, const QString &fitFileName,
                      const QString &fitFileDescription, QWidget *parent);
@@ -60,6 +62,7 @@ private:
     const QString fitFilePath;
     const QString fitFileName;
     const QString fitFileDescription;
+    QString m_activityKind = QStringLiteral("Workout");
 
     QNetworkReply *replyPostStravaUpload       = nullptr;
     QNetworkReply *replyPostStravaStatus       = nullptr;

@@ -652,6 +652,7 @@ void DialogConfig::setCourseMode() {
         item->setToolTip(tr("Not used in a course"));
     }
     ui->listWidget_settings->setCurrentRow(kSoundsRow);
+    setWindowTitle(tr("Course Config"));
 }
 
 
