@@ -2,6 +2,7 @@
 
 #include "racesimulation.h"
 
+#include <QLocale>
 #include <QPainter>
 #include <QPainterPath>
 
@@ -23,8 +24,8 @@ constexpr double kTopBarHeight = 40.0;
 constexpr double kStandingsWidth = 300.0;
 constexpr double kRowHeight = 22.0;
 constexpr double kNameTagRangeM = 250.0;
-constexpr double kNowCardWidth = 520.0;
-constexpr double kNowCardHeight = 124.0;
+constexpr double kNowCardWidth = 420.0;
+constexpr double kNowCardHeight = 92.0;
 constexpr double kZoomBehindM = 450.0;
 constexpr double kZoomAheadM = 450.0;
 constexpr double kMinZoomSpanM = 400.0;
@@ -389,11 +390,11 @@ QRectF RaceView::nowCardRect(const QRectF &mapArea) const
 
 void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
 {
-    const RaceCourse &course = m_race->course();
     const RaceSimulation::Rider &you = m_race->you();
     if (m_race->youFinished())
         return;
 
+    // Only what you follow second by second: speed, W/kg and the draft.
     const QRectF card = nowCardRect(mapArea);
     QColor fill = palette().color(QPalette::Base);
     fill.setAlpha(235);
@@ -401,34 +402,33 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
     painter.setBrush(fill);
     painter.drawRoundedRect(card, 10, 10);
 
-    const double distance = std::max(0.0, you.distanceM);
-    const double grade = course.gradeAt(distance);
-
-    // Row 1: the grade, big and coloured, then speed and distance to go.
     QFont big = font();
     big.setBold(true);
     big.setPointSizeF(font().pointSizeF() * 2.3);
-    painter.setFont(big);
-    painter.setPen(gradeColor(grade));
-    const QRectF gradeCell(card.left() + 16, card.top() + 8, 150, 44);
-    painter.drawText(gradeCell, Qt::AlignLeft | Qt::AlignVCenter, QStringLiteral("%1 %").arg(grade * 100.0, 0, 'f', 1));
+    QFont unit = font();
+    unit.setPointSizeF(font().pointSizeF() * 1.1);
+    const QRectF left(card.left() + 16, card.top() + 8, card.width() / 2 - 16, 46);
+    const QRectF right(card.center().x(), card.top() + 8, card.width() / 2 - 16, 46);
+    auto drawValue = [&](const QRectF &cell, const QString &value, const QString &suffix, Qt::Alignment side) {
+        const double valueWidth = QFontMetricsF(big).horizontalAdvance(value);
+        const double suffixWidth = QFontMetricsF(unit).horizontalAdvance(suffix) + 6;
+        const double start = side == Qt::AlignLeft ? cell.left() : cell.right() - valueWidth - suffixWidth;
+        painter.setFont(big);
+        painter.setPen(palette().color(QPalette::Text));
+        painter.drawText(QRectF(start, cell.top(), valueWidth + 2, cell.height()), Qt::AlignLeft | Qt::AlignVCenter, value);
+        painter.setFont(unit);
+        painter.setPen(palette().color(QPalette::PlaceholderText));
+        painter.drawText(QRectF(start + valueWidth + 6, cell.top() + 6, suffixWidth, cell.height()),
+                         Qt::AlignLeft | Qt::AlignVCenter, suffix);
+    };
+    drawValue(left, QString::number(you.speedMps * 3.6, 'f', 1), tr("km/h"), Qt::AlignLeft);
+    drawValue(right, QString::number(you.powerW / you.riderKg, 'f', 1), tr("W/kg"), Qt::AlignRight);
 
-    QFont medium = font();
-    medium.setBold(true);
-    medium.setPointSizeF(font().pointSizeF() * 1.3);
-    painter.setFont(medium);
-    painter.setPen(palette().color(QPalette::Text));
-    const QRectF statsCell(gradeCell.right(), card.top() + 8, card.right() - 16 - gradeCell.right(), 44);
-    const double toGo = std::max(0.0, course.totalDistanceM() - you.distanceM);
-    painter.drawText(statsCell, Qt::AlignRight | Qt::AlignVCenter,
-                     tr("%1 km/h   %2 km to go").arg(you.speedMps * 3.6, 0, 'f', 1).arg(toGo / 1000.0, 0, 'f', 1));
-
-    // Row 2: drafting.
     QFont draftFont = font();
-    draftFont.setPointSizeF(font().pointSizeF() * 1.1);
+    draftFont.setPointSizeF(font().pointSizeF() * 1.15);
     draftFont.setBold(you.draftingBehind >= 0);
     painter.setFont(draftFont);
-    const QRectF draftCell(card.left() + 16, card.top() + 54, card.width() - 32, 24);
+    const QRectF draftCell(card.left() + 16, card.bottom() - 34, card.width() - 32, 26);
     if (you.draftingBehind >= 0) {
         painter.setPen(kDraft);
         const QString wheel = m_race->riders().at(you.draftingBehind).name;
@@ -440,32 +440,6 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
         painter.setPen(palette().color(QPalette::PlaceholderText));
         painter.drawText(draftCell, Qt::AlignLeft | Qt::AlignVCenter, tr("No draft"));
     }
-
-    // Row 3: the next steep section, as a solid chip in its gradient colour.
-    const QRectF chip(card.left() + 12, card.bottom() - 36, card.width() - 24, 28);
-    const std::optional<RaceCourse::Climb> climb = course.nextClimb(distance);
-    QFont chipFont = font();
-    chipFont.setBold(true);
-    chipFont.setPointSizeF(font().pointSizeF() * 1.1);
-    painter.setFont(chipFont);
-    if (!climb) {
-        painter.setPen(palette().color(QPalette::PlaceholderText));
-        painter.drawText(chip.adjusted(4, 0, 0, 0), Qt::AlignLeft | Qt::AlignVCenter, tr("No climb in the next 3 km"));
-        return;
-    }
-    const QString when = climb->startsInM < 20.0
-        ? tr("Climbing now")
-        : tr("Up next in %1").arg(climb->startsInM >= 1000.0
-                                      ? QStringLiteral("%1 km").arg(climb->startsInM / 1000.0, 0, 'f', 1)
-                                      : QStringLiteral("%1 m").arg(qRound(climb->startsInM / 10.0) * 10));
-    const QString what = tr("%1 km at %2 %").arg(climb->lengthM / 1000.0, 0, 'f', 1)
-                                            .arg(climb->averageGrade * 100.0, 0, 'f', 1);
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(gradeColor(climb->averageGrade));
-    painter.drawRoundedRect(chip, 6, 6);
-    painter.setPen(QColor(0x1d, 0x1d, 0x1d));
-    painter.drawText(chip.adjusted(10, 0, -10, 0), Qt::AlignVCenter | Qt::AlignLeft, when);
-    painter.drawText(chip.adjusted(10, 0, -10, 0), Qt::AlignVCenter | Qt::AlignRight, what);
 }
 
 void RaceView::paintStandings(QPainter &painter, const QRectF &area) const
@@ -613,6 +587,24 @@ void RaceView::paintProfile(QPainter &painter, const QRectF &area) const
     painter.setPen(QPen(palette().color(QPalette::Base), 1.5));
     painter.drawEllipse(QPointF(toX(yourDistance), toY(course.elevationAt(yourDistance)) - 3), 6.5, 6.5);
 
+    // Grade and altitude where you are, riding along your line.
+    const double grade = course.gradeAt(yourDistance);
+    QFont tagFont = font();
+    tagFont.setBold(true);
+    tagFont.setPointSizeF(font().pointSizeF() * 1.1);
+    const QString tagText = tr("%1 % \u00b7 %2 m").arg(grade * 100.0, 0, 'f', 1)
+                                                .arg(QLocale().toString(qRound(course.elevationAt(yourDistance))));
+    const QSizeF tagSize(QFontMetricsF(tagFont).horizontalAdvance(tagText) + 18, 24);
+    const double lineX = toX(yourDistance);
+    // Beside the line, switching sides near the right edge.
+    const double tagLeft = lineX + 8 + tagSize.width() <= plot.right() ? lineX + 8 : lineX - 8 - tagSize.width();
+    const QRectF tag(QPointF(tagLeft, plot.top() + 2), tagSize);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(gradeColor(grade));
+    painter.drawRoundedRect(tag, 5, 5);
+    painter.setFont(tagFont);
+    painter.setPen(QColor(0x1d, 0x1d, 0x1d));
+    painter.drawText(tag, Qt::AlignCenter, tagText);
 }
 
 void RaceView::paintFinish(QPainter &painter, const QRectF &area) const
