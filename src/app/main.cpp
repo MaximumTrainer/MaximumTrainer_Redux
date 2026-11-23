@@ -320,7 +320,8 @@ int main(int argc, char *argv[]) {
         constexpr double kRiderKg = 72.0;
         RaceSimulation race(*course, QStringLiteral("You"), kRiderKg, RaceSimulation::kBotBikeMassKg, 0.30);
         for (const RaceBot &bot : RaceBot::defaultField(42)) race.addBot(bot);
-        for (double t = 0.0; t < seconds && !race.youFinished(); t += 0.25) {
+        const int ticks = static_cast<int>(seconds * 4.0);   // 0.25 s steps
+        for (int tick = 0; tick < ticks && !race.youFinished(); ++tick) {
             race.setYourPower(3.0 * kRiderKg);
             race.step(0.25);
         }
