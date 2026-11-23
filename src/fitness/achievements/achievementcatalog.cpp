@@ -87,6 +87,7 @@ QList<Definition> buildList()
         {Events::TargetManiac, tr("Target Maniac"),    tr("Finish a workout with power, power balance, cadence and heart rate targets."), C::Special, K::Event, 0},
         {Events::GroupRide,    tr("Better Together"),  tr("Finish a group workout, as the host or as a guest."),               C::Special, K::Event, 0},
         // Courses: cross the finish line of each course
+        {Events::courseFinished(QStringLiteral("gastown")),      tr("Gastown Crit"),      tr("Finish the Gastown loop course."),   C::Courses, K::Event, 0},
         {Events::courseFinished(QStringLiteral("longchamp")),    tr("Longchamp Regular"), tr("Finish the Longchamp loop course."), C::Courses, K::Event, 0},
         {Events::courseFinished(QStringLiteral("alpe-dhuez")),   tr("21 Hairpins"),       tr("Finish the Alpe d'Huez course."),    C::Courses, K::Event, 0},
         {Events::courseFinished(QStringLiteral("mont-ventoux")), tr("Giant of Provence"), tr("Finish the Mont Ventoux course."),   C::Courses, K::Event, 0},
