@@ -3634,6 +3634,7 @@ void WorkoutDialog::setRace(const RaceCourse &course, const RaceBot::FieldSettin
     if (auto *videoLayout = qobject_cast<QBoxLayout*>(ui->widgetVideo->parentWidget()->layout()))
         videoLayout->insertWidget(videoLayout->indexOf(ui->widgetVideo), m_raceView, 1);
     ui->widget_workoutPlot->hide();
+    ui->widget_topMenu->setStartLabel(tr("Start Course"));
     showVideoPlayer(0);
 
     m_raceTimer = new QTimer(this);

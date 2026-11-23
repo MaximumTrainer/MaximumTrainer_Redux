@@ -28,6 +28,7 @@ private:
     void paintTopBar(QPainter &painter, const QRectF &area) const;
     void paintRoute(QPainter &painter, const QRectF &area) const;
     void paintOverview(QPainter &painter, const QRectF &mapArea) const;
+    QRectF nowCardRect(const QRectF &mapArea) const;
     void paintNowPanel(QPainter &painter, const QRectF &mapArea) const;
     void paintStandings(QPainter &painter, const QRectF &area) const;
     void paintProfile(QPainter &painter, const QRectF &area) const;

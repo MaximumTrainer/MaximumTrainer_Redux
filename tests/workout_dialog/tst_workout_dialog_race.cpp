@@ -4,6 +4,7 @@
  * difficulty, and stands still while the ride is paused.
  */
 #include <QApplication>
+#include <QPushButton>
 #include <QSignalSpy>
 #include <QStandardPaths>
 #include <QTest>
@@ -94,6 +95,11 @@ private slots:
         dialog->setRace(*course, RaceBot::FieldSettings());
         QVERIFY(dialog->race());
         QCOMPARE(dialog->race()->riders().size(), 21);
+        auto *startButton = dialog->findChild<QPushButton *>(QStringLiteral("pushButton_start"));
+        QVERIFY(startButton);
+        QCOMPARE(startButton->text(), QStringLiteral("Start Course"));
+        for (int index = 1; index < dialog->race()->riders().size(); ++index)
+            QCOMPARE(dialog->race()->gapToYouSec(index), 0.0);   // all on the start line
         dialog->enableTrainerControl();
 
         // Warming up: your W/kg and the bots' show, but nothing moves.

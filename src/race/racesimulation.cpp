@@ -6,7 +6,6 @@
 #include <utility>
 
 namespace {
-constexpr double kStartGridSpacingM = 1.5;
 constexpr double kMinGapSpeedMps = 1.0;
 }
 
@@ -38,8 +37,8 @@ void RaceSimulation::addBot(const RaceBot &bot, double cda)
     rider.massKg = bot.massKg() + kBotBikeMassKg;
     rider.cda = cda;
     rider.powerW = bot.wattsPerKg() * bot.massKg();   // on the start line, before the first step
-    // Line up behind you on the start, a bike length apart.
-    rider.distanceM = -kStartGridSpacingM * static_cast<double>(m_bots.size() + 1);
+    // Everyone starts together on the line.
+    rider.distanceM = 0.0;
     m_riders.append(rider);
     m_bots.append(bot);
 }
