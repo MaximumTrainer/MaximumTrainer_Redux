@@ -18,7 +18,7 @@
 using namespace GroupProtocol;
 
 namespace {
-constexpr int kPanelWidth = 230;
+constexpr int kPanelWidth = 300;
 }
 
 GroupPanel::GroupPanel(GroupSession *session, QWidget *parent)
