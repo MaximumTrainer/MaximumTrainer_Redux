@@ -78,10 +78,6 @@ public slots:
     /// hook to drive the app into the metric-dashboard view for render checks.
     void launchDemoWorkout();
 
-    /// Switch the demo workout's content pane to the retro ghost-race. Used by
-    /// the WASM `window.mt_showRace` test hook to verify RetroRace.qml renders.
-    void showDemoRaceView();
-
 #ifndef GC_WASM_BUILD
 private:
     /// Open the workout window straight away and connect the saved sensors

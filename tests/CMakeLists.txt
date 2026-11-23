@@ -153,12 +153,6 @@ mt_add_test(group_tests
     INCLUDES "${TST}/group" "${SRC}/group")
 endif()
 
-mt_add_test(game_tests
-    SOURCES game/tst_game.cpp
-    QT Gui Quick Qml
-    LIBS mt_game mt_gameplugin
-    INCLUDES "${TST}/game")
-
 # ── Intervals.icu / ZWO ──────────────────────────────────────────────────────
 mt_add_test(intervals_icu_tests
     SOURCES ${LOGGER} "${SRC}/persistence/db/intervals_icu_api.cpp"
@@ -294,10 +288,10 @@ if(TARGET mt_core)
 mt_add_test(workout_dialog_tests
     SOURCES workout_dialog/tst_workout_dialog_erg.cpp
     QT Gui Widgets
-    LIBS mt_core mt_gameplugin)
+    LIBS mt_core)
 
 mt_add_test(join_group_dialog_tests
     SOURCES join_group_dialog/tst_join_group_dialog.cpp
     QT Gui Widgets
-    LIBS mt_core mt_gameplugin)
+    LIBS mt_core)
 endif()

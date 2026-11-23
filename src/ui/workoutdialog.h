@@ -43,9 +43,6 @@
 
 class DialogConfig;     // forward declaration
 class WebBrowserView;   // forward declaration (lazily created web video player)
-class QQuickWidget;
-class WorkoutRaceView;
-class RetroRaceController;   // retro ghost-race view
 class ZwiftClickManager;     // Zwift Click v2 (right) controller input, direct BLE
 class AchievementToast;      // in-workout "Achievement unlocked" banner
 class TrendChart;            // live 30 s trend in a metric card
@@ -358,17 +355,6 @@ private:
     /// Guards the one-time background load of the web player done in showEvent().
     bool webPlayerLoaded = false;
 
-    // Retro ghost-race view, the third content option (display_video == 2). Sits
-    // in the same slot as the video player. Opponent is this workout's most
-    // recent past ride, or a computer pacer when there is no history yet; the
-    // player is driven by live trainer power.
-    WorkoutRaceView     *m_raceView     = nullptr;
-    QQuickWidget        *raceView       = nullptr;   // m_raceView's view and controller
-    RetroRaceController *raceController = nullptr;
-    WorkoutRaceView *ensureRaceView();
-    void onToggleGameFullscreen();              // collapse/restore the data panes
-    bool m_gameFullscreen = false;
-    QList<int> m_savedSplitterSizes;
 
     DialogConfig *dconfig;
     QList<Radio> lstRadio;

@@ -92,17 +92,6 @@ void mt_start_demo_workout_impl()
                               Qt::QueuedConnection);
 }
 
-// Switch the demo workout's content pane to the retro ghost-race (the "Game"
-// option). Exposed as window.mt_showRace() so Playwright can assert RetroRace.qml
-// actually composites in-browser (catches a missing QtQuick.Shapes module).
-EMSCRIPTEN_KEEPALIVE
-void mt_show_demo_race_impl()
-{
-    if (!g_mainWindow) return;
-    QMetaObject::invokeMethod(g_mainWindow.data(), "showDemoRaceView",
-                              Qt::QueuedConnection);
-}
-
 // Run the confirmed Log Out path (skipping the confirmation box). Exposed as
 // window.mt_triggerLogout() so Playwright can assert the full logout →
 // login-screen cycle survives on WASM (#344).
@@ -130,9 +119,6 @@ void mt_open_preferences_impl()
 EM_JS(void, js_exposeWasmDemoWorkout, (), {
     window.mt_startDemoWorkout = function() {
         Module._mt_start_demo_workout_impl();
-    };
-    window.mt_showRace = function() {
-        Module._mt_show_demo_race_impl();
     };
     window.mt_triggerLogout = function() {
         Module._mt_trigger_logout_impl();

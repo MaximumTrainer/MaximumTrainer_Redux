@@ -1033,11 +1033,6 @@ QLabel#label_imageCalories {
                  <string>Web Browser</string>
                 </property>
                </item>
-               <item>
-                <property name="text">
-                 <string>Game (Retro Race · beta)</string>
-                </property>
-               </item>
               </widget>
              </item>
              <item>

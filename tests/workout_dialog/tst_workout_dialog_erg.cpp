@@ -9,7 +9,6 @@
 #include <QSignalSpy>
 #include <QStandardPaths>
 #include <QTest>
-#include <QtQml/qqmlextensionplugin.h>
 
 #include "account.h"
 #include "interval.h"
@@ -22,8 +21,6 @@
 #include "userstudio.h"
 #include "workout.h"
 #include "workoutdialog.h"
-
-Q_IMPORT_QML_PLUGIN(MaximumTrainer_GamePlugin)
 
 namespace {
 constexpr int kFtpWatts = 250;

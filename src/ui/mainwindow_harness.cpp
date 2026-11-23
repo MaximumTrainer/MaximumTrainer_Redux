@@ -1,5 +1,5 @@
 // MainWindow's demo and test tooling: the --screenshots tour, the
-// --sensor-check BLE validation run and the demo workout/race views. Kept out
+// --sensor-check BLE validation run and the demo workout view. Kept out
 // of mainwindow.cpp so product code and tooling don't interleave.
 #include "mainwindow.h"
 #include "setting_keys.h"
@@ -193,7 +193,7 @@ void MainWindow::runSensorCheck(const QString &outDir)
 
     // Make every per-metric widget visible so each injected sensor is observable
     // (oxygen and L/R balance are off by default), and use the plain video pane
-    // (not the race) so the metric band is unobstructed.
+    // so the metric band is unobstructed.
     account->show_hr_widget            = true;
     account->show_power_widget         = true;
     account->show_cadence_widget       = true;
@@ -290,14 +290,6 @@ void MainWindow::sensorCheckNextStep()
     }
     }
     QTimer::singleShot(900, this, &MainWindow::sensorCheckNextStep);
-}
-
-void MainWindow::showDemoRaceView()
-{
-    // Content option 2 = Game (retro ghost-race); loads RetroRace.qml.
-    if (m_ssWorkoutDlg)
-        m_ssWorkoutDlg->showVideoPlayer(2);
-    QCoreApplication::processEvents();
 }
 
 

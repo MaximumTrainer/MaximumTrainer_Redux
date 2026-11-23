@@ -46,7 +46,7 @@ Prefer to compile it yourself? See [Building](#building) below.
 | **Language** | C++20 (≈ 95 % C++) |
 | **Framework** | Qt 6 (6.11+) on all platforms |
 | **Build system** | CMake 3.25+ (`CMakeLists.txt`), Ninja recommended |
-| **Qt modules** | core · gui · widgets · network · websockets · bluetooth · webenginewidgets · printsupport · concurrent · multimedia · quick · qml (the retro race is a compiled QML module) |
+| **Qt modules** | core · gui · widgets · network · websockets · bluetooth · webenginewidgets · printsupport · concurrent · multimedia |
 | **Trainer protocol** | Bluetooth LE Fitness Machine Service (FTMS / 0x1826) for ERG resistance control |
 | **Sensor profiles** | Heart Rate (0x180D) · Cycling Speed & Cadence (0x1816) · Cycling Power (0x1818) · Moxy Muscle Oxygen (0xAAB0) |
 | **Workout formats** | `.erg`, `.mrc`, `.zwo` (imported and converted to the native XML format) · Intervals.icu calendar sync · export as `.fit` |
@@ -55,7 +55,7 @@ Prefer to compile it yourself? See [Building](#building) below.
 
 ## Using MaximumTrainer
 
-For everything about **using** the app — pairing sensors, finding / importing / creating workouts, ERG vs Slope, the workout player (video · web · Retro Race game), group workouts, Studio mode, activity uploads, and troubleshooting — see the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)**.
+For everything about **using** the app — pairing sensors, finding / importing / creating workouts, ERG vs Slope, the workout player (video · web), group workouts, Studio mode, activity uploads, and troubleshooting — see the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)**.
 
 > **No hardware?** Turn on **Devices → Simulated Sensors**: the simulator emits realistic drifting
 > power / HR / cadence / speed and responds to ERG commands, so you can exercise the full workout flow — handy for
@@ -196,7 +196,6 @@ MaximumTrainer has a multi-tier test suite covering BLE parsing, service APIs, U
 | Studio tests | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling |
 | Workout export tests | `tests/workout_export/` | FIT workout steps (ramps, % FTP, cadence, intensity), file decodes as a FIT workout |
 | Group workout tests | `tests/group/` | Room-code parsing, message encode/decode, clock-offset estimate, rider-row states, group-ride start and telemetry; live relay test when `GROUP_RELAY_URL` is set |
-| Retro race tests | `tests/game/` | Race ambient clock vs replay speed, frame updates from per-second setters, native road rendering |
 | Workout logic tests | `tests/workout/` | Per-second sensor averaging per rider, MAP ramp-test failure rules and result formula |
 | Achievement tests | `tests/achievements/` | Achievement list (unique keys, categories), history stats (totals, streaks, 7-day windows, time of day), unlock rules, live peak-effort tracker (sprints, FTP efforts, cadence) and local storage |
 | Login screen tests | `tests/integration/` | OAuth dialog state, offline login path, Intervals.icu OAuth URL generation |

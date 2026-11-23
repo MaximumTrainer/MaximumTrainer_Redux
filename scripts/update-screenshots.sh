@@ -6,7 +6,7 @@
 # workout and dumps PNGs, then quits. This script runs that mode in dark theme
 # (what the docs use) and copies the freshly captured images over the ones the
 # docs already reference. Files the docs use but the capture mode does not
-# produce (e.g. screenshot_retro_race.png) are left untouched.
+# produce (e.g. the group workout images) are left untouched.
 #
 # Usage:
 #   scripts/update-screenshots.sh [path-to-MaximumTrainer-binary]
