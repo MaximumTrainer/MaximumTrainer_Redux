@@ -24,6 +24,9 @@ public:
     /// rider's dot flashes red at 1.5 times it (a sprint). 0 = never.
     void setRedLineWattsPerKg(double wattsPerKg);
 
+    /// The lane (0 to 3, across the road) a rider's dot is in, as last drawn.
+    int laneOf(int riderIndex) const { return riderIndex < m_lanes.size() ? m_lanes.at(riderIndex) : -1; }
+
 protected:
     void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
@@ -51,6 +54,10 @@ private:
     QVector<QPointF> m_projected;
     QRectF m_projectedBounds;
     double m_redLineWattsPerKg = 0.0;
+    // Each rider's lane across the road (0 to 3) and where their dot is on
+    // its way to it; kept between frames so riders don't hop sides.
+    mutable QVector<int> m_lanes;
+    mutable QVector<double> m_laneOffsets;
 };
 
 #endif // RACEVIEW_H

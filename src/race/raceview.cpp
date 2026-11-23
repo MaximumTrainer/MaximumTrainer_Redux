@@ -29,7 +29,7 @@ constexpr double kStandingsWidth = 300.0;
 constexpr double kRowHeight = 22.0;
 constexpr double kNowCardWidth = 480.0;
 constexpr double kNowCardHeight = 92.0;
-constexpr double kRoadWidthPx = 56.0;
+constexpr double kRoadWidthPx = 80.0;   // four riders abreast
 constexpr double kNameRangeM = 30.0;   // riders this close get a name tag, where it fits
 constexpr double kZoomHalfM = 90.0;    // the map shows 180 m around you
 constexpr double kProfileMinSegmentM = 100.0;
@@ -263,42 +263,55 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
     dotFont.setBold(true);
     dotFont.setPointSizeF(font().pointSizeF() * 0.78);
 
-    // Lay the riders out like a bunch: leader first, each at its place on the
-    // road; a rider who would cover one already placed moves across the road,
-    // left then right, so riders a metre apart are still two dots.
+    // Lay the riders out like a bunch, four abreast. Each rider keeps a lane
+    // across the road from frame to frame and only moves over when the
+    // lane is taken by a rider just ahead, then glides across instead of
+    // jumping. Placed leader first, so the riders behind make way.
     constexpr double kRadius = 8.5;
     constexpr double kYourRadius = 10.0;
     constexpr double kSlot = 2 * kRadius + 2;
-    constexpr int kMaxSideSlots = 1;   // three abreast: the width of the road
-    QVector<QPointF> centres(m_race->riders().size());
-    QVector<QPointF> placed;
+    constexpr double kLaneGlide = 0.12;   // share of the way to the new lane per frame
+    constexpr int kLanes = 4;
+    // Lane 0..3 across the road, centred on the road's middle line.
+    auto laneOffset = [](double lane) { return lane - (kLanes - 1) / 2.0; };
+    const int riderCount = static_cast<int>(m_race->riders().size());
+    if (m_lanes.size() != riderCount) {
+        m_lanes.resize(riderCount);
+        m_laneOffsets.resize(riderCount);
+        for (int index = 0; index < riderCount; ++index) {
+            m_lanes[index] = (index + 1) % kLanes;   // you start in an inside lane
+            m_laneOffsets[index] = m_lanes.at(index);
+        }
+    }
+    QVector<QPointF> centres(riderCount);
+    QVector<QPointF> laneTargets;   // where the riders already placed are heading
     for (const int index : order) {
         const double distance = m_race->riders().at(index).distanceM;
         const QPointF onRoad = routePoint(distance, roadArea, bounds);
-        QPointF direction = routePoint(distance + 4.0, roadArea, bounds) - routePoint(distance - 4.0, roadArea, bounds);
+        const QPointF direction = routePoint(distance + 4.0, roadArea, bounds) - routePoint(distance - 4.0, roadArea, bounds);
         const double length = std::hypot(direction.x(), direction.y());
         const QPointF across = length > 0.01 ? QPointF(-direction.y() / length, direction.x() / length) : QPointF(0, 1);
-        QPointF best = onRoad;
-        double bestClearance = -1.0;
-        for (int slot = 0; slot <= 2 * kMaxSideSlots; ++slot) {
-            const int side = (slot + 1) / 2 * (slot % 2 == 1 ? 1 : -1);
-            const QPointF candidate = onRoad + across * (side * kSlot);
-            double clearance = 1e9;
-            for (const QPointF &other : std::as_const(placed))
-                clearance = std::min(clearance, std::hypot(candidate.x() - other.x(), candidate.y() - other.y()));
-            if (clearance >= kSlot - 1.0) {
-                best = candidate;
-                break;
-            }
-            if (clearance > bestClearance) {
-                bestClearance = clearance;
-                best = candidate;
-            }
+        auto clearOf = [&](int lane) {
+            const QPointF spot = onRoad + across * (laneOffset(lane) * kSlot);
+            return std::all_of(laneTargets.cbegin(), laneTargets.cend(), [&](const QPointF &other) {
+                return std::hypot(spot.x() - other.x(), spot.y() - other.y()) >= kSlot - 1.0;
+            });
+        };
+        // Stay put if you can; otherwise move one lane over if it is free; if
+        // neither neighbour is free, stay and overlap a little rather than hop.
+        int lane = m_lanes.at(index);
+        if (!clearOf(lane)) {
+            for (const int option : {lane - 1, lane + 1})
+                if (option >= 0 && option < kLanes && clearOf(option)) {
+                    lane = option;
+                    break;
+                }
         }
-        centres[index] = best;
-        placed.append(best);
+        m_lanes[index] = lane;
+        m_laneOffsets[index] += (lane - m_laneOffsets.at(index)) * kLaneGlide;
+        laneTargets.append(onRoad + across * (laneOffset(lane) * kSlot));
+        centres[index] = onRoad + across * (laneOffset(m_laneOffsets.at(index)) * kSlot);
     }
-
     // Sprinting (1.5 x your FTP per kg or more): the dot's border flashes red.
     const bool flashOn = (QDateTime::currentMSecsSinceEpoch() / 250) % 2 == 0;
     auto drawDot = [&](int index) {

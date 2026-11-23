@@ -169,6 +169,36 @@ private slots:
         delete second;
     }
 
+    // In a bunch your dot keeps its lane: it only moves over when the lane is
+    // taken, one lane at a time, and doesn't flick from side to side.
+    void bunch_ridersKeepTheirLane()
+    {
+        const auto course = RaceCourse::fromFile(QStringLiteral(":/courses/longchamp.json"));
+        RaceSimulation race(*course, QStringLiteral("You"), kRiderKg, 8.0, 0.30);
+        for (const RaceBot &bot : RaceBot::defaultField(5))
+            race.addBot(bot);
+        RaceView view(&race);
+        view.resize(1350, 640);
+        QImage frame(view.size(), QImage::Format_ARGB32_Premultiplied);
+
+        int changes = 0;
+        int previous = -1;
+        for (int tick = 0; tick < 25 * 120; ++tick) {   // two minutes at 25 frames a second
+            race.setYourPower(kThreeWattsPerKg);
+            race.step(0.04);
+            view.render(&frame);
+            const int lane = view.laneOf(0);
+            QVERIFY(lane >= 0 && lane <= 3);
+            if (previous >= 0 && lane != previous) {
+                ++changes;
+                QVERIFY2(std::abs(lane - previous) == 1, "jumped more than one lane");
+            }
+            previous = lane;
+        }
+        qInfo("your lane changed %d times in two minutes of bunch riding", changes);
+        QVERIFY2(changes <= 12, qPrintable(QStringLiteral("%1 lane changes").arg(changes)));
+    }
+
     void race_followsPowerAndSteersTheTrainer()
     {
         m_account->weight_kg = kRiderKg;
