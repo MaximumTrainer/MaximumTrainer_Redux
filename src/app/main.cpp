@@ -318,13 +318,13 @@ int main(int argc, char *argv[]) {
         if (!course) return 1;
         if (qEnvironmentVariableIsSet("MT_PREVIEW_DARK")) qApp->setPalette(AppTheme::darkPalette());
         constexpr double kRiderKg = 72.0;
-        RaceSimulation race(*course, QStringLiteral("You"), kRiderKg + RaceSimulation::kBotBikeMassKg, 0.30);
+        RaceSimulation race(*course, QStringLiteral("You"), kRiderKg, RaceSimulation::kBotBikeMassKg, 0.30);
         for (const RaceBot &bot : RaceBot::defaultField(42)) race.addBot(bot);
         for (double t = 0.0; t < seconds && !race.youFinished(); t += 0.25) {
             race.setYourPower(3.0 * kRiderKg);
             race.step(0.25);
         }
-        RaceView view(&race, kRiderKg);
+        RaceView view(&race);
         view.resize(1350, 640);
         return view.grab().save(outPath) ? 0 : 1;
     }

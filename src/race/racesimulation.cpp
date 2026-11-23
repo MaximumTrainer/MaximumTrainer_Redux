@@ -10,13 +10,15 @@ constexpr double kStartGridSpacingM = 1.5;
 constexpr double kMinGapSpeedMps = 1.0;
 }
 
-RaceSimulation::RaceSimulation(RaceCourse course, QString yourName, double yourMassKg, double yourCda)
+RaceSimulation::RaceSimulation(RaceCourse course, QString yourName, double yourRiderKg, double yourBikeKg,
+                               double yourCda)
     : m_course(std::move(course))
 {
     Rider you;
     you.name = std::move(yourName);
     you.isYou = true;
-    you.massKg = yourMassKg;
+    you.riderKg = yourRiderKg;
+    you.massKg = yourRiderKg + yourBikeKg;
     you.cda = yourCda;
     m_riders.append(you);
 }
@@ -25,6 +27,7 @@ void RaceSimulation::addBot(const RaceBot &bot, double cda)
 {
     Rider rider;
     rider.name = bot.name();
+    rider.riderKg = bot.massKg();
     rider.massKg = bot.massKg() + kBotBikeMassKg;
     rider.cda = cda;
     // Line up behind you on the start, a bike length apart.

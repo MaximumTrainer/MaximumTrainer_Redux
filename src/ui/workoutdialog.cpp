@@ -3626,11 +3626,11 @@ void WorkoutDialog::setRace(const RaceCourse &course, const RaceBot::FieldSettin
     constexpr quint32 kFieldSeed = 2026;
     const double riderKg = account->weight_kg;
     const QString name = account->display_name.trimmed().isEmpty() ? tr("You") : account->display_name.trimmed();
-    m_race = std::make_unique<RaceSimulation>(course, name, riderKg + account->bike_weight_kg, account->userCda);
+    m_race = std::make_unique<RaceSimulation>(course, name, riderKg, account->bike_weight_kg, account->userCda);
     for (const RaceBot &bot : RaceBot::field(bots, kFieldSeed))
         m_race->addBot(bot);
 
-    m_raceView = new RaceView(m_race.get(), riderKg, ui->widgetVideo->parentWidget());
+    m_raceView = new RaceView(m_race.get(), ui->widgetVideo->parentWidget());
     if (auto *videoLayout = qobject_cast<QBoxLayout*>(ui->widgetVideo->parentWidget()->layout()))
         videoLayout->insertWidget(videoLayout->indexOf(ui->widgetVideo), m_raceView, 1);
     ui->widget_workoutPlot->hide();

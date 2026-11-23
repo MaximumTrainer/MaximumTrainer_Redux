@@ -10,8 +10,8 @@
 
 class QDoubleSpinBox;
 class QSpinBox;
+class QLineEdit;
 class QListWidget;
-class QPushButton;
 
 /// The Courses tab: pick a real road and ride it against a field of bots.
 /// Your weight is shown for a check before starting, since it sets your
@@ -37,12 +37,12 @@ signals:
 
 private:
     QVector<RaceCourse> m_courses;
+    QLineEdit *m_search = nullptr;
     QListWidget *m_courseList = nullptr;
     QDoubleSpinBox *m_weight = nullptr;
     QSpinBox *m_botCount = nullptr;
     QDoubleSpinBox *m_minWattsPerKg = nullptr;
     QDoubleSpinBox *m_maxWattsPerKg = nullptr;
-    QPushButton *m_ride = nullptr;
 };
 
 #endif // COURSESPAGE_H

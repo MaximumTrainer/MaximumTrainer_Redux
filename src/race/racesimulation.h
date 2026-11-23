@@ -18,7 +18,8 @@ public:
     struct Rider {
         QString name;
         bool isYou = false;
-        double massKg = 75.0;
+        double riderKg = 75.0;         // body weight, for W/kg
+        double massKg = 83.0;          // rider plus bike, for the physics
         double cda = 0.30;
         double distanceM = 0.0;
         double speedMps = 0.0;
@@ -29,8 +30,7 @@ public:
         std::optional<double> finishTimeSec;
     };
 
-    /// \a yourMassKg is rider plus bike, as the app's speed model uses.
-    RaceSimulation(RaceCourse course, QString yourName, double yourMassKg, double yourCda);
+    RaceSimulation(RaceCourse course, QString yourName, double yourRiderKg, double yourBikeKg, double yourCda);
 
     static constexpr double kBotBikeMassKg = 8.0;
 

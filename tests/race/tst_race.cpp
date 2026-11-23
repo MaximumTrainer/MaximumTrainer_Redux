@@ -215,7 +215,7 @@ void TstRace::customField_followsCountAndRange()
 
 void TstRace::bots_atTheSameWattsPerKgRideTogether()
 {
-    RaceSimulation race(loadCourse(QStringLiteral("longchamp")), QStringLiteral("You"), 75, 0.30);
+    RaceSimulation race(loadCourse(QStringLiteral("longchamp")), QStringLiteral("You"), 75, 0, 0.30);
     for (const RaceBot &bot : RaceBot::defaultField(11))
         if (bot.name().startsWith(QStringLiteral("Pace")))
             race.addBot(bot);
@@ -238,7 +238,7 @@ void TstRace::bots_atTheSameWattsPerKgRideTogether()
 void TstRace::youAtThreeWattsPerKg_canFollowThePaceGroupAndDraft()
 {
     constexpr double kYourMassKg = 75.0;
-    RaceSimulation race(loadCourse(QStringLiteral("longchamp")), QStringLiteral("You"), kYourMassKg, 0.30);
+    RaceSimulation race(loadCourse(QStringLiteral("longchamp")), QStringLiteral("You"), kYourMassKg, 0, 0.30);
     for (const RaceBot &bot : RaceBot::defaultField(3))
         if (bot.name().startsWith(QStringLiteral("Pace")))
             race.addBot(bot);
@@ -268,8 +268,7 @@ void TstRace::youAtThreeWattsPerKg_canFollowThePaceGroupAndDraft()
 void TstRace::youAtThreeWattsPerKg_climbWithThePaceGroup()
 {
     constexpr double kRiderKg = 72.0;
-    constexpr double kWithBikeKg = kRiderKg + RaceSimulation::kBotBikeMassKg;
-    RaceSimulation race(loadCourse(QStringLiteral("alpe-dhuez")), QStringLiteral("You"), kWithBikeKg, 0.30);
+    RaceSimulation race(loadCourse(QStringLiteral("alpe-dhuez")), QStringLiteral("You"), kRiderKg, RaceSimulation::kBotBikeMassKg, 0.30);
     for (const RaceBot &bot : RaceBot::defaultField(5))
         if (bot.name().startsWith(QStringLiteral("Pace")))
             race.addBot(bot);
@@ -287,7 +286,7 @@ void TstRace::youAtThreeWattsPerKg_climbWithThePaceGroup()
 
 void TstRace::race_finishersAreRankedByTime()
 {
-    RaceSimulation race(loadCourse(QStringLiteral("alpe-dhuez")), QStringLiteral("You"), 70, 0.30);
+    RaceSimulation race(loadCourse(QStringLiteral("alpe-dhuez")), QStringLiteral("You"), 70, 0, 0.30);
     race.addBot(RaceBot(QStringLiteral("Slow"), 2.2, 70, 1));
     race.addBot(RaceBot(QStringLiteral("Fast"), 4.0, 70, 2));
     race.setYourPower(3.0 * 70);

@@ -7,9 +7,9 @@
 #include <QSpinBox>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QListWidget>
 #include <QPainter>
-#include <QPushButton>
 #include <QVBoxLayout>
 
 #include "setting_keys.h"
@@ -133,18 +133,19 @@ CoursesPage::CoursesPage(QWidget *parent)
     title->setFont(titleFont);
     layout->addWidget(title);
 
-    auto *intro = new QLabel(tr("Ride a real road against bots. About a third of them, the \"Pace\" bots, "
-                                "ride together at 3.0 W/kg: sit on their wheels to draft. Your trainer "
-                                "follows the road at 50 % difficulty."), this);
-    intro->setWordWrap(true);
-    intro->setMaximumWidth(640);
+    auto *intro = new QLabel(tr("Ride a real road against bots. Double-click a course to start."), this);
     layout->addWidget(intro);
+
+    m_search = new QLineEdit(this);
+    m_search->setObjectName(QStringLiteral("coursesSearch"));
+    m_search->setPlaceholderText(tr("Search courses"));
+    m_search->setClearButtonEnabled(true);
+    layout->addWidget(m_search);
 
     m_courseList = new QListWidget(this);
     m_courseList->setObjectName(QStringLiteral("coursesList"));
     m_courseList->setIconSize(kProfileThumb);
     m_courseList->setSpacing(4);
-    m_courseList->setMaximumWidth(640);
     QFont itemFont = m_courseList->font();
     itemFont.setPointSizeF(itemFont.pointSizeF() + 0.5);
     for (const RaceCourse &course : std::as_const(m_courses)) {
@@ -167,7 +168,7 @@ CoursesPage::CoursesPage(QWidget *parent)
     m_weight->setDecimals(1);
     m_weight->setSuffix(tr(" kg"));
     m_weight->setMinimumWidth(100);
-    auto *weightNote = new QLabel(tr("From your profile. Correct it if it has changed: it sets your speed on the climbs."), this);
+    auto *weightNote = new QLabel(tr("Sets your speed on the climbs."), this);
     weightNote->setWordWrap(true);
     weightRow->addWidget(m_weight);
     weightRow->addWidget(weightNote, 1);
@@ -212,16 +213,19 @@ CoursesPage::CoursesPage(QWidget *parent)
         if (m_minWattsPerKg->value() > value) m_minWattsPerKg->setValue(value);
     });
 
-    m_ride = new QPushButton(tr("Ride with bots"), this);
-    m_ride->setObjectName(QStringLiteral("coursesRide"));
-    m_ride->setEnabled(!m_courses.isEmpty());
-    auto *buttonRow = new QHBoxLayout();
-    buttonRow->addWidget(m_ride);
-    buttonRow->addStretch(1);
-    layout->addLayout(buttonRow);
-
-    connect(m_ride, &QPushButton::clicked, this, [this]() {
-        const int row = m_courseList->currentRow();
+    connect(m_search, &QLineEdit::textChanged, this, [this](const QString &text) {
+        const QString needle = text.trimmed();
+        for (int row = 0; row < m_courses.size(); ++row) {
+            const RaceCourse &course = m_courses.at(row);
+            const bool match = needle.isEmpty()
+                || course.name().contains(needle, Qt::CaseInsensitive)
+                || course.place().contains(needle, Qt::CaseInsensitive);
+            m_courseList->item(row)->setHidden(!match);
+        }
+    });
+    // Double-click or Enter starts the course.
+    connect(m_courseList, &QListWidget::itemActivated, this, [this](QListWidgetItem *item) {
+        const int row = m_courseList->row(item);
         if (row < 0 || row >= m_courses.size())
             return;
         const RaceBot::FieldSettings bots{m_botCount->value(), m_minWattsPerKg->value(), m_maxWattsPerKg->value()};
@@ -231,7 +235,6 @@ CoursesPage::CoursesPage(QWidget *parent)
         AppSettings::write(settings, SettingKeys::Courses::MaxWattsPerKg, bots.maxWattsPerKg);
         emit rideRequested(m_courses.at(row), m_weight->value(), bots);
     });
-    connect(m_courseList, &QListWidget::itemDoubleClicked, m_ride, &QPushButton::click);
 }
 
 void CoursesPage::setProfileWeightKg(double weightKg)

@@ -16,8 +16,7 @@ class RaceView : public QWidget
     Q_OBJECT
 
 public:
-    /// \a yourRiderKg is your body weight alone, for the W/kg readout.
-    RaceView(const RaceSimulation *race, double yourRiderKg, QWidget *parent = nullptr);
+    explicit RaceView(const RaceSimulation *race, QWidget *parent = nullptr);
 
     QSize sizeHint() const override { return {960, 520}; }
 
@@ -28,16 +27,18 @@ protected:
 private:
     void paintTopBar(QPainter &painter, const QRectF &area) const;
     void paintRoute(QPainter &painter, const QRectF &area) const;
+    void paintOverview(QPainter &painter, const QRectF &mapArea) const;
     void paintNowPanel(QPainter &painter, const QRectF &mapArea) const;
     void paintStandings(QPainter &painter, const QRectF &area) const;
     void paintProfile(QPainter &painter, const QRectF &area) const;
     void paintFinish(QPainter &painter, const QRectF &area) const;
 
-    QPointF routePoint(double raceDistanceM, const QRectF &area) const;
+    QPointF project(double raceDistanceM) const;   // metres east/north of the start
+    QRectF zoomBounds() const;                     // the stretch of road around you
+    QPointF routePoint(double raceDistanceM, const QRectF &area, const QRectF &bounds, double margin = 28.0) const;
     QColor gradeColor(double grade) const;
 
     const RaceSimulation *m_race;
-    double m_yourRiderKg;
     // The lap's route projected flat once (x east, y north, in metres).
     QVector<QPointF> m_projected;
     QRectF m_projectedBounds;
