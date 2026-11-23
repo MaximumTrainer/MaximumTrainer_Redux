@@ -443,6 +443,13 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     ui->splitter->setStyleSheet(
         QStringLiteral("QSplitter::handle:vertical { background: #3a3f4b; }"
                        "QSplitter::handle:vertical:hover { background: #5a6473; }"));
+    // When the window grows (maximised or fullscreen after it opens), the
+    // extra height goes to the video/race area and the interval graph; the
+    // toolbar and the bottom metric pane keep the height the rider gave them.
+    ui->splitter->setStretchFactor(0, 0);
+    ui->splitter->setStretchFactor(1, 1);
+    ui->splitter->setStretchFactor(2, 1);
+    ui->splitter->setStretchFactor(3, 0);
 
 
     connect(this, &WorkoutDialog::increaseDifficulty, ui->widget_workoutPlot, &WorkoutPlot::increaseDifficulty);
@@ -3654,6 +3661,7 @@ void WorkoutDialog::setRace(const RaceCourse &course, const RaceBot::FieldSettin
         videoLayout->insertWidget(videoLayout->indexOf(ui->widgetVideo), m_raceView, 1);
     ui->widget_workoutPlot->hide();
     ui->widget_topMenu->setStartLabel(tr("Start Course"));
+    ui->widget_topMenu->setWorkoutNameLabel(course.name());
     showVideoPlayer(0);
 
     m_raceTimer = new QTimer(this);

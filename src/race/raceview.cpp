@@ -15,6 +15,9 @@ const QColor kYou(0xf0, 0x8a, 0x44);
 const QColor kRider(0x7f, 0x9f, 0xd6);
 const QColor kRidden(0x4c, 0xc0, 0x8f);
 const QColor kDraft(0x4c, 0xc0, 0x8f);
+// Fixed, not from the palette: the workout window's theme makes "mid" nearly
+// the background colour, and the road vanished.
+const QColor kRoad(0x5b, 0x62, 0x6c);
 const QColor kAboveThreshold(0xef, 0x4b, 0x3f);
 const QColor kGradeEasy(0x7c, 0xc4, 0x7f);
 const QColor kGradeMid(0xe0, 0xc3, 0x41);
@@ -220,9 +223,7 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
         index == 0 ? road.moveTo(point) : road.lineTo(point);
     }
     // Wide enough for three riders side by side.
-    QColor roadColour = palette().color(QPalette::Mid);
-    roadColour.setAlpha(120);
-    QPen roadPen(roadColour, kRoadWidthPx, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen roadPen(kRoad, kRoadWidthPx, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
     painter.setPen(roadPen);
     painter.setBrush(Qt::NoBrush);
     painter.drawPath(road);
@@ -383,7 +384,7 @@ void RaceView::paintOverview(QPainter &painter, const QRectF &mapArea) const
         const QPointF point = routePoint(course.points().at(index).distanceM, box, m_projectedBounds, 10.0);
         index == 0 ? road.moveTo(point) : road.lineTo(point);
     }
-    painter.setPen(QPen(palette().color(QPalette::Mid), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter.setPen(QPen(kRoad.lighter(130), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     painter.setBrush(Qt::NoBrush);
     painter.drawPath(road);
 

@@ -6,6 +6,7 @@
 #include <QApplication>
 #include <QElapsedTimer>
 #include <QImage>
+#include <QLabel>
 #include <QPushButton>
 #include <QSplitter>
 #include <QSignalSpy>
@@ -156,7 +157,11 @@ private slots:
         if (secondIsCourse)
             second->setRace(*course, RaceBot::FieldSettings());
         second->show();
-        QTest::qWait(500);
+        QTest::qWait(300);
+        // The window manager maximises or goes fullscreen after the window
+        // appears: the extra height must go to the video/race area.
+        second->resize(1600, 1100);
+        QTest::qWait(300);
         const int reopened = second->findChild<QSplitter *>(QStringLiteral("splitter"))->sizes().at(3);
         qInfo("bottom pane: closed at %d px, reopened at %d px", setTo, reopened);
         QVERIFY2(std::abs(reopened - setTo) <= 4,
@@ -185,6 +190,9 @@ private slots:
         auto *startButton = dialog->findChild<QPushButton *>(QStringLiteral("pushButton_start"));
         QVERIFY(startButton);
         QCOMPARE(startButton->text(), QStringLiteral("Start Course"));
+        auto *title = dialog->findChild<QLabel *>(QStringLiteral("label_nameWorkout"));
+        QVERIFY(title);
+        QCOMPARE(title->text(), course->name());
         for (int index = 1; index < dialog->race()->riders().size(); ++index)
             QCOMPARE(dialog->race()->gapToYouSec(index), 0.0);   // all on the start line
         dialog->enableTrainerControl();
