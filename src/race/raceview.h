@@ -30,6 +30,11 @@ public:
     void flashShift(int direction);
     /// Cadence and heart rate for the card (power comes from the race). 0 = none.
     void setLiveMetrics(int cadenceRpm, int heartRateBpm);
+    /// Your FTP and power-zone upper bounds (% of FTP, see PowerZones).
+    void setZones(int ftpWatts, const QVector<int> &zoneBoundsPct);
+    /// Count \a seconds of riding in the zone your power is in now.
+    void addRideTime(double seconds);
+    const QVector<double> &secondsInZone() const { return m_zoneSeconds; }
 
     /// The lane (0 to 3, across the road) a rider's dot is in, as last drawn.
     int laneOf(int riderIndex) const { return riderIndex < m_lanes.size() ? m_lanes.at(riderIndex) : -1; }
@@ -49,6 +54,8 @@ private:
     void paintOverview(QPainter &painter, const QRectF &mapArea) const;
     QRectF gearPanelRect(const QRectF &mapArea) const;
     void paintGearPanel(QPainter &painter, const QRectF &mapArea) const;
+    void paintZonePanel(QPainter &painter, const QRectF &mapArea) const;
+    int currentZone() const;   // -1 without an FTP
     QRectF nowCardRect(const QRectF &mapArea) const;
     void paintNowPanel(QPainter &painter, const QRectF &mapArea) const;
     void paintStandings(QPainter &painter, const QRectF &area) const;
@@ -73,6 +80,9 @@ private:
     mutable QVector<int> m_lanes;
     mutable QVector<int> m_tagSides;          // which side of its dot each name tag sits
     int m_cadenceRpm = 0;
+    int m_ftpWatts = 0;
+    QVector<int> m_zoneBoundsPct;
+    QVector<double> m_zoneSeconds;
     int m_heartRateBpm = 0;
     int m_gear = 1;
     int m_gearCount = 1;

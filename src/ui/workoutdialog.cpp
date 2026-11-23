@@ -64,6 +64,7 @@
 #include "grouppanel.h"
 #include "groupridecoordinator.h"
 #include "raceview.h"
+#include "powerzones.h"
 #include "racesimulation.h"
 
 namespace {
@@ -3652,6 +3653,7 @@ void WorkoutDialog::setRace(const RaceCourse &course, const RaceBot::FieldSettin
     m_raceView = new RaceView(m_race.get(), ui->widgetVideo->parentWidget());
     if (riderKg > 0.0)
         m_raceView->setRedLineWattsPerKg(account->FTP / riderKg);   // above FTP: red
+    m_raceView->setZones(account->FTP, PowerZones::boundsPct(account->power_zones_pct));
     if (auto *videoLayout = qobject_cast<QBoxLayout*>(ui->widgetVideo->parentWidget()->layout()))
         videoLayout->insertWidget(videoLayout->indexOf(ui->widgetVideo), m_raceView, 1);
     ui->widget_workoutPlot->hide();
@@ -3687,6 +3689,7 @@ void WorkoutDialog::stepRace() {
     }
     // Cap a stalled event loop at one second so nobody teleports.
     m_race->step((std::min)(dtSec, 1.0));
+    m_raceView->addRideTime((std::min)(dtSec, 1.0));
     if (const std::optional<double> finish = m_race->you().finishTimeSec) {
         qInfo() << "Bot race finished" << m_race->yourPosition() << "of" << m_race->riders().size()
                 << "in" << *finish << "s";

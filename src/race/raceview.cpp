@@ -1,5 +1,6 @@
 #include "raceview.h"
 
+#include "powerzones.h"
 #include "racesimulation.h"
 
 #include <QDateTime>
@@ -158,6 +159,7 @@ void RaceView::paintEvent(QPaintEvent *)
     paintRoute(painter, map);
     paintNowPanel(painter, map);
     paintGearPanel(painter, map);
+    paintZonePanel(painter, map);
     paintStandings(painter, standings);
     paintProfile(painter, profile);
     if (m_race->youFinished())
@@ -509,6 +511,22 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
         painter.setFont(labelFont);
         painter.setPen(palette().color(QPalette::PlaceholderText));
         painter.drawText(QRectF(box.left(), box.top(), box.width(), 16), Qt::AlignHCenter | Qt::AlignTop, cell.label);
+        // Your power zone, as a coloured pill beside "POWER".
+        if (index == 0 && currentZone() >= 0) {
+            const int zone = currentZone();
+            const double labelWidth = QFontMetricsF(labelFont).horizontalAdvance(cell.label);
+            const QRectF pill(box.center().x() + labelWidth / 2 + 6, box.top() - 1, 26, 15);
+            QColor colour = PowerZones::color(zone);
+            colour.setAlpha(255);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(colour);
+            painter.drawRoundedRect(pill, 4, 4);
+            QFont pillFont = labelFont;
+            pillFont.setBold(true);
+            painter.setFont(pillFont);
+            painter.setPen(QColor(0x1d, 0x1d, 0x1d));
+            painter.drawText(pill, Qt::AlignCenter, tr("Z%1").arg(zone + 1));
+        }
         const QFontMetricsF valueMetrics(valueFont);
         const QFontMetricsF unitMetrics(unitFont);
         const double valueWidth = valueMetrics.horizontalAdvance(cell.value);
@@ -626,6 +644,66 @@ void RaceView::flashShift(int direction)
     m_shiftDirection = direction;
     m_shiftAtMs = QDateTime::currentMSecsSinceEpoch();
     update();
+}
+
+void RaceView::setZones(int ftpWatts, const QVector<int> &zoneBoundsPct)
+{
+    m_ftpWatts = ftpWatts;
+    m_zoneBoundsPct = zoneBoundsPct;
+    m_zoneSeconds = QVector<double>(zoneBoundsPct.size() + 1, 0.0);
+    update();
+}
+
+int RaceView::currentZone() const
+{
+    if (m_ftpWatts <= 0 || m_zoneSeconds.isEmpty())
+        return -1;
+    return PowerZones::zoneForPct(100.0 * m_race->you().powerW / m_ftpWatts, m_zoneBoundsPct);
+}
+
+void RaceView::addRideTime(double seconds)
+{
+    const int zone = currentZone();
+    if (zone >= 0 && zone < m_zoneSeconds.size())
+        m_zoneSeconds[zone] += seconds;
+}
+
+void RaceView::paintZonePanel(QPainter &painter, const QRectF &mapArea) const
+{
+    if (m_zoneSeconds.isEmpty())
+        return;
+    // Time in each zone so far, Zwift style: one bar per zone, tallest = most time.
+    const int zones = static_cast<int>(m_zoneSeconds.size());
+    constexpr double kBarWidth = 18.0;
+    constexpr double kGap = 5.0;
+    const double width = zones * kBarWidth + (zones - 1) * kGap + 24;
+    const QRectF panel(mapArea.right() - width - 12, mapArea.top() + 12, width, 112);
+    QColor fill = palette().color(QPalette::Base);
+    fill.setAlpha(240);
+    painter.setPen(QPen(palette().color(QPalette::Mid), 1));
+    painter.setBrush(fill);
+    painter.drawRoundedRect(panel, 8, 8);
+
+    QFont small = font();
+    small.setPointSizeF(font().pointSizeF() * 0.75);
+    painter.setFont(small);
+    painter.setPen(palette().color(QPalette::PlaceholderText));
+    painter.drawText(QRectF(panel.left(), panel.top() + 5, panel.width(), 14), Qt::AlignHCenter, tr("TIME IN ZONE"));
+
+    const double most = *std::max_element(m_zoneSeconds.cbegin(), m_zoneSeconds.cend());
+    const QRectF bars(panel.left() + 12, panel.top() + 24, panel.width() - 24, 64);
+    const int now = currentZone();
+    for (int zone = 0; zone < zones; ++zone) {
+        const double x = bars.left() + zone * (kBarWidth + kGap);
+        const double height = most > 0.0 ? std::max(2.0, bars.height() * m_zoneSeconds.at(zone) / most) : 2.0;
+        QColor colour = PowerZones::color(zone);
+        colour.setAlpha(255);
+        painter.setPen(zone == now ? QPen(palette().color(QPalette::Text), 2) : Qt::NoPen);
+        painter.setBrush(colour);
+        painter.drawRoundedRect(QRectF(x, bars.bottom() - height, kBarWidth, height), 3, 3);
+        painter.setPen(zone == now ? palette().color(QPalette::Text) : palette().color(QPalette::PlaceholderText));
+        painter.drawText(QRectF(x - 4, bars.bottom() + 3, kBarWidth + 8, 14), Qt::AlignHCenter, tr("Z%1").arg(zone + 1));
+    }
 }
 
 void RaceView::setLiveMetrics(int cadenceRpm, int heartRateBpm)
