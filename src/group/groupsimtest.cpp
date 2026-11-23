@@ -295,6 +295,8 @@ bool GroupSimTest::renderPanelPreview(const QString &pngPath, int riderCount) {
     if (riderCount > 2) {
         panel.showChat({roster[1].riderId, roster[1].name, QStringLiteral("Last one, hold on!")});
         panel.showChat({roster[2].riderId, roster[2].name, QStringLiteral("Legs on fire 😅")});
+        panel.showChat({roster[0].riderId, roster[0].name,
+                        QStringLiteral("Two more minutes at threshold, then an easy spin to cool down")});
     }
 
     panel.resize(panel.width(), 852);
