@@ -89,6 +89,10 @@ QList<Definition> buildList()
         {Events::GroupHost,    tr("Host with the Most"), tr("Finish a group workout you hosted."),  C::Special, K::Event, 0},
         {Events::GroupJoin,    tr("Joined the Bunch"), tr("Finish a group workout you joined online."), C::Special, K::Event, 0},
         {Events::StudioHost,   tr("Studio Host"),      tr("Finish a Studio Mode workout."),         C::Special, K::Event, 0},
+        // Courses: cross the finish line of each course
+        {Events::courseFinished(QStringLiteral("longchamp")),    tr("Longchamp Regular"), tr("Finish the Longchamp loop course."), C::Courses, K::Event, 0},
+        {Events::courseFinished(QStringLiteral("alpe-dhuez")),   tr("21 Hairpins"),       tr("Finish the Alpe d'Huez course."),    C::Courses, K::Event, 0},
+        {Events::courseFinished(QStringLiteral("mont-ventoux")), tr("Giant of Provence"), tr("Finish the Mont Ventoux course."),   C::Courses, K::Event, 0},
         {"new_year",           tr("New Year, New Watts"), tr("Ride on January 1."),                 C::Special, K::NewYear, 1},
         {"christmas",          tr("Holiday Spirit"),   tr("Ride on December 25."),                  C::Special, K::Christmas, 1},
     };
@@ -133,6 +137,7 @@ QString categoryName(Category category)
     case Category::Consistency: return tr("Consistency");
     case Category::Fitness:     return tr("Fitness");
     case Category::Power:       return tr("Power & Cadence");
+    case Category::Courses:     return tr("Courses");
     case Category::Special:     return tr("Special");
     }
     return QString();

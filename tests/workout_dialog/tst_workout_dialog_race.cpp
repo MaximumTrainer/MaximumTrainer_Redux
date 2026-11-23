@@ -4,6 +4,7 @@
  * difficulty, and stands still while the ride is paused.
  */
 #include <QApplication>
+#include <QDir>
 #include <QElapsedTimer>
 #include <QImage>
 #include <QLabel>
@@ -18,6 +19,7 @@
 #include "managerachievement.h"
 #include "racecourse.h"
 #include "racesimulation.h"
+#include "achievementcatalog.h"
 #include "raceview.h"
 #include "radio.h"
 #include "sensor.h"
@@ -197,6 +199,55 @@ private slots:
         }
         qInfo("your lane changed %d times in two minutes of bunch riding", changes);
         QVERIFY2(changes <= 12, qPrintable(QStringLiteral("%1 lane changes").arg(changes)));
+    }
+
+    void everyCourseHasAnAchievement()
+    {
+        const QDir courses(QStringLiteral(":/courses"));
+        const QStringList files = courses.entryList({QStringLiteral("*.json")}, QDir::Files);
+        QVERIFY(!files.isEmpty());
+        for (const QString &file : files) {
+            const auto course = RaceCourse::fromFile(courses.filePath(file));
+            QVERIFY(course.has_value());
+            const auto *definition = AchievementCatalog::find(AchievementCatalog::Events::courseFinished(course->id()));
+            QVERIFY2(definition, qPrintable(course->id()));
+            QCOMPARE(definition->category, AchievementCatalog::Category::Courses);
+        }
+    }
+
+    // Crossing the line of a course earns its achievement, once.
+    void finishingACourse_earnsItsAchievement()
+    {
+        m_account->weight_kg = kRiderKg;
+        m_account->bike_weight_kg = 8;
+        m_account->enable_studio_mode = false;
+        m_account->isOffline = true;
+        // A 60 m stretch carrying a real course id, so the ride is short.
+        const auto shortCourse = RaceCourse::fromJson(
+            R"({"id":"longchamp","name":"Test","place":"Here","laps":1,"loop":false,)"
+            R"("points":[[0,48.86,2.24,40],[30,48.8603,2.2401,40],[60,48.8606,2.2402,40]]})");
+        QVERIFY(shortCourse.has_value());
+
+        auto *manager = qApp->property("ManagerAchievement").value<ManagerAchievement *>();
+        QSignalSpy earned(manager, &ManagerAchievement::achievementCompleted);
+        auto *dialog = new WorkoutDialog(freeRide(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+        dialog->setRace(*shortCourse, RaceBot::FieldSettings{1, 2.0, 2.0});
+        dialog->start_or_pause_workout();
+        QElapsedTimer clock;
+        clock.start();
+        while (!dialog->race()->youFinished() && clock.elapsed() < 30000) {
+            dialog->PowerDataReceived(1, 400);
+            QTest::qWait(100);
+        }
+        QVERIFY(dialog->race()->youFinished());
+        ride(dialog, 400, 600);   // more ticks after the line: still only one award
+
+        int forThisCourse = 0;
+        for (const QList<QVariant> &signal : std::as_const(earned))
+            if (signal.at(0).value<Achievement>().getName() == QStringLiteral("Longchamp Regular"))
+                ++forThisCourse;
+        QCOMPARE(forThisCourse, 1);
+        delete dialog;
     }
 
     void race_followsPowerAndSteersTheTrainer()
