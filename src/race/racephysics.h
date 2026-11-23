@@ -6,6 +6,7 @@
 #include <QVector>
 
 #include <algorithm>
+#include <functional>
 #include <cmath>
 
 /*
@@ -21,7 +22,7 @@ namespace RacePhysics {
 constexpr double kMaxDraftReduction = 0.40;
 constexpr double kWheelDraftReduction = 0.30;   // right on a wheel, ~1 m back
 constexpr double kDraftRangeM = 10.0;
-constexpr double kExtraRiderBonus = 0.03;       // each further rider ahead in the line
+constexpr double kExtraRiderBonus = 0.05;       // each further rider ahead, at full strength
 
 inline double stepSpeed(double vMps, double powerW, double massKg, double cda,
                         double grade, double draftReduction, double dtSec)
@@ -36,23 +37,32 @@ inline double stepSpeed(double vMps, double powerW, double massKg, double cda,
     return next < 0.0 ? 0.0 : next;
 }
 
+/// How much of the draft a wheel \a gapM ahead gives: all of it at 1 m or
+/// closer, fading in a straight line to none at 10 m.
+inline double draftFade(double gapM)
+{
+    if (gapM <= 0.0 || gapM > kDraftRangeM)
+        return 0.0;
+    return gapM <= 1.0 ? 1.0 : 1.0 - (gapM - 1.0) / (kDraftRangeM - 1.0);
+}
+
 /// Air-drag reduction for a rider, given the gaps (m) to the riders ahead.
-/// Best wheel: 30 % at 1 m or closer, fading to 0 at 10 m. Each further rider
-/// ahead within range adds a little, capped at 40 %.
+/// The closest wheel gives up to 30 % (at 1 m or closer, none at 10 m). Each
+/// further rider ahead adds up to 5 %, scaled the same way by its distance,
+/// so a line of riders right in front shelters you more. Capped at 40 %.
 inline double draftReduction(const QVector<double> &gapsAheadM)
 {
-    double best = 0.0;
-    int riders = 0;
-    for (const double gap : gapsAheadM) {
-        if (gap <= 0.0 || gap > kDraftRangeM)
-            continue;
-        ++riders;
-        const double fade = gap <= 1.0 ? 1.0 : 1.0 - (gap - 1.0) / (kDraftRangeM - 1.0);
-        best = std::max(best, kWheelDraftReduction * fade);
-    }
-    if (riders == 0)
+    QVector<double> fades;
+    for (const double gap : gapsAheadM)
+        if (const double fade = draftFade(gap); fade > 0.0)
+            fades.append(fade);
+    if (fades.isEmpty())
         return 0.0;
-    return std::min(kMaxDraftReduction, best + kExtraRiderBonus * (riders - 1));
+    std::sort(fades.begin(), fades.end(), std::greater<>());
+    double reduction = kWheelDraftReduction * fades.constFirst();
+    for (qsizetype index = 1; index < fades.size(); ++index)
+        reduction += kExtraRiderBonus * fades.at(index);
+    return std::min(kMaxDraftReduction, reduction);
 }
 
 /// The power saved by drafting, as a share of the power needed to ride at

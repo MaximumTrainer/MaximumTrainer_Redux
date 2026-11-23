@@ -22,10 +22,11 @@ const QColor kGradeSteep(0xd6, 0x55, 0x3d);
 constexpr double kTopBarHeight = 40.0;
 constexpr double kStandingsWidth = 300.0;
 constexpr double kRowHeight = 22.0;
-constexpr double kNameTagRangeM = 250.0;
-constexpr double kNowCardWidth = 420.0;
+constexpr double kNowCardWidth = 480.0;
 constexpr double kNowCardHeight = 92.0;
-constexpr double kZoomHalfM = 130.0;   // the map shows 260 m around you
+constexpr double kRoadWidthPx = 56.0;
+constexpr double kNameRangeM = 30.0;   // riders this close get a name tag, where it fits
+constexpr double kZoomHalfM = 90.0;    // the map shows 180 m around you
 constexpr double kProfileMinSegmentM = 100.0;
 constexpr double kProfileBands = 80.0;
 constexpr double kMetresPerDegreeLat = 110540.0;
@@ -216,7 +217,10 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
         const QPointF point = routePoint(course.points().at(index).distanceM, roadArea, bounds);
         index == 0 ? road.moveTo(point) : road.lineTo(point);
     }
-    QPen roadPen(palette().color(QPalette::Mid), 9, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    // Wide enough for three riders side by side.
+    QColor roadColour = palette().color(QPalette::Mid);
+    roadColour.setAlpha(120);
+    QPen roadPen(roadColour, kRoadWidthPx, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
     painter.setPen(roadPen);
     painter.setBrush(Qt::NoBrush);
     painter.drawPath(road);
@@ -255,14 +259,47 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
     QFont dotFont = font();
     dotFont.setBold(true);
     dotFont.setPointSizeF(font().pointSizeF() * 0.78);
-    const QFontMetricsF dotMetrics(dotFont);
-    QVector<QRectF> placedTags;
 
-    auto dotCentre = [&](int index) { return routePoint(m_race->riders().at(index).distanceM, roadArea, bounds); };
+    // Lay the riders out like a bunch: leader first, each at its place on the
+    // road; a rider who would cover one already placed moves across the road,
+    // left then right, so riders a metre apart are still two dots.
+    constexpr double kRadius = 8.5;
+    constexpr double kYourRadius = 10.0;
+    constexpr double kSlot = 2 * kRadius + 2;
+    constexpr int kMaxSideSlots = 1;   // three abreast: the width of the road
+    QVector<QPointF> centres(m_race->riders().size());
+    QVector<QPointF> placed;
+    for (const int index : order) {
+        const double distance = m_race->riders().at(index).distanceM;
+        const QPointF onRoad = routePoint(distance, roadArea, bounds);
+        QPointF direction = routePoint(distance + 4.0, roadArea, bounds) - routePoint(distance - 4.0, roadArea, bounds);
+        const double length = std::hypot(direction.x(), direction.y());
+        const QPointF across = length > 0.01 ? QPointF(-direction.y() / length, direction.x() / length) : QPointF(0, 1);
+        QPointF best = onRoad;
+        double bestClearance = -1.0;
+        for (int slot = 0; slot <= 2 * kMaxSideSlots; ++slot) {
+            const int side = (slot + 1) / 2 * (slot % 2 == 1 ? 1 : -1);
+            const QPointF candidate = onRoad + across * (side * kSlot);
+            double clearance = 1e9;
+            for (const QPointF &other : std::as_const(placed))
+                clearance = std::min(clearance, std::hypot(candidate.x() - other.x(), candidate.y() - other.y()));
+            if (clearance >= kSlot - 1.0) {
+                best = candidate;
+                break;
+            }
+            if (clearance > bestClearance) {
+                bestClearance = clearance;
+                best = candidate;
+            }
+        }
+        centres[index] = best;
+        placed.append(best);
+    }
+
     auto drawDot = [&](int index) {
         const RaceSimulation::Rider &rider = m_race->riders().at(index);
-        const QPointF centre = dotCentre(index);
-        const double radius = rider.isYou ? 10.0 : 8.5;
+        const QPointF centre = centres.at(index);
+        const double radius = rider.isYou ? kYourRadius : kRadius;
         painter.setPen(QPen(palette().color(QPalette::Window), 2));
         painter.setBrush(rider.isYou ? kYou : kRider);
         painter.drawEllipse(centre, radius, radius);
@@ -271,61 +308,59 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
         painter.drawText(QRectF(centre.x() - radius, centre.y() - radius, 2 * radius, 2 * radius),
                          Qt::AlignCenter, QString::number(positionOf.at(index)));
     };
-    auto drawTag = [&](int index) {
-        const RaceSimulation::Rider &rider = m_race->riders().at(index);
-        const bool nearYou = std::abs(rider.distanceM - you.distanceM) <= kNameTagRangeM;
-        if (!rider.isYou && !nearYou && positionOf.at(index) > 1)
-            return;
-        const QPointF centre = dotCentre(index);
-        const double radius = rider.isYou ? 10.0 : 8.5;
-        const QColor colour = rider.isYou ? kYou : kRider;
-        const QString label = rider.isYou ? tr("You") : rider.name;
-        const double width = dotMetrics.horizontalAdvance(label) + 10;
-        const QRectF candidates[] = {
-            {centre.x() + radius + 3, centre.y() - 9, width, 17},
-            {centre.x() - radius - 3 - width, centre.y() - 9, width, 17},
-            {centre.x() - width / 2, centre.y() - radius - 20, width, 17},
-            {centre.x() - width / 2, centre.y() + radius + 3, width, 17},
-        };
-        for (const QRectF &tag : candidates) {
-            const bool clear = std::none_of(placedTags.cbegin(), placedTags.cend(),
-                                            [&tag](const QRectF &other) { return other.intersects(tag); });
-            // Yours is always drawn: in the first free spot, or the first spot.
-            const bool lastChance = rider.isYou && &tag == &candidates[std::size(candidates) - 1];
-            if (!clear && !lastChance)
-                continue;
-            const QRectF &placed = clear ? tag : candidates[0];
-            placedTags.append(placed);
-            painter.setPen(rider.isYou ? Qt::NoPen : QPen(colour, 1));
-            painter.setBrush(rider.isYou ? colour : palette().color(QPalette::Base));
-            painter.drawRoundedRect(placed, 4, 4);
-            painter.setFont(dotFont);
-            painter.setPen(rider.isYou ? Qt::white : colour);
-            painter.drawText(placed, Qt::AlignCenter, label);
-            return;
-        }
-    };
 
-    // Dots back to front with you on top; then tags, yours first so it always
-    // gets a spot, then the leader and the riders nearest you.
+    // Dots back to front, you on top; numbers match the standings.
     for (int place = static_cast<int>(order.size()) - 1; place >= 0; --place)
         if (order.at(place) != 0)
             drawDot(order.at(place));
     drawDot(0);
-    for (int index = 0; index < m_race->riders().size(); ++index)
-        placedTags.append(QRectF(dotCentre(index) - QPointF(8, 8), QSizeF(16, 16)));
-    drawTag(0);
-    QVector<int> byCloseness;
+
+    // Name tags: yours always, and the riders within kNameRangeM of you where
+    // a tag fits without covering a dot or another tag. Others keep the number.
+    QVector<QRectF> taken;
+    for (int index = 0; index < centres.size(); ++index) {
+        const double radius = index == 0 ? kYourRadius : kRadius;
+        taken.append(QRectF(centres.at(index) - QPointF(radius, radius), QSizeF(2 * radius, 2 * radius)));
+    }
+    const QFontMetricsF tagMetrics(dotFont);
+    auto placeTag = [&](int index, bool mustShow) {
+        const RaceSimulation::Rider &rider = m_race->riders().at(index);
+        const QPointF centre = centres.at(index);
+        const double radius = rider.isYou ? kYourRadius : kRadius;
+        const QString label = rider.isYou ? tr("You") : rider.name;
+        const double width = tagMetrics.horizontalAdvance(label) + 12;
+        const QRectF candidates[] = {
+            {centre.x() + radius + 3, centre.y() - 9, width, 18},
+            {centre.x() - radius - 3 - width, centre.y() - 9, width, 18},
+            {centre.x() - width / 2, centre.y() - radius - 21, width, 18},
+            {centre.x() - width / 2, centre.y() + radius + 3, width, 18},
+        };
+        const QRectF *chosen = nullptr;
+        for (const QRectF &candidate : candidates)
+            if (std::none_of(taken.cbegin(), taken.cend(), [&](const QRectF &other) { return other.intersects(candidate); })) {
+                chosen = &candidate;
+                break;
+            }
+        if (!chosen && !mustShow)
+            return;
+        const QRectF tag = chosen ? *chosen : candidates[0];
+        taken.append(tag);
+        const QColor colour = rider.isYou ? kYou : kRider;
+        painter.setPen(rider.isYou ? Qt::NoPen : QPen(colour, 1));
+        painter.setBrush(rider.isYou ? colour : palette().color(QPalette::Base));
+        painter.drawRoundedRect(tag, 4, 4);
+        painter.setFont(dotFont);
+        painter.setPen(rider.isYou ? Qt::white : colour);
+        painter.drawText(tag, Qt::AlignCenter, label);
+    };
+    placeTag(0, true);
+    QVector<int> nearby;
     for (int index = 1; index < m_race->riders().size(); ++index)
-        byCloseness.append(index);
-    std::sort(byCloseness.begin(), byCloseness.end(), [&](int a, int b) {
-        if ((positionOf.at(a) == 1) != (positionOf.at(b) == 1))
-            return positionOf.at(a) == 1;
-        return std::abs(m_race->riders().at(a).distanceM - you.distanceM)
-             < std::abs(m_race->riders().at(b).distanceM - you.distanceM);
-    });
-    for (const int index : std::as_const(byCloseness))
-        drawTag(index);
+        if (std::abs(gapM(index)) <= kNameRangeM)
+            nearby.append(index);
+    std::sort(nearby.begin(), nearby.end(), [&](int a, int b) { return std::abs(gapM(a)) < std::abs(gapM(b)); });
+    for (const int index : std::as_const(nearby))
+        placeTag(index, false);
     painter.restore();
     paintOverview(painter, area);
 }
@@ -424,11 +459,14 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
         const QString wheel = m_race->riders().at(you.draftingBehind).name;
         painter.drawText(draftCell, Qt::AlignLeft | Qt::AlignVCenter,
                          QFontMetrics(draftFont).elidedText(
-                             tr("On %1's wheel \u00b7 %2 \u00b7 saving %3 %")
+                             tr("On %1's wheel \u00b7 %2%3 \u00b7 saving %4 %")
                                  .arg(wheel)
                                  .arg(gapM(you.draftingBehind) < 0.5
-                                          ? tr("under 0.5 m")
+                                          ? tr("<0.5 m")
                                           : tr("%1 m").arg(gapM(you.draftingBehind), 0, 'f', 1))
+                                 .arg(you.ridersSheltering > 1
+                                          ? tr(" \u00b7 %1 riders").arg(you.ridersSheltering)
+                                          : QString())
                                  .arg(qRound(you.powerSaving * 100)),
                              Qt::ElideMiddle, static_cast<int>(draftCell.width())));
     } else {

@@ -27,6 +27,7 @@ public:
         double draftReduction = 0.0;   // share of air drag saved
         double powerSaving = 0.0;      // share of power saved ("saving 24 %")
         int draftingBehind = -1;       // rider index of the wheel being followed
+        int ridersSheltering = 0;      // riders within draft range ahead
         std::optional<double> finishTimeSec;
     };
 

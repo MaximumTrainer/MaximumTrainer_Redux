@@ -145,14 +145,28 @@ void TstRace::physics_speedsMatchKnownNumbers()
 
 void TstRace::drafting_fadesWithGapAndIsCapped()
 {
-    QCOMPARE(RacePhysics::draftReduction({}), 0.0);
-    QCOMPARE(RacePhysics::draftReduction({0.8}), 0.30);
-    QCOMPARE(RacePhysics::draftReduction({1.0}), 0.30);
-    QVERIFY(std::abs(RacePhysics::draftReduction({5.5}) - 0.15) < 1e-9);
-    QCOMPARE(RacePhysics::draftReduction({10.0}), 0.0);
-    QCOMPARE(RacePhysics::draftReduction({12.0}), 0.0);
-    QVERIFY(std::abs(RacePhysics::draftReduction({1.0, 3.0}) - 0.33) < 1e-9);
-    QCOMPARE(RacePhysics::draftReduction({1, 2, 3, 4, 5, 6, 7, 8}), RacePhysics::kMaxDraftReduction);
+    using RacePhysics::draftReduction;
+    QCOMPARE(draftReduction({}), 0.0);
+    QCOMPARE(draftReduction({0.8}), 0.30);
+    QCOMPARE(draftReduction({1.0}), 0.30);
+    QVERIFY(std::abs(draftReduction({5.5}) - 0.15) < 1e-9);
+    QCOMPARE(draftReduction({10.0}), 0.0);
+    QCOMPARE(draftReduction({12.0}), 0.0);
+
+    // Closer to the wheel: more draft, all the way out to 10 m.
+    for (double gap = 1.0; gap < 10.0; gap += 0.5)
+        QVERIFY2(draftReduction({gap}) > draftReduction({gap + 0.5}), qPrintable(QString::number(gap)));
+
+    // A second rider ahead adds shelter, more when it is close.
+    QVERIFY(std::abs(draftReduction({1.0, 2.0}) - (0.30 + 0.05 * (1.0 - 1.0 / 9.0))) < 1e-9);
+    QVERIFY(draftReduction({1.0, 2.0}) > draftReduction({1.0}));
+    QVERIFY(draftReduction({1.0, 2.0}) > draftReduction({1.0, 9.0}));
+    QVERIFY(draftReduction({1.0, 9.5}) - draftReduction({1.0}) < 0.005);
+    // More riders in the line, more shelter, up to the cap.
+    QVERIFY(draftReduction({1.0, 2.0, 3.0}) > draftReduction({1.0, 2.0}));
+    QCOMPARE(draftReduction({1, 2, 3, 4, 5, 6, 7, 8}), RacePhysics::kMaxDraftReduction);
+    // The order the gaps come in doesn't matter.
+    QCOMPARE(draftReduction({6.0, 1.0}), draftReduction({1.0, 6.0}));
 }
 
 void TstRace::drafting_savesMoreOnTheFlatThanOnAClimb()

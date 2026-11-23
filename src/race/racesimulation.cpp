@@ -63,6 +63,7 @@ void RaceSimulation::updateDrafting()
             }
         }
         rider.draftReduction = RacePhysics::draftReduction(gaps);
+        rider.ridersSheltering = static_cast<int>(gaps.size());
     }
 }
 
