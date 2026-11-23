@@ -3685,7 +3685,7 @@ void WorkoutDialog::stepRace() {
         return;
     }
     // Cap a stalled event loop at one second so nobody teleports.
-    m_race->step(std::min(dtSec, 1.0));
+    m_race->step((std::min)(dtSec, 1.0));
     if (const std::optional<double> finish = m_race->you().finishTimeSec)
         qInfo() << "Bot race finished" << m_race->yourPosition() << "of" << m_race->riders().size()
                 << "in" << *finish << "s";
@@ -3697,7 +3697,7 @@ double WorkoutDialog::raceTrainerSlopePercent() const {
     constexpr double kTrainerDifficulty = 0.5;
     if (!m_race || m_race->youFinished())
         return 0.0;
-    return m_race->course().gradeAt(std::max(0.0, m_race->you().distanceM)) * 100.0 * kTrainerDifficulty;
+    return m_race->course().gradeAt((std::max)(0.0, m_race->you().distanceM)) * 100.0 * kTrainerDifficulty;
 }
 
 void WorkoutDialog::setGroupSession(GroupSession *session) {
