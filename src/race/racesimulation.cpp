@@ -78,7 +78,8 @@ void RaceSimulation::step(double dtSec)
         if (rider.finishTimeSec)
             continue;
         const double grade = m_course.gradeAt(std::max(0.0, rider.distanceM));
-        rider.powerW = rider.isYou ? m_yourPowerW : m_bots[index - 1].nextPower(grade, dtSec);
+        rider.powerW = rider.isYou ? m_yourPowerW
+                                   : m_bots[index - 1].nextPower(grade, dtSec, total - rider.distanceM);
         rider.speedMps = RacePhysics::stepSpeed(rider.speedMps, rider.powerW, rider.massKg, rider.cda,
                                                 grade, rider.draftReduction, dtSec);
         rider.powerSaving = RacePhysics::powerSaving(rider.speedMps, rider.massKg, rider.cda,

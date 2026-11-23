@@ -1415,14 +1415,8 @@ void WorkoutDialog::workoutOver() {
     if (!account->enable_studio_mode) {
         achievementManager->finishLiveRide();
         achievementManager->workoutCompleted(workout);
-        if (m_groupRide) {
+        if (m_groupRide)
             achievementManager->recordEvent(AchievementCatalog::Events::GroupRide);
-            achievementManager->recordEvent(m_groupRide->isHost() ? AchievementCatalog::Events::GroupHost
-                                                                  : AchievementCatalog::Events::GroupJoin);
-        }
-    }
-    else {
-        achievementManager->recordEvent(AchievementCatalog::Events::StudioHost);
     }
 
 
@@ -1637,6 +1631,11 @@ void WorkoutDialog::markSensorPaired(bool &pairingDone, QLabel *pairingLabel) {
 
 void WorkoutDialog::HrDataReceived(int userID, int value) {
 
+    if (m_raceView && userID == 1) {
+        m_raceHeartRate = value > 0 ? value : 0;
+        m_raceView->setLiveMetrics(m_raceCadence, m_raceHeartRate);
+    }
+
 
     // invalid value, show "-" to the user
     if (value == -1) {
@@ -1682,6 +1681,11 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
 
 
 void WorkoutDialog::CadenceDataReceived(int userID, int value) {
+
+    if (m_raceView && userID == 1) {
+        m_raceCadence = value > 0 && value <= 250 ? value : 0;
+        m_raceView->setLiveMetrics(m_raceCadence, m_raceHeartRate);
+    }
 
     // invalid value, show "-" to the user
     if (value == -1 || value > 250) {
@@ -2242,6 +2246,8 @@ void WorkoutDialog::shiftGear(int delta) {
     sendGearLoad();
     updateGearIndicator();
     ui->widget_topMenu->flashShift(delta);   // confirm the shift on the toolbar
+    if (m_raceView)
+        m_raceView->flashShift(delta);
 }
 
 // Refresh the top-bar gear indicator. It's a virtual-gear concept, so it's shown
@@ -2251,6 +2257,12 @@ void WorkoutDialog::shiftGear(int delta) {
 // difficulty there - see shiftGear()).
 void WorkoutDialog::updateGearIndicator() {
     const bool show = virtualShiftingActive() && !ergOwnsThisInterval();
+    if (m_raceView) {
+        // In a course the gear sits on the map, not in the top bar.
+        ui->widget_topMenu->setGearVisible(false);
+        m_raceView->setGear(m_virtualGear, kVirtualGearCount, show);
+        return;
+    }
     ui->widget_topMenu->setGearVisible(show);
     if (show)
         ui->widget_topMenu->updateGear(m_virtualGear, kVirtualGearCount);
@@ -2928,21 +2940,6 @@ void WorkoutDialog::showEvent(QShowEvent *event) {
 
     QDialog::showEvent(event);
 
-    // In a course the graph is hidden and Qt would share its space out, the
-    // bottom pane included. Once laid out, give the bottom pane its saved
-    // height back and the race view the rest.
-    if (m_race)
-        QTimer::singleShot(0, this, [this]() {
-            QList<int> sizes = ui->splitter->sizes();
-            if (sizes.size() < 4)
-                return;
-            const int bottom = AppSettings::read(QSettings(), SettingKeys::WorkoutDialog::Splitter3);
-            const int shared = sizes.at(1) + sizes.at(2) + sizes.at(3);
-            sizes[3] = std::clamp(bottom, 0, shared);
-            sizes[2] = 0;
-            sizes[1] = shared - sizes[3];
-            ui->splitter->setSizes(sizes);
-        });
 
     // Build and load the web player once, in the background, just after the
     // dialog is mapped — while its container is still hidden, so the native
@@ -3062,10 +3059,8 @@ void WorkoutDialog::saveInterface() {
     AppSettings::write(settings, Keys::Size, size());
     AppSettings::write(settings, Keys::Pos, pos());
 
-    // A course hides the interval graph: keep only the bottom pane's height,
-    // which normal workouts share; the graph's own size stays as it was.
+    // A course hides the graph and the bottom pane: keep the workout layout.
     if (m_race) {
-        AppSettings::write(settings, Keys::Splitter3, ui->splitter->sizes().at(3));
         AppSettings::write(settings, Keys::Fullscreen, isFullScreen());
         return;
     }
@@ -3660,6 +3655,12 @@ void WorkoutDialog::setRace(const RaceCourse &course, const RaceBot::FieldSettin
     if (auto *videoLayout = qobject_cast<QBoxLayout*>(ui->widgetVideo->parentWidget()->layout()))
         videoLayout->insertWidget(videoLayout->indexOf(ui->widgetVideo), m_raceView, 1);
     ui->widget_workoutPlot->hide();
+    ui->widget_allSpeedo->hide();   // power, cadence and heart rate are on the race card
+    ui->widget_topMenu->setCourseMode();
+    dconfig->setCourseMode();
+    connect(m_raceView, &RaceView::gearUpClicked, this, [this]() { shiftGear(1); });
+    connect(m_raceView, &RaceView::gearDownClicked, this, [this]() { shiftGear(-1); });
+    updateGearIndicator();
     ui->widget_topMenu->setStartLabel(tr("Start Course"));
     ui->widget_topMenu->setWorkoutNameLabel(course.name());
     showVideoPlayer(0);
@@ -3690,6 +3691,7 @@ void WorkoutDialog::stepRace() {
         qInfo() << "Bot race finished" << m_race->yourPosition() << "of" << m_race->riders().size()
                 << "in" << *finish << "s";
         achievementManager->recordEvent(AchievementCatalog::Events::courseFinished(m_race->course().id()));
+        workoutOver();   // save, upload and show the summary, as for a workout
     }
     m_raceView->update();
 }

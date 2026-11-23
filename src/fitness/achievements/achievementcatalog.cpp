@@ -85,16 +85,11 @@ QList<Definition> buildList()
         {"cadence_100_10min", tr("High Revs"),       tr("Hold 100 rpm for 10 minutes."),            C::Power, K::PeakCadence, 100, 600},
         // Special
         {Events::TargetManiac, tr("Target Maniac"),    tr("Finish a workout with power, power balance, cadence and heart rate targets."), C::Special, K::Event, 0},
-        {Events::GroupRide,    tr("Better Together"),  tr("Finish a group workout."),               C::Special, K::Event, 0},
-        {Events::GroupHost,    tr("Host with the Most"), tr("Finish a group workout you hosted."),  C::Special, K::Event, 0},
-        {Events::GroupJoin,    tr("Joined the Bunch"), tr("Finish a group workout you joined online."), C::Special, K::Event, 0},
-        {Events::StudioHost,   tr("Studio Host"),      tr("Finish a Studio Mode workout."),         C::Special, K::Event, 0},
+        {Events::GroupRide,    tr("Better Together"),  tr("Finish a group workout, as the host or as a guest."),               C::Special, K::Event, 0},
         // Courses: cross the finish line of each course
         {Events::courseFinished(QStringLiteral("longchamp")),    tr("Longchamp Regular"), tr("Finish the Longchamp loop course."), C::Courses, K::Event, 0},
         {Events::courseFinished(QStringLiteral("alpe-dhuez")),   tr("21 Hairpins"),       tr("Finish the Alpe d'Huez course."),    C::Courses, K::Event, 0},
         {Events::courseFinished(QStringLiteral("mont-ventoux")), tr("Giant of Provence"), tr("Finish the Mont Ventoux course."),   C::Courses, K::Event, 0},
-        {"new_year",           tr("New Year, New Watts"), tr("Ride on January 1."),                 C::Special, K::NewYear, 1},
-        {"christmas",          tr("Holiday Spirit"),   tr("Ride on December 25."),                  C::Special, K::Christmas, 1},
     };
 }
 
@@ -160,8 +155,6 @@ HistoryStats statsFrom(const QList<WorkoutHistorySummary> &history)
         const QDateTime local = ride.startTime.toLocalTime();
         stats.earlyBird = stats.earlyBird || local.time().hour() < 7;
         stats.nightOwl  = stats.nightOwl  || local.time().hour() >= 21;
-        stats.newYear   = stats.newYear   || (local.date().month() == 1 && local.date().day() == 1);
-        stats.christmas = stats.christmas || (local.date().month() == 12 && local.date().day() == 25);
         byDay[local.date()].append(&ride);
     }
 
@@ -228,8 +221,6 @@ double progress(const Definition &definition, const HistoryStats &stats)
     case Kind::WeekHours:   return stats.bestWeekHours;
     case Kind::MonthRides:  return stats.bestMonthRides;
     case Kind::WeekendDouble: return stats.weekendDouble ? 1 : 0;
-    case Kind::NewYear:     return stats.newYear ? 1 : 0;
-    case Kind::Christmas:   return stats.christmas ? 1 : 0;
     case Kind::WattsPerKg:  return stats.ftpWattsPerKg;
     case Kind::EarlyBird:   return stats.earlyBird ? 1 : 0;
     case Kind::NightOwl:    return stats.nightOwl ? 1 : 0;
@@ -251,7 +242,7 @@ bool isYesNo(const Definition &definition)
 {
     switch (definition.kind) {
     case Kind::Event: case Kind::EarlyBird: case Kind::NightOwl:
-    case Kind::WeekendDouble: case Kind::NewYear: case Kind::Christmas:
+    case Kind::WeekendDouble:
     case Kind::PeakPower: case Kind::PeakFtpPercent: case Kind::PeakCadence:
         return true;
     default:

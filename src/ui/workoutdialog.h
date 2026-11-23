@@ -524,6 +524,8 @@ private:
     QTimer *m_raceTimer = nullptr;
     QElapsedTimer m_raceClock;
     int m_racePowerW = 0;
+    int m_raceCadence = 0;
+    int m_raceHeartRate = 0;
     qint64 m_racePowerAtMs = 0;
     bool testResultShown;
     /// One automatic refresh-and-retry when a Strava upload answers 401.

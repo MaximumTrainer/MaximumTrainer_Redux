@@ -24,17 +24,31 @@ public:
     /// rider's dot flashes red at 1.5 times it (a sprint). 0 = never.
     void setRedLineWattsPerKg(double wattsPerKg);
 
+    /// The virtual gear, drawn top left of the map with ▼/▲ buttons.
+    void setGear(int gear, int gearCount, bool visible);
+    /// Light the ▲ (direction > 0) or ▼ button briefly after a shift.
+    void flashShift(int direction);
+    /// Cadence and heart rate for the card (power comes from the race). 0 = none.
+    void setLiveMetrics(int cadenceRpm, int heartRateBpm);
+
     /// The lane (0 to 3, across the road) a rider's dot is in, as last drawn.
     int laneOf(int riderIndex) const { return riderIndex < m_lanes.size() ? m_lanes.at(riderIndex) : -1; }
 
+signals:
+    void gearUpClicked();
+    void gearDownClicked();
+
 protected:
     void paintEvent(QPaintEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
 
 private:
     void paintTopBar(QPainter &painter, const QRectF &area) const;
     void paintRoute(QPainter &painter, const QRectF &area) const;
     void paintOverview(QPainter &painter, const QRectF &mapArea) const;
+    QRectF gearPanelRect(const QRectF &mapArea) const;
+    void paintGearPanel(QPainter &painter, const QRectF &mapArea) const;
     QRectF nowCardRect(const QRectF &mapArea) const;
     void paintNowPanel(QPainter &painter, const QRectF &mapArea) const;
     void paintStandings(QPainter &painter, const QRectF &area) const;
@@ -57,6 +71,16 @@ private:
     // Each rider's lane across the road (0 to 3) and where their dot is on
     // its way to it; kept between frames so riders don't hop sides.
     mutable QVector<int> m_lanes;
+    mutable QVector<int> m_tagSides;          // which side of its dot each name tag sits
+    int m_cadenceRpm = 0;
+    int m_heartRateBpm = 0;
+    int m_gear = 1;
+    int m_gearCount = 1;
+    bool m_gearVisible = false;
+    int m_shiftDirection = 0;
+    qint64 m_shiftAtMs = 0;
+    mutable QRectF m_gearUpRect;
+    mutable QRectF m_gearDownRect;
     mutable QVector<double> m_laneOffsets;
 };
 

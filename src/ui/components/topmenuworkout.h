@@ -37,6 +37,8 @@ public:
     void setWorkoutTime(QTime time);
     /// The start button's label before the first start ("Start Workout").
     void setStartLabel(const QString &label);
+    /// A course: only the ride time shows (no interval or remaining time).
+    void setCourseMode();
 
     void showIntervalRemaining(bool);
     void showWorkoutRemaining(bool);
