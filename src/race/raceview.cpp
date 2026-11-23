@@ -2,7 +2,6 @@
 
 #include "racesimulation.h"
 
-#include <QLocale>
 #include <QPainter>
 #include <QPainterPath>
 
@@ -26,9 +25,7 @@ constexpr double kRowHeight = 22.0;
 constexpr double kNameTagRangeM = 250.0;
 constexpr double kNowCardWidth = 420.0;
 constexpr double kNowCardHeight = 92.0;
-constexpr double kZoomBehindM = 450.0;
-constexpr double kZoomAheadM = 450.0;
-constexpr double kMinZoomSpanM = 400.0;
+constexpr double kZoomHalfM = 130.0;   // the map shows 260 m around you
 constexpr double kProfileMinSegmentM = 100.0;
 constexpr double kProfileBands = 80.0;
 constexpr double kMetresPerDegreeLat = 110540.0;
@@ -116,23 +113,10 @@ QPointF RaceView::project(double raceDistanceM) const
 
 QRectF RaceView::zoomBounds() const
 {
-    // The road from kZoomBehindM behind you to kZoomAheadM ahead, at least
-    // kMinZoomSpanM across, so the riders around you are spread out.
-    const double you = std::max(0.0, m_race->you().distanceM);
-    QRectF bounds;
-    const int samples = static_cast<int>((kZoomBehindM + kZoomAheadM) / 20.0);
-    for (int sample = 0; sample <= samples; ++sample) {
-        const QPointF point = project(you - kZoomBehindM + sample * 20.0);
-        bounds = bounds.isNull() ? QRectF(point, QSizeF(0.001, 0.001)) : bounds.united(QRectF(point, QSizeF(0.001, 0.001)));
-    }
-    const QPointF centre = project(you);
-    const double halfWidth = std::max(kMinZoomSpanM, bounds.width()) / 2.0;
-    const double halfHeight = std::max(kMinZoomSpanM, bounds.height()) / 2.0;
-    const double extentX = std::max(centre.x() - bounds.left(), bounds.right() - centre.x());
-    const double extentY = std::max(centre.y() - bounds.top(), bounds.bottom() - centre.y());
-    // Centred on you, so your dot stays still while the road moves under it.
-    const double half = std::max({halfWidth, halfHeight, extentX, extentY});
-    return {centre.x() - half, centre.y() - half, 2 * half, 2 * half};
+    // A fixed window centred on you: your dot stays still while the road and
+    // the riders around you move under it.
+    const QPointF centre = project(std::max(0.0, m_race->you().distanceM));
+    return {centre.x() - kZoomHalfM, centre.y() - kZoomHalfM, 2 * kZoomHalfM, 2 * kZoomHalfM};
 }
 
 QPointF RaceView::routePoint(double raceDistanceM, const QRectF &area, const QRectF &bounds, double margin) const
@@ -148,6 +132,7 @@ QPointF RaceView::routePoint(double raceDistanceM, const QRectF &area, const QRe
 
 void RaceView::paintEvent(QPaintEvent *)
 {
+
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.fillRect(rect(), palette().color(QPalette::Window));
@@ -388,6 +373,11 @@ QRectF RaceView::nowCardRect(const QRectF &mapArea) const
     return {mapArea.center().x() - width / 2, mapArea.bottom() - kNowCardHeight - 10, width, kNowCardHeight};
 }
 
+double RaceView::gapM(int riderIndex) const
+{
+    return m_race->riders().at(riderIndex).distanceM - m_race->you().distanceM;
+}
+
 void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
 {
     const RaceSimulation::Rider &you = m_race->you();
@@ -434,11 +424,29 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
         const QString wheel = m_race->riders().at(you.draftingBehind).name;
         painter.drawText(draftCell, Qt::AlignLeft | Qt::AlignVCenter,
                          QFontMetrics(draftFont).elidedText(
-                             tr("On %1's wheel \u00b7 saving %2 %").arg(wheel).arg(qRound(you.powerSaving * 100)),
+                             tr("On %1's wheel \u00b7 %2 \u00b7 saving %3 %")
+                                 .arg(wheel)
+                                 .arg(gapM(you.draftingBehind) < 0.5
+                                          ? tr("under 0.5 m")
+                                          : tr("%1 m").arg(gapM(you.draftingBehind), 0, 'f', 1))
+                                 .arg(qRound(you.powerSaving * 100)),
                              Qt::ElideMiddle, static_cast<int>(draftCell.width())));
     } else {
+        // The nearest rider ahead, so you know how far there is to close.
+        constexpr double kShowAheadM = 60.0;
+        int nearest = -1;
+        for (int index = 1; index < m_race->riders().size(); ++index) {
+            const double gap = gapM(index);
+            if (gap > 0.0 && gap <= kShowAheadM && !m_race->riders().at(index).finishTimeSec
+                && (nearest < 0 || gap < gapM(nearest)))
+                nearest = index;
+        }
         painter.setPen(palette().color(QPalette::PlaceholderText));
-        painter.drawText(draftCell, Qt::AlignLeft | Qt::AlignVCenter, tr("No draft"));
+        painter.drawText(draftCell, Qt::AlignLeft | Qt::AlignVCenter,
+                         nearest < 0 ? tr("No draft")
+                                     : tr("%1 is %2 m ahead \u00b7 close the gap to draft")
+                                           .arg(m_race->riders().at(nearest).name)
+                                           .arg(qRound(gapM(nearest))));
     }
 }
 
@@ -592,8 +600,7 @@ void RaceView::paintProfile(QPainter &painter, const QRectF &area) const
     QFont tagFont = font();
     tagFont.setBold(true);
     tagFont.setPointSizeF(font().pointSizeF() * 1.1);
-    const QString tagText = tr("%1 % \u00b7 %2 m").arg(grade * 100.0, 0, 'f', 1)
-                                                .arg(QLocale().toString(qRound(course.elevationAt(yourDistance))));
+    const QString tagText = tr("Grade %1 %").arg(grade * 100.0, 0, 'f', 1);
     const QSizeF tagSize(QFontMetricsF(tagFont).horizontalAdvance(tagText) + 18, 24);
     const double lineX = toX(yourDistance);
     // Beside the line, switching sides near the right edge.

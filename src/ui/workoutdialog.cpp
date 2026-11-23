@@ -3638,7 +3638,7 @@ void WorkoutDialog::setRace(const RaceCourse &course, const RaceBot::FieldSettin
     showVideoPlayer(0);
 
     m_raceTimer = new QTimer(this);
-    m_raceTimer->setInterval(250);
+    m_raceTimer->setInterval(40);   // 25 frames a second, so riders glide
     connect(m_raceTimer, &QTimer::timeout, this, &WorkoutDialog::stepRace);
     m_raceClock.start();
     m_raceTimer->start();

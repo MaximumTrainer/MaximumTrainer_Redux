@@ -36,6 +36,7 @@ private:
 
     QPointF project(double raceDistanceM) const;   // metres east/north of the start
     QRectF zoomBounds() const;                     // the stretch of road around you
+    double gapM(int riderIndex) const;             // metres ahead of you (negative: behind)
     QPointF routePoint(double raceDistanceM, const QRectF &area, const QRectF &bounds, double margin = 28.0) const;
     QColor gradeColor(double grade) const;
 
