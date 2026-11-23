@@ -4,7 +4,10 @@
  * difficulty, and stands still while the ride is paused.
  */
 #include <QApplication>
+#include <QElapsedTimer>
+#include <QImage>
 #include <QPushButton>
+#include <QSplitter>
 #include <QSignalSpy>
 #include <QStandardPaths>
 #include <QTest>
@@ -14,6 +17,7 @@
 #include "managerachievement.h"
 #include "racecourse.h"
 #include "racesimulation.h"
+#include "raceview.h"
 #include "radio.h"
 #include "sensor.h"
 #include "settings.h"
@@ -75,6 +79,89 @@ private slots:
     {
         for (const char *id : {"longchamp", "alpe-dhuez", "mont-ventoux"})
             QVERIFY2(RaceCourse::fromFile(QStringLiteral(":/courses/%1.json").arg(QLatin1String(id))).has_value(), id);
+    }
+
+    // A sprint: 50 bots, you at 900 W, the view redrawn every 40 ms tick.
+    // Each frame (one race step plus one full redraw) must stay well inside
+    // the 40 ms budget, or the race would stutter right when it matters.
+    void raceView_keepsUpWithASprint()
+    {
+        const auto course = RaceCourse::fromFile(QStringLiteral(":/courses/alpe-dhuez.json"));
+        QVERIFY(course.has_value());
+        RaceSimulation race(*course, QStringLiteral("You"), kRiderKg, 8.0, 0.30);
+        for (const RaceBot &bot : RaceBot::field({RaceBot::kMaxBots, 2.2, 4.0}, 9))
+            race.addBot(bot);
+        for (int tick = 0; tick < 4 * 600; ++tick) {   // ten minutes in, the bunch has formed
+            race.setYourPower(kThreeWattsPerKg);
+            race.step(0.25);
+        }
+        RaceView view(&race);
+        view.resize(1350, 640);
+        QImage frame(view.size(), QImage::Format_ARGB32_Premultiplied);
+
+        constexpr int kFrames = 150;
+        QElapsedTimer clock;
+        clock.start();
+        for (int index = 0; index < kFrames; ++index) {
+            race.setYourPower(900);
+            race.step(0.04);
+            view.render(&frame);
+        }
+        const double frameMs = clock.nsecsElapsed() / 1e6 / kFrames;
+        qInfo("sprint with %d bots: %.2f ms per frame (budget 40 ms)", RaceBot::kMaxBots, frameMs);
+        QVERIFY2(frameMs < 20.0, qPrintable(QStringLiteral("%1 ms per frame").arg(frameMs)));
+    }
+
+    // The bottom pane (metric widgets) must open at the height it had when
+    // the last workout was closed, not grow back to the default.
+    void bottomPane_keepsItsHeightAcrossWorkouts_data()
+    {
+        QTest::addColumn<bool>("firstIsCourse");
+        QTest::addColumn<bool>("secondIsCourse");
+        QTest::newRow("workout then workout") << false << false;
+        QTest::newRow("workout then course") << false << true;
+        QTest::newRow("course then course") << true << true;
+        QTest::newRow("course then workout") << true << false;
+    }
+
+    void bottomPane_keepsItsHeightAcrossWorkouts()
+    {
+        QFETCH(bool, firstIsCourse);
+        QFETCH(bool, secondIsCourse);
+        const auto course = RaceCourse::fromFile(QStringLiteral(":/courses/longchamp.json"));
+        m_account->enable_studio_mode = false;
+        m_account->isOffline = true;
+        constexpr int kBottomPx = 130;
+
+        auto *first = new WorkoutDialog(freeRide(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+        if (firstIsCourse)
+            first->setRace(*course, RaceBot::FieldSettings());
+        first->show();
+        first->resize(1280, 820);
+        QTest::qWait(300);
+        auto *splitter = first->findChild<QSplitter *>(QStringLiteral("splitter"));
+        QVERIFY(splitter);
+        QList<int> sizes = splitter->sizes();
+        const int total = sizes.at(1) + sizes.at(2) + sizes.at(3);
+        sizes[3] = kBottomPx;
+        sizes[1] = firstIsCourse ? total - kBottomPx : (total - kBottomPx) / 2;
+        sizes[2] = total - kBottomPx - sizes[1];
+        splitter->setSizes(sizes);
+        QTest::qWait(100);
+        const int setTo = splitter->sizes().at(3);
+        QMetaObject::invokeMethod(first, "closeWindow");
+        delete first;
+
+        auto *second = new WorkoutDialog(freeRide(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+        if (secondIsCourse)
+            second->setRace(*course, RaceBot::FieldSettings());
+        second->show();
+        QTest::qWait(500);
+        const int reopened = second->findChild<QSplitter *>(QStringLiteral("splitter"))->sizes().at(3);
+        qInfo("bottom pane: closed at %d px, reopened at %d px", setTo, reopened);
+        QVERIFY2(std::abs(reopened - setTo) <= 4,
+                 qPrintable(QStringLiteral("closed at %1 px, reopened at %2 px").arg(setTo).arg(reopened)));
+        delete second;
     }
 
     void race_followsPowerAndSteersTheTrainer()

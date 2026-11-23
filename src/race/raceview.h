@@ -20,6 +20,10 @@ public:
 
     QSize sizeHint() const override { return {960, 520}; }
 
+    /// Your W/kg turns red above this (your FTP over your weight), and a
+    /// rider's dot flashes red at 1.5 times it (a sprint). 0 = never.
+    void setRedLineWattsPerKg(double wattsPerKg);
+
 protected:
     void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
@@ -36,7 +40,9 @@ private:
 
     QPointF project(double raceDistanceM) const;   // metres east/north of the start
     QRectF zoomBounds() const;                     // the stretch of road around you
-    double gapM(int riderIndex) const;             // metres ahead of you (negative: behind)
+    double gapM(int riderIndex) const;
+    bool aboveRedLine(double wattsPerKg) const;
+    bool aboveSprintLine(double wattsPerKg) const;             // metres ahead of you (negative: behind)
     QPointF routePoint(double raceDistanceM, const QRectF &area, const QRectF &bounds, double margin = 28.0) const;
     QColor gradeColor(double grade) const;
 
@@ -44,6 +50,7 @@ private:
     // The lap's route projected flat once (x east, y north, in metres).
     QVector<QPointF> m_projected;
     QRectF m_projectedBounds;
+    double m_redLineWattsPerKg = 0.0;
 };
 
 #endif // RACEVIEW_H

@@ -2,6 +2,7 @@
 
 #include "racesimulation.h"
 
+#include <QDateTime>
 #include <QPainter>
 #include <QPainterPath>
 
@@ -14,6 +15,7 @@ const QColor kYou(0xf0, 0x8a, 0x44);
 const QColor kRider(0x7f, 0x9f, 0xd6);
 const QColor kRidden(0x4c, 0xc0, 0x8f);
 const QColor kDraft(0x4c, 0xc0, 0x8f);
+const QColor kAboveThreshold(0xef, 0x4b, 0x3f);
 const QColor kGradeEasy(0x7c, 0xc4, 0x7f);
 const QColor kGradeMid(0xe0, 0xc3, 0x41);
 const QColor kGradeHard(0xe8, 0xa2, 0x3a);
@@ -296,11 +298,14 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
         placed.append(best);
     }
 
+    // Sprinting (1.5 x your FTP per kg or more): the dot's border flashes red.
+    const bool flashOn = (QDateTime::currentMSecsSinceEpoch() / 250) % 2 == 0;
     auto drawDot = [&](int index) {
         const RaceSimulation::Rider &rider = m_race->riders().at(index);
         const QPointF centre = centres.at(index);
         const double radius = rider.isYou ? kYourRadius : kRadius;
-        painter.setPen(QPen(palette().color(QPalette::Window), 2));
+        const bool sprinting = !rider.finishTimeSec && aboveSprintLine(rider.powerW / rider.riderKg);
+        painter.setPen(sprinting && flashOn ? QPen(kAboveThreshold, 3.5) : QPen(palette().color(QPalette::Window), 2));
         painter.setBrush(rider.isYou ? kYou : kRider);
         painter.drawEllipse(centre, radius, radius);
         painter.setFont(dotFont);
@@ -408,6 +413,23 @@ QRectF RaceView::nowCardRect(const QRectF &mapArea) const
     return {mapArea.center().x() - width / 2, mapArea.bottom() - kNowCardHeight - 10, width, kNowCardHeight};
 }
 
+void RaceView::setRedLineWattsPerKg(double wattsPerKg)
+{
+    m_redLineWattsPerKg = wattsPerKg;
+    update();
+}
+
+bool RaceView::aboveRedLine(double wattsPerKg) const
+{
+    return m_redLineWattsPerKg > 0.0 && wattsPerKg > m_redLineWattsPerKg;
+}
+
+bool RaceView::aboveSprintLine(double wattsPerKg) const
+{
+    constexpr double kSprintShareOfFtp = 1.5;
+    return m_redLineWattsPerKg > 0.0 && wattsPerKg >= kSprintShareOfFtp * m_redLineWattsPerKg;
+}
+
 double RaceView::gapM(int riderIndex) const
 {
     return m_race->riders().at(riderIndex).distanceM - m_race->you().distanceM;
@@ -434,20 +456,23 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
     unit.setPointSizeF(font().pointSizeF() * 1.1);
     const QRectF left(card.left() + 16, card.top() + 8, card.width() / 2 - 16, 46);
     const QRectF right(card.center().x(), card.top() + 8, card.width() / 2 - 16, 46);
-    auto drawValue = [&](const QRectF &cell, const QString &value, const QString &suffix, Qt::Alignment side) {
+    auto drawValue = [&](const QRectF &cell, const QString &value, const QString &suffix, Qt::Alignment side,
+                         const QColor &colour) {
         const double valueWidth = QFontMetricsF(big).horizontalAdvance(value);
         const double suffixWidth = QFontMetricsF(unit).horizontalAdvance(suffix) + 6;
         const double start = side == Qt::AlignLeft ? cell.left() : cell.right() - valueWidth - suffixWidth;
         painter.setFont(big);
-        painter.setPen(palette().color(QPalette::Text));
+        painter.setPen(colour);
         painter.drawText(QRectF(start, cell.top(), valueWidth + 2, cell.height()), Qt::AlignLeft | Qt::AlignVCenter, value);
         painter.setFont(unit);
         painter.setPen(palette().color(QPalette::PlaceholderText));
         painter.drawText(QRectF(start + valueWidth + 6, cell.top() + 6, suffixWidth, cell.height()),
                          Qt::AlignLeft | Qt::AlignVCenter, suffix);
     };
-    drawValue(left, QString::number(you.speedMps * 3.6, 'f', 1), tr("km/h"), Qt::AlignLeft);
-    drawValue(right, QString::number(you.powerW / you.riderKg, 'f', 1), tr("W/kg"), Qt::AlignRight);
+    const double wattsPerKg = you.powerW / you.riderKg;
+    drawValue(left, QString::number(you.speedMps * 3.6, 'f', 1), tr("km/h"), Qt::AlignLeft, palette().color(QPalette::Text));
+    drawValue(right, QString::number(wattsPerKg, 'f', 1), tr("W/kg"), Qt::AlignRight,
+              aboveRedLine(wattsPerKg) ? kAboveThreshold : palette().color(QPalette::Text));
 
     QFont draftFont = font();
     draftFont.setPointSizeF(font().pointSizeF() * 1.15);
@@ -559,10 +584,13 @@ void RaceView::paintStandings(QPainter &painter, const QRectF &area) const
         QFont numbers = rowFont;
         numbers.setPointSizeF(font().pointSizeF() * 0.92);
         painter.setFont(numbers);
-        painter.setPen(muted);
-        if (!rider.finishTimeSec)
+        if (!rider.finishTimeSec) {
+            const double wattsPerKg = rider.powerW / rider.riderKg;
+            painter.setPen(rider.isYou && aboveRedLine(wattsPerKg) ? kAboveThreshold : muted);
             painter.drawText(wkgCell, Qt::AlignVCenter | Qt::AlignRight,
-                             QStringLiteral("%1 W/kg").arg(rider.powerW / rider.riderKg, 0, 'f', 1));
+                             QStringLiteral("%1 W/kg").arg(wattsPerKg, 0, 'f', 1));
+        }
+        painter.setPen(muted);
         QString right;
         if (rider.isYou)
             right = rider.finishTimeSec ? clock(*rider.finishTimeSec) : QString();

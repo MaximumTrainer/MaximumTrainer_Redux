@@ -2921,6 +2921,22 @@ void WorkoutDialog::showEvent(QShowEvent *event) {
 
     QDialog::showEvent(event);
 
+    // In a course the graph is hidden and Qt would share its space out, the
+    // bottom pane included. Once laid out, give the bottom pane its saved
+    // height back and the race view the rest.
+    if (m_race)
+        QTimer::singleShot(0, this, [this]() {
+            QList<int> sizes = ui->splitter->sizes();
+            if (sizes.size() < 4)
+                return;
+            const int bottom = AppSettings::read(QSettings(), SettingKeys::WorkoutDialog::Splitter3);
+            const int shared = sizes.at(1) + sizes.at(2) + sizes.at(3);
+            sizes[3] = std::clamp(bottom, 0, shared);
+            sizes[2] = 0;
+            sizes[1] = shared - sizes[3];
+            ui->splitter->setSizes(sizes);
+        });
+
     // Build and load the web player once, in the background, just after the
     // dialog is mapped — while its container is still hidden, so the native
     // window is realized invisibly and switching to it later never flickers the
@@ -3039,9 +3055,10 @@ void WorkoutDialog::saveInterface() {
     AppSettings::write(settings, Keys::Size, size());
     AppSettings::write(settings, Keys::Pos, pos());
 
-    // The race hides the interval graph; keep the rider's own layout for the
-    // next normal workout.
+    // A course hides the interval graph: keep only the bottom pane's height,
+    // which normal workouts share; the graph's own size stays as it was.
     if (m_race) {
+        AppSettings::write(settings, Keys::Splitter3, ui->splitter->sizes().at(3));
         AppSettings::write(settings, Keys::Fullscreen, isFullScreen());
         return;
     }
@@ -3631,6 +3648,8 @@ void WorkoutDialog::setRace(const RaceCourse &course, const RaceBot::FieldSettin
         m_race->addBot(bot);
 
     m_raceView = new RaceView(m_race.get(), ui->widgetVideo->parentWidget());
+    if (riderKg > 0.0)
+        m_raceView->setRedLineWattsPerKg(account->FTP / riderKg);   // above FTP: red
     if (auto *videoLayout = qobject_cast<QBoxLayout*>(ui->widgetVideo->parentWidget()->layout()))
         videoLayout->insertWidget(videoLayout->indexOf(ui->widgetVideo), m_raceView, 1);
     ui->widget_workoutPlot->hide();
