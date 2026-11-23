@@ -6,6 +6,7 @@
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QSettings>
+#include <QSignalBlocker>
 #include <QSpinBox>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -210,7 +211,19 @@ CoursesPage::CoursesPage(QWidget *parent)
     m_weight->setTextFormat(Qt::RichText);
     m_weight->setOpenExternalLinks(true);
     m_weight->setWordWrap(true);
-    settingsForm->addRow(tr("Your weight"), m_weight);
+    m_weightEdit = new QDoubleSpinBox(this);
+    m_weightEdit->setObjectName(QStringLiteral("coursesWeightEdit"));
+    m_weightEdit->setRange(30.0, 200.0);
+    m_weightEdit->setDecimals(1);
+    m_weightEdit->setSuffix(tr(" kg"));
+    m_weightEdit->setMinimumWidth(100);
+    auto *weightRow = new QHBoxLayout();
+    weightRow->addWidget(m_weightEdit);
+    weightRow->addWidget(m_weight, 1);
+    settingsForm->addRow(tr("Your weight"), weightRow);
+    connect(m_weightEdit, &QDoubleSpinBox::editingFinished, this, [this]() {
+        emit weightEdited(m_weightEdit->value());
+    });
     namespace Keys = SettingKeys::Courses;
     const QSettings settings;
     m_botCount = new QSpinBox(this);
@@ -286,8 +299,17 @@ double CoursesPage::estimatedSeconds(const RaceCourse &course, double watts, dou
     return solo.you().finishTimeSec.value_or(kGiveUpSec);
 }
 
-void CoursesPage::setProfile(int ftpWatts, double weightKg, double bikeKg, double cda)
+void CoursesPage::setProfile(int ftpWatts, double weightKg, double bikeKg, double cda, bool fromIntervals)
 {
+    m_ftpWatts = ftpWatts;
+    m_bikeKg = bikeKg;
+    m_cda = cda;
+    m_weightEdit->setVisible(!fromIntervals);
+    if (!fromIntervals) {
+        const QSignalBlocker quiet(m_weightEdit);
+        m_weightEdit->setValue(weightKg);
+        m_weight->setText(tr("Also in Preferences."));
+    } else
     m_weight->setText(tr("%1 kg, from your Intervals.icu profile. To change it, update it in your "
                          "<a style=\"color:#6ca8ff\" href=\"https://intervals.icu/settings\">Intervals.icu settings</a> and restart the app.")
                           .arg(weightKg, 0, 'f', 1));

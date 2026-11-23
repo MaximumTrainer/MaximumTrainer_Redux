@@ -32,18 +32,26 @@ public:
 
     /// The rider's profile (from Intervals.icu): sets the weight shown and the
     /// estimated times.
-    void setProfile(int ftpWatts, double weightKg, double bikeKg, double cda);
+    /// \a fromIntervals: the weight comes from Intervals.icu and is shown
+    /// read-only; otherwise it can be edited here (weightEdited).
+    void setProfile(int ftpWatts, double weightKg, double bikeKg, double cda, bool fromIntervals);
     /// Your time riding \a course alone at \a watts.
     static double estimatedSeconds(const RaceCourse &course, double watts, double riderKg, double bikeKg, double cda);
 
 signals:
     void rideRequested(const RaceCourse &course, const RaceBot::FieldSettings &bots);
+    /// The rider changed their weight here (not signed in with Intervals.icu).
+    void weightEdited(double weightKg);
 
 private:
     QVector<RaceCourse> m_courses;
     QLineEdit *m_search = nullptr;
     QTreeWidget *m_courseList = nullptr;
     QLabel *m_weight = nullptr;
+    QDoubleSpinBox *m_weightEdit = nullptr;
+    int m_ftpWatts = 0;
+    double m_bikeKg = 0.0;
+    double m_cda = 0.0;
     QSpinBox *m_botCount = nullptr;
     QDoubleSpinBox *m_minWattsPerKg = nullptr;
     QDoubleSpinBox *m_maxWattsPerKg = nullptr;
