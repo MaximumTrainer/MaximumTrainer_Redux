@@ -484,7 +484,8 @@ jobs:
       run: ./build/tests/workout_dialog_tests -v2
 
     - name: Join group dialog tests
-      run: ./build/tests/join_group_dialog_tests -v2
+      # Needs an active window for keyboard focus; Xvfb has no window manager.
+      run: QT_QPA_PLATFORM=offscreen ./build/tests/join_group_dialog_tests -v2
 
     - name: UI navigation tests
       # MT_NO_NETWORK=1 disables all outbound network calls in the launched
