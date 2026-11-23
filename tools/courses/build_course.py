@@ -37,6 +37,21 @@ ROUTERS = {
 }
 
 COURSES = {
+    "central-park": {
+        "name": "Central Park loop",
+        "place": "New York, USA",
+        "laps": 2,
+        "loop": True,
+        "router": "bike",
+        "dem": "srtm30m",   # EU-DEM covers Europe only
+        # The full Park Drive loop, ridden counter-clockwise as cyclists do:
+        # up the East Drive, over Harlem Hill, down the West Drive.
+        "waypoints": [
+            (40.76680, -73.97380), (40.78500, -73.96050), (40.79740, -73.95560),
+            (40.79600, -73.96000), (40.78300, -73.96900), (40.76900, -73.98000),
+            (40.76680, -73.97380),
+        ],
+    },
     "longchamp": {
         "name": "Longchamp loop",
         "place": "Bois de Boulogne, Paris, France",

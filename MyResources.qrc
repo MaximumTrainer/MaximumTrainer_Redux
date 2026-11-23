@@ -134,6 +134,7 @@
         <file>resources/data/default_radios.json</file>
     </qresource>
     <qresource prefix="/courses">
+        <file alias="central-park.json">resources/courses/central-park.json</file>
         <file alias="longchamp.json">resources/courses/longchamp.json</file>
         <file alias="alpe-dhuez.json">resources/courses/alpe-dhuez.json</file>
         <file alias="mont-ventoux.json">resources/courses/mont-ventoux.json</file>
