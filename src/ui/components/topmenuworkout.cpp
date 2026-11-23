@@ -402,6 +402,14 @@ void TopMenuWorkout::setWorkoutNameLabel(QString label) {
 }
 
 
+void TopMenuWorkout::setCourseMode() {
+    for (QWidget *widget : {static_cast<QWidget *>(ui->label_dash2), static_cast<QWidget *>(ui->label_remainingTime),
+                            static_cast<QWidget *>(ui->label_dash3), static_cast<QWidget *>(ui->label_intervalTime)})
+        widget->setVisible(false);
+    dontShowRemainingTime = true;
+}
+
+
 void TopMenuWorkout::setStartLabel(const QString &label) {
     ui->pushButton_start->setText(label);
 }

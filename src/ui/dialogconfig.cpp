@@ -641,6 +641,21 @@ void DialogConfig::on_comboBox_startTrigger_activated(int index) {
 }
 
 
+void DialogConfig::setCourseMode() {
+    constexpr int kSoundsRow = 3;
+    constexpr int kRadioRow = 5;
+    for (int row = 0; row < ui->listWidget_settings->count(); ++row) {
+        if (row == kSoundsRow || row == kRadioRow)
+            continue;
+        QListWidgetItem *item = ui->listWidget_settings->item(row);
+        item->setFlags(item->flags() & ~(Qt::ItemIsEnabled | Qt::ItemIsSelectable));
+        item->setToolTip(tr("Not used in a course"));
+    }
+    ui->listWidget_settings->setCurrentRow(kSoundsRow);
+    setWindowTitle(tr("Course Config"));
+}
+
+
 void DialogConfig::on_comboBox_displayVideo_activated(int index) {
     parentDialog->showVideoPlayer(index);
 

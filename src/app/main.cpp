@@ -35,6 +35,7 @@
 #include "groupsimtest.h"
 #include "racesimulation.h"
 #include "raceview.h"
+#include "powerzones.h"
 #include "apptheme.h"
 #endif
 
@@ -320,12 +321,15 @@ int main(int argc, char *argv[]) {
         constexpr double kRiderKg = 72.0;
         RaceSimulation race(*course, QStringLiteral("You"), kRiderKg, RaceSimulation::kBotBikeMassKg, 0.30);
         for (const RaceBot &bot : RaceBot::defaultField(42)) race.addBot(bot);
+        RaceView view(&race);
+        view.setZones(250, PowerZones::boundsPct({}));
         const int ticks = static_cast<int>(seconds * 4.0);   // 0.25 s steps
         for (int tick = 0; tick < ticks && !race.youFinished(); ++tick) {
-            race.setYourPower(3.0 * kRiderKg);
+            // Around 3 W/kg, with surges and easier spells, like a real ride.
+            race.setYourPower(3.0 * kRiderKg * (1.0 + 0.35 * std::sin(tick / 40.0)));
             race.step(0.25);
+            view.addRideTime(0.25);
         }
-        RaceView view(&race);
         view.resize(1350, 640);
         return view.grab().save(outPath) ? 0 : 1;
     }

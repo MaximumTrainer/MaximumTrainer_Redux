@@ -37,6 +37,21 @@ ROUTERS = {
 }
 
 COURSES = {
+    "central-park": {
+        "name": "Central Park loop",
+        "place": "New York, USA",
+        "laps": 2,
+        "loop": True,
+        "router": "bike",
+        "dem": "srtm30m",   # EU-DEM covers Europe only
+        # The full Park Drive loop, ridden counter-clockwise as cyclists do:
+        # up the East Drive, over Harlem Hill, down the West Drive.
+        "waypoints": [
+            (40.76680, -73.97380), (40.78500, -73.96050), (40.79740, -73.95560),
+            (40.79600, -73.96000), (40.78300, -73.96900), (40.76900, -73.98000),
+            (40.76680, -73.97380),
+        ],
+    },
     "longchamp": {
         "name": "Longchamp loop",
         "place": "Bois de Boulogne, Paris, France",
@@ -136,12 +151,18 @@ def resample(points, step_m):
     return samples
 
 
-def elevations(samples):
+DEMS = {
+    "eudem25m": "EU-DEM v1.1 (Copernicus)",
+    "srtm30m": "SRTM 30 m (NASA)",
+}
+
+
+def elevations(samples, dem):
     result = []
     for start in range(0, len(samples), 100):
         batch = samples[start:start + 100]
         locations = "|".join(f"{lat:.6f},{lon:.6f}" for _, lat, lon in batch)
-        data = http_json(f"https://api.opentopodata.org/v1/eudem25m?locations={locations}")
+        data = http_json(f"https://api.opentopodata.org/v1/{dem}?locations={locations}")
         if data.get("status") != "OK":
             raise RuntimeError(f"elevation lookup failed: {data}")
         result.extend(r["elevation"] if r["elevation"] is not None else float("nan")
@@ -183,7 +204,8 @@ def build(course_id, spec):
     print(f"[{course_id}] routing {len(spec['waypoints'])} waypoints")
     samples = resample(prune_detours(route_geometry(spec["waypoints"], spec["router"])), STEP_M)
     print(f"[{course_id}] {samples[-1][0] / 1000:.2f} km, {len(samples)} samples; fetching elevation")
-    raw = elevations(samples)
+    dem = spec.get("dem", "eudem25m")
+    raw = elevations(samples, dem)
     known = [e for e in raw if not math.isnan(e)]
     raw = [e if not math.isnan(e) else known[0] for e in raw]
     distances = [s[0] for s in samples]
@@ -203,7 +225,7 @@ def build(course_id, spec):
         "place": spec["place"],
         "laps": spec["laps"],
         "loop": spec["loop"],
-        "attribution": "Map data © OpenStreetMap contributors (ODbL). Elevation: EU-DEM v1.1 (Copernicus).",
+        "attribution": f"Map data © OpenStreetMap contributors (ODbL). Elevation: {DEMS[dem]}.",
         "lapDistanceM": round(distances[-1], 1),
         "lapClimbM": round(climb, 1),
         "points": [[round(d, 1), round(lat, 6), round(lon, 6), round(e, 1)]

@@ -1,8 +1,10 @@
 #include "raceview.h"
 
+#include "powerzones.h"
 #include "racesimulation.h"
 
 #include <QDateTime>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
 
@@ -26,9 +28,9 @@ const QColor kGradeSteep(0xd6, 0x55, 0x3d);
 
 constexpr double kTopBarHeight = 40.0;
 constexpr double kStandingsWidth = 300.0;
-constexpr double kRowHeight = 22.0;
-constexpr double kNowCardWidth = 480.0;
-constexpr double kNowCardHeight = 92.0;
+constexpr double kRowHeight = 30.0;
+constexpr double kNowCardWidth = 560.0;
+constexpr double kNowCardHeight = 130.0;
 constexpr double kRoadWidthPx = 80.0;   // four riders abreast
 constexpr double kNameRangeM = 30.0;   // riders this close get a name tag, where it fits
 constexpr double kZoomHalfM = 90.0;    // the map shows 180 m around you
@@ -156,6 +158,8 @@ void RaceView::paintEvent(QPaintEvent *)
     paintTopBar(painter, topBar);
     paintRoute(painter, map);
     paintNowPanel(painter, map);
+    paintGearPanel(painter, map);
+    paintZonePanel(painter, map);
     paintStandings(painter, standings);
     paintProfile(painter, profile);
     if (m_race->youFinished())
@@ -334,8 +338,10 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
             drawDot(order.at(place));
     drawDot(0);
 
-    // Name tags: yours always, and the riders within kNameRangeM of you where
-    // a tag fits without covering a dot or another tag. Others keep the number.
+    // Name tags for the riders within kNameRangeM of you, where a tag fits
+    // without covering a dot or another tag (you are the orange dot, no tag).
+    // A tag keeps the side it had last frame while that side is free, so names
+    // don't hop around a rider in a moving bunch.
     QVector<QRectF> taken;
     for (int index = 0; index < centres.size(); ++index) {
         const double radius = index == 0 ? kYourRadius : kRadius;
@@ -354,15 +360,22 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
             {centre.x() - width / 2, centre.y() - radius - 21, width, 18},
             {centre.x() - width / 2, centre.y() + radius + 3, width, 18},
         };
-        const QRectF *chosen = nullptr;
-        for (const QRectF &candidate : candidates)
+        if (m_tagSides.size() != m_race->riders().size())
+            m_tagSides = QVector<int>(m_race->riders().size(), 0);
+        int chosen = -1;
+        for (int attempt = 0; attempt < 4; ++attempt) {
+            const int side = (m_tagSides.at(index) + attempt) % 4;
+            const QRectF &candidate = candidates[side];
             if (std::none_of(taken.cbegin(), taken.cend(), [&](const QRectF &other) { return other.intersects(candidate); })) {
-                chosen = &candidate;
+                chosen = side;
                 break;
             }
-        if (!chosen && !mustShow)
+        }
+        if (chosen < 0 && !mustShow)
             return;
-        const QRectF tag = chosen ? *chosen : candidates[0];
+        if (chosen >= 0)
+            m_tagSides[index] = chosen;
+        const QRectF tag = candidates[std::max(chosen, 0)];
         taken.append(tag);
         const QColor colour = rider.isYou ? kYou : kRider;
         painter.setPen(rider.isYou ? Qt::NoPen : QPen(colour, 1));
@@ -372,7 +385,6 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
         painter.setPen(rider.isYou ? Qt::white : colour);
         painter.drawText(tag, Qt::AlignCenter, label);
     };
-    placeTag(0, true);
     QVector<int> nearby;
     for (int index = 1; index < m_race->riders().size(); ++index)
         if (std::abs(gapM(index)) <= kNameRangeM)
@@ -387,7 +399,7 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
 void RaceView::paintOverview(QPainter &painter, const QRectF &mapArea) const
 {
     const RaceCourse &course = m_race->course();
-    const QRectF box(mapArea.left() + 12, mapArea.top() + 12, 170, 120);
+    const QRectF box(mapArea.left() + 12, gearPanelRect(mapArea).bottom() + 10, 170, 120);
     painter.setPen(QPen(palette().color(QPalette::Mid), 1));
     painter.setBrush(palette().color(QPalette::Base));
     painter.drawRoundedRect(box, 6, 6);
@@ -455,48 +467,97 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
     if (m_race->youFinished())
         return;
 
-    // Only what you follow second by second: speed, W/kg and the draft.
+    // What you follow second by second, each value in its own fixed cell so a
+    // changing number never pushes the others around.
     const QRectF card = nowCardRect(mapArea);
     QColor fill = palette().color(QPalette::Base);
-    fill.setAlpha(235);
+    fill.setAlpha(240);
     painter.setPen(QPen(palette().color(QPalette::Mid), 1));
     painter.setBrush(fill);
     painter.drawRoundedRect(card, 10, 10);
 
-    QFont big = font();
-    big.setBold(true);
-    big.setPointSizeF(font().pointSizeF() * 2.3);
-    QFont unit = font();
-    unit.setPointSizeF(font().pointSizeF() * 1.1);
-    const QRectF left(card.left() + 16, card.top() + 8, card.width() / 2 - 16, 46);
-    const QRectF right(card.center().x(), card.top() + 8, card.width() / 2 - 16, 46);
-    auto drawValue = [&](const QRectF &cell, const QString &value, const QString &suffix, Qt::Alignment side,
-                         const QColor &colour) {
-        const double valueWidth = QFontMetricsF(big).horizontalAdvance(value);
-        const double suffixWidth = QFontMetricsF(unit).horizontalAdvance(suffix) + 6;
-        const double start = side == Qt::AlignLeft ? cell.left() : cell.right() - valueWidth - suffixWidth;
-        painter.setFont(big);
-        painter.setPen(colour);
-        painter.drawText(QRectF(start, cell.top(), valueWidth + 2, cell.height()), Qt::AlignLeft | Qt::AlignVCenter, value);
-        painter.setFont(unit);
-        painter.setPen(palette().color(QPalette::PlaceholderText));
-        painter.drawText(QRectF(start + valueWidth + 6, cell.top() + 6, suffixWidth, cell.height()),
-                         Qt::AlignLeft | Qt::AlignVCenter, suffix);
-    };
     const double wattsPerKg = you.powerW / you.riderKg;
-    drawValue(left, QString::number(you.speedMps * 3.6, 'f', 1), tr("km/h"), Qt::AlignLeft, palette().color(QPalette::Text));
-    drawValue(right, QString::number(wattsPerKg, 'f', 1), tr("W/kg"), Qt::AlignRight,
-              aboveRedLine(wattsPerKg) ? kAboveThreshold : palette().color(QPalette::Text));
+    struct Cell { QString label; QString value; QString unit; QColor colour; QString sub; QColor subColour; };
+    const QColor text = palette().color(QPalette::Text);
+    auto orDash = [](int value) { return value > 0 ? QString::number(value) : QStringLiteral("-"); };
+    // W/kg sits under the power, in the power cell.
+    const Cell cells[] = {
+        {tr("POWER"), QString::number(qRound(you.powerW)), tr("W"), text,
+         tr("%1 W/kg").arg(wattsPerKg, 0, 'f', 1), aboveRedLine(wattsPerKg) ? kAboveThreshold : text},
+        {tr("CADENCE"), orDash(m_cadenceRpm), tr("rpm"), text, QString(), text},
+        {tr("HEART RATE"), orDash(m_heartRateBpm), tr("bpm"), text, QString(), text},
+        {tr("SPEED"), QString::number(you.speedMps * 3.6, 'f', 1), tr("km/h"), text, QString(), text},
+    };
+    QFont labelFont = font();
+    labelFont.setPointSizeF(font().pointSizeF() * 0.8);
+    labelFont.setLetterSpacing(QFont::PercentageSpacing, 108);
+    QFont valueFont = font();
+    valueFont.setBold(true);
+    valueFont.setPointSizeF(font().pointSizeF() * 2.1);
+    QFont unitFont = font();
+    unitFont.setPointSizeF(font().pointSizeF() * 0.95);
+    QFont subFont = font();
+    subFont.setBold(true);
+    subFont.setPointSizeF(font().pointSizeF() * 1.15);
+    const int cellCount = static_cast<int>(std::size(cells));
+    const double cellWidth = (card.width() - 24) / cellCount;
+    for (int index = 0; index < cellCount; ++index) {
+        const Cell &cell = cells[index];
+        const QRectF box(card.left() + 12 + index * cellWidth, card.top() + 8, cellWidth, 82);
+        if (index > 0) {
+            painter.setPen(QPen(palette().color(QPalette::Mid), 1));
+            painter.drawLine(QPointF(box.left(), box.top() + 6), QPointF(box.left(), box.bottom() - 4));
+        }
+        painter.setFont(labelFont);
+        painter.setPen(palette().color(QPalette::PlaceholderText));
+        painter.drawText(QRectF(box.left(), box.top(), box.width(), 16), Qt::AlignHCenter | Qt::AlignTop, cell.label);
+        // Your power zone, as a coloured pill beside "POWER".
+        if (index == 0 && currentZone() >= 0) {
+            const int zone = currentZone();
+            const double labelWidth = QFontMetricsF(labelFont).horizontalAdvance(cell.label);
+            const QRectF pill(box.center().x() + labelWidth / 2 + 6, box.top() - 1, 26, 15);
+            QColor colour = PowerZones::color(zone);
+            colour.setAlpha(255);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(colour);
+            painter.drawRoundedRect(pill, 4, 4);
+            QFont pillFont = labelFont;
+            pillFont.setBold(true);
+            painter.setFont(pillFont);
+            painter.setPen(QColor(0x1d, 0x1d, 0x1d));
+            painter.drawText(pill, Qt::AlignCenter, tr("Z%1").arg(zone + 1));
+        }
+        const QFontMetricsF valueMetrics(valueFont);
+        const QFontMetricsF unitMetrics(unitFont);
+        const double valueWidth = valueMetrics.horizontalAdvance(cell.value);
+        const double unitWidth = cell.unit.isEmpty() ? 0.0 : unitMetrics.horizontalAdvance(cell.unit) + 4;
+        const double start = box.center().x() - (valueWidth + unitWidth) / 2;
+        const QRectF valueBox(start, box.top() + 16, valueWidth + 2, 44);
+        painter.setFont(valueFont);
+        painter.setPen(cell.colour);
+        painter.drawText(valueBox, Qt::AlignLeft | Qt::AlignVCenter, cell.value);
+        if (!cell.unit.isEmpty()) {
+            painter.setFont(unitFont);
+            painter.setPen(palette().color(QPalette::PlaceholderText));
+            painter.drawText(QRectF(valueBox.right() + 4, valueBox.top() + 8, unitWidth, valueBox.height()),
+                             Qt::AlignLeft | Qt::AlignVCenter, cell.unit);
+        }
+        if (!cell.sub.isEmpty()) {
+            painter.setFont(subFont);
+            painter.setPen(cell.subColour);
+            painter.drawText(QRectF(box.left(), valueBox.bottom(), box.width(), 22), Qt::AlignHCenter | Qt::AlignVCenter, cell.sub);
+        }
+    }
 
     QFont draftFont = font();
     draftFont.setPointSizeF(font().pointSizeF() * 1.15);
     draftFont.setBold(you.draftingBehind >= 0);
     painter.setFont(draftFont);
-    const QRectF draftCell(card.left() + 16, card.bottom() - 34, card.width() - 32, 26);
+    const QRectF draftCell(card.left() + 18, card.bottom() - 32, card.width() - 36, 24);
     if (you.draftingBehind >= 0) {
         painter.setPen(kDraft);
         const QString wheel = m_race->riders().at(you.draftingBehind).name;
-        painter.drawText(draftCell, Qt::AlignLeft | Qt::AlignVCenter,
+        painter.drawText(draftCell, Qt::AlignHCenter | Qt::AlignVCenter,
                          QFontMetrics(draftFont).elidedText(
                              tr("On %1's wheel \u00b7 %2%3 \u00b7 saving %4 %")
                                  .arg(wheel)
@@ -509,7 +570,6 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
                                  .arg(qRound(you.powerSaving * 100)),
                              Qt::ElideMiddle, static_cast<int>(draftCell.width())));
     } else {
-        // The nearest rider ahead, so you know how far there is to close.
         constexpr double kShowAheadM = 60.0;
         int nearest = -1;
         for (int index = 1; index < m_race->riders().size(); ++index) {
@@ -519,12 +579,147 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
                 nearest = index;
         }
         painter.setPen(palette().color(QPalette::PlaceholderText));
-        painter.drawText(draftCell, Qt::AlignLeft | Qt::AlignVCenter,
+        painter.drawText(draftCell, Qt::AlignHCenter | Qt::AlignVCenter,
                          nearest < 0 ? tr("No draft")
                                      : tr("%1 is %2 m ahead \u00b7 close the gap to draft")
                                            .arg(m_race->riders().at(nearest).name)
                                            .arg(qRound(gapM(nearest))));
     }
+}
+
+QRectF RaceView::gearPanelRect(const QRectF &mapArea) const
+{
+    return {mapArea.left() + 12, mapArea.top() + 12, 170, m_gearVisible ? 46.0 : 0.0};
+}
+
+void RaceView::paintGearPanel(QPainter &painter, const QRectF &mapArea) const
+{
+    if (!m_gearVisible)
+        return;
+    const QRectF panel = gearPanelRect(mapArea);
+    QColor fill = palette().color(QPalette::Base);
+    fill.setAlpha(240);
+    painter.setPen(QPen(palette().color(QPalette::Mid), 1));
+    painter.setBrush(fill);
+    painter.drawRoundedRect(panel, 8, 8);
+
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    constexpr qint64 kFlashMs = 350;
+    m_gearDownRect = QRectF(panel.left() + 6, panel.top() + 6, 34, panel.height() - 12);
+    m_gearUpRect = QRectF(panel.right() - 40, panel.top() + 6, 34, panel.height() - 12);
+    auto drawButton = [&](const QRectF &button, const QString &arrow, int direction) {
+        const bool lit = m_shiftDirection == direction && now - m_shiftAtMs < kFlashMs;
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(lit ? kRidden : palette().color(QPalette::Mid));
+        painter.drawRoundedRect(button, 6, 6);
+        QFont arrowFont = font();
+        arrowFont.setBold(true);
+        arrowFont.setPointSizeF(font().pointSizeF() * 1.2);
+        painter.setFont(arrowFont);
+        painter.setPen(lit ? QColor(0x1d, 0x1d, 0x1d) : palette().color(QPalette::Text));
+        painter.drawText(button, Qt::AlignCenter, arrow);
+    };
+    drawButton(m_gearDownRect, QStringLiteral("\u25bc"), -1);
+    drawButton(m_gearUpRect, QStringLiteral("\u25b2"), 1);
+
+    QFont gearFont = font();
+    gearFont.setBold(true);
+    gearFont.setPointSizeF(font().pointSizeF() * 1.25);
+    painter.setFont(gearFont);
+    painter.setPen(palette().color(QPalette::Text));
+    painter.drawText(QRectF(m_gearDownRect.right(), panel.top(), m_gearUpRect.left() - m_gearDownRect.right(), panel.height()),
+                     Qt::AlignCenter, tr("Gear %1/%2").arg(m_gear).arg(m_gearCount));
+}
+
+void RaceView::setGear(int gear, int gearCount, bool visible)
+{
+    m_gear = gear;
+    m_gearCount = gearCount;
+    m_gearVisible = visible;
+    update();
+}
+
+void RaceView::flashShift(int direction)
+{
+    m_shiftDirection = direction;
+    m_shiftAtMs = QDateTime::currentMSecsSinceEpoch();
+    update();
+}
+
+void RaceView::setZones(int ftpWatts, const QVector<int> &zoneBoundsPct)
+{
+    m_ftpWatts = ftpWatts;
+    m_zoneBoundsPct = zoneBoundsPct;
+    m_zoneSeconds = QVector<double>(zoneBoundsPct.size() + 1, 0.0);
+    update();
+}
+
+int RaceView::currentZone() const
+{
+    if (m_ftpWatts <= 0 || m_zoneSeconds.isEmpty())
+        return -1;
+    return PowerZones::zoneForPct(100.0 * m_race->you().powerW / m_ftpWatts, m_zoneBoundsPct);
+}
+
+void RaceView::addRideTime(double seconds)
+{
+    const int zone = currentZone();
+    if (zone >= 0 && zone < m_zoneSeconds.size())
+        m_zoneSeconds[zone] += seconds;
+}
+
+void RaceView::paintZonePanel(QPainter &painter, const QRectF &mapArea) const
+{
+    if (m_zoneSeconds.isEmpty())
+        return;
+    // Time in each zone so far, Zwift style: one bar per zone, tallest = most time.
+    const int zones = static_cast<int>(m_zoneSeconds.size());
+    constexpr double kBarWidth = 18.0;
+    constexpr double kGap = 5.0;
+    const double width = zones * kBarWidth + (zones - 1) * kGap + 24;
+    const QRectF panel(mapArea.right() - width - 12, mapArea.top() + 12, width, 112);
+    QColor fill = palette().color(QPalette::Base);
+    fill.setAlpha(240);
+    painter.setPen(QPen(palette().color(QPalette::Mid), 1));
+    painter.setBrush(fill);
+    painter.drawRoundedRect(panel, 8, 8);
+
+    QFont small = font();
+    small.setPointSizeF(font().pointSizeF() * 0.75);
+    painter.setFont(small);
+    painter.setPen(palette().color(QPalette::PlaceholderText));
+    painter.drawText(QRectF(panel.left(), panel.top() + 5, panel.width(), 14), Qt::AlignHCenter, tr("TIME IN ZONE"));
+
+    const double most = *std::max_element(m_zoneSeconds.cbegin(), m_zoneSeconds.cend());
+    const QRectF bars(panel.left() + 12, panel.top() + 24, panel.width() - 24, 64);
+    const int now = currentZone();
+    for (int zone = 0; zone < zones; ++zone) {
+        const double x = bars.left() + zone * (kBarWidth + kGap);
+        const double height = most > 0.0 ? std::max(2.0, bars.height() * m_zoneSeconds.at(zone) / most) : 2.0;
+        QColor colour = PowerZones::color(zone);
+        colour.setAlpha(255);
+        painter.setPen(zone == now ? QPen(palette().color(QPalette::Text), 2) : Qt::NoPen);
+        painter.setBrush(colour);
+        painter.drawRoundedRect(QRectF(x, bars.bottom() - height, kBarWidth, height), 3, 3);
+        painter.setPen(zone == now ? palette().color(QPalette::Text) : palette().color(QPalette::PlaceholderText));
+        painter.drawText(QRectF(x - 4, bars.bottom() + 3, kBarWidth + 8, 14), Qt::AlignHCenter, tr("Z%1").arg(zone + 1));
+    }
+}
+
+void RaceView::setLiveMetrics(int cadenceRpm, int heartRateBpm)
+{
+    m_cadenceRpm = cadenceRpm;
+    m_heartRateBpm = heartRateBpm;
+}
+
+void RaceView::mousePressEvent(QMouseEvent *event)
+{
+    if (m_gearVisible && m_gearUpRect.contains(event->position()))
+        emit gearUpClicked();
+    else if (m_gearVisible && m_gearDownRect.contains(event->position()))
+        emit gearDownClicked();
+    else
+        QWidget::mousePressEvent(event);
 }
 
 void RaceView::paintStandings(QPainter &painter, const QRectF &area) const
@@ -573,6 +768,7 @@ void RaceView::paintStandings(QPainter &painter, const QRectF &area) const
             painter.drawRoundedRect(row, 5, 5);
         }
         QFont rowFont = font();
+        rowFont.setPointSizeF(font().pointSizeF() * 1.15);
         rowFont.setBold(rider.isYou);
         const QColor text = rider.isYou ? kYou : palette().color(QPalette::Text);
         const QColor muted = rider.isYou ? palette().color(QPalette::Text) : palette().color(QPalette::PlaceholderText);
@@ -625,12 +821,6 @@ void RaceView::paintProfile(QPainter &painter, const QRectF &area) const
     painter.setPen(palette().color(QPalette::Mid));
     painter.drawLine(area.topLeft(), area.topRight());
 
-    QFont label = font();
-    label.setPointSizeF(font().pointSizeF() * 0.8);
-    painter.setFont(label);
-    painter.setPen(palette().color(QPalette::PlaceholderText));
-    painter.drawText(area.adjusted(14, 6, 0, 0), Qt::AlignLeft | Qt::AlignTop, tr("WHOLE COURSE · GRADIENT"));
-
     double low = 1e9;
     double high = -1e9;
     for (const RaceCourse::Point &point : course.points()) {
@@ -639,7 +829,8 @@ void RaceView::paintProfile(QPainter &painter, const QRectF &area) const
     }
     // Keep gentle courses looking gentle: at least 60 m of vertical range.
     const double span = std::max(60.0, high - low);
-    const QRectF plot = area.adjusted(14, 26, -14, -10);
+    // The top strip is kept for the grade label, so it never covers the hill.
+    const QRectF plot = area.adjusted(14, 36, -14, -10);
     const double total = course.totalDistanceM();
     auto toX = [&](double distance) { return plot.left() + plot.width() * std::clamp(distance / total, 0.0, 1.0); };
     auto toY = [&](double elevation) { return plot.bottom() - plot.height() * (elevation - low) / span; };
@@ -685,7 +876,7 @@ void RaceView::paintProfile(QPainter &painter, const QRectF &area) const
     const double lineX = toX(yourDistance);
     // Beside the line, switching sides near the right edge.
     const double tagLeft = lineX + 8 + tagSize.width() <= plot.right() ? lineX + 8 : lineX - 8 - tagSize.width();
-    const QRectF tag(QPointF(tagLeft, plot.top() + 2), tagSize);
+    const QRectF tag(QPointF(tagLeft, area.top() + 6), tagSize);
     painter.setPen(Qt::NoPen);
     painter.setBrush(gradeColor(grade));
     painter.drawRoundedRect(tag, 5, 5);

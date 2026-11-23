@@ -202,7 +202,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     m_achievementsPage = new AchievementsWidget(ui->stackedWidget_menu);
     ui->stackedWidget_menu->addWidget(m_achievementsPage);   // page 5, after the .ui pages
     m_coursesPage = new CoursesPage(ui->stackedWidget_menu);
-    m_coursesPage->setProfileWeightKg(account->weight_kg);
+    m_coursesPage->setProfile(account->FTP, account->weight_kg, account->bike_weight_kg, account->userCda);
     ui->stackedWidget_menu->addWidget(m_coursesPage);     // page 6
     connect(m_coursesPage, &CoursesPage::rideRequested, this, &MainWindow::rideCourse);
 
@@ -457,7 +457,7 @@ void MainWindow::leftMenuChanged(int tabSelected) {
         m_achievementsPage->reload();
     // Refresh studio settings each time the Studio tab is opened.
     if (tabSelected == m_tabs.courses && m_coursesPage)
-        m_coursesPage->setProfileWeightKg(account->weight_kg);
+        m_coursesPage->setProfile(account->FTP, account->weight_kg, account->bike_weight_kg, account->userCda);
     if (tabSelected == m_tabs.studio) {
         if (auto *sw = qobject_cast<StudioWidget*>(ui->studioWidget))
             sw->reload();
@@ -1510,14 +1510,12 @@ void MainWindow::showJoinGroupDialog() {
     dialog->open();
 }
 
-void MainWindow::rideCourse(const RaceCourse &course, double riderWeightKg, const RaceBot::FieldSettings &bots) {
+void MainWindow::rideCourse(const RaceCourse &course, const RaceBot::FieldSettings &bots) {
     if (isInsideWorkout || m_launchingWorkout) return;
-    if (std::abs(riderWeightKg - account->weight_kg) >= 0.05)
-        account->saveProfileFields(account->FTP, account->LTHR, riderWeightKg);
     QList<Interval> lstInterval;
     lstInterval.append(Interval());
     Workout ride("null", Workout::OPEN_RIDE, lstInterval, course.name(), "MaximumTrainer",
-                 tr("%1 against bots").arg(course.place()), "-", Workout::T_OTHERS);
+                 course.place(), "-", Workout::T_OTHERS);
     m_pendingRaceCourse = course;
     m_pendingRaceBots = bots;
     executeWorkout(ride);

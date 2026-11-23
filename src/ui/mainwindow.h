@@ -252,7 +252,7 @@ private:
 
     void startGroupWorkout(const Workout &workout, GroupSession *session);
     void attachPendingGroupSession(WorkoutDialog *dialog);
-    void rideCourse(const RaceCourse &course, double riderWeightKg, const RaceBot::FieldSettings &bots);
+    void rideCourse(const RaceCourse &course, const RaceBot::FieldSettings &bots);
     std::optional<RaceCourse> m_pendingRaceCourse;
     RaceBot::FieldSettings m_pendingRaceBots;
     bool canRideInGroup(const Workout &workout);

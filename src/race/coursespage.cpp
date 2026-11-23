@@ -1,5 +1,7 @@
 #include "coursespage.h"
 
+#include "racesimulation.h"
+
 #include <QDir>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
@@ -21,7 +23,8 @@ namespace {
 
 constexpr QSize kProfileThumb(200, 48);
 
-enum Column { ProfileColumn, NameColumn, PlaceColumn, LengthColumn, ClimbColumn };
+enum Column { ProfileColumn, NameColumn, PlaceColumn, LengthColumn, ClimbColumn, TimeColumn };
+constexpr double kEstimateShareOfFtp = 0.70;
 constexpr int kCourseIndexRole = Qt::UserRole;
 constexpr int kSortValueRole = Qt::UserRole + 1;
 
@@ -33,7 +36,7 @@ public:
     bool operator<(const QTreeWidgetItem &other) const override
     {
         const int column = treeWidget() ? treeWidget()->sortColumn() : NameColumn;
-        if (column == LengthColumn || column == ClimbColumn)
+        if (column == LengthColumn || column == ClimbColumn || column == TimeColumn)
             return data(column, kSortValueRole).toDouble() < other.data(column, kSortValueRole).toDouble();
         return QTreeWidgetItem::operator<(other);
     }
@@ -166,7 +169,8 @@ CoursesPage::CoursesPage(QWidget *parent)
     m_courseList->setRootIsDecorated(false);
     m_courseList->setUniformRowHeights(true);
     m_courseList->setIconSize(kProfileThumb);
-    m_courseList->setHeaderLabels({tr("Profile"), tr("Course"), tr("Where"), tr("Length (km)"), tr("Climbing (m)")});
+    m_courseList->setHeaderLabels({tr("Profile"), tr("Course"), tr("Where"), tr("Length (km)"), tr("Climbing (m)"),
+                                   tr("Est. time")});
     for (int index = 0; index < m_courses.size(); ++index) {
         const RaceCourse &course = m_courses.at(index);
         auto *item = new CourseItem(m_courseList);
@@ -183,6 +187,7 @@ CoursesPage::CoursesPage(QWidget *parent)
         item->setData(ClimbColumn, kSortValueRole, climbM(course));
         item->setTextAlignment(LengthColumn, Qt::AlignRight | Qt::AlignVCenter);
         item->setTextAlignment(ClimbColumn, Qt::AlignRight | Qt::AlignVCenter);
+        item->setTextAlignment(TimeColumn, Qt::AlignRight | Qt::AlignVCenter);
         item->setSizeHint(ProfileColumn, kProfileThumb + QSize(8, 8));
     }
     QHeaderView *header = m_courseList->header();
@@ -193,25 +198,19 @@ CoursesPage::CoursesPage(QWidget *parent)
     header->setSectionResizeMode(PlaceColumn, QHeaderView::Stretch);
     header->setSectionResizeMode(LengthColumn, QHeaderView::ResizeToContents);
     header->setSectionResizeMode(ClimbColumn, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(TimeColumn, QHeaderView::ResizeToContents);
     m_courseList->setSortingEnabled(true);
     m_courseList->sortByColumn(ClimbColumn, Qt::AscendingOrder);
     m_courseList->setCurrentItem(m_courseList->topLevelItem(0));
     layout->addWidget(m_courseList, 1);
 
     auto *settingsForm = new QFormLayout();
-    auto *weightRow = new QHBoxLayout();
-    m_weight = new QDoubleSpinBox(this);
+    m_weight = new QLabel(this);
     m_weight->setObjectName(QStringLiteral("coursesWeight"));
-    m_weight->setRange(30.0, 200.0);
-    m_weight->setDecimals(1);
-    m_weight->setSuffix(tr(" kg"));
-    m_weight->setMinimumWidth(100);
-    auto *weightNote = new QLabel(tr("Sets your speed on the climbs."), this);
-    weightNote->setWordWrap(true);
-    weightRow->addWidget(m_weight);
-    weightRow->addWidget(weightNote, 1);
-    settingsForm->addRow(tr("Your weight"), weightRow);
-
+    m_weight->setTextFormat(Qt::RichText);
+    m_weight->setOpenExternalLinks(true);
+    m_weight->setWordWrap(true);
+    settingsForm->addRow(tr("Your weight"), m_weight);
     namespace Keys = SettingKeys::Courses;
     const QSettings settings;
     m_botCount = new QSpinBox(this);
@@ -272,11 +271,42 @@ CoursesPage::CoursesPage(QWidget *parent)
         AppSettings::write(settings, SettingKeys::Courses::Bots, bots.count);
         AppSettings::write(settings, SettingKeys::Courses::MinWattsPerKg, bots.minWattsPerKg);
         AppSettings::write(settings, SettingKeys::Courses::MaxWattsPerKg, bots.maxWattsPerKg);
-        emit rideRequested(m_courses.at(row), m_weight->value(), bots);
+        emit rideRequested(m_courses.at(row), bots);
     });
 }
 
-void CoursesPage::setProfileWeightKg(double weightKg)
+double CoursesPage::estimatedSeconds(const RaceCourse &course, double watts, double riderKg, double bikeKg, double cda)
 {
-    m_weight->setValue(weightKg);
+    constexpr double kStepSec = 1.0;
+    constexpr double kGiveUpSec = 12 * 3600.0;
+    RaceSimulation solo(course, QString(), riderKg, bikeKg, cda);
+    solo.setYourPower(watts);
+    while (!solo.youFinished() && solo.elapsedSec() < kGiveUpSec)
+        solo.step(kStepSec);
+    return solo.you().finishTimeSec.value_or(kGiveUpSec);
+}
+
+void CoursesPage::setProfile(int ftpWatts, double weightKg, double bikeKg, double cda)
+{
+    m_weight->setText(tr("%1 kg, from your Intervals.icu profile. To change it, update it in your "
+                         "<a style=\"color:#6ca8ff\" href=\"https://intervals.icu/settings\">Intervals.icu settings</a> and restart the app.")
+                          .arg(weightKg, 0, 'f', 1));
+    const double watts = kEstimateShareOfFtp * ftpWatts;
+    const QString how = tr("Your time riding alone at 70 % of your FTP (%1 W), with your weight (%2 kg) and "
+                           "your bike. Bots and drafting are not counted.")
+                            .arg(qRound(watts)).arg(weightKg, 0, 'f', 1);
+    m_courseList->headerItem()->setToolTip(TimeColumn, how);
+    for (int row = 0; row < m_courseList->topLevelItemCount(); ++row) {
+        QTreeWidgetItem *item = m_courseList->topLevelItem(row);
+        const RaceCourse &course = m_courses.at(item->data(ProfileColumn, kCourseIndexRole).toInt());
+        if (ftpWatts <= 0 || weightKg <= 0.0) {
+            item->setText(TimeColumn, QStringLiteral("-"));
+            continue;
+        }
+        const int minutes = qRound(estimatedSeconds(course, watts, weightKg, bikeKg, cda) / 60.0);
+        item->setText(TimeColumn, minutes >= 60 ? tr("%1h%2min").arg(minutes / 60).arg(minutes % 60, 2, 10, QLatin1Char('0'))
+                                                : tr("%1 min").arg(minutes));
+        item->setData(TimeColumn, kSortValueRole, minutes);
+        item->setToolTip(TimeColumn, how);
+    }
 }

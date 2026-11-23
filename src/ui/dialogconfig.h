@@ -157,6 +157,11 @@ private:
 
     Ui::DialogConfig *ui;
     WorkoutDialog *parentDialog;
+public:
+    /// A course has no intervals, graph or metric widgets: only the Sounds and
+    /// Radio sections apply, the others are greyed out.
+    void setCourseMode();
+private:
     Account *account;
     SoundPlayer *soundPlayer;
 

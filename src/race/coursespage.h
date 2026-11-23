@@ -9,6 +9,7 @@
 #include <QWidget>
 
 class QDoubleSpinBox;
+class QLabel;
 class QSpinBox;
 class QLineEdit;
 class QTreeWidget;
@@ -29,17 +30,20 @@ public:
     /// The left-bar icon: a climb profile in the gradient colours.
     static QIcon tabIcon();
 
-    /// Refresh the weight from the profile (it can change in Settings).
-    void setProfileWeightKg(double weightKg);
+    /// The rider's profile (from Intervals.icu): sets the weight shown and the
+    /// estimated times.
+    void setProfile(int ftpWatts, double weightKg, double bikeKg, double cda);
+    /// Your time riding \a course alone at \a watts.
+    static double estimatedSeconds(const RaceCourse &course, double watts, double riderKg, double bikeKg, double cda);
 
 signals:
-    void rideRequested(const RaceCourse &course, double riderWeightKg, const RaceBot::FieldSettings &bots);
+    void rideRequested(const RaceCourse &course, const RaceBot::FieldSettings &bots);
 
 private:
     QVector<RaceCourse> m_courses;
     QLineEdit *m_search = nullptr;
     QTreeWidget *m_courseList = nullptr;
-    QDoubleSpinBox *m_weight = nullptr;
+    QLabel *m_weight = nullptr;
     QSpinBox *m_botCount = nullptr;
     QDoubleSpinBox *m_minWattsPerKg = nullptr;
     QDoubleSpinBox *m_maxWattsPerKg = nullptr;

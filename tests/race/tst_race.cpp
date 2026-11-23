@@ -49,6 +49,7 @@ private slots:
     void youAtThreeWattsPerKg_canFollowThePaceGroupAndDraft();
     void youAtThreeWattsPerKg_climbWithThePaceGroup();
     void race_finishersAreRankedByTime();
+    void bots_sprintForTheLine();
 };
 
 void TstRace::bundledCourses_loadWithSaneShape_data()
@@ -188,7 +189,7 @@ void TstRace::defaultField_hasAPaceGroupAndASpread()
     double lowest = 10.0;
     double highest = 0.0;
     for (const RaceBot &bot : field) {
-        if (bot.name().startsWith(QStringLiteral("Pace"))) {
+        if (bot.wattsPerKg() == RaceBot::kPaceWattsPerKg) {
             ++paceGroup;
             QCOMPARE(bot.wattsPerKg(), 3.0);
         }
@@ -206,13 +207,15 @@ void TstRace::customField_followsCountAndRange()
     const QVector<RaceBot> forty = RaceBot::field({40, 1.5, 5.0}, 1);
     QCOMPARE(forty.size(), 40);
     QCOMPARE(std::count_if(forty.cbegin(), forty.cend(), [](const RaceBot &bot) {
-        return bot.name().startsWith(QStringLiteral("Pace")); }), 12);
+        return bot.wattsPerKg() == RaceBot::kPaceWattsPerKg; }), 12);
     QSet<QString> names;
     for (const RaceBot &bot : forty) {
         QVERIFY(bot.wattsPerKg() >= 1.5 && bot.wattsPerKg() <= 5.0);
         names.insert(bot.name());
     }
     QCOMPARE(names.size(), 40);   // every bot is told apart in the standings
+    for (const QString &name : std::as_const(names))
+        QVERIFY2(!name.startsWith(QStringLiteral("Pace")), qPrintable(name));
 
     // A range above 3.0 W/kg moves the pace group to the bottom of it.
     const QVector<RaceBot> strong = RaceBot::field({10, 3.5, 4.5}, 2);
@@ -220,7 +223,7 @@ void TstRace::customField_followsCountAndRange()
 
     // Reversed limits are read the right way round; tiny fields have no pace group.
     for (const RaceBot &bot : RaceBot::field({2, 4.0, 2.0}, 3)) {
-        QVERIFY(!bot.name().startsWith(QStringLiteral("Pace")));
+        QVERIFY(bot.wattsPerKg() != RaceBot::kPaceWattsPerKg);
         QVERIFY(bot.wattsPerKg() >= 2.0 && bot.wattsPerKg() <= 4.0);
     }
     QCOMPARE(RaceBot::field({0, 2.0, 4.0}, 4).size(), 0);
@@ -231,7 +234,7 @@ void TstRace::bots_atTheSameWattsPerKgRideTogether()
 {
     RaceSimulation race(loadCourse(QStringLiteral("longchamp")), QStringLiteral("You"), 75, 0, 0.30);
     for (const RaceBot &bot : RaceBot::defaultField(11))
-        if (bot.name().startsWith(QStringLiteral("Pace")))
+        if (bot.wattsPerKg() == RaceBot::kPaceWattsPerKg)
             race.addBot(bot);
     race.setYourPower(0.0);
     for (int tick = 0; tick < 10 * 60 * 4; ++tick)
@@ -254,7 +257,7 @@ void TstRace::youAtThreeWattsPerKg_canFollowThePaceGroupAndDraft()
     constexpr double kYourMassKg = 75.0;
     RaceSimulation race(loadCourse(QStringLiteral("longchamp")), QStringLiteral("You"), kYourMassKg, 0, 0.30);
     for (const RaceBot &bot : RaceBot::defaultField(3))
-        if (bot.name().startsWith(QStringLiteral("Pace")))
+        if (bot.wattsPerKg() == RaceBot::kPaceWattsPerKg)
             race.addBot(bot);
 
     int ticksDrafting = 0;
@@ -284,7 +287,7 @@ void TstRace::youAtThreeWattsPerKg_climbWithThePaceGroup()
     constexpr double kRiderKg = 72.0;
     RaceSimulation race(loadCourse(QStringLiteral("alpe-dhuez")), QStringLiteral("You"), kRiderKg, RaceSimulation::kBotBikeMassKg, 0.30);
     for (const RaceBot &bot : RaceBot::defaultField(5))
-        if (bot.name().startsWith(QStringLiteral("Pace")))
+        if (bot.wattsPerKg() == RaceBot::kPaceWattsPerKg)
             race.addBot(bot);
     while (!race.youFinished() && race.elapsedSec() < 3 * 3600) {
         race.setYourPower(3.0 * kRiderKg);
@@ -318,6 +321,20 @@ void TstRace::race_finishersAreRankedByTime()
 
     const double minutes = *race.you().finishTimeSec / 60.0;
     QVERIFY2(minutes > 50.0 && minutes < 90.0, qPrintable(QString::number(minutes)));
+}
+
+void TstRace::bots_sprintForTheLine()
+{
+    RaceBot bot(QStringLiteral("Ana"), 3.0, 70.0, 3);
+    double cruising = 0.0;
+    for (int tick = 0; tick < 20; ++tick)
+        cruising = std::max(cruising, bot.nextPower(0.0, 1.0, 5000.0));
+    QVERIFY(cruising < 3.0 * 70.0 * 1.06);
+    const double sprint = bot.nextPower(0.0, 1.0, 150.0);   // inside the last 200 m
+    QVERIFY2(sprint / 70.0 >= 6.0 && sprint / 70.0 <= 7.8, qPrintable(QString::number(sprint / 70.0)));
+    QCOMPARE(bot.nextPower(0.0, 1.0, 0.0) < sprint, true);   // over the line: done
+    RaceBot strong(QStringLiteral("Ben"), 7.0, 70.0, 4);
+    QVERIFY(strong.nextPower(0.0, 1.0, 100.0) / 70.0 <= RaceBot::kMaxSprintWattsPerKg);
 }
 
 QTEST_GUILESS_MAIN(TstRace)

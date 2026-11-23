@@ -27,8 +27,6 @@ enum class Kind {
     WeekHours,       ///< >= N hours within any 7 days
     MonthRides,      ///< >= N rides within any 30 days
     WeekendDouble,   ///< rides on the Saturday and Sunday of one weekend
-    NewYear,         ///< a ride on January 1
-    Christmas,       ///< a ride on December 25
     WattsPerKg,      ///< FTP of at least N W/kg (from the profile)
     StreakDays,      ///< rides on N consecutive days
     GoalWeeks,       ///< weekly riding goal reached N weeks in a row
@@ -69,8 +67,6 @@ struct HistoryStats {
     double bestWeekHours  = 0.0;
     int    bestMonthRides = 0;
     bool   weekendDouble  = false;
-    bool   newYear        = false;
-    bool   christmas      = false;
     double ftpWattsPerKg  = 0.0;   ///< filled in from the profile, not the history
     int    bestStreakDays = 0;
     int    bestGoalWeeks  = 0;     ///< filled in with goalStreakWeeks(), needs the goal
@@ -102,9 +98,6 @@ inline const QString MapStep7      = QStringLiteral("map_step_7");
 inline const QString FtpRaised     = QStringLiteral("ftp_raised");
 inline const QString TargetManiac  = QStringLiteral("target_maniac");
 inline const QString GroupRide     = QStringLiteral("group_ride");
-inline const QString GroupHost     = QStringLiteral("group_host");
-inline const QString GroupJoin     = QStringLiteral("group_join");
-inline const QString StudioHost    = QStringLiteral("studio_host");
 /// Crossing the finish line of a course (Courses tab); one per course id.
 inline QString courseFinished(const QString &courseId) { return QStringLiteral("course_") + courseId; }
 }

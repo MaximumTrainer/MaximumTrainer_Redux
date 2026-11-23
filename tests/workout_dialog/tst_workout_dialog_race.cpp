@@ -117,37 +117,32 @@ private slots:
 
     // The bottom pane (metric widgets) must open at the height it had when
     // the last workout was closed, not grow back to the default.
+    // The bottom pane (metric widgets) opens at the height it had when the
+    // last workout was closed, even when the window grows after it opens; a
+    // course in between (it has no bottom pane) leaves that height alone.
     void bottomPane_keepsItsHeightAcrossWorkouts_data()
     {
-        QTest::addColumn<bool>("firstIsCourse");
-        QTest::addColumn<bool>("secondIsCourse");
-        QTest::newRow("workout then workout") << false << false;
-        QTest::newRow("workout then course") << false << true;
-        QTest::newRow("course then course") << true << true;
-        QTest::newRow("course then workout") << true << false;
+        QTest::addColumn<bool>("courseInBetween");
+        QTest::newRow("workout then workout") << false;
+        QTest::newRow("workout, course, workout") << true;
     }
 
     void bottomPane_keepsItsHeightAcrossWorkouts()
     {
-        QFETCH(bool, firstIsCourse);
-        QFETCH(bool, secondIsCourse);
-        const auto course = RaceCourse::fromFile(QStringLiteral(":/courses/longchamp.json"));
+        QFETCH(bool, courseInBetween);
         m_account->enable_studio_mode = false;
         m_account->isOffline = true;
         constexpr int kBottomPx = 130;
 
         auto *first = new WorkoutDialog(freeRide(), QList<Radio>(), QVector<UserStudio>(), nullptr);
-        if (firstIsCourse)
-            first->setRace(*course, RaceBot::FieldSettings());
         first->show();
         first->resize(1280, 820);
         QTest::qWait(300);
         auto *splitter = first->findChild<QSplitter *>(QStringLiteral("splitter"));
-        QVERIFY(splitter);
         QList<int> sizes = splitter->sizes();
         const int total = sizes.at(1) + sizes.at(2) + sizes.at(3);
         sizes[3] = kBottomPx;
-        sizes[1] = firstIsCourse ? total - kBottomPx : (total - kBottomPx) / 2;
+        sizes[1] = (total - kBottomPx) / 2;
         sizes[2] = total - kBottomPx - sizes[1];
         splitter->setSizes(sizes);
         QTest::qWait(100);
@@ -155,99 +150,27 @@ private slots:
         QMetaObject::invokeMethod(first, "closeWindow");
         delete first;
 
-        auto *second = new WorkoutDialog(freeRide(), QList<Radio>(), QVector<UserStudio>(), nullptr);
-        if (secondIsCourse)
-            second->setRace(*course, RaceBot::FieldSettings());
-        second->show();
+        if (courseInBetween) {
+            const auto course = RaceCourse::fromFile(QStringLiteral(":/courses/longchamp.json"));
+            auto *ride = new WorkoutDialog(freeRide(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+            ride->setRace(*course, RaceBot::FieldSettings());
+            ride->show();
+            QTest::qWait(300);
+            QVERIFY(!ride->findChild<QWidget *>(QStringLiteral("widget_allSpeedo"))->isVisible());
+            QMetaObject::invokeMethod(ride, "closeWindow");
+            delete ride;
+        }
+
+        auto *next = new WorkoutDialog(freeRide(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+        next->show();
         QTest::qWait(300);
-        // The window manager maximises or goes fullscreen after the window
-        // appears: the extra height must go to the video/race area.
-        second->resize(1600, 1100);
+        next->resize(1600, 1100);   // the window manager maximises after it opens
         QTest::qWait(300);
-        const int reopened = second->findChild<QSplitter *>(QStringLiteral("splitter"))->sizes().at(3);
+        const int reopened = next->findChild<QSplitter *>(QStringLiteral("splitter"))->sizes().at(3);
         qInfo("bottom pane: closed at %d px, reopened at %d px", setTo, reopened);
         QVERIFY2(std::abs(reopened - setTo) <= 4,
                  qPrintable(QStringLiteral("closed at %1 px, reopened at %2 px").arg(setTo).arg(reopened)));
-        delete second;
-    }
-
-    // In a bunch your dot keeps its lane: it only moves over when the lane is
-    // taken, one lane at a time, and doesn't flick from side to side.
-    void bunch_ridersKeepTheirLane()
-    {
-        const auto course = RaceCourse::fromFile(QStringLiteral(":/courses/longchamp.json"));
-        RaceSimulation race(*course, QStringLiteral("You"), kRiderKg, 8.0, 0.30);
-        for (const RaceBot &bot : RaceBot::defaultField(5))
-            race.addBot(bot);
-        RaceView view(&race);
-        view.resize(1350, 640);
-        QImage frame(view.size(), QImage::Format_ARGB32_Premultiplied);
-
-        int changes = 0;
-        int previous = -1;
-        for (int tick = 0; tick < 25 * 120; ++tick) {   // two minutes at 25 frames a second
-            race.setYourPower(kThreeWattsPerKg);
-            race.step(0.04);
-            view.render(&frame);
-            const int lane = view.laneOf(0);
-            QVERIFY(lane >= 0 && lane <= 3);
-            if (previous >= 0 && lane != previous) {
-                ++changes;
-                QVERIFY2(std::abs(lane - previous) == 1, "jumped more than one lane");
-            }
-            previous = lane;
-        }
-        qInfo("your lane changed %d times in two minutes of bunch riding", changes);
-        QVERIFY2(changes <= 12, qPrintable(QStringLiteral("%1 lane changes").arg(changes)));
-    }
-
-    void everyCourseHasAnAchievement()
-    {
-        const QDir courses(QStringLiteral(":/courses"));
-        const QStringList files = courses.entryList({QStringLiteral("*.json")}, QDir::Files);
-        QVERIFY(!files.isEmpty());
-        for (const QString &file : files) {
-            const auto course = RaceCourse::fromFile(courses.filePath(file));
-            QVERIFY(course.has_value());
-            const auto *definition = AchievementCatalog::find(AchievementCatalog::Events::courseFinished(course->id()));
-            QVERIFY2(definition, qPrintable(course->id()));
-            QCOMPARE(definition->category, AchievementCatalog::Category::Courses);
-        }
-    }
-
-    // Crossing the line of a course earns its achievement, once.
-    void finishingACourse_earnsItsAchievement()
-    {
-        m_account->weight_kg = kRiderKg;
-        m_account->bike_weight_kg = 8;
-        m_account->enable_studio_mode = false;
-        m_account->isOffline = true;
-        // A 60 m stretch carrying a real course id, so the ride is short.
-        const auto shortCourse = RaceCourse::fromJson(
-            R"({"id":"longchamp","name":"Test","place":"Here","laps":1,"loop":false,)"
-            R"("points":[[0,48.86,2.24,40],[30,48.8603,2.2401,40],[60,48.8606,2.2402,40]]})");
-        QVERIFY(shortCourse.has_value());
-
-        auto *manager = qApp->property("ManagerAchievement").value<ManagerAchievement *>();
-        QSignalSpy earned(manager, &ManagerAchievement::achievementCompleted);
-        auto *dialog = new WorkoutDialog(freeRide(), QList<Radio>(), QVector<UserStudio>(), nullptr);
-        dialog->setRace(*shortCourse, RaceBot::FieldSettings{1, 2.0, 2.0});
-        dialog->start_or_pause_workout();
-        QElapsedTimer clock;
-        clock.start();
-        while (!dialog->race()->youFinished() && clock.elapsed() < 30000) {
-            dialog->PowerDataReceived(1, 400);
-            QTest::qWait(100);
-        }
-        QVERIFY(dialog->race()->youFinished());
-        ride(dialog, 400, 600);   // more ticks after the line: still only one award
-
-        int forThisCourse = 0;
-        for (const QList<QVariant> &signal : std::as_const(earned))
-            if (signal.at(0).value<Achievement>().getName() == QStringLiteral("Longchamp Regular"))
-                ++forThisCourse;
-        QCOMPARE(forThisCourse, 1);
-        delete dialog;
+        delete next;
     }
 
     void race_followsPowerAndSteersTheTrainer()

@@ -116,11 +116,6 @@ private slots:
         // 2026-03-07 is a Saturday.
         QVERIFY(statsFrom({ride(at(7, 9), 60), ride(at(8, 9), 60)}).weekendDouble);
         QVERIFY(!statsFrom({ride(at(8, 9), 60), ride(at(9, 9), 60)}).weekendDouble);   // Sun + Mon
-        const QDateTime newYear(QDate(2027, 1, 1), QTime(10, 0), QTimeZone::LocalTime);
-        const QDateTime christmas(QDate(2026, 12, 25), QTime(10, 0), QTimeZone::LocalTime);
-        QVERIFY(statsFrom({ride(newYear, 30)}).newYear);
-        QVERIFY(statsFrom({ride(christmas, 30)}).christmas);
-        QVERIFY(!statsFrom({ride(at(1, 10), 30)}).christmas);
 
         QList<WorkoutHistorySummary> month;
         for (int day = 1; day <= 20; ++day)

@@ -25,22 +25,29 @@ AchievementToast::AchievementToast(QWidget *parent) : QWidget(parent)
         "QLabel { background: transparent; border: none; }"));
 
     auto *layout = new QHBoxLayout(this);
-    layout->setContentsMargins(16, 12, 22, 12);
+    layout->setContentsMargins(20, 16, 26, 16);
     layout->setSpacing(14);
 
     auto *icon = new QLabel(this);
     icon->setPixmap(QPixmap(QStringLiteral(":/image/icon/trophy"))
-                        .scaled(56, 56, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+                        .scaled(72, 72, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     layout->addWidget(icon);
 
     auto *text = new QVBoxLayout();
     text->setSpacing(2);
     auto *caption = new QLabel(tr("ACHIEVEMENT UNLOCKED"), this);
-    caption->setStyleSheet(QStringLiteral("color: #f2b830; font-size: 9pt; font-weight: bold; letter-spacing: 2px;"));
+    caption->setStyleSheet(QStringLiteral("color: #f2b830; font-size: 11pt; font-weight: bold; letter-spacing: 2px;"));
     m_name = new QLabel(this);
-    m_name->setStyleSheet(QStringLiteral("color: white; font-size: 15pt; font-weight: bold;"));
+    m_name->setStyleSheet(QStringLiteral("color: white; font-size: 19pt; font-weight: bold;"));
+    m_name->setWordWrap(true);
     m_description = new QLabel(this);
-    m_description->setStyleSheet(QStringLiteral("color: #c8c8d0; font-size: 10pt;"));
+    m_description->setStyleSheet(QStringLiteral("color: #d8d8e0; font-size: 13pt;"));
+    // Long names and descriptions wrap instead of being cut off.
+    m_description->setWordWrap(true);
+    m_name->setMinimumWidth(420);
+    m_description->setMinimumWidth(420);
+    m_name->setMaximumWidth(640);
+    m_description->setMaximumWidth(640);
     text->addWidget(caption);
     text->addWidget(m_name);
     text->addWidget(m_description);
