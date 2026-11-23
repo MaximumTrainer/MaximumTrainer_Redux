@@ -173,6 +173,31 @@ private slots:
         delete next;
     }
 
+    // Riders a few centimetres apart in a bunch must not swap places in the
+    // standings every frame: a pass needs a clear gap.
+    void standings_dontFlickerInABunch()
+    {
+        const auto course = RaceCourse::fromFile(QStringLiteral(":/courses/central-park.json"));
+        RaceSimulation race(*course, QStringLiteral("You"), kRiderKg, 8.0, 0.30);
+        for (const RaceBot &bot : RaceBot::field({25, 1.0, 4.0}, 6))
+            race.addBot(bot);
+        RaceView view(&race);
+        view.resize(1350, 640);
+        QImage frame(view.size(), QImage::Format_ARGB32_Premultiplied);
+        QVector<int> previous;
+        int reorders = 0;
+        for (int tick = 0; tick < 25 * 120; ++tick) {   // two minutes at 25 frames a second
+            race.setYourPower(150);
+            race.step(0.04);
+            view.render(&frame);
+            if (!previous.isEmpty() && view.displayOrder() != previous)
+                ++reorders;
+            previous = view.displayOrder();
+        }
+        qInfo("standings changed on %d of %d frames", reorders, 25 * 120);
+        QVERIFY2(reorders < 150, qPrintable(QString::number(reorders)));
+    }
+
     void race_followsPowerAndSteersTheTrainer()
     {
         m_account->weight_kg = kRiderKg;
