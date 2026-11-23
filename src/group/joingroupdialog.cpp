@@ -25,7 +25,7 @@ JoinGroupDialog::JoinGroupDialog(const QUrl &relayBaseUrl, const QString &defaul
 
     auto *form = new QFormLayout();
     m_codeEdit = new QLineEdit(this);
-    m_codeEdit->setPlaceholderText(QStringLiteral("GRP-7KQ2"));
+    m_codeEdit->setPlaceholderText(QStringLiteral("7KQ2"));
     m_codeEdit->setValidator(new QRegularExpressionValidator(
         QRegularExpression(QStringLiteral("[A-Za-z0-9-]{0,8}")), m_codeEdit));
     m_nameEdit = new QLineEdit(defaultName, this);
@@ -62,7 +62,7 @@ JoinGroupDialog::~JoinGroupDialog() {
 void JoinGroupDialog::join() {
     const QString code = normalizeRoomCode(m_codeEdit->text());
     if (code.isEmpty()) {
-        showError(tr("That doesn't look like a room code. It has 4 letters or digits, like GRP-7KQ2."));
+        showError(tr("That doesn't look like a room code. It has 4 letters or digits, like 7KQ2."));
         return;
     }
     const QString name = m_nameEdit->text().trimmed();

@@ -117,7 +117,9 @@ void StudioWidget::buildUi()
         tr("Studio Mode lets up to %1 riders train together on this computer. "
            "Each rider gets their own sensors, FTP and LTHR, live metrics and FIT "
            "file, and the workout targets scale to each rider's FTP. "
-           "Turn it on to set up the riders.").arg(kMaxRiders),
+           "Turn it on to set up the riders.\n\n"
+           "Riding with friends somewhere else? Use Workout → Host Group Workout… "
+           "with Studio Mode off.").arg(kMaxRiders),
         this);
     m_introLabel->setWordWrap(true);
     m_introLabel->setMaximumWidth(640);

@@ -152,7 +152,9 @@ IncomingMessage decode(const QByteArray &frame) {
     if (type == QLatin1String("welcome")) {
         message.type = MessageType::Welcome;
         Welcome &welcome = message.welcome;
-        welcome.roomCode = object.value(QStringLiteral("code")).toString();
+        const QString relayCode = object.value(QStringLiteral("code")).toString();
+        const QString bareCode = normalizeRoomCode(relayCode);
+        welcome.roomCode = bareCode.isEmpty() ? relayCode : bareCode;
         welcome.yourRiderId = object.value(QStringLiteral("you")).toString();
         welcome.rejoinToken = object.value(QStringLiteral("token")).toString();
         welcome.isHost = object.value(QStringLiteral("host")).toBool();

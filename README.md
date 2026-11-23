@@ -234,7 +234,7 @@ MT_GROUP_RELAY_URL=ws://127.0.0.1:8787 LD_LIBRARY_PATH=/tmp/qwt6/lib ./build/rel
 LD_LIBRARY_PATH=/tmp/qwt6/lib ./build/release/MaximumTrainer --group-sim 20 30   # 20 simulated riders
 ```
 
-`--group-sim 19 600 --join GRP-XXXX --relay <url>` adds 19 simulated riders to a
+`--group-sim 19 600 --join XXXX --relay <url>` adds 19 simulated riders to a
 room hosted in the app, to check the riders column with a full room.
 
 ## Log Files
