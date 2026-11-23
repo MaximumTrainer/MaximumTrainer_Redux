@@ -35,7 +35,9 @@ public:
     static constexpr double kBotBikeMassKg = 8.0;
 
     void addBot(const RaceBot &bot, double cda = 0.30);
-    void setYourPower(double watts) { m_yourPowerW = watts; }
+    /// Your live power. Shown at once (warming up before the start too); it
+    /// only moves you when the race steps.
+    void setYourPower(double watts);
 
     /// Advance the race by \a dtSec of riding.
     void step(double dtSec);

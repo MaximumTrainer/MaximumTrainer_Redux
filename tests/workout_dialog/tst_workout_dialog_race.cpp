@@ -96,9 +96,12 @@ private slots:
         QCOMPARE(dialog->race()->riders().size(), 21);
         dialog->enableTrainerControl();
 
-        // Nothing moves before the ride starts.
+        // Warming up: your W/kg and the bots' show, but nothing moves.
         ride(dialog, kThreeWattsPerKg, 600);
         QCOMPARE(dialog->race()->you().distanceM, 0.0);
+        QCOMPARE(dialog->race()->you().powerW, double(kThreeWattsPerKg));
+        for (const RaceSimulation::Rider &rider : dialog->race()->riders())
+            QVERIFY2(rider.powerW > 0.0, qPrintable(rider.name));
 
         dialog->start_or_pause_workout();   // start
         ride(dialog, kThreeWattsPerKg, 3500);

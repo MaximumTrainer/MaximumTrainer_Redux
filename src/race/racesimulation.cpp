@@ -23,6 +23,13 @@ RaceSimulation::RaceSimulation(RaceCourse course, QString yourName, double yourR
     m_riders.append(you);
 }
 
+void RaceSimulation::setYourPower(double watts)
+{
+    m_yourPowerW = watts;
+    if (!m_riders.constFirst().finishTimeSec)
+        m_riders.first().powerW = watts;
+}
+
 void RaceSimulation::addBot(const RaceBot &bot, double cda)
 {
     Rider rider;
@@ -30,6 +37,7 @@ void RaceSimulation::addBot(const RaceBot &bot, double cda)
     rider.riderKg = bot.massKg();
     rider.massKg = bot.massKg() + kBotBikeMassKg;
     rider.cda = cda;
+    rider.powerW = bot.wattsPerKg() * bot.massKg();   // on the start line, before the first step
     // Line up behind you on the start, a bike length apart.
     rider.distanceM = -kStartGridSpacingM * static_cast<double>(m_bots.size() + 1);
     m_riders.append(rider);

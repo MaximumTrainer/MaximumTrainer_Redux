@@ -8,7 +8,8 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
-#include <QListWidget>
+#include <QHeaderView>
+#include <QTreeWidget>
 #include <QPainter>
 #include <QVBoxLayout>
 
@@ -19,6 +20,24 @@
 namespace {
 
 constexpr QSize kProfileThumb(200, 48);
+
+enum Column { ProfileColumn, NameColumn, PlaceColumn, LengthColumn, ClimbColumn };
+constexpr int kCourseIndexRole = Qt::UserRole;
+constexpr int kSortValueRole = Qt::UserRole + 1;
+
+/// Sorts the number columns by value, not by their text.
+class CourseItem : public QTreeWidgetItem
+{
+public:
+    using QTreeWidgetItem::QTreeWidgetItem;
+    bool operator<(const QTreeWidgetItem &other) const override
+    {
+        const int column = treeWidget() ? treeWidget()->sortColumn() : NameColumn;
+        if (column == LengthColumn || column == ClimbColumn)
+            return data(column, kSortValueRole).toDouble() < other.data(column, kSortValueRole).toDouble();
+        return QTreeWidgetItem::operator<(other);
+    }
+};
 
 QColor gradeColor(double grade)
 {
@@ -133,7 +152,7 @@ CoursesPage::CoursesPage(QWidget *parent)
     title->setFont(titleFont);
     layout->addWidget(title);
 
-    auto *intro = new QLabel(tr("Ride a real road against bots. Double-click a course to start."), this);
+    auto *intro = new QLabel(tr("Ride a real road against bots."), this);
     layout->addWidget(intro);
 
     m_search = new QLineEdit(this);
@@ -142,22 +161,41 @@ CoursesPage::CoursesPage(QWidget *parent)
     m_search->setClearButtonEnabled(true);
     layout->addWidget(m_search);
 
-    m_courseList = new QListWidget(this);
+    m_courseList = new QTreeWidget(this);
     m_courseList->setObjectName(QStringLiteral("coursesList"));
+    m_courseList->setRootIsDecorated(false);
+    m_courseList->setUniformRowHeights(true);
     m_courseList->setIconSize(kProfileThumb);
-    m_courseList->setSpacing(4);
-    QFont itemFont = m_courseList->font();
-    itemFont.setPointSizeF(itemFont.pointSizeF() + 0.5);
-    for (const RaceCourse &course : std::as_const(m_courses)) {
-        QString text = QStringLiteral("%1\n%2\n").arg(course.name(), course.place());
-        text += tr("%1 km · %2 m of climbing").arg(course.totalDistanceM() / 1000.0, 0, 'f', 1)
-                                                .arg(qRound(climbM(course)));
+    m_courseList->setHeaderLabels({tr("Profile"), tr("Course"), tr("Where"), tr("Length (km)"), tr("Climbing (m)")});
+    for (int index = 0; index < m_courses.size(); ++index) {
+        const RaceCourse &course = m_courses.at(index);
+        auto *item = new CourseItem(m_courseList);
+        item->setIcon(ProfileColumn, QIcon(profileThumbnail(course, devicePixelRatioF())));
+        item->setData(ProfileColumn, kCourseIndexRole, index);
+        QString name = course.name();
         if (course.isLoop())
-            text += tr(" · %1 laps of %2 km").arg(course.laps()).arg(course.lapDistanceM() / 1000.0, 0, 'f', 1);
-        auto *item = new QListWidgetItem(QIcon(profileThumbnail(course, devicePixelRatioF())), text, m_courseList);
-        item->setFont(itemFont);
+            name += tr(" (%1 laps)").arg(course.laps());
+        item->setText(NameColumn, name);
+        item->setText(PlaceColumn, course.place());
+        item->setText(LengthColumn, QString::number(course.totalDistanceM() / 1000.0, 'f', 1));
+        item->setData(LengthColumn, kSortValueRole, course.totalDistanceM());
+        item->setText(ClimbColumn, QString::number(qRound(climbM(course))));
+        item->setData(ClimbColumn, kSortValueRole, climbM(course));
+        item->setTextAlignment(LengthColumn, Qt::AlignRight | Qt::AlignVCenter);
+        item->setTextAlignment(ClimbColumn, Qt::AlignRight | Qt::AlignVCenter);
+        item->setSizeHint(ProfileColumn, kProfileThumb + QSize(8, 8));
     }
-    m_courseList->setCurrentRow(0);
+    QHeaderView *header = m_courseList->header();
+    header->setStretchLastSection(false);
+    header->setSectionResizeMode(ProfileColumn, QHeaderView::Fixed);
+    header->resizeSection(ProfileColumn, kProfileThumb.width() + 12);
+    header->setSectionResizeMode(NameColumn, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(PlaceColumn, QHeaderView::Stretch);
+    header->setSectionResizeMode(LengthColumn, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(ClimbColumn, QHeaderView::ResizeToContents);
+    m_courseList->setSortingEnabled(true);
+    m_courseList->sortByColumn(ClimbColumn, Qt::AscendingOrder);
+    m_courseList->setCurrentItem(m_courseList->topLevelItem(0));
     layout->addWidget(m_courseList, 1);
 
     auto *settingsForm = new QFormLayout();
@@ -215,17 +253,18 @@ CoursesPage::CoursesPage(QWidget *parent)
 
     connect(m_search, &QLineEdit::textChanged, this, [this](const QString &text) {
         const QString needle = text.trimmed();
-        for (int row = 0; row < m_courses.size(); ++row) {
-            const RaceCourse &course = m_courses.at(row);
+        for (int row = 0; row < m_courseList->topLevelItemCount(); ++row) {
+            QTreeWidgetItem *item = m_courseList->topLevelItem(row);
+            const RaceCourse &course = m_courses.at(item->data(ProfileColumn, kCourseIndexRole).toInt());
             const bool match = needle.isEmpty()
                 || course.name().contains(needle, Qt::CaseInsensitive)
                 || course.place().contains(needle, Qt::CaseInsensitive);
-            m_courseList->item(row)->setHidden(!match);
+            item->setHidden(!match);
         }
     });
     // Double-click or Enter starts the course.
-    connect(m_courseList, &QListWidget::itemActivated, this, [this](QListWidgetItem *item) {
-        const int row = m_courseList->row(item);
+    connect(m_courseList, &QTreeWidget::itemActivated, this, [this](QTreeWidgetItem *item) {
+        const int row = item->data(ProfileColumn, kCourseIndexRole).toInt();
         if (row < 0 || row >= m_courses.size())
             return;
         const RaceBot::FieldSettings bots{m_botCount->value(), m_minWattsPerKg->value(), m_maxWattsPerKg->value()};

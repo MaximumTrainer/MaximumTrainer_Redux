@@ -3649,12 +3649,13 @@ void WorkoutDialog::stepRace() {
     // Dropped sensor: no power for 3 s counts as freewheeling.
     constexpr qint64 kPowerStaleMs = 3000;
     const double dtSec = m_raceClock.restart() / 1000.0;
+    // Your W/kg shows while you warm up, before the race moves.
+    const bool fresh = QDateTime::currentMSecsSinceEpoch() - m_racePowerAtMs <= kPowerStaleMs;
+    m_race->setYourPower(fresh ? m_racePowerW : 0);
     if (!isWorkoutStarted || isWorkoutPaused || isWorkoutOver || m_race->youFinished()) {
         m_raceView->update();
         return;
     }
-    const bool fresh = QDateTime::currentMSecsSinceEpoch() - m_racePowerAtMs <= kPowerStaleMs;
-    m_race->setYourPower(fresh ? m_racePowerW : 0);
     // Cap a stalled event loop at one second so nobody teleports.
     m_race->step(std::min(dtSec, 1.0));
     if (const std::optional<double> finish = m_race->you().finishTimeSec)
