@@ -134,7 +134,7 @@ void TstGroup::decodeWelcomeWithWorkoutAndStart() {
         "workout":{"name":"Over-Unders","xml":"<Workout/>"}})";
     const IncomingMessage message = decode(frame);
     QCOMPARE(message.type, MessageType::Welcome);
-    QCOMPARE(message.welcome.roomCode, QStringLiteral("GRP-7KQ2"));
+    QCOMPARE(message.welcome.roomCode, QStringLiteral("7KQ2"));
     QCOMPARE(message.welcome.yourRiderId, QStringLiteral("r2"));
     QCOMPARE(message.welcome.rejoinToken, QStringLiteral("abc"));
     QVERIFY(!message.welcome.isHost);

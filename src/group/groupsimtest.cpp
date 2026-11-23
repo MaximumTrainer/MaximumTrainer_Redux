@@ -258,7 +258,7 @@ bool GroupSimTest::renderPanelPreview(const QString &pngPath, int riderCount) {
 
     if (qEnvironmentVariableIsSet("MT_PREVIEW_DARK")) qApp->setPalette(AppTheme::darkPalette());
     GroupPanel panel(nullptr);
-    panel.setRoomCodeForPreview(QStringLiteral("GRP-V2AT"));
+    panel.setRoomCodeForPreview(QStringLiteral("V2AT"));
     panel.setRideStarted();
 
     QList<RosterEntry> roster;
@@ -295,11 +295,12 @@ bool GroupSimTest::renderPanelPreview(const QString &pngPath, int riderCount) {
     if (riderCount > 2) {
         panel.showChat({roster[1].riderId, roster[1].name, QStringLiteral("Last one, hold on!")});
         panel.showChat({roster[2].riderId, roster[2].name, QStringLiteral("Legs on fire 😅")});
-        panel.showChat({roster[0].riderId, roster[0].name,
-                        QStringLiteral("Two more minutes at threshold, then an easy spin to cool down")});
+        if (riderCount > 4)
+            panel.showChat({roster[4].riderId, roster[4].name,
+                            QStringLiteral("Two more minutes at threshold, then an easy spin to cool down")});
     }
 
-    panel.resize(panel.width(), 852);
+    panel.resize(panel.width(), 800);   // the workout window height in the docs shots
     panel.show();
     QCoreApplication::processEvents();
     return panel.grab().save(pngPath);
