@@ -517,10 +517,9 @@
         </p>
 
         <ol class="steps">
-          <li>Open <strong>MaximumTrainer → Preferences</strong> from the menu bar (or <kbd>Ctrl</kbd>+<kbd>,</kbd>).</li>
-          <li>Select the <strong>Profile</strong> category.</li>
-          <li>Enter your <strong>FTP</strong> (watts), <strong>LTHR</strong> (lactate-threshold heart rate, bpm), and <strong>weight</strong> (kg).</li>
-          <li>Click <strong>OK</strong>.</li>
+          <li>Click <strong>Settings</strong> in the left bar (or press <kbd>Ctrl</kbd>+<kbd>,</kbd>).</li>
+          <li>Select <strong>Profile</strong>.</li>
+          <li>Enter your <strong>FTP</strong> (watts), <strong>LTHR</strong> (lactate-threshold heart rate, bpm), and <strong>weight</strong> (kg). Changes apply right away.</li>
         </ol>
 
         <p>
@@ -592,8 +591,8 @@
 
         <figure class="guide-screenshot">
           <img src="assets/screenshots/screenshot_devices.png"
-               alt="Devices tab — saved sensors per role, plus trainer ERG, dropout, and battery settings" />
-          <figcaption>The Devices tab — pair a device per role with <strong>Scan…</strong>, toggle ERG control, and set sensor-dropout and battery options</figcaption>
+               alt="Devices tab — saved sensors per role, plus trainer ERG and simulated sensors" />
+          <figcaption>The Devices tab — pair a device per role with <strong>Scan…</strong>, toggle ERG control, or use simulated sensors</figcaption>
         </figure>
         <ol class="steps">
           <li>Wake the sensor you want to pair (see the table above).</li>
@@ -749,7 +748,7 @@
         <p>
           Maximum Trainer can drive workouts from an <strong>FTMS-compatible rowing
           machine</strong>. Enable <strong>Rowing mode (Beta)</strong> in
-          <strong>MaximumTrainer → Preferences → General</strong>:
+          <strong>Settings → General</strong>:
         </p>
         <ul>
           <li>The <strong>Devices</strong> tab shows a <strong>Rower</strong> slot in place of the
@@ -855,14 +854,14 @@
 
         <h3>Importing a single workout file</h3>
         <ol class="steps">
-          <li>Go to <strong>Workout → Import → Single Workout</strong> in the menu bar.</li>
+          <li>On the <strong>Workout</strong> tab, click <strong>Import → Single Workout</strong>.</li>
           <li>Navigate to your <code>.erg</code> or <code>.mrc</code> file and click <strong>Open</strong>.</li>
           <li>Maximum Trainer converts the file to its native XML format and adds it to your library.</li>
         </ol>
 
         <h3>Importing multiple workout files</h3>
         <ol class="steps">
-          <li>Go to <strong>Workout → Import → Multiple Workouts</strong>.</li>
+          <li>On the <strong>Workout</strong> tab, click <strong>Import → Multiple Workouts</strong>.</li>
           <li>Select one or more <code>.erg</code> / <code>.mrc</code> files.</li>
           <li>All selected files are converted and batch-imported at once.</li>
         </ol>
@@ -935,8 +934,7 @@
                 <td><strong>ERG</strong></td>
                 <td>
                   The app continuously adjusts trainer resistance so your actual power output
-                  matches the interval target. You only need to control cadence. If your cadence
-                  drops under 40 rpm or you pause, ERG lets go until you spin up again (optional, Devices, off by default).
+                  matches the interval target. You only need to control cadence.
                 </td>
                 <td>Structured interval workouts with power targets</td>
               </tr>
@@ -1042,7 +1040,7 @@
 
         <h3>How the workout starts</h3>
         <p>
-          Choose the trigger in the workout's <strong>Settings</strong> (the gear icon) under
+          Choose the trigger in <strong>Settings → Start &amp; alerts</strong> under
           <strong>Start workout when:</strong>
         </p>
         <div class="guide-table-wrap">
@@ -1087,14 +1085,15 @@
         <h3>Settings during a workout</h3>
         <p>
           Press the <strong>Settings</strong> gear in the workout player to change options without
-          interrupting the session (widgets and their style, timers, start trigger, Multimedia panel,
-          Radios). See <a href="#workout-config">Workout settings (in the player)</a> for the full list.
+          interrupting the session (radio, sounds, panels, graph, video, start and alerts). In a course it
+          shows only radio and sounds. See <a href="#workout-config">Workout settings (in the player)</a> for the full list.
         </p>
 
         <h3>The media panel</h3>
         <p>
-          The large panel beside the power graph can show one of two things. Choose which in the
-          workout's <strong>Settings</strong> (the gear icon) → <strong>Multimedia</strong>:
+          The large panel beside the power graph can show one of two things. Choose which in
+          <strong>Settings → Video &amp; radio</strong>, or in the workout's <strong>Settings</strong> under
+          <strong>Video</strong>:
         </p>
         <div class="guide-table-wrap">
           <table class="guide-table">
@@ -1109,8 +1108,8 @@
         <h3>Radio Player</h3>
         <p>
           Internet radio is separate from the panel above and plays on any mode. Its controls sit at
-          the <strong>top-right of the workout player</strong>; add your own stations in the workout's
-          <strong>Settings → Radios</strong> (they're saved for next time). You can also play, pause,
+          the <strong>top-right of the workout player</strong>; try stations and add your own in
+          <strong>Settings → Video &amp; radio</strong>. You can also play, pause,
           or skip with the <a href="#tips">radio shortcuts</a>.
         </p>
 
@@ -1137,7 +1136,7 @@
         <ol class="steps">
           <li>In the <strong>Workout</strong> tab, right-click a workout and choose
               <strong>Host Group Workout…</strong> (or select it and use
-              <strong>Workout → Host Group Workout…</strong> in the menu bar).</li>
+              <strong>Group → Host Group Workout…</strong> at the top right).</li>
           <li>Choose your connection method (<strong>BTLE Device</strong> or
               <strong>Simulation</strong>) as for any workout.</li>
           <li>The workout player opens with a <strong>Group ride</strong> column on the right.
@@ -1145,13 +1144,12 @@
               <code>7KQ2</code>) and send it to your friends.</li>
           <li>Riders appear in the column as they join. Someone still pairing their sensors shows
               <em>connecting sensors…</em> under their name.</li>
-          <li>When everyone is in, click <strong>Start group ride</strong> (or press
-              <kbd>Enter</kbd>). Everyone gets the same 10-second countdown and starts together.</li>
+          <li>When everyone is in, click <strong>Start group ride</strong>. Everyone gets the same 10-second countdown and starts together.</li>
         </ol>
 
         <h3>Joining a group workout</h3>
         <ol class="steps">
-          <li>Choose <strong>Workout → Join Group Workout…</strong> (<kbd>Ctrl</kbd>+<kbd>J</kbd>).</li>
+          <li>On the <strong>Workout</strong> tab, choose <strong>Group → Join Group Workout…</strong> (<kbd>Ctrl</kbd>+<kbd>J</kbd>).</li>
           <li>Enter the room code from the host and the name the other riders will see, then click
               <strong>Join</strong>. The host's workout downloads automatically.</li>
           <li>Choose your connection method and pair your sensors as usual.</li>
@@ -1230,7 +1228,7 @@
               <strong>Est. time</strong> column is your time riding alone at 70 % of your FTP (hover it for details).</li>
           <li>Set the number of <strong>Bots</strong> (20 by default, up to 50) and their <strong>Bot strength</strong>
               range in W/kg. Signed in with Intervals.icu, your weight comes from your profile there (change it there and restart
-              the app); otherwise you can edit it on this page or in Preferences.</li>
+              the app); otherwise you can edit it on this page or in Settings.</li>
           <li><strong>Double-click</strong> the course (or press <kbd>Enter</kbd>), choose your connection method, and
               click <strong>Start Course</strong>.</li>
         </ol>
@@ -1280,7 +1278,7 @@
           <strong>Upload activity</strong> section (see <a href="#uploading">Uploading</a>) and
           <strong>Heart rate on this workout</strong>: your average heart rate on the last six rides of
           it, with your lowest marked, and where today's efficiency ranks. The activity is written as a
-          <code>.fit</code> file to your history folder; its numbers match the History tab.
+          <code>.fit</code> file to your history folder; its numbers match the Stats tab.
         </p>
         <p>
           <strong>Keep riding:</strong> once the workout finishes, a controlled trainer leaves ERG so you
@@ -1305,14 +1303,14 @@
 
         <div class="callout">
           <strong>Where are my files?</strong> Activity files are saved to your system's
-          Documents folder under <code>MaximumTrainer / History</code>.
+          Documents folder under <code>MaximumTrainer / History</code>. Open it from <strong>Settings → Files &amp; logs</strong>.
         </div>
 
         <p>
-          The <strong>History</strong> tab lists every saved ride. At the top it shows your weekly goal, this week's
+          The <strong>Stats</strong> tab shows your weekly goal, this week's
           rides, time, TSS and distance (each compared with last week) and a bar chart of your
-          weekly TSS over the last 12 weeks - hover a bar for that week's totals. Double-click a
-          ride to see its graphs, laps and the achievements you earned on it.
+          weekly TSS over the last 12 weeks - hover a bar for that week's totals. Below, <strong>History</strong>
+          lists every saved ride: double-click a ride to see its graphs, laps and the achievements you earned on it.
         </p>
         <p>
           <strong>Weekly goal:</strong> click <em>Set a weekly goal</em> (or <em>change</em>) on the
@@ -1363,7 +1361,7 @@
               (<em>your best of the last 90 days was 298 W</em>) or <em>New all-time 5 min best</em>.
               It appears a few seconds after the effort ends, with its peak value, and each record
               is announced at most once per ride. Your first ride has nothing to beat, so it is quiet.
-              See them at the top of the Achievements tab and in History &gt; <a href="#saving-activity">Power Curve</a>.</li>
+              See them at the top of the Achievements tab and in Stats &gt; <a href="#saving-activity">Power Curve</a>.</li>
           <li><strong>After the ride</strong>, new achievements are listed on the <em>Workout Complete!</em>
               panel (workout counts, total hours and distance, streaks, W/kg, group workouts you hosted or joined, your first test, a raised FTP...).</li>
         </ul>
@@ -1393,8 +1391,7 @@
 
         <h3>Linking a platform (one-time setup)</h3>
         <ol class="steps">
-          <li>Open <strong>Preferences</strong>.</li>
-          <li>Select the <strong>Strava</strong> category.</li>
+          <li>Open <strong>Settings → Accounts</strong>.</li>
           <li>Click <strong>Connect to Strava</strong>.</li>
           <li>Your system browser opens for you to authorise Maximum Trainer. Log in, click <strong>Authorise</strong>, then return to the app.</li>
           <li>Maximum Trainer now shows Strava as <em>linked</em> with a green tick.</li>
@@ -1406,7 +1403,7 @@
           <li><strong>Auto-upload on</strong> — the activity uploads on its own and the panel shows the status; nothing to click.</li>
           <li><strong>Auto-upload off</strong> — the panel shows an <strong>Upload to Strava</strong> / <strong>Upload to Intervals.icu</strong> button; click it to upload the <code>.fit</code> file.</li>
         </ul>
-        <p>Toggle auto-upload per platform in <strong>Preferences → Strava</strong> and <strong>Preferences → Intervals.icu</strong>.</p>
+        <p>Toggle auto-upload per platform in <strong>Settings → Accounts</strong>.</p>
 
       </section>
 
@@ -1414,58 +1411,37 @@
       <section class="guide-section" id="settings">
         <h2>⚙️ Settings</h2>
         <p>
-          Maximum Trainer has <strong>two</strong> settings dialogs. <strong>Preferences</strong>
-          (<strong>MaximumTrainer → Preferences</strong>, or <kbd>Ctrl</kbd>+<kbd>,</kbd>) holds your account-wide options, organised
-          into the categories below. Display options that apply only while you ride live in a separate
-          dialog — see <a href="#workout-config">Workout settings</a> further down.
+          Every option is in the <strong>Settings</strong> tab of the left bar
+          (<kbd>Ctrl</kbd>+<kbd>,</kbd>). Changes apply right away.
         </p>
 
         <figure class="guide-screenshot">
           <img src="assets/screenshots/screenshot_settings.png"
-               alt="Preferences dialog — General, Profile and Logging app settings, with Strava and Intervals.icu integrations grouped below" />
-          <figcaption>Preferences — app settings (General, Profile, Logging) above the divider; the Strava and Intervals.icu integrations below it</figcaption>
+               alt="The Settings tab: You, Ride and App sections, with the ride screen options open" />
+          <figcaption>The Settings tab</figcaption>
         </figure>
 
         <div class="guide-table-wrap">
           <table class="guide-table">
-            <thead><tr><th>Category</th><th>What you can configure</th></tr></thead>
+            <thead><tr><th>Section</th><th>What you can configure</th></tr></thead>
             <tbody>
-              <tr>
-                <td><strong>General</strong></td>
-                <td>Distance unit (km / miles), app theme (System / Light / Dark), "force the workout window to stay on top", and <a href="#rowing-beta">Rowing mode (Beta)</a></td>
-              </tr>
-              <tr>
-                <td><strong>Profile</strong></td>
-                <td>Your FTP (W), LTHR (bpm), and weight (kg) — used for training zones, W/kg, and ERG targets. Read-only when signed in with Intervals.icu (they come from your Intervals.icu profile).</td>
-              </tr>
-              <tr>
-                <td><strong>Logging</strong></td>
-                <td>
-                  Set the minimum log level, enable or disable writing to a log file, choose the log
-                  file path, and open the log folder. See
-                  <a href="#log-files">Log Files &amp; Troubleshooting</a> for default paths.
-                </td>
-              </tr>
-              <tr>
-                <td><strong>Strava</strong> <span style="opacity:.6">(integration)</span></td>
-                <td>Link / unlink your Strava account and toggle auto-upload of completed activities</td>
-              </tr>
-              <tr>
-                <td><strong>Intervals.icu</strong> <span style="opacity:.6">(integration)</span></td>
-                <td>Auto-upload of completed activities</td>
-              </tr>
+              <tr><td><strong>Profile</strong></td><td>Your FTP (W), LTHR (bpm), and weight (kg) — used for training zones, W/kg, and ERG targets. Read-only when signed in with Intervals.icu (they come from your Intervals.icu profile).</td></tr>
+              <tr><td><strong>Accounts</strong></td><td>Intervals.icu and Strava, auto-upload, and Log Out</td></tr>
+              <tr><td><strong>Start &amp; alerts</strong></td><td>How a workout starts, interval messages and summary, sensor dropout, battery warning</td></tr>
+              <tr><td><strong>Ride screen</strong></td><td>Top bar, bottom panels and graph lines</td></tr>
+              <tr><td><strong>Sounds</strong></td><td>Workout sounds, off-target alerts and volume</td></tr>
+              <tr><td><strong>Video &amp; radio</strong></td><td>The <a href="#workout-player">video / web</a> panel, and the radio stations</td></tr>
+              <tr><td><strong>General</strong></td><td>Distance unit, app theme, "force the workout window to stay on top", and <a href="#rowing-beta">Rowing mode (Beta)</a></td></tr>
+              <tr><td><strong>Files &amp; logs</strong></td><td>Open the rides and workouts folders; log level and log file. See <a href="#log-files">Log Files &amp; Troubleshooting</a>.</td></tr>
+              <tr><td><strong>Help &amp; about</strong></td><td>User guide, keyboard shortcuts, version</td></tr>
             </tbody>
           </table>
         </div>
 
         <h3 id="workout-config">Workout settings (in the player)</h3>
         <p>
-          Options that apply only while you ride live in their own dialog — open it with the
-          <strong>Settings</strong> gear in the workout player. There you choose which metric widgets
-          are shown (power, HR, cadence, speed, balance, SmO₂), the timer style, which lines the graph
-          draws, workout sounds and off-target alerts, the
-          <strong>Multimedia</strong> panel type (<a href="#workout-player">video / web</a>),
-          and your <strong>Radios</strong>.
+          The <strong>Settings</strong> gear in the workout player opens the same ride options while you
+          ride: radio, sounds, panels, graph, video, start and alerts.
         </p>
       </section>
 
@@ -1479,7 +1455,7 @@
         </p>
         <p>
           Riding with friends somewhere else? Use a <a href="#group-workouts">group workout</a>
-          (<strong>Workout → Host Group Workout…</strong>) instead, with Studio Mode off.
+          (<strong>Group → Host Group Workout…</strong>) instead, with Studio Mode off.
         </p>
 
         <figure class="guide-screenshot">
@@ -1529,7 +1505,7 @@
 
         <h3>Logging settings</h3>
         <p>
-          In <strong>Preferences → Logging</strong> you can set the <strong>Minimum level</strong>
+          In <strong>Settings → Files &amp; logs</strong> you can set the <strong>Minimum level</strong>
           (Verbose, Debug, Info, Warning, Error; Info is the default), turn
           <strong>Write log to file</strong> off or back on, and pick another file with
           <strong>Browse…</strong>. The line under the path shows the default file for your computer.
@@ -1674,7 +1650,7 @@
               </tr>
               <tr>
                 <td>Upload to Strava fails</td>
-                <td>Re-link your Strava account in Preferences → Strava. OAuth tokens expire; re-linking refreshes them.</td>
+                <td>Re-link your Strava account in Settings → Accounts. OAuth tokens expire; re-linking refreshes them.</td>
               </tr>
               <tr>
                 <td>No sound / internet radio silent on a fresh Windows install</td>
@@ -1737,7 +1713,7 @@
           <table class="guide-table">
             <thead><tr><th>Key</th><th>Action</th></tr></thead>
             <tbody>
-              <tr><td><kbd>Ctrl</kbd>+<kbd>,</kbd></td><td>Open Preferences</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>,</kbd></td><td>Open Settings</td></tr>
               <tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>Create new workout</td></tr>
               <tr><td><kbd>Ctrl</kbd>+<kbd>J</kbd></td><td>Join a group workout</td></tr>
               <tr><td><kbd>Ctrl</kbd>+<kbd>Q</kbd></td><td>Quit application</td></tr>
@@ -1872,7 +1848,7 @@
           If that folder cannot be written, the app writes the log to the system temp folder instead:
           <code>%TEMP%\MaximumTrainer.log</code> on Windows, and <code>$TMPDIR/MaximumTrainer.log</code>
           on macOS and Linux (on Linux that is usually <code>/tmp/MaximumTrainer.log</code>).
-          If you set a custom path in <strong>Preferences → Logging</strong>, the log moves there once the
+          If you set a custom path in <strong>Settings → Files &amp; logs</strong>, the log moves there once the
           configuration has loaded. See <a href="#log-files">Log Files &amp; Troubleshooting</a> for details.
         </p>
 

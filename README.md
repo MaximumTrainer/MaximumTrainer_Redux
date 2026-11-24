@@ -73,13 +73,13 @@ For everything about **using** the app — pairing sensors, finding / importing 
 
 | Devices — pairing & trainer config |
 |------------------------------------|
-| ![Devices tab — pair a sensor per role, toggle ERG control, and set dropout and battery options](docs/assets/screenshots/screenshot_devices.png) |
+| ![Devices tab — pair a sensor per role, toggle ERG control, or use simulated sensors](docs/assets/screenshots/screenshot_devices.png) |
 
 | Workout in progress |
 |---------------------|
 | ![Workout player — video, interval graph, and live power, heart rate, and cadence](docs/assets/screenshots/screenshot_workout_running.png) |
 
-| Courses (Beta) - ride Alpe d'Huez, Mont Ventoux or Longchamp against bots |
+| Courses (Beta) - ride Alpe d'Huez, Mont Ventoux, Central Park or Longchamp against bots |
 |---------------------------------------------------------------------------|
 | ![Course in progress - route from above with the riders, standings, live metrics, and the climb coloured by gradient](docs/assets/screenshots/screenshot_course_race.png) |
 

@@ -356,10 +356,10 @@ void MainWindow::screenshotNextStep()
         qInfo() << "Screenshot: main_window";
         ftb->setCurrentIndex(m_tabs.settings);
         for (const auto &[section, name] : std::initializer_list<std::pair<SettingsPage::Section, const char *>>{
-                 {SettingsPage::Section::Profile, "settings"},
+                 {SettingsPage::Section::Profile, "settings_profile"},
                  {SettingsPage::Section::Accounts, "settings_accounts"},
                  {SettingsPage::Section::Ride, "settings_ride"},
-                 {SettingsPage::Section::RideScreen, "settings_ride_screen"},
+                 {SettingsPage::Section::RideScreen, "settings"},
                  {SettingsPage::Section::Sounds, "settings_sounds"},
                  {SettingsPage::Section::Media, "settings_media"},
                  {SettingsPage::Section::General, "settings_general"},
