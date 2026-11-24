@@ -202,9 +202,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     m_achievementsPage = new AchievementsWidget(ui->stackedWidget_menu);
     ui->stackedWidget_menu->addWidget(m_achievementsPage);   // page 5, after the .ui pages
     m_coursesPage = new CoursesPage(ui->stackedWidget_menu);
-    m_coursesPage->setProfile(account->FTP, account->weight_kg, account->bike_weight_kg, account->userCda);
+    m_coursesPage->setProfile(account->FTP, account->weight_kg, account->bike_weight_kg, account->userCda,
+                                  !account->intervals_icu_access_token.isEmpty());
     ui->stackedWidget_menu->addWidget(m_coursesPage);     // page 6
     connect(m_coursesPage, &CoursesPage::rideRequested, this, &MainWindow::rideCourse);
+    connect(m_coursesPage, &CoursesPage::weightEdited, this, [this](double weightKg) {
+        account->saveProfileFields(account->FTP, account->LTHR, weightKg);
+        m_coursesPage->setProfile(account->FTP, account->weight_kg, account->bike_weight_kg, account->userCda, false);
+    });
 
 
     //Parse Workouts
@@ -457,7 +462,8 @@ void MainWindow::leftMenuChanged(int tabSelected) {
         m_achievementsPage->reload();
     // Refresh studio settings each time the Studio tab is opened.
     if (tabSelected == m_tabs.courses && m_coursesPage)
-        m_coursesPage->setProfile(account->FTP, account->weight_kg, account->bike_weight_kg, account->userCda);
+        m_coursesPage->setProfile(account->FTP, account->weight_kg, account->bike_weight_kg, account->userCda,
+                                  !account->intervals_icu_access_token.isEmpty());
     if (tabSelected == m_tabs.studio) {
         if (auto *sw = qobject_cast<StudioWidget*>(ui->studioWidget))
             sw->reload();

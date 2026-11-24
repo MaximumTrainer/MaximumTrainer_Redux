@@ -38,6 +38,8 @@ public:
 
     /// The lane (0 to 3, across the road) a rider's dot is in, as last drawn.
     int laneOf(int riderIndex) const { return riderIndex < m_lanes.size() ? m_lanes.at(riderIndex) : -1; }
+    /// The standings order as last drawn.
+    const QVector<int> &displayOrder() const { return m_displayOrder; }
 
 signals:
     void gearUpClicked();
@@ -49,9 +51,11 @@ protected:
     void resizeEvent(QResizeEvent *event) override;
 
 private:
-    void paintTopBar(QPainter &painter, const QRectF &area) const;
     void paintRoute(QPainter &painter, const QRectF &area) const;
     void paintOverview(QPainter &painter, const QRectF &mapArea) const;
+    void paintProgressPanel(QPainter &painter, const QRectF &mapArea) const;
+    QRectF progressPanelRect(const QRectF &mapArea) const;
+    void updateDisplayOrder();
     QRectF gearPanelRect(const QRectF &mapArea) const;
     void paintGearPanel(QPainter &painter, const QRectF &mapArea) const;
     void paintZonePanel(QPainter &painter, const QRectF &mapArea) const;
@@ -77,6 +81,7 @@ private:
     double m_redLineWattsPerKg = 0.0;
     // Each rider's lane across the road (0 to 3) and where their dot is on
     // its way to it; kept between frames so riders don't hop sides.
+    QVector<int> m_displayOrder;   // standings as shown: passing needs a clear margin
     mutable QVector<int> m_lanes;
     mutable QVector<int> m_tagSides;          // which side of its dot each name tag sits
     int m_cadenceRpm = 0;
