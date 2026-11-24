@@ -79,6 +79,10 @@ For everything about **using** the app — pairing sensors, finding / importing 
 |---------------------|
 | ![Workout player — video, interval graph, and live power, heart rate, and cadence](docs/assets/screenshots/screenshot_workout_running.png) |
 
+| Courses (Beta) - ride Alpe d'Huez, Mont Ventoux or Longchamp against bots |
+|---------------------------------------------------------------------------|
+| ![Course in progress - route from above with the riders, standings, live metrics, and the climb coloured by gradient](docs/assets/screenshots/screenshot_course_race.png) |
+
 | Studio mode — per-rider configuration |
 |---------------------------------------|
 | ![Studio mode configuration — per-rider name, FTP/LTHR, sensors, and ERG control for up to 8 riders](docs/assets/screenshots/screenshot_studio_mode.png) |
