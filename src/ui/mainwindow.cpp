@@ -68,6 +68,7 @@
 #include "groupworkoutcodec.h"
 #include "joingroupdialog.h"
 #include "coursespage.h"
+#include "sidebaricons.h"
 
 #ifdef GC_WASM_BUILD
 #include <emscripten.h>
@@ -131,6 +132,13 @@ EM_JS(void, js_exposeWasmDemoWorkout, (), {
 #endif // GC_WASM_BUILD
 
 
+namespace {
+QIcon workoutTabIcon(bool rowing)
+{
+    return rowing ? QIcon(QStringLiteral(":/image/icon/rower")) : SidebarIcons::workout();
+}
+}
+
 MainWindow::~MainWindow() {
     delete ui;
 
@@ -165,14 +173,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         ftb->insertTab(slot, icon, label);
         m_tabToPage.append(page);
     };
-    addTab(m_tabs.workout, 0, QIcon(account->rowing_mode ? ":/image/icon/rower" : ":/image/icon/workoutMan"), tr("Workout"));
+    addTab(m_tabs.workout, 0, workoutTabIcon(account->rowing_mode), tr("Workout"));
     addTab(m_tabs.courses, 6, CoursesPage::tabIcon(), tr("Courses"));
     addTab(m_tabs.intervals, 1, QIcon(":/image/icon/intervals"), tr("Intervals.icu"));
     addTab(m_tabs.history, 3, QIcon(":/image/icon/chart"), tr("History"));
     addTab(m_tabs.achievements, 5, QIcon(":/image/icon/trophy"), tr("Achievements"));
-    addTab(m_tabs.devices, 4, QIcon(":/image/icon/bluetooth"), tr("Devices"));
-    addTab(m_tabs.studio, 2, QIcon(":/image/icon/studio"), tr("Studio"));
-    addTab(m_tabs.settings, 7, QIcon(":/image/icon/general"), tr("Settings"));
+    addTab(m_tabs.devices, 4, SidebarIcons::devices(), tr("Devices"));
+    addTab(m_tabs.studio, 2, SidebarIcons::studio(), tr("Studio"));
+    addTab(m_tabs.settings, 7, SidebarIcons::settings(), tr("Settings"));
     ftb->setGroupTitle(m_tabs.workout, tr("RIDE"));
     ftb->setGroupTitle(m_tabs.intervals, tr("TRAINING"));
     ftb->setGroupTitle(m_tabs.devices, tr("SETUP"));
@@ -295,8 +303,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Devices tab's FTMS slot (Trainer ↔ Rower). Workout sessions read the
     // mode when they start, so nothing else needs refreshing.
     connect(dconfig, &SettingsPage::rowingModeChanged, this, [this]() {
-        ftb->setTabIcon(0, QIcon(account->rowing_mode ? ":/image/icon/rower"
-                                                      : ":/image/icon/workoutMan"));
+        ftb->setTabIcon(0, workoutTabIcon(account->rowing_mode));
         if (auto *sw = qobject_cast<SensorsWidget*>(ui->sensorsWidget))
             sw->refreshRowingMode();
     });

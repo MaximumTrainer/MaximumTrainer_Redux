@@ -71,7 +71,7 @@ target_sources(mt_core PRIVATE
     ui/components/mytableview.cpp ui/components/shapefactory.cpp ui/components/infowidget.cpp
     ui/components/bottombar.cpp ui/components/topmenuworkout.cpp ui/components/balancewidget.cpp
     ui/components/postworkoutpanel.cpp ui/components/achievementtoast.cpp ui/components/metriccard.cpp ui/components/trendchart.cpp ui/components/sensorstatusstrip.cpp ui/components/studioconnectionboard.cpp
-    ui/components/idlecursor.cpp ui/components/clickablelabel.cpp ui/components/fancytab.cpp ui/components/fancytabbar.cpp
+    ui/components/idlecursor.cpp ui/components/sidebaricons.cpp ui/components/clickablelabel.cpp ui/components/fancytab.cpp ui/components/fancytabbar.cpp
     ui/components/stylehelper.cpp ui/components/faderlabel.cpp
     ui/components/tableviewhover.cpp ui/components/clock.cpp
     ui/components/infosworkout.cpp ui/components/oxygenwidget.cpp

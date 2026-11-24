@@ -5,6 +5,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGroupBox>
+#include <QHeaderView>
 #include <QPushButton>
 #include <QFileDialog>
 #include <QDesktopServices>
@@ -112,10 +113,12 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     }
 
 
-    ui->tableView_radio->setColumnWidth(0, 160);
-    ui->tableView_radio->setColumnWidth(1, 160);
-    ui->tableView_radio->setColumnWidth(2, 50);
-    ui->tableView_radio->horizontalHeader()->setStretchLastSection(true);
+    // Name, genre, bitrate, language: the two texts share the room.
+    QHeaderView *radioHeader = ui->tableView_radio->horizontalHeader();
+    radioHeader->setStretchLastSection(false);
+    radioHeader->setSectionResizeMode(QHeaderView::ResizeToContents);
+    radioHeader->setSectionResizeMode(0, QHeaderView::Stretch);
+    radioHeader->setSectionResizeMode(1, QHeaderView::Stretch);
 
 
     ui->slider_volumeRadio->setValue(AppSettings::read(SettingKeys::Media::RadioVolume));
