@@ -63,6 +63,33 @@ QIcon SidebarIcons::workout()
     });
 }
 
+QIcon SidebarIcons::history()
+{
+    return drawn([](QPainter &painter) {
+        const QPointF centre(66, 64);
+        const QColor color = zoneColor(6);
+        // Ring open at the upper left, ending in an arrow head turning back.
+        const QRectF ring(centre.x() - 46, centre.y() - 46, 92, 92);
+        constexpr int kStart = 165 * 16;
+        constexpr int kSweep = -315 * 16;
+        painter.setBrush(QColor(0xf4, 0xf4, 0xf6));
+        painter.setPen(Qt::NoPen);
+        painter.drawEllipse(ring);
+        for (const auto &[ink, width] : {std::pair{kOutline, 24.0}, std::pair{color, 14.0}}) {
+            painter.setPen(QPen(ink, width, Qt::SolidLine, Qt::RoundCap));
+            painter.setBrush(Qt::NoBrush);
+            painter.drawArc(ring, kStart, kSweep);
+        }
+        painter.setPen(QPen(kOutline, 5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        painter.setBrush(color);
+        painter.drawPolygon(QPolygonF({QPointF(4, 46), QPointF(42, 46), QPointF(19, 76)}));
+        // Hands.
+        painter.setPen(QPen(kOutline, 9, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        painter.drawLine(centre, centre + QPointF(0, -26));
+        painter.drawLine(centre, centre + QPointF(18, 11));
+    });
+}
+
 QIcon SidebarIcons::devices()
 {
     return drawn([](QPainter &painter) {

@@ -8,6 +8,7 @@
 namespace SidebarIcons {
 
 QIcon workout();    // an interval workout
+QIcon history();    // a clock turning back
 QIcon devices();    // Bluetooth
 QIcon studio();     // three riders
 QIcon intervals();  // the Intervals.icu logo, without its wide margins
