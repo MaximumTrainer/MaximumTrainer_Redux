@@ -287,6 +287,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(dconfig, &SettingsPage::keyboardShortcutsRequested, this, &MainWindow::on_actionKeyboard_Shortcuts_triggered);
     connect(dconfig, &SettingsPage::userGuideRequested, this, &MainWindow::on_actionRequest_Help_triggered);
     connect(dconfig, &SettingsPage::aboutRequested, this, &MainWindow::on_actionAbout_MT_triggered);
+    connect(dconfig, &SettingsPage::ridesFolderRequested, this, &MainWindow::on_actionHistory_triggered);
+    connect(dconfig, &SettingsPage::workoutsFolderRequested, this, &MainWindow::on_actionWorkout_triggered);
     setupPageActions();
     // Screenshot mode feeds the docs: no "Update available" banner in them.
     if (!QCoreApplication::arguments().contains(QLatin1String("--screenshots"), Qt::CaseInsensitive)) {

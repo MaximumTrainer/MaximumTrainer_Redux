@@ -153,7 +153,7 @@ SettingsPage::SettingsPage(QWidget *parent) : QWidget(parent), ui(new Ui::Settin
                 titled(tr("Radio stations"), ride.at(DialogConfig::RadioPage))}, true);
     addGroupTitle(tr("APP"));
     addSection(Section::General, QStringLiteral(":/image/icon/general"), tr("General"), {generalPage});
-    addSection(Section::Logs, QStringLiteral(":/image/icon/gear"), tr("Logs"), {createLoggingPage()});
+    addSection(Section::Logs, QStringLiteral(":/image/icon/gear"), tr("Files && logs"), {createFoldersGroup(), createLoggingPage()});
     addSection(Section::Help, QStringLiteral(":/image/icon/main_icon"), tr("Help && about"), {createHelpPage()});
 
     connect(ui->listWidget_settings, &QListWidget::currentRowChanged, this, &SettingsPage::currentListViewSelectionChanged);
@@ -337,7 +337,7 @@ void SettingsPage::addSection(Section section, const QString &iconPath, const QS
     for (QWidget *widget : widgets) {
         layout->addWidget(widget);
         collapseSpacers(widget);
-        if (widget->layout())
+        if (widget->layout() && !qobject_cast<QGroupBox *>(widget))
             widget->layout()->setContentsMargins(0, 4, 0, 4);
         widget->show();   // a page taken from a stack is hidden
     }
@@ -445,6 +445,25 @@ QWidget *SettingsPage::createSensorAlertsGroup()
         account->saveBatteryWarningThreshold();
     });
     return page;
+}
+
+QWidget *SettingsPage::createFoldersGroup()
+{
+    auto *box = new QGroupBox(tr("Folders"));
+    auto *row = new QHBoxLayout(box);
+    const auto addButton = [&](const QString &label, const QString &toolTip, void (SettingsPage::*signal)()) {
+        auto *button = new QPushButton(label, box);
+        button->setToolTip(toolTip);
+        connect(button, &QPushButton::clicked, this, signal);
+        row->addWidget(button);
+    };
+    addButton(tr("Rides"), tr("Open the folder that holds your FIT files"), &SettingsPage::ridesFolderRequested);
+    addButton(tr("Workouts"), tr("Open the workout folder"), &SettingsPage::workoutsFolderRequested);
+    row->addStretch(1);
+#ifdef GC_WASM_BUILD
+    box->setEnabled(false);   // no local folders in the browser
+#endif
+    return box;
 }
 
 QWidget *SettingsPage::createHelpPage()

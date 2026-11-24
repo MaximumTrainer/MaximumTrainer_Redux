@@ -65,6 +65,10 @@ void HistoryWidget::setupUi()
     m_contextMenu = new QMenu(this);
     QAction *refreshAction = m_contextMenu->addAction(QIcon(QStringLiteral(":/image/icon/refresh")), tr("Refresh"));
     connect(refreshAction, &QAction::triggered, this, &HistoryWidget::loadHistory);
+#ifndef GC_WASM_BUILD
+    QAction *folderAction = m_contextMenu->addAction(tr("Open rides folder"));
+    connect(folderAction, &QAction::triggered, this, &HistoryWidget::openFolderRequested);
+#endif
     m_contextMenu->addSeparator();
     m_deleteAction = m_contextMenu->addAction(QIcon(QStringLiteral(":/image/icon/delete")), tr("Delete"));
     connect(m_deleteAction, &QAction::triggered, this, &HistoryWidget::deleteSelected);
@@ -83,12 +87,6 @@ void HistoryWidget::setupUi()
     toolBar->addWidget(m_pmcBtn);
     toolBar->addWidget(m_statusLabel);
     toolBar->addStretch();
-#ifndef GC_WASM_BUILD
-    auto *folderBtn = new QPushButton(tr("Open folder"), histTab);
-    folderBtn->setToolTip(tr("Open the folder that holds your FIT files"));
-    connect(folderBtn, &QPushButton::clicked, this, &HistoryWidget::openFolderRequested);
-    toolBar->addWidget(folderBtn);
-#endif
 
     // ── Search + date-range filter row ───────────────────────────────────────
     m_searchEdit = new QLineEdit(histTab);

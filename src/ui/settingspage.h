@@ -55,6 +55,8 @@ signals:
     void keyboardShortcutsRequested();
     void userGuideRequested();
     void aboutRequested();
+    void ridesFolderRequested();
+    void workoutsFolderRequested();
 
 
 public slots:
@@ -89,6 +91,7 @@ private:
     QWidget *createAccountPage();
     QWidget *createSensorAlertsGroup();
     QWidget *createHelpPage();
+    QWidget *createFoldersGroup();
     /// Show/refresh the "FTP and LTHR synced from intervals.icu" label.
     void updateProfileSyncLabel();
     /// Build the logging settings page and add it to the stacked widget.
