@@ -26,7 +26,7 @@ endforeach()
 target_sources(mt_core PRIVATE
     # app
     app/logger.cpp app/config_bootstrap.cpp app/startup_trace.cpp app/stallwatchdog.cpp app/webengine_safe_mode.cpp
-    app/util.cpp app/updatenotifier.cpp app/globalvars.cpp app/simplecrypt.cpp app/networkmonitor.cpp
+    app/util.cpp app/keepawake.cpp app/updatenotifier.cpp app/globalvars.cpp app/simplecrypt.cpp app/networkmonitor.cpp
     app/qtmediaplayer.h
     # fitness
     fitness/mmpcalculator.cpp fitness/powerbests.cpp fitness/personalbesttracker.cpp fitness/pmccalculator.cpp fitness/ftpestimator.cpp fitness/weeklysummary.cpp fitness/ridesummary.cpp fitness/powerzones.cpp
@@ -47,7 +47,7 @@ target_sources(mt_core PRIVATE
     persistence/file/fitactivityreader.cpp persistence/file/fitactivitydetailreader.cpp
     persistence/file/importerworkout.cpp persistence/file/importerworkoutzwo.cpp
     # workout
-    workout/workoututil.cpp workout/ergrescue.cpp workout/sensorsecondaccumulator.cpp workout/maptesttracker.cpp workout/targetalert.cpp
+    workout/workoututil.cpp workout/sensorsecondaccumulator.cpp workout/maptesttracker.cpp workout/targetalert.cpp
     # group workouts
     group/groupprotocol.cpp group/groupsession.cpp group/groupridecoordinator.cpp
     group/groupsimtest.cpp group/groupworkoutcodec.cpp group/grouppanel.cpp
@@ -71,7 +71,7 @@ target_sources(mt_core PRIVATE
     ui/components/mytableview.cpp ui/components/shapefactory.cpp ui/components/infowidget.cpp
     ui/components/bottombar.cpp ui/components/topmenuworkout.cpp ui/components/balancewidget.cpp
     ui/components/postworkoutpanel.cpp ui/components/achievementtoast.cpp ui/components/metriccard.cpp ui/components/trendchart.cpp ui/components/sensorstatusstrip.cpp ui/components/studioconnectionboard.cpp
-    ui/components/clickablelabel.cpp ui/components/fancytab.cpp ui/components/fancytabbar.cpp
+    ui/components/idlecursor.cpp ui/components/clickablelabel.cpp ui/components/fancytab.cpp ui/components/fancytabbar.cpp
     ui/components/stylehelper.cpp ui/components/faderlabel.cpp
     ui/components/tableviewhover.cpp ui/components/clock.cpp
     ui/components/infosworkout.cpp ui/components/oxygenwidget.cpp
@@ -163,6 +163,10 @@ elseif(APPLE)
 elseif(NOT EMSCRIPTEN)
     find_package(OpenSSL REQUIRED COMPONENTS Crypto)
     target_link_libraries(mt_core PUBLIC OpenSSL::Crypto m)
+    if(TARGET Qt6::DBus)   # sleep inhibition
+        target_link_libraries(mt_core PUBLIC Qt6::DBus)
+        target_compile_definitions(mt_core PRIVATE MT_HAS_DBUS)
+    endif()
 endif()
 
 # ── Executable ───────────────────────────────────────────────────────────────

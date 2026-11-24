@@ -101,7 +101,8 @@ private:
     quint16 m_lastWheelTime    = 0;
     quint16 m_lastCrankRevs    = 0;
     quint16 m_lastCrankTime    = 0;
-    bool    m_firstCsc         = true;
+    bool    m_wheelBaselineSet = false;
+    bool    m_crankBaselineSet = false;
 
     // Track which measurement types have been seen for determineSensorType()
     bool    m_seenHr           = false;

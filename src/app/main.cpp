@@ -323,6 +323,7 @@ int main(int argc, char *argv[]) {
         for (const RaceBot &bot : RaceBot::defaultField(42)) race.addBot(bot);
         RaceView view(&race);
         view.setZones(250, PowerZones::boundsPct({}));
+        view.setRedLineWattsPerKg(250 / kRiderKg);
         const int ticks = static_cast<int>(seconds * 4.0);   // 0.25 s steps
         for (int tick = 0; tick < ticks && !race.youFinished(); ++tick) {
             // Around 3 W/kg, with surges and easier spells, like a real ride.
@@ -331,6 +332,11 @@ int main(int argc, char *argv[]) {
             view.addRideTime(0.25);
         }
         view.resize(1350, 640);
+        constexpr int kSettleFrames = 50;   // dots glide to their place frame by frame
+        for (int frame = 0; frame < kSettleFrames; ++frame) {
+            race.step(0.04);
+            view.grab();
+        }
         return view.grab().save(outPath) ? 0 : 1;
     }
 

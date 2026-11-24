@@ -17,6 +17,8 @@ const QColor kYou(0xf0, 0x8a, 0x44);
 const QColor kRider(0x7f, 0x9f, 0xd6);
 const QColor kRidden(0x4c, 0xc0, 0x8f);
 const QColor kDraft(0x4c, 0xc0, 0x8f);
+const QColor kJustOut(0xf2, 0xc2, 0x30);
+constexpr double kJustOutM = 25.0;   // this far back you have just lost a wheel
 // Fixed, not from the palette: the workout window's theme makes "mid" nearly
 // the background colour, and the road vanished.
 const QColor kRoad(0x5b, 0x62, 0x6c);
@@ -322,6 +324,8 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
             m_laneOffsets[index] = m_lanes.at(index);
         }
     }
+    const int wheel = you.draftingBehind;
+    const double pixelsPerMetre = std::min(roadArea.width() - 56.0, roadArea.height() - 56.0) / (2.0 * kZoomHalfM);
     QVector<QPointF> centres(riderCount);
     QVector<QPointF> laneTargets;   // where the riders already placed are heading
     for (const int index : order) {
@@ -339,7 +343,9 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
         // Stay put if you can; otherwise move one lane over if it is free; if
         // neither neighbour is free, stay and overlap a little rather than hop.
         int lane = m_lanes.at(index);
-        if (!clearOf(lane)) {
+        if (index == 0 && wheel >= 0) {
+            lane = m_lanes.at(wheel);
+        } else if (!clearOf(lane)) {
             for (const int option : {lane - 1, lane + 1})
                 if (option >= 0 && option < kLanes && clearOf(option)) {
                     lane = option;
@@ -350,17 +356,35 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
         m_laneOffsets[index] += (lane - m_laneOffsets.at(index)) * kLaneGlide;
         laneTargets.append(onRoad + across * (laneOffset(lane) * kSlot));
         centres[index] = onRoad + across * (laneOffset(m_laneOffsets.at(index)) * kSlot);
+        if (index == 0) {
+            // Drafting: sit behind the wheel you follow instead of beside it. At
+            // map scale a wheel is centimetres away, so the dot slides back one slot.
+            const double wanted = wheel >= 0 ? std::max(0.0, kSlot - gapM(wheel) * pixelsPerMetre) : 0.0;
+            m_yourSlideBack += (wanted - m_yourSlideBack) * kLaneGlide;
+            if (length > 0.01)
+                centres[0] -= direction / length * m_yourSlideBack;
+            laneTargets.last() = centres[0];
+        }
     }
-    // Sprinting (1.5 x your FTP per kg or more): the dot's border flashes red.
+    // A bot sprinting (1.5 x your FTP per kg or more): its border flashes red.
     const bool flashOn = (QDateTime::currentMSecsSinceEpoch() / 250) % 2 == 0;
     auto drawDot = [&](int index) {
         const RaceSimulation::Rider &rider = m_race->riders().at(index);
         const QPointF centre = centres.at(index);
         const double radius = rider.isYou ? kYourRadius : kRadius;
-        const bool sprinting = !rider.finishTimeSec && aboveSprintLine(rider.powerW / rider.riderKg);
-        painter.setPen(sprinting && flashOn ? QPen(kAboveThreshold, 3.5) : QPen(palette().color(QPalette::Window), 2));
+        // Your ring turns red with the W/kg on the card: at once, above your FTP.
+        const bool overFtp = rider.isYou && !rider.finishTimeSec && aboveRedLine(rider.powerW / rider.riderKg);
+        const bool sprinting = !rider.isYou && !rider.finishTimeSec && aboveSprintLine(rider.powerW / rider.riderKg);
+        painter.setPen(overFtp || (sprinting && flashOn) ? QPen(kAboveThreshold, 3.5) : QPen(palette().color(QPalette::Window), 2));
         painter.setBrush(rider.isYou ? kYou : kRider);
         painter.drawEllipse(centre, radius, radius);
+        if (rider.isYou && draftState() != DraftState::None) {
+            // Outer ring: green on a wheel, dashed amber just out of reach of one.
+            const bool drafting = draftState() == DraftState::Drafting;
+            painter.setBrush(Qt::NoBrush);
+            painter.setPen(drafting ? QPen(kDraft, 3) : QPen(kJustOut, 2.5, Qt::DashLine));
+            painter.drawEllipse(centre, radius + 5, radius + 5);
+        }
         painter.setFont(dotFont);
         painter.setPen(Qt::white);
         painter.drawText(QRectF(centre.x() - radius, centre.y() - radius, 2 * radius, 2 * radius),
@@ -496,6 +520,19 @@ bool RaceView::aboveSprintLine(double wattsPerKg) const
 {
     constexpr double kSprintShareOfFtp = 1.5;
     return m_redLineWattsPerKg > 0.0 && wattsPerKg >= kSprintShareOfFtp * m_redLineWattsPerKg;
+}
+
+RaceView::DraftState RaceView::draftState() const
+{
+    if (m_race->youFinished())
+        return DraftState::None;
+    if (m_race->you().draftingBehind >= 0)
+        return DraftState::Drafting;
+    const QVector<RaceSimulation::Rider> &riders = m_race->riders();
+    for (int index = 1; index < riders.size(); ++index)
+        if (!riders.at(index).finishTimeSec && gapM(index) > 0.0 && gapM(index) <= kJustOutM)
+            return DraftState::JustOut;
+    return DraftState::None;
 }
 
 double RaceView::gapM(int riderIndex) const

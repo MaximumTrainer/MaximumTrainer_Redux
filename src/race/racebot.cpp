@@ -36,10 +36,10 @@ double RaceBot::nextPower(double grade, double dtSec, double metresToFinish)
     return m_wattsPerKg * m_massKg * terrain * (1.0 + m_wander);
 }
 
-QVector<RaceBot> RaceBot::field(const FieldSettings &settings, quint32 seed)
+QVector<RaceBot> RaceBot::field(const FieldSettings &settings, quint32 seed, double riderKg)
 {
     QRandomGenerator random(seed);
-    const auto massKg = [&random] { return 62.0 + random.generateDouble() * 20.0; };
+    const auto massKg = [&random, riderKg] { return riderKg - 3.0 + random.generateDouble() * 6.0; };
     const int count = std::clamp(settings.count, 0, kMaxBots);
     const double low = std::min(settings.minWattsPerKg, settings.maxWattsPerKg);
     const double high = std::max(settings.minWattsPerKg, settings.maxWattsPerKg);
@@ -65,10 +65,10 @@ QVector<RaceBot> RaceBot::field(const FieldSettings &settings, quint32 seed)
         const double wattsPerKg = index < pace ? paceWattsPerKg
             : others == 1 ? (low + high) / 2.0
                           : low + (high - low) * (index - pace) / (others - 1);
-        // The pace group shares one build (72 kg, give or take 1), so at the same
+        // The pace group shares one build (your weight, give or take 1 kg), so at the same
         // W/kg they push the same watts and stay together; at different weights
         // the heavier ones would ride away on the flat.
-        const double mass = index < pace ? 71.0 + random.generateDouble() * 2.0 : massKg();
+        const double mass = index < pace ? riderKg - 1.0 + random.generateDouble() * 2.0 : massKg();
         bots.append(RaceBot(names.at(index % names.size()), wattsPerKg, mass, random.generate()));
     }
     return bots;

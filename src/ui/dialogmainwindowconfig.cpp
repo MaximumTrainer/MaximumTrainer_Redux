@@ -16,6 +16,7 @@
 #include <QGroupBox>
 #include <QFrame>
 #include <QDesktopServices>
+#include <QFileInfo>
 #include <QStandardPaths>
 #include <QShowEvent>
 
@@ -449,7 +450,7 @@ QWidget *DialogMainWindowConfig::createLoggingPage()
     pathRow->addWidget(m_btnBrowseLog);
     fileLayout->addLayout(pathRow);
 
-    m_btnOpenLog = new QPushButton(tr("Open log file"), fileGroup);
+    m_btnOpenLog = new QPushButton(tr("Open log folder"), fileGroup);
     m_btnOpenLog->setFixedWidth(130);
     fileLayout->addWidget(m_btnOpenLog, 0, Qt::AlignLeft);
 
@@ -473,7 +474,7 @@ QWidget *DialogMainWindowConfig::createLoggingPage()
     connect(m_btnBrowseLog, &QPushButton::clicked,
             this, &DialogMainWindowConfig::onBrowseLogFileClicked);
     connect(m_btnOpenLog, &QPushButton::clicked,
-            this, &DialogMainWindowConfig::onOpenLogFileClicked);
+            this, &DialogMainWindowConfig::onOpenLogFolderClicked);
 
     loadLoggingSettings();
     return page;
@@ -541,7 +542,7 @@ void DialogMainWindowConfig::onBrowseLogFileClicked()
     }
 }
 
-void DialogMainWindowConfig::onOpenLogFileClicked()
+void DialogMainWindowConfig::onOpenLogFolderClicked()
 {
     QString path = m_editLogFilePath->text().trimmed();
     if (path.isEmpty()) {
@@ -549,5 +550,5 @@ void DialogMainWindowConfig::onOpenLogFileClicked()
         path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
                + QStringLiteral("/MaximumTrainer.log");
     }
-    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+    QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(path).absolutePath()));
 }

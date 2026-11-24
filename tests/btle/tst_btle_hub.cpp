@@ -87,6 +87,8 @@ private slots:
     void testHr_maxBpm();
 
     // ── CSC (Speed & Cadence) parsing ────────────────────────────────────────
+    void testCsc_wheelOnlyFirstPacketGivesNoCadenceSpike();
+    void testCsc_implausibleCadenceIsDropped();
     void testCsc_firstMeasurementDiscarded();
     void testCsc_crankOnly();
     void testCsc_wheelOnly();
@@ -1281,5 +1283,28 @@ void TstBtleHub::testIntervalSummary_zeroTarget_returnsMet()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+void TstBtleHub::testCsc_wheelOnlyFirstPacketGivesNoCadenceSpike()
+{
+    BtleHub hub;
+    QSignalSpy cadence(&hub, &BtleHub::signal_cadence);
+    // Wheel only, then wheel + crank with a counter that has been running for a while.
+    hub.simulateNotification(BTLE_UUID_CSC_MEASUREMENT, QByteArray::fromHex("01" "01000000" "0004"));
+    hub.simulateNotification(BTLE_UUID_CSC_MEASUREMENT, QByteArray::fromHex("03" "02000000" "0008" "e803" "0010"));
+    QVERIFY(cadence.isEmpty());
+    // One turn in 1024/1024 s: 60 rpm.
+    hub.simulateNotification(BTLE_UUID_CSC_MEASUREMENT, QByteArray::fromHex("03" "03000000" "000c" "e903" "0014"));
+    QCOMPARE(cadence.size(), 1);
+    QCOMPARE(cadence.first().at(1).toInt(), 60);
+}
+
+void TstBtleHub::testCsc_implausibleCadenceIsDropped()
+{
+    BtleHub hub;
+    QSignalSpy cadence(&hub, &BtleHub::signal_cadence);
+    hub.simulateNotification(BTLE_UUID_CSC_MEASUREMENT, QByteArray::fromHex("02" "0000" "0000"));
+    hub.simulateNotification(BTLE_UUID_CSC_MEASUREMENT, QByteArray::fromHex("02" "2800" "0004"));   // 40 revs in 1 s
+    QVERIFY(cadence.isEmpty());
+}
+
 QTEST_MAIN(TstBtleHub)
 #include "tst_btle_hub.moc"

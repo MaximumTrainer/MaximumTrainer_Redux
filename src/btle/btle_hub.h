@@ -203,7 +203,9 @@ private:
     quint16 m_lastWheelEventTime    = 0;
     quint16 m_lastCrankRevolutions  = 0;
     quint16 m_lastCrankEventTime    = 0;
-    bool    m_firstCscMeasurement   = true;
+    bool    m_wheelBaselineSet      = false;
+    bool    m_crankBaselineSet      = false;
+    static constexpr int MAX_PLAUSIBLE_CADENCE_RPM = 250;
 
     // Devices exposing CPS or CSC alongside FTMS report the same quantity
     // twice; the dedicated service wins so the workout sees one stream.
