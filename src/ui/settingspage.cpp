@@ -136,7 +136,7 @@ SettingsPage::SettingsPage(QWidget *parent) : QWidget(parent), ui(new Ui::Settin
     addSection(Section::Sounds, QStringLiteral(":/image/icon/sound"), tr("Sounds"), {ride.at(DialogConfig::SoundsPage)});
     addSection(Section::Media, QStringLiteral(":/image/icon/movie"), tr("Video && radio"),
                {titled(tr("Video"), ride.at(DialogConfig::VideoPage)),
-                titled(tr("Radio stations"), ride.at(DialogConfig::RadioPage))});
+                titled(tr("Radio stations"), ride.at(DialogConfig::RadioPage))}, true);
     addGroupTitle(tr("APP"));
     addSection(Section::General, QStringLiteral(":/image/icon/general"), tr("General"), {generalPage});
     addSection(Section::Logs, QStringLiteral(":/image/icon/gear"), tr("Logs"), {createLoggingPage()});
@@ -306,11 +306,12 @@ void SettingsPage::addGroupTitle(const QString &title)
 }
 
 void SettingsPage::addSection(Section section, const QString &iconPath, const QString &label,
-                              const QList<QWidget *> &widgets)
+                              const QList<QWidget *> &widgets, bool lastFillsPage)
 {
     constexpr int kContentWidth = 720;
     auto *content = new QWidget();
-    content->setMaximumWidth(kContentWidth);
+    if (!lastFillsPage)
+        content->setMaximumWidth(kContentWidth);
     auto *layout = new QVBoxLayout(content);
     auto *title = new QLabel(QString(label).replace(QStringLiteral("&&"), QStringLiteral("&")), content);
     title->setTextFormat(Qt::PlainText);
@@ -326,7 +327,10 @@ void SettingsPage::addSection(Section section, const QString &iconPath, const QS
             widget->layout()->setContentsMargins(0, 4, 0, 4);
         widget->show();   // a page taken from a stack is hidden
     }
-    layout->addStretch(1);
+    if (lastFillsPage)
+        layout->setStretchFactor(widgets.constLast(), 1);
+    else
+        layout->addStretch(1);
 
     auto *holder = new QWidget();
     auto *row = new QHBoxLayout(holder);

@@ -174,7 +174,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     addTab(m_tabs.studio, 2, QIcon(":/image/icon/studio"), tr("Studio"));
     addTab(m_tabs.settings, 7, QIcon(":/image/icon/general"), tr("Settings"));
     ftb->setGroupTitle(m_tabs.workout, tr("RIDE"));
-    ftb->setGroupTitle(m_tabs.history, tr("PROGRESS"));
+    ftb->setGroupTitle(m_tabs.intervals, tr("TRAINING"));
     ftb->setGroupTitle(m_tabs.devices, tr("SETUP"));
     for (int tab = 0; tab < nextTab; ++tab)
         ftb->setTabEnabled(tab, true);

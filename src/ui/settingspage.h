@@ -80,7 +80,7 @@ private:
     /// Save everything on the app pages (called on each change).
     void apply();
     void addSection(Section section, const QString &iconPath, const QString &label,
-                    const QList<QWidget *> &widgets);
+                    const QList<QWidget *> &widgets, bool lastFillsPage = false);
     void addGroupTitle(const QString &title);
     QWidget *createAccountPage();
     QWidget *createSensorAlertsGroup();
