@@ -892,8 +892,6 @@ void MainWindow::setupPageActions()
     group->setMenu(groupMenu);
     group->setPopupMode(QToolButton::InstantPopup);
     addAction(m_joinGroupAction);
-    connect(addButton(tr("Folder"), tr("Open the workout folder")), &QToolButton::clicked,
-            this, &MainWindow::on_actionWorkout_triggered);
 #endif
     connect(addButton(tr("Free Ride"), tr("Ride without a workout")), &QToolButton::clicked,
             this, &MainWindow::on_actionOpen_Ride_triggered);

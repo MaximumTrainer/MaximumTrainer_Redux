@@ -25,6 +25,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QFrame>
 #include <QStringList>
 #include <QApplication>
 #include <QWidget>
@@ -85,7 +86,6 @@ void HistoryWidget::setupUi()
     auto *toolBar = new QHBoxLayout();
     toolBar->addWidget(m_cpBtn);
     toolBar->addWidget(m_pmcBtn);
-    toolBar->addWidget(m_statusLabel);
     toolBar->addStretch();
 
     // ── Search + date-range filter row ───────────────────────────────────────
@@ -123,6 +123,24 @@ void HistoryWidget::setupUi()
     histLayout->setContentsMargins(8, 8, 8, 8);
     histLayout->setSpacing(6);
     histLayout->addLayout(toolBar);
+
+    // The stats above, the rides below.
+    auto *line = new QFrame(histTab);
+    line->setFrameShape(QFrame::HLine);
+    line->setFrameShadow(QFrame::Sunken);
+    auto *historyTitle = new QLabel(tr("History"), histTab);
+    QFont titleFont = historyTitle->font();
+    titleFont.setPointSizeF(titleFont.pointSizeF() + 3);
+    titleFont.setBold(true);
+    historyTitle->setFont(titleFont);
+    auto *historyRow = new QHBoxLayout();
+    historyRow->addWidget(historyTitle);
+    historyRow->addSpacing(8);
+    historyRow->addWidget(m_statusLabel);
+    historyRow->addStretch();
+    histLayout->addSpacing(4);
+    histLayout->addWidget(line);
+    histLayout->addLayout(historyRow);
     histLayout->addLayout(filterBar);
     histLayout->addWidget(m_tableView);
 
