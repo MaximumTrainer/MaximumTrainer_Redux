@@ -12,7 +12,7 @@ public:
     Q_DISABLE_COPY_MOVE(KeepAwake)
 
 private:
-    [[maybe_unused]] quint32 m_inhibitCookie = 0;   // Linux
+    quint32 m_inhibitCookie = 0;   // Linux
 };
 
 #endif // KEEPAWAKE_H
