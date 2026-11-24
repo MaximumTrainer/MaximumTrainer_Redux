@@ -4,6 +4,7 @@
 #include "racecourse.h"
 #include "racephysics.h"
 #include "racesimulation.h"
+#include "virtual_gear.h"
 
 #include <cmath>
 
@@ -50,6 +51,12 @@ private slots:
     void youAtThreeWattsPerKg_climbWithThePaceGroup();
     void race_finishersAreRankedByTime();
     void bots_sprintForTheLine();
+    void bots_rideYourBikeAtAboutYourWeight();
+    void youAtTheirPace_holdTheWheelsOnCentralPark();
+    void muchStronger_rideAwayFromAWheel();
+    void muchWeaker_areDropped();
+    void gears_easyEndHasManySmallSteps();
+    void gears_climbingMakesTheSameGearHarder();
 };
 
 void TstRace::bundledCourses_loadWithSaneShape_data()
@@ -335,6 +342,85 @@ void TstRace::bots_sprintForTheLine()
     QCOMPARE(bot.nextPower(0.0, 1.0, 0.0) < sprint, true);   // over the line: done
     RaceBot strong(QStringLiteral("Ben"), 7.0, 70.0, 4);
     QVERIFY(strong.nextPower(0.0, 1.0, 100.0) / 70.0 <= RaceBot::kMaxSprintWattsPerKg);
+}
+
+void TstRace::bots_rideYourBikeAtAboutYourWeight()
+{
+    RaceSimulation race(loadCourse(QStringLiteral("central-park")), QStringLiteral("You"), 74, 9, 0.35);
+    for (const RaceBot &bot : RaceBot::field({20, 2.2, 4.0}, 2026, 74))
+        race.addBot(bot);
+    for (const RaceSimulation::Rider &rider : race.riders()) {
+        QCOMPARE(rider.cda, 0.35);
+        QCOMPARE(rider.massKg - rider.riderKg, 9.0);
+        QVERIFY(std::abs(rider.riderKg - 74.0) <= 3.0);
+    }
+}
+
+// Reported 24 Nov: at the bots' own W/kg the wheels could not be held
+// (7 % of the ride spent in the draft).
+void TstRace::youAtTheirPace_holdTheWheelsOnCentralPark()
+{
+    for (const double wattsPerKg : {3.0, 3.2}) {
+        RaceSimulation race(loadCourse(QStringLiteral("central-park")), QStringLiteral("You"), 74, 9, 0.35);
+        for (const RaceBot &bot : RaceBot::field({20, 2.2, 4.0}, 2026, 74))
+            race.addBot(bot);
+        race.setYourPower(wattsPerKg * 74);
+        int ticks = 0;
+        int drafting = 0;
+        while (!race.youFinished() && race.elapsedSec() < 3600) {
+            race.step(0.04);
+            ++ticks;
+            drafting += race.you().draftingBehind >= 0 ? 1 : 0;
+        }
+        QVERIFY2(drafting > 0.6 * ticks, qPrintable(QStringLiteral("%1 W/kg: %2 %").arg(wattsPerKg).arg(100.0 * drafting / ticks)));
+    }
+}
+
+void TstRace::muchStronger_rideAwayFromAWheel()
+{
+    RaceSimulation race(loadCourse(QStringLiteral("longchamp")), QStringLiteral("You"), 74, 9, 0.35);
+    race.addBot(RaceBot(QStringLiteral("Ana"), 3.0, 74, 1));
+    race.setYourPower(3.6 * 74);
+    while (race.elapsedSec() < 300)
+        race.step(0.04);
+    QVERIFY2(race.you().distanceM > race.riders().at(1).distanceM + 50.0, qPrintable(QString::number(race.gapToYouSec(1))));
+}
+
+void TstRace::muchWeaker_areDropped()
+{
+    RaceSimulation race(loadCourse(QStringLiteral("longchamp")), QStringLiteral("You"), 74, 9, 0.35);
+    race.addBot(RaceBot(QStringLiteral("Ana"), 4.0, 74, 1));
+    race.setYourPower(2.2 * 74);
+    while (race.elapsedSec() < 300)
+        race.step(0.04);
+    QVERIFY(race.you().distanceM < race.riders().at(1).distanceM - 100.0);
+}
+
+void TstRace::gears_easyEndHasManySmallSteps()
+{
+    using namespace VirtualGear;
+    int upToLevel20 = 0;
+    for (int gear = 1; gear <= Count; ++gear) {
+        if (gear > 1)
+            QVERIFY2(resistanceLevel(gear) > resistanceLevel(gear - 1), qPrintable(QString::number(gear)));
+        upToLevel20 += resistanceLevel(gear) <= 20 ? 1 : 0;
+    }
+    QVERIFY2(upToLevel20 >= 10, qPrintable(QString::number(upToLevel20)));
+    QCOMPARE(resistanceLevel(1), 2);
+    QCOMPARE(resistanceLevel(Count), 95);
+}
+
+void TstRace::gears_climbingMakesTheSameGearHarder()
+{
+    using namespace VirtualGear;
+    QCOMPARE(gradeFactor(0.0, 83), 1.0);
+    const double climb = gradeFactor(4.0, 83);   // an 8 % road at 50 % difficulty
+    QVERIFY2(climb > 2.2 && climb < 3.2, qPrintable(QString::number(climb)));
+    QVERIFY(gradeFactor(-2.0, 83) < 1.0);
+    QVERIFY(resistanceLevel(10, climb) > 2 * resistanceLevel(10));
+    QVERIFY(targetWatts(10, 85, 280, climb) > targetWatts(10, 85, 280));
+    // Shifting down brings it back.
+    QVERIFY(resistanceLevel(4, climb) < resistanceLevel(10));
 }
 
 QTEST_GUILESS_MAIN(TstRace)

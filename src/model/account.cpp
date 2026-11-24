@@ -39,7 +39,6 @@ Account::Account(QObject *parent) : QObject(parent)  {
     nb_sec_show_interval        = AppSettings::read(settings, Keys::NbSecShowInterval);
     nb_sec_show_interval_before = AppSettings::read(settings, Keys::NbSecShowIntervalBefore);
     erg_smoothing_duration_s    = AppSettings::read(settings, Keys::ErgSmoothingDurationS);
-    erg_low_cadence_release     = AppSettings::read(settings, Keys::ErgLowCadenceRelease);
     // Athlete profile — edited in Preferences and persisted locally so FTP /
     // LTHR / weight survive a restart (and offline use), overriding the
     // hardcoded defaults above. A live server value may still override at runtime.
@@ -132,12 +131,6 @@ void Account::saveErgSmoothingDuration(int seconds)
     erg_smoothing_duration_s = qBound(0, seconds, 30);
 
     AppSettings::write(SettingKeys::Account::ErgSmoothingDurationS, erg_smoothing_duration_s);
-}
-
-void Account::saveErgLowCadenceRelease(bool enabled)
-{
-    erg_low_cadence_release = enabled;
-    AppSettings::write(SettingKeys::Account::ErgLowCadenceRelease, enabled);
 }
 
 void Account::saveProfileFields(int ftp, int lthr, double weightKg)

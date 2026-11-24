@@ -37,6 +37,16 @@ inline double stepSpeed(double vMps, double powerW, double massKg, double cda,
     return next < 0.0 ? 0.0 : next;
 }
 
+/// The watts needed to hold \a vMps on this road (negative when coasting
+/// would already be faster).
+inline double steadyPower(double vMps, double massKg, double cda, double grade, double draftReduction)
+{
+    using namespace CyclingPhysics;
+    const double theta = std::atan(grade);
+    return vMps * (massKg * kGravity * (kCrr * std::cos(theta) + std::sin(theta))
+                   + 0.5 * kAirDensity * cda * (1.0 - draftReduction) * vMps * vMps);
+}
+
 /// How much of the draft a wheel \a gapM ahead gives: all of it at 1 m or
 /// closer, fading in a straight line to none at 10 m.
 inline double draftFade(double gapM)

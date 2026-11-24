@@ -167,7 +167,7 @@ void BtleHubWasm::parseCscMeasurement(const QByteArray &data)
         quint16 eventTime;
         std::memcpy(&eventTime, data.constData() + offset, 2); offset += 2;
 
-        if (!m_firstCsc) {
+        if (m_wheelBaselineSet) {
             quint32 revDiff  = revs - m_lastWheelRevs;
             quint16 timeDiff = eventTime - m_lastWheelTime;
             if (timeDiff > 0) {
@@ -177,6 +177,7 @@ void BtleHubWasm::parseCscMeasurement(const QByteArray &data)
         }
         m_lastWheelRevs = revs;
         m_lastWheelTime = eventTime;
+        m_wheelBaselineSet = true;
     }
 
     if (flags & 0x02) { // Crank Revolution Data present
@@ -187,7 +188,7 @@ void BtleHubWasm::parseCscMeasurement(const QByteArray &data)
         quint16 eventTime;
         std::memcpy(&eventTime, data.constData() + offset, 2);
 
-        if (!m_firstCsc) {
+        if (m_crankBaselineSet) {
             quint16 crankDiff = cranks - m_lastCrankRevs;
             quint16 timeDiff  = eventTime - m_lastCrankTime;
             if (timeDiff > 0)
@@ -195,11 +196,11 @@ void BtleHubWasm::parseCscMeasurement(const QByteArray &data)
         }
         m_lastCrankRevs = cranks;
         m_lastCrankTime = eventTime;
+        m_crankBaselineSet = true;
     }
 
-    m_firstCsc = false;
     if (speed > 0.0) emit signal_speed(SOLO_USER_ID, speed);
-    if (cadence > 0)  emit signal_cadence(SOLO_USER_ID, cadence);
+    if (cadence > 0 && cadence <= 250) emit signal_cadence(SOLO_USER_ID, cadence);
 }
 
 void BtleHubWasm::parsePowerMeasurement(const QByteArray &data)

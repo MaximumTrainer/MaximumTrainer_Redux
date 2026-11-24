@@ -59,7 +59,7 @@ private slots:
     /// Logging settings page slots
     void onLogFileEnabledToggled(bool checked);
     void onBrowseLogFileClicked();
-    void onOpenLogFileClicked();
+    void onOpenLogFolderClicked();
 
 
 private:

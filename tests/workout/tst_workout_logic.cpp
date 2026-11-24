@@ -1,6 +1,5 @@
 #include <QtTest>
 
-#include "ergrescue.h"
 #include "maptesttracker.h"
 #include "sensorsecondaccumulator.h"
 #include "targetalert.h"
@@ -10,71 +9,6 @@ class TstWorkoutLogic : public QObject
     Q_OBJECT
 
 private slots:
-    // ── ERG low-cadence rescue ───────────────────────────────────────────────
-    void ergRescue_stallThresholdFollowsCadenceTarget()
-    {
-        QCOMPARE(ErgRescue::stallRpm(-1), 40);
-        QCOMPARE(ErgRescue::stallRpm(90), 40);   // normal riding
-        QCOMPARE(ErgRescue::stallRpm(50), 35);   // low-cadence drill
-        QCOMPARE(ErgRescue::stallRpm(30), 20);   // floor
-    }
-
-    void ergRescue_releasesAfterThreeLowSecondsAndResumesOnRecovery()
-    {
-        ErgRescue rescue;
-        using A = ErgRescue::Action;
-        QCOMPARE(rescue.addSecond(true, 35, 280, 300, -1), A::None);
-        QCOMPARE(rescue.addSecond(true, 45, 280, 300, -1), A::None);  // a good second resets the count
-        QCOMPARE(rescue.addSecond(true, 35, 280, 300, -1), A::None);
-        QCOMPARE(rescue.addSecond(true, 30, 250, 300, -1), A::None);
-        QCOMPARE(rescue.addSecond(true, 20, 200, 300, -1), A::Release);
-        QVERIFY(rescue.active());
-        // Spinning fast but soft: not yet.
-        for (int i = 0; i < 5; ++i)
-            QCOMPARE(rescue.addSecond(true, 90, 100, 300, -1), A::None);
-        // 60 rpm and half the target, three seconds in a row.
-        QCOMPARE(rescue.addSecond(true, 60, 150, 300, -1), A::None);
-        QCOMPARE(rescue.addSecond(true, 65, 160, 300, -1), A::None);
-        QCOMPARE(rescue.addSecond(true, 70, 170, 300, -1), A::Resume);
-        QVERIFY(!rescue.active());
-    }
-
-    void ergRescue_lowCadenceDrillAndMissingDataDoNotRelease()
-    {
-        ErgRescue rescue;
-        for (int i = 0; i < 30; ++i) {
-            QCOMPARE(rescue.addSecond(true, 50, 300, 300, 50), ErgRescue::Action::None);  // 50 rpm drill
-            QCOMPARE(rescue.addSecond(true, -1, 0, 300, -1), ErgRescue::Action::None);    // no cadence sensor
-            QCOMPARE(rescue.addSecond(false, 0, 0, 0, -1), ErgRescue::Action::None);      // not ERG
-        }
-    }
-
-    void ergRescue_pauseReleaseWaitsForRecoveryDuringHoldOff()
-    {
-        ErgRescue rescue;
-        rescue.release();   // paused
-        QVERIFY(rescue.active());
-        // Spinning up after resume: may not release again, but still recovers.
-        QCOMPARE(rescue.addSecond(true, 20, 50, 300, -1, false), ErgRescue::Action::None);
-        QVERIFY(rescue.active());
-        QCOMPARE(rescue.addSecond(true, 70, 200, 300, -1, false), ErgRescue::Action::None);
-        QCOMPARE(rescue.addSecond(true, 75, 200, 300, -1, false), ErgRescue::Action::None);
-        QCOMPARE(rescue.addSecond(true, 80, 210, 300, -1, false), ErgRescue::Action::Resume);
-        // A stall during the hold-off is left alone.
-        for (int i = 0; i < 5; ++i)
-            QCOMPARE(rescue.addSecond(true, 10, 50, 300, -1, false), ErgRescue::Action::None);
-    }
-
-    void ergRescue_endsWhenTheIntervalStopsWantingErg()
-    {
-        ErgRescue rescue;
-        for (int i = 0; i < 3; ++i)
-            rescue.addSecond(true, 10, 50, 300, -1);
-        QVERIFY(rescue.active());
-        QCOMPARE(rescue.addSecond(false, 10, 50, 0, -1), ErgRescue::Action::Resume);
-        QVERIFY(!rescue.active());
-    }
-
     void accumulator_startsEmpty();
     void accumulator_averagesEachMetricPerRider();
     void accumulator_keepsLatestPedalAndOxygen();

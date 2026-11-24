@@ -101,7 +101,8 @@ void BtleHub::attemptConnection()
     delete m_moxyService;     m_moxyService     = nullptr;
     delete m_batteryService;  m_batteryService  = nullptr;
 
-    m_firstCscMeasurement   = true;
+    m_wheelBaselineSet      = false;
+    m_crankBaselineSet      = false;
     m_cpsPowerSeen          = false;
     m_cscCadenceSeen        = false;
     m_ftmsControlRequested  = false;
@@ -707,17 +708,10 @@ void BtleHub::parseCscMeasurement(const QByteArray &data)
                   | (static_cast<quint8>(data[offset+3]) << 8);
     }
 
-    if (m_firstCscMeasurement) {
-        m_lastWheelRevolutions = wheelRevs;
-        m_lastWheelEventTime   = wheelTime;
-        m_lastCrankRevolutions = crankRevs;
-        m_lastCrankEventTime   = crankTime;
-        m_firstCscMeasurement  = false;
-        return;
-    }
-
     // Cadence (RPM) – same rollover-safe math as speed/cadence controller
-    if (crankPresent) {
+    // Wheel and crank data each need their own baseline: a trainer may send
+    // wheel-only packets first, and counting from 0 reads as thousands of rpm.
+    if (crankPresent && m_crankBaselineSet) {
         quint16 deltaCrankTime = crankTime - m_lastCrankEventTime; // rollover safe (uint16)
         quint16 deltaCrankRevs = crankRevs - m_lastCrankRevolutions;
 
@@ -727,17 +721,23 @@ void BtleHub::parseCscMeasurement(const QByteArray &data)
             const quint64 numerator = static_cast<quint64>(deltaCrankRevs) * 60ULL * 1024ULL;
             const quint64 raw = numerator / static_cast<quint64>(deltaCrankTime);
             const int cadence = static_cast<int>(qMin(raw, static_cast<quint64>(std::numeric_limits<int>::max())));
-            emit signal_cadence(m_userID, cadence);
+            if (cadence <= MAX_PLAUSIBLE_CADENCE_RPM)
+                emit signal_cadence(m_userID, cadence);
+            else
+                LOG_WARN("BtleHub", QStringLiteral("Implausible cadence %1 rpm ignored (%2 revs in %3/1024 s)")
+                                        .arg(cadence).arg(deltaCrankRevs).arg(deltaCrankTime));
         } else if (deltaCrankRevs == 0) {
             emit signal_cadence(m_userID, 0);
         }
-
+    }
+    if (crankPresent) {
         m_lastCrankRevolutions = crankRevs;
         m_lastCrankEventTime   = crankTime;
+        m_crankBaselineSet     = true;
     }
 
     // Speed (km/h)
-    if (wheelPresent) {
+    if (wheelPresent && m_wheelBaselineSet) {
         quint16 deltaWheelTime = wheelTime - m_lastWheelEventTime;
         quint32 deltaWheelRevs = wheelRevs - m_lastWheelRevolutions;
 
@@ -752,9 +752,11 @@ void BtleHub::parseCscMeasurement(const QByteArray &data)
         } else if (deltaWheelRevs == 0) {
             emit signal_speed(m_userID, 0.0);
         }
-
+    }
+    if (wheelPresent) {
         m_lastWheelRevolutions = wheelRevs;
         m_lastWheelEventTime   = wheelTime;
+        m_wheelBaselineSet     = true;
     }
 
     // Restart the stop-timer so we zero-out values if messages cease

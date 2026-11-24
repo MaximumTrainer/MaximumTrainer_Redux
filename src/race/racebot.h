@@ -34,7 +34,9 @@ public:
     /// A field of bots with real first names: about 30 % ride together at
     /// 3.0 W/kg (held inside the range) for you to follow, the rest are
     /// spread evenly from the minimum to the maximum W/kg.
-    static QVector<RaceBot> field(const FieldSettings &settings, quint32 seed);
+    /// Bots weigh about what you do (\a riderKg): at equal W/kg a heavier rider
+    /// is faster on the flat, so a "3.0 W/kg" bot would not be one you can follow.
+    static QVector<RaceBot> field(const FieldSettings &settings, quint32 seed, double riderKg = 72.0);
     /// The standard field: 20 bots, 2.2 to 4.0 W/kg, six of them at 3.0.
     static QVector<RaceBot> defaultField(quint32 seed) { return field(FieldSettings(), seed); }
 

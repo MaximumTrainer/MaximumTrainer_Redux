@@ -20,8 +20,8 @@ public:
 
     QSize sizeHint() const override { return {960, 520}; }
 
-    /// Your W/kg turns red above this (your FTP over your weight), and a
-    /// rider's dot flashes red at 1.5 times it (a sprint). 0 = never.
+    /// Your W/kg turns red above this (your FTP over your weight), and so
+    /// does your ring on the map; a bot flashes red at 1.5 times it (a sprint). 0 = never.
     void setRedLineWattsPerKg(double wattsPerKg);
 
     /// The virtual gear, drawn top left of the map with ▼/▲ buttons.
@@ -38,6 +38,9 @@ public:
 
     /// The lane (0 to 3, across the road) a rider's dot is in, as last drawn.
     int laneOf(int riderIndex) const { return riderIndex < m_lanes.size() ? m_lanes.at(riderIndex) : -1; }
+    /// Your draft, as the ring around your dot shows it.
+    enum class DraftState { None, JustOut, Drafting };
+    DraftState draftState() const;
     /// The standings order as last drawn.
     const QVector<int> &displayOrder() const { return m_displayOrder; }
 
@@ -97,6 +100,7 @@ private:
     mutable QRectF m_gearUpRect;
     mutable QRectF m_gearDownRect;
     mutable QVector<double> m_laneOffsets;
+    mutable double m_yourSlideBack = 0.0;   // pixels your dot sits behind the wheel you follow
 };
 
 #endif // RACEVIEW_H

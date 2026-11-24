@@ -41,7 +41,7 @@ if(MT_BUILD_APP)
 endif()
 find_package(Qt6 QUIET OPTIONAL_COMPONENTS
     PrintSupport WebSockets Concurrent Bluetooth WebEngineWidgets WebEngineCore
-    Multimedia MultimediaWidgets UiTools Test)
+    Multimedia MultimediaWidgets UiTools Test DBus)
 qt_standard_project_setup(REQUIRES 6.5)
 
 include(cmake/Qwt.cmake)

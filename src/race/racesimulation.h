@@ -35,7 +35,9 @@ public:
 
     static constexpr double kBotBikeMassKg = 8.0;
 
-    void addBot(const RaceBot &bot, double cda = 0.30);
+    /// Bots ride your bike in your position (same bike mass and CdA), so equal
+    /// W/kg means equal speed.
+    void addBot(const RaceBot &bot);
     /// Your live power. Shown at once (warming up before the start too); it
     /// only moves you when the race steps.
     void setYourPower(double watts);
@@ -58,11 +60,13 @@ public:
 
 private:
     void updateDrafting();
+    double yourSpeedAfter(double dtSec, double grade) const;
 
     RaceCourse m_course;
     QVector<Rider> m_riders;          // index 0 is you
     QVector<RaceBot> m_bots;          // m_bots[i] drives m_riders[i + 1]
     double m_yourPowerW = 0.0;
+    double m_yourSmoothedPowerW = 0.0;
     double m_elapsedSec = 0.0;
 };
 

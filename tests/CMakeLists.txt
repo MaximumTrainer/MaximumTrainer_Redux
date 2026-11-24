@@ -112,7 +112,7 @@ mt_add_test(achievements_tests
 
 mt_add_test(workout_logic_tests
     SOURCES "${SRC}/workout/sensorsecondaccumulator.cpp" "${SRC}/workout/maptesttracker.cpp"
-        "${SRC}/workout/targetalert.cpp" "${SRC}/workout/ergrescue.cpp"
+        "${SRC}/workout/targetalert.cpp"
         workout/tst_workout_logic.cpp
     INCLUDES "${SRC}/workout")
 
@@ -156,7 +156,7 @@ endif()
 mt_add_test(race_tests
     SOURCES "${SRC}/race/racecourse.cpp" "${SRC}/race/racebot.cpp" "${SRC}/race/racesimulation.cpp"
         race/tst_race.cpp
-    INCLUDES "${SRC}/race" "${SRC}/fitness"
+    INCLUDES "${SRC}/race" "${SRC}/fitness" "${SRC}/btle/zwift"
     DEFINES MT_COURSES_DIR="${CMAKE_SOURCE_DIR}/resources/courses")
 
 # ── Intervals.icu / ZWO ──────────────────────────────────────────────────────
