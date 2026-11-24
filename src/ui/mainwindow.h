@@ -17,7 +17,7 @@ class CoursesPage;
 #include "radio.h"
 #include "workout.h"
 #include "settings.h"
-#include "dialogmainwindowconfig.h"
+#include "settingspage.h"
 #include "userstudio.h"
 #include "myconstants.h"
 #include "tab_intervals_icu.h"
@@ -112,11 +112,16 @@ private:
         int workout = 0;
         int courses = 1;
         int intervals = 2;
-        int studio = 3;
-        int devices = 4;
-        int history = 5;
-        int achievements = 6;
+        int history = 3;
+        int achievements = 4;
+        int devices = 5;
+        int studio = 6;
+        int settings = 7;
     } m_tabs;
+    /// The old menu bar's actions, as buttons on the pages they belong to.
+    void setupPageActions();
+    QAction *m_hostGroupAction = nullptr;
+    QAction *m_joinGroupAction = nullptr;
     QVector<int> m_tabToPage;   // left-bar tab -> stackedWidget_menu page
     /// Simulator-fed workout launch (the "Simulation" connection method).
     /// Shared by the desktop synchronous flow and the WASM async chain.
@@ -231,7 +236,7 @@ private:
 
 
     Ui::MainWindow *ui;
-    DialogMainWindowConfig *dconfig;
+    SettingsPage *dconfig;
 
     QList<Radio> lstRadio;
 

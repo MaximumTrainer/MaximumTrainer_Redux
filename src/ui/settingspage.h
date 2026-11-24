@@ -1,32 +1,39 @@
-#ifndef DIALOGMAINWINDOWCONFIG_H
-#define DIALOGMAINWINDOWCONFIG_H
+#ifndef SETTINGSPAGE_H
+#define SETTINGSPAGE_H
 
-#include <QDialog>
+#include <QWidget>
 #include <QNetworkReply>
 #include <QComboBox>
 #include <QCheckBox>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QLabel>
+#include <QSpinBox>
 
 #include "settings.h"
 #include "account.h"
 
 
 namespace Ui {
-class DialogMainWindowConfig;
+class SettingsPage;
 }
 
-class DialogMainWindowConfig : public QDialog
+class DialogConfig;
+class QListWidgetItem;
+class QVBoxLayout;
+
+/// The Settings tab: every option of the app in one place, applied as soon as
+/// it changes. The ride pages are the in-ride panel's own pages (DialogConfig).
+class SettingsPage : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit DialogMainWindowConfig(QWidget *parent = nullptr);
-    ~DialogMainWindowConfig() override;
+    explicit SettingsPage(QWidget *parent = nullptr);
+    ~SettingsPage() override;
 
-    void accept() override;
-    void reject() override;
+    enum class Section { Profile, Accounts, Ride, RideScreen, Sounds, Media, General, Logs, Help };
+    void showSection(Section section);
 
 protected:
     void showEvent(QShowEvent *event) override;
@@ -40,6 +47,10 @@ signals:
     /// Emitted when Rowing mode (Beta) was toggled, so the main window can
     /// swap the Workout tab icon and the Devices tab's FTMS slot live.
     void rowingModeChanged();
+    void logoutRequested();
+    void keyboardShortcutsRequested();
+    void userGuideRequested();
+    void aboutRequested();
 
 
 public slots:
@@ -66,6 +77,14 @@ private:
     void updateIntervalsAvailability();
     bool m_networkOnline = true;
     void initUI();
+    /// Save everything on the app pages (called on each change).
+    void apply();
+    void addSection(Section section, const QString &iconPath, const QString &label,
+                    const QList<QWidget *> &widgets);
+    void addGroupTitle(const QString &title);
+    QWidget *createAccountPage();
+    QWidget *createSensorAlertsGroup();
+    QWidget *createHelpPage();
     /// Show/refresh the "FTP and LTHR synced from intervals.icu" label.
     void updateProfileSyncLabel();
     /// Build the logging settings page and add it to the stacked widget.
@@ -77,7 +96,12 @@ private:
 
 
 private:
-    Ui::DialogMainWindowConfig *ui;
+    Ui::SettingsPage *ui;
+    DialogConfig *m_rideConfig = nullptr;   // owns the ride pages' controls
+    QPushButton *m_logoutButton = nullptr;
+    QCheckBox *m_dropoutEnabled = nullptr;
+    QSpinBox *m_dropoutTimeout = nullptr;
+    QSpinBox *m_batteryThreshold = nullptr;
 
     Settings *settings;
     Account *account;
@@ -96,4 +120,4 @@ private:
 
 };
 
-#endif // DIALOGMAINWINDOWCONFIG_H
+#endif // SETTINGSPAGE_H

@@ -27,7 +27,7 @@
 #include "logger.h"
 #include "environnement.h"
 #include "soundplayer.h"
-#include "dialogmainwindowconfig.h"
+#include "settingspage.h"
 #include "workoutdialog.h"
 #include "workout.h"
 #include "mycreatorplot.h"
@@ -354,17 +354,23 @@ void MainWindow::screenshotNextStep()
         QCoreApplication::processEvents();
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_main_window.png"), "PNG");
         qInfo() << "Screenshot: main_window";
-        // Capture the Preferences dialog as the "settings" screenshot. The
-        // former server-hosted Settings tab was removed; the native Preferences
-        // dialog (DialogMainWindowConfig) is now the settings surface.
-        if (dconfig) {
-            dconfig->show();
-            dconfig->raise();
+        ftb->setCurrentIndex(m_tabs.settings);
+        for (const auto &[section, name] : std::initializer_list<std::pair<SettingsPage::Section, const char *>>{
+                 {SettingsPage::Section::Profile, "settings"},
+                 {SettingsPage::Section::Accounts, "settings_accounts"},
+                 {SettingsPage::Section::Ride, "settings_ride"},
+                 {SettingsPage::Section::RideScreen, "settings_ride_screen"},
+                 {SettingsPage::Section::Sounds, "settings_sounds"},
+                 {SettingsPage::Section::Media, "settings_media"},
+                 {SettingsPage::Section::General, "settings_general"},
+                 {SettingsPage::Section::Logs, "settings_logs"},
+                 {SettingsPage::Section::Help, "settings_help"}}) {
+            dconfig->showSection(section);
             QCoreApplication::processEvents();
-            dconfig->grab().save(m_ssOutputDir + QLatin1String("/screenshot_settings.png"), "PNG");
-            dconfig->hide();
-            qInfo() << "Screenshot: settings (Preferences dialog)";
+            grab().save(m_ssOutputDir + QStringLiteral("/screenshot_%1.png").arg(QLatin1String(name)), "PNG");
         }
+        dconfig->showSection(SettingsPage::Section::Profile);
+        qInfo() << "Screenshot: settings";
         ftb->setCurrentIndex(m_tabs.courses);
         QCoreApplication::processEvents();
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_courses.png"), "PNG");

@@ -27,7 +27,7 @@
 #include "logger.h"
 #include "environnement.h"
 #include "soundplayer.h"
-#include "dialogmainwindowconfig.h"
+#include "settingspage.h"
 #include "workoutdialog.h"
 #include "workout.h"
 #include "mycreatorplot.h"
@@ -158,7 +158,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ftb->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     // Stacked pages: Workout 0, Intervals 1, Studio 2, History 3, Sensors 4,
-    // Achievements 5 and Courses 6 (both added below).
+    // Achievements 5, Courses 6 and Settings 7 (added below).
     int nextTab = 0;
     auto addTab = [&](int &slot, int page, const QIcon &icon, const QString &label) {
         slot = nextTab++;
@@ -168,10 +168,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     addTab(m_tabs.workout, 0, QIcon(account->rowing_mode ? ":/image/icon/rower" : ":/image/icon/workoutMan"), tr("Workout"));
     addTab(m_tabs.courses, 6, CoursesPage::tabIcon(), tr("Courses"));
     addTab(m_tabs.intervals, 1, QIcon(":/image/icon/intervals"), tr("Intervals.icu"));
-    addTab(m_tabs.studio, 2, QIcon(":/image/icon/studio"), tr("Studio"));
-    addTab(m_tabs.devices, 4, QIcon(":/image/icon/bluetooth"), tr("Devices"));
     addTab(m_tabs.history, 3, QIcon(":/image/icon/chart"), tr("History"));
     addTab(m_tabs.achievements, 5, QIcon(":/image/icon/trophy"), tr("Achievements"));
+    addTab(m_tabs.devices, 4, QIcon(":/image/icon/bluetooth"), tr("Devices"));
+    addTab(m_tabs.studio, 2, QIcon(":/image/icon/studio"), tr("Studio"));
+    addTab(m_tabs.settings, 7, QIcon(":/image/icon/general"), tr("Settings"));
+    ftb->setGroupTitle(m_tabs.workout, tr("RIDE"));
+    ftb->setGroupTitle(m_tabs.history, tr("PROGRESS"));
+    ftb->setGroupTitle(m_tabs.devices, tr("SETUP"));
     for (int tab = 0; tab < nextTab; ++tab)
         ftb->setTabEnabled(tab, true);
 
@@ -227,8 +231,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 #ifndef GC_WASM_BUILD
     connect(ui->tab_workout1, &Main_WorkoutPage::hostGroupWorkout, this, &MainWindow::hostGroupWorkout);
     ui->menuTEst->addSeparator();
-    QAction *actionHostGroup = ui->menuTEst->addAction(tr("Host Group Workout…"));
-    connect(actionHostGroup, &QAction::triggered, this, [this] {
+    m_hostGroupAction = ui->menuTEst->addAction(tr("Host Group Workout…"));
+    connect(m_hostGroupAction, &QAction::triggered, this, [this] {
         const std::optional<Workout> selected = ui->tab_workout1->selectedWorkout();
         if (!selected) {
             AsyncDialogs::information(this, tr("Host Group Workout"),
@@ -237,9 +241,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         }
         hostGroupWorkout(*selected);
     });
-    QAction *actionJoinGroup = ui->menuTEst->addAction(tr("Join Group Workout…"));
-    actionJoinGroup->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_J));
-    connect(actionJoinGroup, &QAction::triggered, this, &MainWindow::showJoinGroupDialog);
+    m_joinGroupAction = ui->menuTEst->addAction(tr("Join Group Workout…"));
+    m_joinGroupAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_J));
+    connect(m_joinGroupAction, &QAction::triggered, this, &MainWindow::showJoinGroupDialog);
 #endif
 
 
@@ -268,8 +272,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     isInsideWorkout = false;
 
 
-    //DialogConfig
-    dconfig = new DialogMainWindowConfig(this);
+    // Settings tab
+    dconfig = new SettingsPage(ui->stackedWidget_menu);
+    ui->stackedWidget_menu->addWidget(dconfig);   // page 7
+    connect(dconfig, &SettingsPage::logoutRequested, this, &MainWindow::on_actionLogout_triggered);
+    connect(dconfig, &SettingsPage::keyboardShortcutsRequested, this, &MainWindow::on_actionKeyboard_Shortcuts_triggered);
+    connect(dconfig, &SettingsPage::userGuideRequested, this, &MainWindow::on_actionRequest_Help_triggered);
+    connect(dconfig, &SettingsPage::aboutRequested, this, &MainWindow::on_actionAbout_MT_triggered);
+    setupPageActions();
     // Screenshot mode feeds the docs: no "Update available" banner in them.
     if (!QCoreApplication::arguments().contains(QLatin1String("--screenshots"), Qt::CaseInsensitive)) {
         auto *updateNotifier = new UpdateNotifier(this);
@@ -279,12 +289,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Athlete profile (FTP/LTHR/weight) edited in Preferences → recompute zones
     // and workout targets, same as the old profile page's FTP-change path.
-    connect(dconfig, &DialogMainWindowConfig::profileChanged,
+    connect(dconfig, &SettingsPage::profileChanged,
             this, &MainWindow::ftpAndTabProfileChanged);
     // Rowing mode (Beta) applies live: swap the Workout tab icon and the
     // Devices tab's FTMS slot (Trainer ↔ Rower). Workout sessions read the
     // mode when they start, so nothing else needs refreshing.
-    connect(dconfig, &DialogMainWindowConfig::rowingModeChanged, this, [this]() {
+    connect(dconfig, &SettingsPage::rowingModeChanged, this, [this]() {
         ftb->setTabIcon(0, QIcon(account->rowing_mode ? ":/image/icon/rower"
                                                       : ":/image/icon/workoutMan"));
         if (auto *sw = qobject_cast<SensorsWidget*>(ui->sensorsWidget))
@@ -306,7 +316,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(netmon, &NetworkMonitor::onlineChanged,
             ui->tab_intervals_icu, &TabIntervalsIcu::setOnlineMode);
     connect(netmon, &NetworkMonitor::onlineChanged,
-            dconfig, &DialogMainWindowConfig::setOnlineMode);
+            dconfig, &SettingsPage::setOnlineMode);
 
     // Apply the current (initial) online state immediately so the UI matches
     // before the first timed probe fires.
@@ -809,7 +819,7 @@ void MainWindow::on_actionKeyboard_Shortcuts_triggered()
 }
 void MainWindow::on_actionPreferences_triggered()
 {
-    dconfig->open();
+    ftb->setCurrentIndex(m_tabs.settings);
 }
 void MainWindow::showUpdateAvailable(const QString &latestVersion)
 {
@@ -820,14 +830,12 @@ void MainWindow::showUpdateAvailable(const QString &latestVersion)
         QDesktopServices::openUrl(QUrl(urlGitHubReleasesPage));
     });
 
-    // Help menu entry for platforms with a native menu bar (macOS), where a
-    // corner widget is not shown.
+    // Also in the Help menu (macOS keeps its menu bar).
     ui->menu->insertAction(ui->menu->actions().value(0), download);
     ui->menu->insertSeparator(ui->menu->actions().value(1));
 
-    auto *button = new QToolButton(ui->menuBar);
+    auto *button = new QToolButton(ui->centralWidget);
     button->setDefaultAction(download);
-    button->setAutoRaise(true);
     button->setCursor(Qt::PointingHandCursor);
     QFont font = button->font();
     font.setBold(true);
@@ -835,9 +843,58 @@ void MainWindow::showUpdateAvailable(const QString &latestVersion)
     QPalette palette = button->palette();
     palette.setColor(QPalette::ButtonText, palette.color(QPalette::Highlight));
     button->setPalette(palette);
-    ui->menuBar->setCornerWidget(button, Qt::TopRightCorner);
+    ui->gridLayout->addWidget(button, 0, 1, Qt::AlignRight);
     button->show();
 }
+void MainWindow::setupPageActions()
+{
+    // Without a menu bar an action's shortcut only works if a visible widget
+    // holds the action.
+    addActions({ui->actionPreferences, ui->actionKeyboard_Shortcuts, ui->actionCreate_New, ui->actionExit});
+    ui->actionPreferences->setText(tr("Settings"));
+    ui->actionPreferences->setMenuRole(QAction::PreferencesRole);
+    ui->actionAbout_MT->setMenuRole(QAction::AboutRole);
+    ui->actionExit->setMenuRole(QAction::QuitRole);
+#ifndef Q_OS_MAC
+    ui->menuBar->setVisible(false);
+#endif
+
+    // Workout page: what used to be the Workout menu, beside the List/Editor tabs.
+    auto *bar = new QWidget(ui->tabWidget_workout);
+    auto *row = new QHBoxLayout(bar);
+    row->setContentsMargins(0, 2, 8, 2);
+    row->setSpacing(6);
+    const auto addButton = [&](const QString &label, const QString &toolTip) {
+        auto *button = new QToolButton(bar);
+        button->setText(label);
+        button->setToolTip(toolTip);
+        row->addWidget(button);
+        return button;
+    };
+    connect(addButton(tr("New"), tr("Create a workout (Ctrl+N)")), &QToolButton::clicked,
+            this, &MainWindow::on_actionCreate_New_triggered);
+#ifndef GC_WASM_BUILD
+    auto *import = addButton(tr("Import"), tr("Import .erg, .mrc or .zwo workouts"));
+    import->setMenu(ui->menuImport);
+    import->setPopupMode(QToolButton::InstantPopup);
+    auto *group = addButton(tr("Group"), tr("Ride a workout with friends over the internet"));
+    auto *groupMenu = new QMenu(group);
+    groupMenu->addActions({m_hostGroupAction, m_joinGroupAction});
+    group->setMenu(groupMenu);
+    group->setPopupMode(QToolButton::InstantPopup);
+    addAction(m_joinGroupAction);
+    connect(addButton(tr("Folder"), tr("Open the workout folder")), &QToolButton::clicked,
+            this, &MainWindow::on_actionWorkout_triggered);
+#endif
+    connect(addButton(tr("Free Ride"), tr("Ride without a workout")), &QToolButton::clicked,
+            this, &MainWindow::on_actionOpen_Ride_triggered);
+    ui->tabWidget_workout->setCornerWidget(bar, Qt::TopRightCorner);
+    bar->show();   // the window is already on screen here
+#ifndef GC_WASM_BUILD
+    connect(ui->historyWidget, &HistoryWidget::openFolderRequested, this, &MainWindow::on_actionHistory_triggered);
+#endif
+}
+
 void MainWindow::on_actionWorkout_triggered()
 {
     Util::openWorkoutFolder("null");
@@ -880,6 +937,7 @@ void MainWindow::on_actionOpen_Ride_triggered()
 
 
 void MainWindow::executeWorkout(Workout workout) {
+    lstRadio = Util::loadLocalRadioList();   // stations may have changed in Settings or the last ride
 
     // Re-entrancy guard: the launch flow below runs nested event loops (the
     // sensor dialogs and the BLE connect wait), during which

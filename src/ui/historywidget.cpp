@@ -83,6 +83,12 @@ void HistoryWidget::setupUi()
     toolBar->addWidget(m_pmcBtn);
     toolBar->addWidget(m_statusLabel);
     toolBar->addStretch();
+#ifndef GC_WASM_BUILD
+    auto *folderBtn = new QPushButton(tr("Open folder"), histTab);
+    folderBtn->setToolTip(tr("Open the folder that holds your FIT files"));
+    connect(folderBtn, &QPushButton::clicked, this, &HistoryWidget::openFolderRequested);
+    toolBar->addWidget(folderBtn);
+#endif
 
     // ── Search + date-range filter row ───────────────────────────────────────
     m_searchEdit = new QLineEdit(histTab);

@@ -53,7 +53,7 @@ DialogKeyboardShortcuts::DialogKeyboardShortcuts(QWidget *parent)
 
     // ----- Main Window tab -----
     const QVector<QPair<QString,QString>> mainRows = {
-        {tr("Ctrl+,"), tr("Open Preferences")},
+        {tr("Ctrl+,"), tr("Open Settings")},
         {tr("Ctrl+N"), tr("Create new workout")},
         {tr("Ctrl+J"), tr("Join a group workout")},
         {tr("Ctrl+Q"), tr("Quit application")},

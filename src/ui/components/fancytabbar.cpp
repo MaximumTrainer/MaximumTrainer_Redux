@@ -42,6 +42,7 @@
 
 const int iconHeight2 = 45;
 const int widthBar = 85;
+const int groupTitleHeight = 22;
 const int FancyTabBar::m_rounding = 30;
 const int FancyTabBar::m_textPadding = 4;
 
@@ -187,6 +188,10 @@ void FancyTabBar::paintEvent(QPaintEvent *event)
         if (i != currentIndex())
             paintTab(&painter, i);
 
+    for (auto it = m_groupTitles.cbegin(); it != m_groupTitles.cend(); ++it)
+        if (validIndex(it.key()))
+            paintGroupTitle(&painter, it.key());
+
     // paint active tab last, since it overlaps the neighbors
     if (currentIndex() != -1)
         paintTab(&painter, currentIndex());
@@ -271,7 +276,7 @@ QSize FancyTabBar::minimumSizeHint() const
     if(mPosition == TabBarPosition::Above || mPosition == TabBarPosition::Below)
         return QSize(sh.width() * mAttachedTabs.count(), sh.height());
     else
-        return QSize(sh.width(), sh.height() * mAttachedTabs.count());
+        return QSize(sh.width(), sh.height() * mAttachedTabs.count() + groupTitlesHeightUpTo(count() - 1));
 }
 
 QRect FancyTabBar::tabRect(int index) const
@@ -287,12 +292,49 @@ QRect FancyTabBar::tabRect(int index) const
     }
     else
     {
-        if (sh.height() * mAttachedTabs.count() > height())
-            sh.setHeight(height() / mAttachedTabs.count());
+        const int available = height() - groupTitlesHeightUpTo(count() - 1);
+        if (sh.height() * mAttachedTabs.count() > available)
+            sh.setHeight(available / mAttachedTabs.count());
 
-        return QRect(0, index * sh.height(), sh.width(), sh.height());
+        return QRect(0, index * sh.height() + groupTitlesHeightUpTo(index), sh.width(), sh.height());
     }
 
+}
+
+void FancyTabBar::setGroupTitle(int index, const QString &title)
+{
+    m_groupTitles.insert(index, title);
+    updateGeometry();
+    update();
+}
+
+int FancyTabBar::groupTitlesHeightUpTo(int index) const
+{
+    int titles = 0;
+    for (auto it = m_groupTitles.cbegin(); it != m_groupTitles.cend() && it.key() <= index; ++it)
+        ++titles;
+    return titles * groupTitleHeight;
+}
+
+void FancyTabBar::paintGroupTitle(QPainter *painter, int index) const
+{
+    const QRect tab = tabRect(index);
+    const QRect area(0, tab.top() - groupTitleHeight, tab.width(), groupTitleHeight);
+    painter->save();
+    if (index > 0) {
+        painter->setPen(QColor(0, 0, 0, 130));
+        painter->drawLine(area.left() + 6, area.top() + 2, area.right() - 6, area.top() + 2);
+        painter->setPen(QColor(255, 255, 255, 60));
+        painter->drawLine(area.left() + 6, area.top() + 3, area.right() - 6, area.top() + 3);
+    }
+    QFont small(font());
+    small.setPointSizeF(StyleHelper::sidebarFontSize() * 0.9);
+    small.setBold(true);
+    small.setLetterSpacing(QFont::PercentageSpacing, 112);
+    painter->setFont(small);
+    painter->setPen(QColor(255, 255, 255, 190));
+    painter->drawText(area.adjusted(0, 5, 0, 0), Qt::AlignCenter, m_groupTitles.value(index));
+    painter->restore();
 }
 
 // This keeps the sidebar responsive since

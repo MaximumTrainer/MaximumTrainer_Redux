@@ -31,6 +31,7 @@
 #define FANCYTABWIDGET_H
 
 #include <QIcon>
+#include <QMap>
 #include <QWidget>
 
 #include <QTimer>
@@ -97,6 +98,9 @@ public:
     int count() const {return mAttachedTabs.count(); }
     QRect tabRect(int index) const;
 
+    /// Start a group at \a index: a line and a small caption above that tab.
+    void setGroupTitle(int index, const QString &title);
+
 signals:
     void currentChanged(int);
 
@@ -129,6 +133,9 @@ private:
     QList<FancyTab*> mAttachedTabs;
     QTimer mTimerTriggerChangedSignal;
     QSize tabSizeHint(bool minimum = false) const;
+    QMap<int, QString> m_groupTitles;   // tab index -> caption above it
+    int groupTitlesHeightUpTo(int index) const;
+    void paintGroupTitle(QPainter *painter, int index) const;
 
 };
 

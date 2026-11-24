@@ -190,55 +190,6 @@ void SensorsWidget::buildUi()
 
     mainLayout->addWidget(trainerGroup);
 
-    // Sensor dropout auto-pause.
-    QGroupBox *dropoutGroup = new QGroupBox(tr("Sensor Dropout"), this);
-    QVBoxLayout *dropoutLayout = new QVBoxLayout(dropoutGroup);
-    dropoutLayout->setSpacing(4);
-
-    m_dropoutEnabledCheck =
-        new QCheckBox(tr("Auto-pause workout when sensor signal is lost"), dropoutGroup);
-    m_dropoutEnabledCheck->setToolTip(tr("Workout resumes automatically 3 seconds after the signal is restored."));
-    connect(m_dropoutEnabledCheck, &QCheckBox::toggled,
-            this, &SensorsWidget::onSensorDropoutChanged);
-    dropoutLayout->addWidget(m_dropoutEnabledCheck);
-
-    QHBoxLayout *dropoutRow = new QHBoxLayout();
-    dropoutRow->addWidget(new QLabel(tr("Dropout timeout:"), dropoutGroup));
-    m_dropoutTimeoutSpin = new QSpinBox(dropoutGroup);
-    m_dropoutTimeoutSpin->setRange(2, 30);
-    m_dropoutTimeoutSpin->setSuffix(tr(" s"));
-    m_dropoutTimeoutSpin->setMinimumWidth(80);
-    connect(m_dropoutTimeoutSpin, qOverload<int>(&QSpinBox::valueChanged),
-            this, &SensorsWidget::onSensorDropoutChanged);
-    dropoutRow->addWidget(m_dropoutTimeoutSpin);
-    dropoutRow->addStretch();
-    dropoutLayout->addLayout(dropoutRow);
-
-
-    mainLayout->addWidget(dropoutGroup);
-
-    // Low-battery warning threshold.
-    QGroupBox *batteryGroup = new QGroupBox(tr("Battery Warning"), this);
-    QVBoxLayout *batteryLayout = new QVBoxLayout(batteryGroup);
-    batteryLayout->setSpacing(4);
-
-    QHBoxLayout *batteryRow = new QHBoxLayout();
-    batteryRow->addWidget(new QLabel(tr("Warn when battery drops below:"), batteryGroup));
-    m_batteryThresholdSpin = new QSpinBox(batteryGroup);
-    m_batteryThresholdSpin->setRange(5, 50);
-    m_batteryThresholdSpin->setSuffix(tr(" %"));
-    m_batteryThresholdSpin->setMinimumWidth(80);
-    m_batteryThresholdSpin->setToolTip(tr("A notification is shown when a sensor reports a battery level at or "
-           "below this threshold."));
-    connect(m_batteryThresholdSpin, qOverload<int>(&QSpinBox::valueChanged),
-            this, &SensorsWidget::onBatteryThresholdChanged);
-    batteryRow->addWidget(m_batteryThresholdSpin);
-    batteryRow->addStretch();
-    batteryLayout->addLayout(batteryRow);
-
-
-    mainLayout->addWidget(batteryGroup);
-
     addSimulatedSensorsGroup(mainLayout);
     mainLayout->addStretch();
 
@@ -279,18 +230,6 @@ void SensorsWidget::reload()
         if (m_ergRampSpin) {
             QSignalBlocker b(m_ergRampSpin);
             m_ergRampSpin->setValue(m_account->erg_smoothing_duration_s);
-        }
-        if (m_dropoutEnabledCheck) {
-            QSignalBlocker b(m_dropoutEnabledCheck);
-            m_dropoutEnabledCheck->setChecked(m_account->sensor_dropout_enabled);
-        }
-        if (m_dropoutTimeoutSpin) {
-            QSignalBlocker b(m_dropoutTimeoutSpin);
-            m_dropoutTimeoutSpin->setValue(m_account->sensor_dropout_timeout_s);
-        }
-        if (m_batteryThresholdSpin) {
-            QSignalBlocker b(m_batteryThresholdSpin);
-            m_batteryThresholdSpin->setValue(m_account->battery_warning_threshold);
         }
     }
 #endif
@@ -333,25 +272,6 @@ void SensorsWidget::onErgRampChanged(int seconds)
     if (!m_account)
         return;
     m_account->saveErgSmoothingDuration(seconds);
-}
-
-void SensorsWidget::onSensorDropoutChanged()
-{
-    if (!m_account)
-        return;
-    if (m_dropoutEnabledCheck)
-        m_account->sensor_dropout_enabled = m_dropoutEnabledCheck->isChecked();
-    if (m_dropoutTimeoutSpin)
-        m_account->sensor_dropout_timeout_s = m_dropoutTimeoutSpin->value();
-    m_account->saveSensorDropoutSettings();
-}
-
-void SensorsWidget::onBatteryThresholdChanged(int percent)
-{
-    if (!m_account)
-        return;
-    m_account->battery_warning_threshold = percent;
-    m_account->saveBatteryWarningThreshold();
 }
 
 bool SensorsWidget::trainerPaired() const

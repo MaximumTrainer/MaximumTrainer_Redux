@@ -36,6 +36,13 @@ void RadioTableModel::addListRadio(QList<Radio> lstRadio) {
 }
 
 
+void RadioTableModel::setRadios(const QList<Radio> &radios)
+{
+    beginResetModel();
+    lstRadio = radios;
+    endResetModel();
+}
+
 Radio RadioTableModel::getRadioAtRow(const QModelIndex &index) {
 
         return (lstRadio.at(index.row()));
