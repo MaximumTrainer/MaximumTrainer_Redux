@@ -176,7 +176,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     addTab(m_tabs.workout, 0, workoutTabIcon(account->rowing_mode), tr("Workout"));
     addTab(m_tabs.courses, 6, CoursesPage::tabIcon(), tr("Courses"));
     addTab(m_tabs.intervals, 1, SidebarIcons::intervals(), tr("Intervals.icu"));
-    addTab(m_tabs.history, 3, SidebarIcons::history(), tr("History"));
+    addTab(m_tabs.history, 3, SidebarIcons::stats(), tr("Stats"));
     addTab(m_tabs.achievements, 5, QIcon(":/image/icon/trophy"), tr("Achievements"));
     addTab(m_tabs.devices, 4, SidebarIcons::devices(), tr("Devices"));
     addTab(m_tabs.studio, 2, SidebarIcons::studio(), tr("Studio"));

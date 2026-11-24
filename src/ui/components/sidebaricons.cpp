@@ -63,30 +63,29 @@ QIcon SidebarIcons::workout()
     });
 }
 
-QIcon SidebarIcons::history()
+QIcon SidebarIcons::stats()
 {
     return drawn([](QPainter &painter) {
-        const QPointF centre(66, 64);
-        const QColor color = zoneColor(6);
-        // Ring open at the upper left, ending in an arrow head turning back.
-        const QRectF ring(centre.x() - 46, centre.y() - 46, 92, 92);
-        constexpr int kStart = 165 * 16;
-        constexpr int kSweep = -315 * 16;
+        // A rising trend over its filled area, on a chart card.
+        const QRectF card(8, 8, 112, 112);
+        painter.setPen(QPen(kOutline, 5));
         painter.setBrush(QColor(0xf4, 0xf4, 0xf6));
+        painter.drawRoundedRect(card, 16, 16);
+        const QPolygonF trend({QPointF(24, 88), QPointF(48, 62), QPointF(72, 74), QPointF(104, 32)});
+        QPolygonF area = trend;
+        area << QPointF(104, 104) << QPointF(24, 104);
+        QColor fill = zoneColor(6);
+        fill.setAlpha(90);
         painter.setPen(Qt::NoPen);
-        painter.drawEllipse(ring);
-        for (const auto &[ink, width] : {std::pair{kOutline, 24.0}, std::pair{color, 14.0}}) {
-            painter.setPen(QPen(ink, width, Qt::SolidLine, Qt::RoundCap));
-            painter.setBrush(Qt::NoBrush);
-            painter.drawArc(ring, kStart, kSweep);
-        }
-        painter.setPen(QPen(kOutline, 5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-        painter.setBrush(color);
-        painter.drawPolygon(QPolygonF({QPointF(4, 46), QPointF(42, 46), QPointF(19, 76)}));
-        // Hands.
-        painter.setPen(QPen(kOutline, 9, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-        painter.drawLine(centre, centre + QPointF(0, -26));
-        painter.drawLine(centre, centre + QPointF(18, 11));
+        painter.setBrush(fill);
+        painter.drawPolygon(area);
+        painter.setPen(QPen(zoneColor(6), 9, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawPolyline(trend);
+        painter.setPen(QPen(kOutline, 4));
+        painter.setBrush(zoneColor(4));
+        for (const QPointF &point : trend)
+            painter.drawEllipse(point, 8, 8);
     });
 }
 
