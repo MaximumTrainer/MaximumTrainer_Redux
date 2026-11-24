@@ -208,7 +208,7 @@ jobs:
 
     - name: Set up ccache
       # Same compiler cache as the desktop builds (see EM_COMPILER_WRAPPER).
-      uses: hendrikmuhs/ccache-action@v1.2.25
+      uses: hendrikmuhs/ccache-action@v1.2.26
       with:
         key: wasm-qt6.11.3-em4.0.7
         max-size: 400M
