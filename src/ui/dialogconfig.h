@@ -29,7 +29,7 @@ public:
     enum Page { GeneralPage, WidgetsPage, GraphPage, SoundsPage, VideoPage, RadioPage, PageCount };
 
     /// Hand the pages to the Settings tab (this object was built without a
-    /// workout): they save on every change and have no player controls.
+    /// workout): they save on every change.
     QList<QWidget *> takePagesForSettings();
     /// Show the account's current values (a ride may have changed them).
     void reloadFromAccount();
@@ -150,6 +150,7 @@ private :
     void initUi();
 
     void playSoundTestEffect();
+    void selectLastStation();
 
     // Interval-summary overlay setting (lives at the bottom of the General tab)
     void buildIntervalSummaryGroup();

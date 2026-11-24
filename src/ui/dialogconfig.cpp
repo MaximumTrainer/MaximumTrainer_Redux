@@ -94,24 +94,7 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     ui->tableView_radio->verticalHeader()->setDefaultSectionSize(30);
     ui->tableView_radio->verticalHeader()->setVisible(false);
 
-    // Preselect the station from the last session (falls back to the first
-    // row), so play resumes on the same radio after reopening the workout.
-    {
-        const QString lastStation = AppSettings::read(SettingKeys::Media::LastRadioStation);
-
-        int lastRow = 0;
-        for (int row = 0; row < lstRadio.size(); ++row) {
-            if (!lastStation.isEmpty() && lstRadio.at(row).getName() == lastStation) {
-                lastRow = row;
-                break;
-            }
-        }
-        currentRadioIndex = ui->tableView_radio->model()->index(lastRow, 0);
-        ui->tableView_radio->selectionModel()->select(
-            currentRadioIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
-        ui->tableView_radio->scrollTo(currentRadioIndex);
-    }
-
+    selectLastStation();
 
     // Name, genre, bitrate, language: the two texts share the room.
     QHeaderView *radioHeader = ui->tableView_radio->horizontalHeader();
@@ -125,6 +108,8 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
 
 
     connect(ui->tableView_radio, &TableViewHover::doubleClicked, this, &DialogConfig::RadioDoubleClicked);
+    // Play starts the station you picked, not the last one played.
+    connect(ui->tableView_radio, &TableViewHover::clicked, this, [this](const QModelIndex &index) { currentRadioIndex = index; });
 
     ui->pushButton_prevRadio->setVisible(false);
     ui->pushButton_nextRadio->setVisible(false);
@@ -134,6 +119,26 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     connect(ui->pushButton_playPause, &QPushButton::clicked, this, &DialogConfig::playPauseRadio);
 
 
+}
+
+
+// Preselect the station from the last session (falls back to the first row),
+// so play resumes on the same radio.
+void DialogConfig::selectLastStation()
+{
+    const QString lastStation = AppSettings::read(SettingKeys::Media::LastRadioStation);
+    const QList<Radio> radios = tableModel->getAllRadios();
+    int lastRow = 0;
+    for (int row = 0; row < radios.size(); ++row) {
+        if (!lastStation.isEmpty() && radios.at(row).getName() == lastStation) {
+            lastRow = row;
+            break;
+        }
+    }
+    currentRadioIndex = tableModel->index(lastRow, 0);
+    ui->tableView_radio->selectionModel()->select(
+        currentRadioIndex, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+    ui->tableView_radio->scrollTo(currentRadioIndex);
 }
 
 
@@ -285,11 +290,15 @@ QList<QWidget *> DialogConfig::takePagesForSettings()
         page->setParent(nullptr);
         pages.append(page);
     }
-    // Nothing plays here.
+#ifndef GC_HAVE_QTMULTIMEDIA
     for (QWidget *control : std::initializer_list<QWidget *>{ui->label, ui->slider_volumeRadio, ui->pushButton_playPause,
                                                              ui->label_statusRadio})
         control->hide();
     disconnect(ui->tableView_radio, &TableViewHover::doubleClicked, this, &DialogConfig::RadioDoubleClicked);
+#endif
+    connect(ui->slider_volumeRadio, &QSlider::valueChanged, this, [](int value) {
+        AppSettings::write(SettingKeys::Media::RadioVolume, value);
+    });
     ui->tableView_radio->setMinimumHeight(260);
 
     for (QWidget *page : std::as_const(pages)) {
@@ -314,6 +323,9 @@ void DialogConfig::reloadFromAccount()
     initUi();
     isHoldingSliderSound = false;
     tableModel->setRadios(Util::loadLocalRadioList());
+    selectLastStation();
+    const QSignalBlocker quiet(ui->slider_volumeRadio);
+    ui->slider_volumeRadio->setValue(AppSettings::read(SettingKeys::Media::RadioVolume));
 }
 
 

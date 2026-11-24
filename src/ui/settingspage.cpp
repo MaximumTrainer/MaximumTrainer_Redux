@@ -28,6 +28,9 @@
 #include "logger.h"
 #include "apptheme.h"
 #include "dialogconfig.h"
+#ifdef GC_HAVE_QTMULTIMEDIA
+#include "qtmediaplayer.h"
+#endif
 #include <QScrollArea>
 
 
@@ -123,6 +126,17 @@ SettingsPage::SettingsPage(QWidget *parent) : QWidget(parent), ui(new Ui::Settin
 
     m_rideConfig = new DialogConfig(Util::loadLocalRadioList(), this, nullptr);
     const QList<QWidget *> ride = m_rideConfig->takePagesForSettings();
+#ifdef GC_HAVE_QTMULTIMEDIA
+    m_radioPlayer = new QtMediaPlayer(this);
+    m_radioPlayer->setVisible(false);
+    m_radioPlayer->setRadio(true);
+    connect(m_rideConfig, &DialogConfig::signal_connectToRadioUrl, m_radioPlayer, &QtMediaPlayer::openUrlRadio);
+    connect(m_rideConfig, &DialogConfig::signal_volumeRadioChanged, m_radioPlayer, &QtMediaPlayer::changeVolume);
+    connect(m_rideConfig, &DialogConfig::signal_stopPlayingRadio, m_radioPlayer, &QtMediaPlayer::stop);
+    connect(m_radioPlayer, &QtMediaPlayer::playing, m_rideConfig, &DialogConfig::radioStartedPlaying);
+    connect(m_radioPlayer, &QtMediaPlayer::paused, m_rideConfig, &DialogConfig::radioStoppedPlaying);
+    connect(m_radioPlayer, &QtMediaPlayer::stopped, m_rideConfig, &DialogConfig::radioStoppedPlaying);
+#endif
 
     addGroupTitle(tr("YOU"));
     addSection(Section::Profile, QStringLiteral(":/image/icon/user"), tr("Profile"), {profilePage});
@@ -348,6 +362,20 @@ void SettingsPage::addSection(Section section, const QString &iconPath, const QS
     item->setSizeHint(QSize(35, 34));
     item->setData(Qt::UserRole, ui->stackedWidget->addWidget(scroll));
     item->setData(Qt::UserRole + 1, static_cast<int>(section));
+}
+
+void SettingsPage::stopRadio()
+{
+#ifdef GC_HAVE_QTMULTIMEDIA
+    m_radioPlayer->stop();
+#endif
+}
+
+void SettingsPage::hideEvent(QHideEvent *event)
+{
+    QWidget::hideEvent(event);
+    if (!event->spontaneous())   // minimizing keeps it playing
+        stopRadio();
 }
 
 void SettingsPage::showSection(Section section)

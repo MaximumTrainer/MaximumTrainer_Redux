@@ -85,6 +85,27 @@ QIcon SidebarIcons::studio()
     });
 }
 
+QIcon SidebarIcons::intervals()
+{
+    return drawn([](QPainter &painter) {
+        const QImage logo = QImage(QStringLiteral(":/image/icon/intervals")).convertToFormat(QImage::Format_ARGB32);
+        QRect visible;
+        for (int y = 0; y < logo.height(); ++y)
+            for (int x = 0; x < logo.width(); ++x)
+                if (qAlpha(logo.pixel(x, y)) > 40)
+                    visible |= QRect(x, y, 1, 1);
+        const QRectF area(10, 10, 108, 108);
+        QPainterPath rounded;
+        rounded.addRoundedRect(area, 16, 16);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform);
+        painter.setClipPath(rounded);
+        painter.drawImage(area, logo, visible);
+        painter.setClipping(false);
+        painter.setPen(QPen(kOutline, 5));
+        painter.drawPath(rounded);
+    });
+}
+
 QIcon SidebarIcons::settings()
 {
     return drawn([](QPainter &painter) {

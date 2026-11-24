@@ -19,6 +19,7 @@ class SettingsPage;
 }
 
 class DialogConfig;
+class QtMediaPlayer;
 class QListWidgetItem;
 class QVBoxLayout;
 
@@ -34,9 +35,12 @@ public:
 
     enum class Section { Profile, Accounts, Ride, RideScreen, Sounds, Media, General, Logs, Help };
     void showSection(Section section);
+    /// Stop the station being tried out (a ride has its own player).
+    void stopRadio();
 
 protected:
     void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
 
 
 
@@ -98,6 +102,7 @@ private:
 private:
     Ui::SettingsPage *ui;
     DialogConfig *m_rideConfig = nullptr;   // owns the ride pages' controls
+    QtMediaPlayer *m_radioPlayer = nullptr;
     QPushButton *m_logoutButton = nullptr;
     QCheckBox *m_dropoutEnabled = nullptr;
     QSpinBox *m_dropoutTimeout = nullptr;

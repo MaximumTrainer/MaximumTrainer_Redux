@@ -158,5 +158,93 @@
         "bitrate": "128",
         "lang": "EN",
         "url": "https://ice1.somafm.com/seventies-128-mp3"
+    },
+    {
+        "name": "TranceBase.FM",
+        "genre": "Vocal / Uplifting Trance",
+        "gotAds": "0",
+        "bitrate": "192",
+        "lang": "DE/EN",
+        "url": "https://listen.trancebase.fm/tunein-mp3"
+    },
+    {
+        "name": "HardBase.FM",
+        "genre": "Hardstyle / Jumpstyle",
+        "gotAds": "0",
+        "bitrate": "192",
+        "lang": "DE/EN",
+        "url": "https://listen.hardbase.fm/tunein-mp3"
+    },
+    {
+        "name": "Intense Radio",
+        "genre": "Dance / House / Trance",
+        "gotAds": "0",
+        "bitrate": "256",
+        "lang": "EN",
+        "url": "https://secure.live-streams.nl/main"
+    },
+    {
+        "name": "Hirschmilch Techno",
+        "genre": "Techno",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://hirschmilch.de:7000/techno.mp3"
+    },
+    {
+        "name": "Hirschmilch Progressive",
+        "genre": "Progressive House / Trance",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://hirschmilch.de:7000/progressive.mp3"
+    },
+    {
+        "name": "Hirschmilch Psytrance",
+        "genre": "Psytrance",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://hirschmilch.de:7000/psytrance.mp3"
+    },
+    {
+        "name": "Bassdrive",
+        "genre": "Drum and Bass",
+        "gotAds": "0",
+        "bitrate": "192",
+        "lang": "EN",
+        "url": "https://bassdrive.radioca.st/stream"
+    },
+    {
+        "name": "Nightride Darksynth",
+        "genre": "Darksynth / Cyberpunk",
+        "gotAds": "0",
+        "bitrate": "320",
+        "lang": "EN",
+        "url": "https://stream.nightride.fm/darksynth.mp3"
+    },
+    {
+        "name": "Nightride EBSM",
+        "genre": "EBM / Industrial Techno",
+        "gotAds": "0",
+        "bitrate": "320",
+        "lang": "EN",
+        "url": "https://stream.nightride.fm/ebsm.mp3"
+    },
+    {
+        "name": "SomaFM DEF CON",
+        "genre": "Hacker Electronic",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://ice1.somafm.com/defcon-128-mp3"
+    },
+    {
+        "name": "FIP Electro",
+        "genre": "House / Electro",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "FR",
+        "url": "https://icecast.radiofrance.fr/fipelectro-midfi.mp3"
     }
 ]

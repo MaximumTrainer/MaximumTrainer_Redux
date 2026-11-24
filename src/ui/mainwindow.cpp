@@ -175,7 +175,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     };
     addTab(m_tabs.workout, 0, workoutTabIcon(account->rowing_mode), tr("Workout"));
     addTab(m_tabs.courses, 6, CoursesPage::tabIcon(), tr("Courses"));
-    addTab(m_tabs.intervals, 1, QIcon(":/image/icon/intervals"), tr("Intervals.icu"));
+    addTab(m_tabs.intervals, 1, SidebarIcons::intervals(), tr("Intervals.icu"));
     addTab(m_tabs.history, 3, QIcon(":/image/icon/chart"), tr("History"));
     addTab(m_tabs.achievements, 5, QIcon(":/image/icon/trophy"), tr("Achievements"));
     addTab(m_tabs.devices, 4, SidebarIcons::devices(), tr("Devices"));
@@ -944,6 +944,7 @@ void MainWindow::on_actionOpen_Ride_triggered()
 
 
 void MainWindow::executeWorkout(Workout workout) {
+    dconfig->stopRadio();
     lstRadio = Util::loadLocalRadioList();   // stations may have changed in Settings or the last ride
 
     // Re-entrancy guard: the launch flow below runs nested event loops (the
