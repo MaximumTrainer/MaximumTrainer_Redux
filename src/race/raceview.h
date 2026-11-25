@@ -84,7 +84,7 @@ private:
     double m_redLineWattsPerKg = 0.0;
     // Each rider's lane across the road (0 to 3) and where their dot is on
     // its way to it; kept between frames so riders don't hop sides.
-    QVector<int> m_displayOrder;   // standings as shown: passing needs a clear margin
+    QVector<int> m_displayOrder;   // standings as shown: bots pass each other by a clear margin, you by any
     mutable QVector<int> m_lanes;
     mutable QVector<int> m_tagSides;          // which side of its dot each name tag sits
     int m_cadenceRpm = 0;

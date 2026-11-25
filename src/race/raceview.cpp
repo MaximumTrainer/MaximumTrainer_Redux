@@ -221,9 +221,9 @@ QRectF RaceView::progressPanelRect(const QRectF &mapArea) const
 
 void RaceView::updateDisplayOrder()
 {
-    // Riders in a bunch are centimetres apart and would swap places every
-    // frame. As in real timing, a rider only passes another once clearly
-    // ahead (kPassMarginM); until then the previous order stands.
+    // Bots in a bunch are centimetres apart and would swap places every frame,
+    // so a bot only passes another bot once clearly ahead (kPassMarginM). Your
+    // own place is always the real one: the wheel you follow ranks ahead of you.
     constexpr double kPassMarginM = 2.0;
     const QVector<RaceSimulation::Rider> &riders = m_race->riders();
     if (m_displayOrder.size() != riders.size())
@@ -237,6 +237,7 @@ void RaceView::updateDisplayOrder()
             return b.finishTimeSec.has_value();
         return b.distanceM > a.distanceM + kPassMarginM;
     };
+    m_displayOrder.removeOne(0);
     for (int pass = 0; pass < m_displayOrder.size(); ++pass) {
         bool swapped = false;
         for (int place = 0; place + 1 < m_displayOrder.size(); ++place)
@@ -247,6 +248,12 @@ void RaceView::updateDisplayOrder()
         if (!swapped)
             break;
     }
+
+    const QVector<int> standings = m_race->standings();
+    const qsizetype yourPlace = standings.indexOf(0);
+    std::stable_partition(m_displayOrder.begin(), m_displayOrder.end(),
+                          [&](int bot) { return standings.indexOf(bot) < yourPlace; });
+    m_displayOrder.insert(yourPlace, 0);
 }
 
 void RaceView::paintRoute(QPainter &painter, const QRectF &area) const

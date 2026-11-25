@@ -18,6 +18,7 @@ constexpr double kCloseToTheirs = 0.90;   // ...or of the W/kg they are pushing 
 constexpr double kHoldRangeM = 15.0;      // a little beyond the draft: time to jump on as someone passes
 constexpr double kEnoughToPass = 1.08;    // of the watts needed without it
 constexpr double kMinHoldWatts = 20.0;    // nearly coasting downhill: plain physics
+constexpr double kLettingGoMps = 0.15;     // a wheel this much slower than one further up is losing it
 constexpr double kGapPull = 0.06;         // 1/s^2
 constexpr double kSpeedPull = 0.5;        // 1/s
 constexpr double kMaxHoldAccel = 0.6;     // m/s^2
@@ -88,22 +89,35 @@ double RaceSimulation::yourSpeedAfter(double dtSec, double grade) const
                                                 me.draftReduction, dtSec);
     if (m_yourPowerW <= 0.0)
         return plain;
-    int ahead = -1;
+    QVector<int> wheelsAhead;
     for (int index = 1; index < m_riders.size(); ++index) {
         const double gapAhead = m_riders.at(index).distanceM - me.distanceM;
-        if (gapAhead > 0.0 && gapAhead <= kHoldRangeM && !m_riders.at(index).finishTimeSec
-            && (ahead < 0 || m_riders.at(index).distanceM < m_riders.at(ahead).distanceM))
-            ahead = index;
+        if (gapAhead > 0.0 && gapAhead <= kHoldRangeM && !m_riders.at(index).finishTimeSec)
+            wheelsAhead.append(index);
     }
-    if (ahead < 0)
+    if (wheelsAhead.isEmpty())
         return plain;
-    const Rider &wheel = m_riders.at(ahead);
-    const double alone = RacePhysics::steadyPower(wheel.speedMps, me.massKg, me.cda, grade, 0.0);
-    const double onWheel = RacePhysics::steadyPower(wheel.speedMps, me.massKg, me.cda, grade,
-                                                    RacePhysics::kWheelDraftReduction);
-    const bool strongEnough = m_yourSmoothedPowerW >= kEnoughToHold * onWheel
-        || m_yourSmoothedPowerW / me.riderKg >= kCloseToTheirs * wheel.powerW / wheel.riderKg;
-    if (onWheel < kMinHoldWatts || !strongEnough
+    std::sort(wheelsAhead.begin(), wheelsAhead.end(), [this](int left, int right) {
+        return m_riders.at(left).distanceM < m_riders.at(right).distanceM;
+    });
+    const auto wattsAtSpeedOf = [&](const Rider &rider, double draft) {
+        return RacePhysics::steadyPower(rider.speedMps, me.massKg, me.cda, grade, draft);
+    };
+    const auto strongEnoughFor = [&](const Rider &rider) {
+        return m_yourSmoothedPowerW >= kEnoughToHold * wattsAtSpeedOf(rider, RacePhysics::kWheelDraftReduction)
+            || m_yourSmoothedPowerW / me.riderKg >= kCloseToTheirs * rider.powerW / rider.riderKg;
+    };
+    // The nearest wheel, unless it is letting a faster one go whose draft your watts
+    // fully cover (a wheel you would lose again is not worth leaving this one for).
+    int chosen = wheelsAhead.constFirst();
+    for (const int candidate : std::as_const(wheelsAhead))
+        if (m_riders.at(candidate).speedMps > m_riders.at(chosen).speedMps + kLettingGoMps
+            && m_yourSmoothedPowerW >= wattsAtSpeedOf(m_riders.at(candidate), RacePhysics::kWheelDraftReduction))
+            chosen = candidate;
+    const Rider &wheel = m_riders.at(chosen);
+    const double alone = wattsAtSpeedOf(wheel, 0.0);
+    const double onWheel = wattsAtSpeedOf(wheel, RacePhysics::kWheelDraftReduction);
+    if (onWheel < kMinHoldWatts || !strongEnoughFor(wheel)
         || m_yourSmoothedPowerW > kEnoughToPass * alone)
         return plain;
     const double gap = wheel.distanceM - me.distanceM;

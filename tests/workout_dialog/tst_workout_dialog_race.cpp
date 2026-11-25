@@ -173,8 +173,8 @@ private slots:
         delete next;
     }
 
-    // Riders a few centimetres apart in a bunch must not swap places in the
-    // standings every frame: a pass needs a clear gap.
+    // Bots a few centimetres apart in a bunch must not swap places in the
+    // standings every frame: a pass between bots needs a clear gap.
     void standings_dontFlickerInABunch()
     {
         const auto course = RaceCourse::fromFile(QStringLiteral(":/courses/central-park.json"));
@@ -196,6 +196,38 @@ private slots:
         }
         qInfo("standings changed on %d of %d frames", reorders, 25 * 120);
         QVERIFY2(reorders < 150, qPrintable(QString::number(reorders)));
+    }
+
+    // Reported 25 Nov: the rider whose wheel you sat on was ranked behind you.
+    void standings_rankTheWheelYouFollowAhead()
+    {
+        const auto course = RaceCourse::fromFile(QStringLiteral(":/courses/longchamp.json"));
+        RaceSimulation race(*course, QStringLiteral("You"), kRiderKg, 8.0, 0.30);
+        for (const RaceBot &bot : RaceBot::field({25, 1.8, 4.0}, 6))
+            race.addBot(bot);
+        RaceView view(&race);
+        view.resize(1350, 640);
+        QImage frame(view.size(), QImage::Format_ARGB32_Premultiplied);
+        race.setYourPower(2.3 * kRiderKg);
+        int framesOnAWheel = 0;
+        int yourPlaceChanges = 0;
+        qsizetype previousPlace = -1;
+        for (int tick = 0; tick < 25 * 300; ++tick) {
+            race.step(0.04);
+            view.render(&frame);
+            const QVector<int> &order = view.displayOrder();
+            const qsizetype yourPlace = order.indexOf(0);
+            QCOMPARE(yourPlace + 1, race.yourPosition());
+            for (int bot = 1; bot < race.riders().size(); ++bot)
+                if (race.riders().at(bot).distanceM > race.you().distanceM)
+                    QVERIFY(order.indexOf(bot) < yourPlace);
+            framesOnAWheel += race.you().draftingBehind >= 0 ? 1 : 0;
+            yourPlaceChanges += previousPlace >= 0 && previousPlace != yourPlace ? 1 : 0;
+            previousPlace = yourPlace;
+        }
+        qInfo("%d frames on a wheel, your place changed %d times in 5 min", framesOnAWheel, yourPlaceChanges);
+        QVERIFY(framesOnAWheel > 1000);
+        QVERIFY2(yourPlaceChanges < 100, qPrintable(QString::number(yourPlaceChanges)));
     }
 
     void race_followsPowerAndSteersTheTrainer()
