@@ -11,17 +11,12 @@
 #include <QScrollArea>
 #include <QVBoxLayout>
 
-#include <QDir>
-#include <QPushButton>
 
 #include "account.h"
 #include "achievementcatalog.h"
 #include "achievementstore.h"
-#include "criticalpowerdialog.h"
-#include "fitactivityreader.h"
 #include "managerachievement.h"
 #include "personalbesttracker.h"
-#include "util.h"
 
 using namespace AchievementCatalog;
 
@@ -136,10 +131,6 @@ QWidget *AchievementsWidget::buildRecordsSection(QWidget *parent)
     heading->setFont(headingFont);
     headingRow->addWidget(heading);
     headingRow->addStretch();
-    auto *curve = new QPushButton(tr("Power Curve"), section);
-    curve->setToolTip(tr("Your best power for every duration, by period"));
-    connect(curve, &QPushButton::clicked, this, &AchievementsWidget::openPowerCurve);
-    headingRow->addWidget(curve);
     sectionLayout->addLayout(headingRow);
 
     const auto *account = qApp->property("Account").value<Account*>();
@@ -195,21 +186,6 @@ QWidget *AchievementsWidget::buildRecordsSection(QWidget *parent)
     }
     sectionLayout->addLayout(grid);
     return section;
-}
-
-void AchievementsWidget::openPowerCurve()
-{
-    QList<WorkoutHistorySummary> history;
-    const QDir dir(Util::getSystemPathHistory());
-    for (const QString &file : dir.entryList({QStringLiteral("*.fit")}, QDir::Files)) {
-        const WorkoutHistorySummary summary = FitActivityReader::readFile(dir.filePath(file));
-        if (summary.valid)
-            history.append(summary);
-    }
-    // open(), not exec(): exec() is fatal on WASM.
-    auto *dialog = new CriticalPowerDialog(history, this);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->open();
 }
 
 void AchievementsWidget::reload()

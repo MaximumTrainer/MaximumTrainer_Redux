@@ -5,6 +5,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGroupBox>
+#include <QHeaderView>
 #include <QPushButton>
 #include <QFileDialog>
 #include <QDesktopServices>
@@ -14,12 +15,14 @@
 
 #include "workoutdialog.h"
 #include "account.h"
+#include "util.h"
 
 
 DialogConfig::~DialogConfig() {
 
 
-    AppSettings::write(SettingKeys::Media::RadioVolume, ui->slider_volumeRadio->value());
+    if (parentDialog)
+        AppSettings::write(SettingKeys::Media::RadioVolume, ui->slider_volumeRadio->value());
 
 
     delete ui;
@@ -38,25 +41,19 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     /// List widgets
     ui->listWidget_settings->setIconSize(QSize(24, 24));
 
-    QListWidgetItem *item1 = new QListWidgetItem(QIcon(":/image/icon/general"), tr("General"), ui->listWidget_settings);
-    QListWidgetItem *item2 = new QListWidgetItem(QIcon(":/image/icon/display"), tr("Widgets"), ui->listWidget_settings);
-    QListWidgetItem *item3 = new QListWidgetItem(QIcon(":/image/icon/chart"),   tr("Graph"), ui->listWidget_settings);
-    QListWidgetItem *item4 = new QListWidgetItem(QIcon(":/image/icon/sound"),   tr("Sounds"), ui->listWidget_settings);
-    QListWidgetItem *item5 = new QListWidgetItem(QIcon(":/image/icon/movie"),   tr("Multimedia"), ui->listWidget_settings);
-    QListWidgetItem *item6 = new QListWidgetItem(QIcon(":/image/icon/radio"),   tr("Radio"), ui->listWidget_settings);
-    item1->setSizeHint(QSize(35,35));
-    item2->setSizeHint(QSize(35,35));
-    item3->setSizeHint(QSize(35,35));
-    item4->setSizeHint(QSize(35,35));
-    item5->setSizeHint(QSize(35,35));
-    item6->setSizeHint(QSize(35,35));
-
-    ui->listWidget_settings->addItem(item1);
-    ui->listWidget_settings->addItem(item2);
-    ui->listWidget_settings->addItem(item3);
-    ui->listWidget_settings->addItem(item4);
-    ui->listWidget_settings->addItem(item5);
-    ui->listWidget_settings->addItem(item6);
+    // What riders change while pedalling comes first; the rest is also in the
+    // Settings tab. Each row carries its page.
+    const auto addRow = [this](const char *iconPath, const QString &label, Page page) {
+        auto *item = new QListWidgetItem(QIcon(QString::fromLatin1(iconPath)), label, ui->listWidget_settings);
+        item->setSizeHint(QSize(35, 35));
+        item->setData(Qt::UserRole, int(page));
+    };
+    addRow(":/image/icon/radio",   tr("Radio"),       RadioPage);
+    addRow(":/image/icon/sound",   tr("Sounds"),      SoundsPage);
+    addRow(":/image/icon/display", tr("Panels"),      WidgetsPage);
+    addRow(":/image/icon/chart",   tr("Graph"),       GraphPage);
+    addRow(":/image/icon/movie",   tr("Video"),       VideoPage);
+    addRow(":/image/icon/general", tr("Start && alerts").replace(QStringLiteral("&&"), QStringLiteral("&")), GeneralPage);
 
     // The interval-summary overlay setting lives at the bottom of the General
     // tab now (the standalone "Workout"/Studio tabs were removed). Studio mode
@@ -97,35 +94,22 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     ui->tableView_radio->verticalHeader()->setDefaultSectionSize(30);
     ui->tableView_radio->verticalHeader()->setVisible(false);
 
-    // Preselect the station from the last session (falls back to the first
-    // row), so play resumes on the same radio after reopening the workout.
-    {
-        const QString lastStation = AppSettings::read(SettingKeys::Media::LastRadioStation);
+    selectLastStation();
 
-        int lastRow = 0;
-        for (int row = 0; row < lstRadio.size(); ++row) {
-            if (!lastStation.isEmpty() && lstRadio.at(row).getName() == lastStation) {
-                lastRow = row;
-                break;
-            }
-        }
-        currentRadioIndex = ui->tableView_radio->model()->index(lastRow, 0);
-        ui->tableView_radio->selectionModel()->select(
-            currentRadioIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
-        ui->tableView_radio->scrollTo(currentRadioIndex);
-    }
-
-
-    ui->tableView_radio->setColumnWidth(0, 160);
-    ui->tableView_radio->setColumnWidth(1, 160);
-    ui->tableView_radio->setColumnWidth(2, 50);
-    ui->tableView_radio->horizontalHeader()->setStretchLastSection(true);
+    // Name, genre, bitrate, language: the two texts share the room.
+    QHeaderView *radioHeader = ui->tableView_radio->horizontalHeader();
+    radioHeader->setStretchLastSection(false);
+    radioHeader->setSectionResizeMode(QHeaderView::ResizeToContents);
+    radioHeader->setSectionResizeMode(0, QHeaderView::Stretch);
+    radioHeader->setSectionResizeMode(1, QHeaderView::Stretch);
 
 
     ui->slider_volumeRadio->setValue(AppSettings::read(SettingKeys::Media::RadioVolume));
 
 
     connect(ui->tableView_radio, &TableViewHover::doubleClicked, this, &DialogConfig::RadioDoubleClicked);
+    // Play starts the station you picked, not the last one played.
+    connect(ui->tableView_radio, &TableViewHover::clicked, this, [this](const QModelIndex &index) { currentRadioIndex = index; });
 
     ui->pushButton_prevRadio->setVisible(false);
     ui->pushButton_nextRadio->setVisible(false);
@@ -135,6 +119,26 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     connect(ui->pushButton_playPause, &QPushButton::clicked, this, &DialogConfig::playPauseRadio);
 
 
+}
+
+
+// Preselect the station from the last session (falls back to the first row),
+// so play resumes on the same radio.
+void DialogConfig::selectLastStation()
+{
+    const QString lastStation = AppSettings::read(SettingKeys::Media::LastRadioStation);
+    const QList<Radio> radios = tableModel->getAllRadios();
+    int lastRow = 0;
+    for (int row = 0; row < radios.size(); ++row) {
+        if (!lastStation.isEmpty() && radios.at(row).getName() == lastStation) {
+            lastRow = row;
+            break;
+        }
+    }
+    currentRadioIndex = tableModel->index(lastRow, 0);
+    ui->tableView_radio->selectionModel()->select(
+        currentRadioIndex, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+    ui->tableView_radio->scrollTo(currentRadioIndex);
 }
 
 
@@ -273,9 +277,55 @@ void DialogConfig::playPauseRadio() {
 
 void DialogConfig::currentListViewSelectionChanged(int section) {
 
-    ui->stackedWidget->setCurrentIndex(section);
+    if (const QListWidgetItem *item = ui->listWidget_settings->item(section))
+        ui->stackedWidget->setCurrentIndex(item->data(Qt::UserRole).toInt());
+}
 
+QList<QWidget *> DialogConfig::takePagesForSettings()
+{
+    QList<QWidget *> pages;
+    while (ui->stackedWidget->count() > 0) {
+        QWidget *page = ui->stackedWidget->widget(0);
+        ui->stackedWidget->removeWidget(page);
+        page->setParent(nullptr);
+        pages.append(page);
+    }
+#ifndef GC_HAVE_QTMULTIMEDIA
+    for (QWidget *control : std::initializer_list<QWidget *>{ui->label, ui->slider_volumeRadio, ui->pushButton_playPause,
+                                                             ui->label_statusRadio})
+        control->hide();
+    disconnect(ui->tableView_radio, &TableViewHover::doubleClicked, this, &DialogConfig::RadioDoubleClicked);
+#endif
+    connect(ui->slider_volumeRadio, &QSlider::valueChanged, this, [](int value) {
+        AppSettings::write(SettingKeys::Media::RadioVolume, value);
+    });
+    ui->tableView_radio->setMinimumHeight(260);
 
+    for (QWidget *page : std::as_const(pages)) {
+        const QList<QCheckBox *> boxes = page->findChildren<QCheckBox *>();
+        for (QCheckBox *box : boxes)
+            connect(box, &QCheckBox::clicked, this, &DialogConfig::saveSettings);
+        const QList<QComboBox *> combos = page->findChildren<QComboBox *>();
+        for (QComboBox *combo : combos)
+            connect(combo, &QComboBox::activated, this, &DialogConfig::saveSettings);
+        const QList<QSpinBox *> spins = page->findChildren<QSpinBox *>();
+        for (QSpinBox *spin : spins)
+            connect(spin, &QSpinBox::editingFinished, this, &DialogConfig::saveSettings);
+    }
+    connect(ui->lineEdit_homePage, &QLineEdit::editingFinished, this, &DialogConfig::saveSettings);
+    connect(ui->horizontalSlider_volume, &QSlider::sliderReleased, this, &DialogConfig::saveSettings);
+    return pages;
+}
+
+void DialogConfig::reloadFromAccount()
+{
+    isHoldingSliderSound = true;   // no test sound while loading
+    initUi();
+    isHoldingSliderSound = false;
+    tableModel->setRadios(Util::loadLocalRadioList());
+    selectLastStation();
+    const QSignalBlocker quiet(ui->slider_volumeRadio);
+    ui->slider_volumeRadio->setValue(AppSettings::read(SettingKeys::Media::RadioVolume));
 }
 
 
@@ -310,7 +360,9 @@ void DialogConfig::initUi() {
 
 
     /// Show last openned tab
-    ui->listWidget_settings->setCurrentRow(account->last_index_selected_config_workout);
+    for (int row = 0; row < ui->listWidget_settings->count(); ++row)
+        if (ui->listWidget_settings->item(row)->data(Qt::UserRole).toInt() == account->last_index_selected_config_workout)
+            ui->listWidget_settings->setCurrentRow(row);
 
     // Init the programmatic tabs
     initIntervalSummary();
@@ -437,34 +489,34 @@ void DialogConfig::initUi() {
 
 /// SHOW & HIDE TARGET
 void DialogConfig::on_checkBox_targetPower_clicked(bool checked) {
-    parentDialog->mainPlot->showHideTargetPower(checked);
+    if (parentDialog) parentDialog->mainPlot->showHideTargetPower(checked);
 }
 void DialogConfig::on_checkBox_targetCadence_clicked(bool checked) {
-    parentDialog->mainPlot->showHideTargetCadence(checked);
+    if (parentDialog) parentDialog->mainPlot->showHideTargetCadence(checked);
 }
 void DialogConfig::on_checkBox_targetHr_clicked(bool checked) {
-    parentDialog->mainPlot->showHideTargetHr(checked);
+    if (parentDialog) parentDialog->mainPlot->showHideTargetHr(checked);
 }
 void DialogConfig::on_checkBox_PowerCurve_clicked(bool checked) {
-    parentDialog->mainPlot->showHideCurvePower(checked);
+    if (parentDialog) parentDialog->mainPlot->showHideCurvePower(checked);
 }
 void DialogConfig::on_checkBox_CadenceCurve_clicked(bool checked) {
-    parentDialog->mainPlot->showHideCurveCadence(checked);
+    if (parentDialog) parentDialog->mainPlot->showHideCurveCadence(checked);
 }
 void DialogConfig::on_checkBox_HeartRateCurve_clicked(bool checked) {
-    parentDialog->mainPlot->showHideCurveHeartRate(checked);
+    if (parentDialog) parentDialog->mainPlot->showHideCurveHeartRate(checked);
 }
 void DialogConfig::on_checkBox_SpeedCurve_clicked(bool checked) {
-    parentDialog->mainPlot->showHideCurveSpeed(checked);
+    if (parentDialog) parentDialog->mainPlot->showHideCurveSpeed(checked);
 }
 
 void DialogConfig::on_checkBox_seperator_clicked(bool checked)
 {
-    parentDialog->mainPlot->showHideSeperator(checked);
+    if (parentDialog) parentDialog->mainPlot->showHideSeperator(checked);
 }
 void DialogConfig::on_checkBox_showGrid_clicked(bool checked)
 {
-    parentDialog->mainPlot->showHideGrid(checked);
+    if (parentDialog) parentDialog->mainPlot->showHideGrid(checked);
 }
 
 
@@ -475,24 +527,24 @@ void DialogConfig::on_checkBox_showGrid_clicked(bool checked)
 void DialogConfig::on_checkBox_showIntervalRemainingTime_clicked(bool checked)
 {
 
-    parentDialog->showTimerIntervalRemaining(checked);
+    if (parentDialog) parentDialog->showTimerIntervalRemaining(checked);
 }
 
 void DialogConfig::on_checkBox_showWorkoutRemainingTime_clicked(bool checked)
 {
 
-    parentDialog->showTimerWorkoutRemaining(checked);
+    if (parentDialog) parentDialog->showTimerWorkoutRemaining(checked);
 }
 
 void DialogConfig::on_checkBox_showElapsedTime_clicked(bool checked)
 {
 
-    parentDialog->showTimerWorkoutElapsed(checked);
+    if (parentDialog) parentDialog->showTimerWorkoutElapsed(checked);
 }
 
 void DialogConfig::on_checkBox_showCurrentTarget_clicked(bool checked)
 {
-    parentDialog->showTimerCurrentTarget(checked);
+    if (parentDialog) parentDialog->showTimerCurrentTarget(checked);
 }
 
 /// CHANGE DISPLAY WIDGET
@@ -503,10 +555,10 @@ void DialogConfig::on_checkBox_enableHR_clicked(bool checked) {
     ui->comboBox_displayHR->setEnabled(checked);
 
     if (checked) {
-        parentDialog->showHeartRateDisplayWidget(ui->comboBox_displayHR->currentIndex() + 1);
+        if (parentDialog) parentDialog->showHeartRateDisplayWidget(ui->comboBox_displayHR->currentIndex() + 1);
     }
     else {
-        parentDialog->showHeartRateDisplayWidget(-1);
+        if (parentDialog) parentDialog->showHeartRateDisplayWidget(-1);
     }
 
 }
@@ -514,14 +566,14 @@ void DialogConfig::on_checkBox_enableHR_clicked(bool checked) {
 void DialogConfig::on_comboBox_displayHR_currentIndexChanged(int index) {
 
     if (ui->checkBox_enableHR->isChecked())
-        parentDialog->showHeartRateDisplayWidget(index + 1);
+        if (parentDialog) parentDialog->showHeartRateDisplayWidget(index + 1);
 }
 
 void DialogConfig::on_checkBox_showTrainerSpeed_clicked(bool checked)
 {
 
     account->show_trainer_speed = checked;
-    parentDialog->showTrainerSpeed(checked);
+    if (parentDialog) parentDialog->showTrainerSpeed(checked);
 }
 
 
@@ -531,10 +583,10 @@ void DialogConfig::on_checkBox_enablePower_clicked(bool checked) {
     ui->comboBox_displayPower->setEnabled(checked);
 
     if (checked) {
-        parentDialog->showPowerDisplayWidget(ui->comboBox_displayPower->currentIndex() + 1);
+        if (parentDialog) parentDialog->showPowerDisplayWidget(ui->comboBox_displayPower->currentIndex() + 1);
     }
     else {
-        parentDialog->showPowerDisplayWidget(-1);
+        if (parentDialog) parentDialog->showPowerDisplayWidget(-1);
     }
 
 }
@@ -542,7 +594,7 @@ void DialogConfig::on_checkBox_enablePower_clicked(bool checked) {
 void DialogConfig::on_comboBox_displayPower_currentIndexChanged(int index) {
 
     if (ui->checkBox_enablePower->isChecked())
-        parentDialog->showPowerDisplayWidget(index + 1);
+        if (parentDialog) parentDialog->showPowerDisplayWidget(index + 1);
 }
 
 void DialogConfig::on_checkBox_enablePowerBalance_clicked(bool checked) {
@@ -551,17 +603,17 @@ void DialogConfig::on_checkBox_enablePowerBalance_clicked(bool checked) {
     ui->comboBox_displayPowerBalance->setEnabled(checked);
 
     if (checked) {
-        parentDialog->showPowerBalanceWidget(ui->comboBox_displayPowerBalance->currentIndex());
+        if (parentDialog) parentDialog->showPowerBalanceWidget(ui->comboBox_displayPowerBalance->currentIndex());
     }
     else {
-        parentDialog->showPowerBalanceWidget(-1);
+        if (parentDialog) parentDialog->showPowerBalanceWidget(-1);
     }
 }
 //---------
 void DialogConfig::on_comboBox_displayPowerBalance_currentIndexChanged(int index) {
 
     if (ui->checkBox_enablePowerBalance->isChecked())
-        parentDialog->showPowerBalanceWidget(index);
+        if (parentDialog) parentDialog->showPowerBalanceWidget(index);
 }
 
 void DialogConfig::on_checkBox_enableCadence_clicked(bool checked) {
@@ -570,36 +622,36 @@ void DialogConfig::on_checkBox_enableCadence_clicked(bool checked) {
     ui->comboBox_displayCadence->setEnabled(checked);
 
     if (checked) {
-        parentDialog->showCadenceDisplayWidget(ui->comboBox_displayCadence->currentIndex() + 1);
+        if (parentDialog) parentDialog->showCadenceDisplayWidget(ui->comboBox_displayCadence->currentIndex() + 1);
     }
     else {
-        parentDialog->showCadenceDisplayWidget(-1);
+        if (parentDialog) parentDialog->showCadenceDisplayWidget(-1);
     }
 }
 //---------
 void DialogConfig::on_comboBox_displayCadence_currentIndexChanged(int index) {
 
     if (ui->checkBox_enableCadence->isChecked())
-        parentDialog->showCadenceDisplayWidget(index + 1);
+        if (parentDialog) parentDialog->showCadenceDisplayWidget(index + 1);
 }
 
 void DialogConfig::on_checkBox_enableSpeed_clicked(bool checked) {
 
     account->show_speed_widget = checked;
-    parentDialog->showSpeedDisplayWidget();
+    if (parentDialog) parentDialog->showSpeedDisplayWidget();
 
 }
 void DialogConfig::on_checkBox_enableOxygen_clicked(bool checked)
 {
     account->show_oxygen_widget = checked;
-    parentDialog->showOxygenDisplayWidget();
+    if (parentDialog) parentDialog->showOxygenDisplayWidget();
 }
 
 
 void DialogConfig::on_checkBox_enableCalories_clicked(bool checked) {
 
     account->show_calories_widget = checked;
-    parentDialog->showCaloriesDisplayWidget();
+    if (parentDialog) parentDialog->showCaloriesDisplayWidget();
 
 }
 
@@ -642,22 +694,19 @@ void DialogConfig::on_comboBox_startTrigger_activated(int index) {
 
 
 void DialogConfig::setCourseMode() {
-    constexpr int kSoundsRow = 3;
-    constexpr int kRadioRow = 5;
     for (int row = 0; row < ui->listWidget_settings->count(); ++row) {
-        if (row == kSoundsRow || row == kRadioRow)
-            continue;
         QListWidgetItem *item = ui->listWidget_settings->item(row);
-        item->setFlags(item->flags() & ~(Qt::ItemIsEnabled | Qt::ItemIsSelectable));
-        item->setToolTip(tr("Not used in a course"));
+        const int page = item->data(Qt::UserRole).toInt();
+        item->setHidden(page != SoundsPage && page != RadioPage);
+        if (page == RadioPage)
+            ui->listWidget_settings->setCurrentRow(row);
     }
-    ui->listWidget_settings->setCurrentRow(kSoundsRow);
-    setWindowTitle(tr("Course Config"));
+    setWindowTitle(tr("Course Settings"));
 }
 
 
 void DialogConfig::on_comboBox_displayVideo_activated(int index) {
-    parentDialog->showVideoPlayer(index);
+    if (parentDialog) parentDialog->showVideoPlayer(index);
 
     // Persist the choice immediately so the next workout opens on the same pane,
     // even if the user closes this dialog without pressing OK.
@@ -687,7 +736,8 @@ void DialogConfig::saveSettings() {
 
 
     /// Save last openned tab
-    account->last_index_selected_config_workout = ui->listWidget_settings->currentRow();
+    if (parentDialog && ui->listWidget_settings->currentItem())
+        account->last_index_selected_config_workout = ui->listWidget_settings->currentItem()->data(Qt::UserRole).toInt();
 
 
 
@@ -764,7 +814,7 @@ void DialogConfig::saveSettings() {
     // Save the new preference tabs
     saveIntervalSummary();
 
-    parentDialog->setMessagePlot(); //update message start workout
+    if (parentDialog) parentDialog->setMessagePlot(); //update message start workout
 }
 
 
@@ -907,7 +957,7 @@ void runRadioEditDialog(QWidget *parent, const Radio &initial,
 void DialogConfig::on_pushButton_addRadio_clicked() {
 
     Radio newRadio(QString(), QString(), false, 128, QString(), QString());
-    runRadioEditDialog(this, newRadio, [this](const Radio &edited) {
+    runRadioEditDialog(ui->tableView_radio->window(), newRadio, [this](const Radio &edited) {
         tableModel->addRadio(edited);
         Util::saveLocalRadioList(tableModel->getAllRadios());
     });
@@ -920,14 +970,14 @@ void DialogConfig::on_pushButton_editRadio_clicked() {
     if (!idx.isValid())
         idx = currentRadioIndex;
     if (!idx.isValid()) {
-        AsyncDialogs::information(this, tr("Edit Radio"),
+        AsyncDialogs::information(ui->tableView_radio->window(), tr("Edit Radio"),
             tr("Select a radio station to edit."));
         return;
     }
 
     const int row = idx.row();
     const Radio existing = tableModel->getRadioAtRow(idx);
-    runRadioEditDialog(this, existing, [this, row](const Radio &edited) {
+    runRadioEditDialog(ui->tableView_radio->window(), existing, [this, row](const Radio &edited) {
         tableModel->replaceRadioAtRow(row, edited);
         Util::saveLocalRadioList(tableModel->getAllRadios());
     });
@@ -940,7 +990,7 @@ void DialogConfig::on_pushButton_deleteRadio_clicked() {
     if (!idx.isValid())
         idx = currentRadioIndex;
     if (!idx.isValid()) {
-        AsyncDialogs::information(this, tr("Delete Radio"),
+        AsyncDialogs::information(ui->tableView_radio->window(), tr("Delete Radio"),
             tr("Select a radio station to delete."));
         return;
     }
@@ -948,7 +998,7 @@ void DialogConfig::on_pushButton_deleteRadio_clicked() {
     const int row = idx.row();
     const Radio radio = tableModel->getRadioAtRow(idx);
 
-    AsyncDialogs::question(this, tr("Delete Radio"),
+    AsyncDialogs::question(ui->tableView_radio->window(), tr("Delete Radio"),
                            tr("Delete \"%1\"?").arg(radio.getName()),
                            [this, row]() {
         tableModel->removeRadioAtRow(row);

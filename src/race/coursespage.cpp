@@ -308,7 +308,7 @@ void CoursesPage::setProfile(int ftpWatts, double weightKg, double bikeKg, doubl
     if (!fromIntervals) {
         const QSignalBlocker quiet(m_weightEdit);
         m_weightEdit->setValue(weightKg);
-        m_weight->setText(tr("Also in Preferences."));
+        m_weight->setText(tr("Also in Settings."));
     } else
     m_weight->setText(tr("%1 kg, from your Intervals.icu profile. To change it, update it in your "
                          "<a style=\"color:#6ca8ff\" href=\"https://intervals.icu/settings\">Intervals.icu settings</a> and restart the app.")

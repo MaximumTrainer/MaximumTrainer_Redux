@@ -57,21 +57,21 @@ target_sources(mt_core PRIVATE
     # ui
     ui/mainwindow.cpp ui/mainwindow_harness.cpp ui/workoutdialog.cpp ui/main_workoutpage.cpp
     ui/dialogconfig.cpp ui/dialoglogin.cpp ui/z_stylesheet.cpp
-    ui/splashscreen.cpp ui/dialogmainwindowconfig.cpp
+    ui/splashscreen.cpp ui/settingspage.cpp
     ui/tab_intervals_icu.cpp ui/workouthistorymodel.cpp ui/historywidget.cpp
     ui/historyfilterproxymodel.cpp ui/activitydetaildialog.cpp ui/dialogkeyboardshortcuts.cpp
     ui/criticalpowerdialog.cpp ui/pmcdialog.cpp ui/achievementswidget.cpp ui/weeklysummarywidget.cpp
     ui/sensorswidget.cpp ui/studiowidget.cpp
     ui/apptheme.h ui/asyncdialogs.h
     ui/mainwindow.ui ui/workoutdialog.ui ui/main_workoutpage.ui ui/dialogconfig.ui
-    ui/dialoglogin.ui ui/z_stylesheet.ui ui/dialogmainwindowconfig.ui
+    ui/dialoglogin.ui ui/z_stylesheet.ui ui/settingspage.ui
     ui/tab_intervals_icu.ui
     # ui/components
     ui/components/delegaterowhover.cpp
     ui/components/mytableview.cpp ui/components/shapefactory.cpp ui/components/infowidget.cpp
     ui/components/bottombar.cpp ui/components/topmenuworkout.cpp ui/components/balancewidget.cpp
     ui/components/postworkoutpanel.cpp ui/components/achievementtoast.cpp ui/components/metriccard.cpp ui/components/trendchart.cpp ui/components/sensorstatusstrip.cpp ui/components/studioconnectionboard.cpp
-    ui/components/idlecursor.cpp ui/components/clickablelabel.cpp ui/components/fancytab.cpp ui/components/fancytabbar.cpp
+    ui/components/idlecursor.cpp ui/components/sidebaricons.cpp ui/components/clickablelabel.cpp ui/components/fancytab.cpp ui/components/fancytabbar.cpp
     ui/components/stylehelper.cpp ui/components/faderlabel.cpp
     ui/components/tableviewhover.cpp ui/components/clock.cpp
     ui/components/infosworkout.cpp ui/components/oxygenwidget.cpp

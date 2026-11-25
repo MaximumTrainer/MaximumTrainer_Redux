@@ -14,6 +14,7 @@ public:
 
 
     void addListRadio(QList<Radio> lstRadio);
+    void setRadios(const QList<Radio> &radios);
     Radio getRadioAtRow(const QModelIndex &index);
 
     /// CRUD helpers used by the radio editor in DialogConfig. They emit the

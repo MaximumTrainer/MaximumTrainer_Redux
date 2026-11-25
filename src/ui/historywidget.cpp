@@ -25,6 +25,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QFrame>
 #include <QStringList>
 #include <QApplication>
 #include <QWidget>
@@ -65,6 +66,10 @@ void HistoryWidget::setupUi()
     m_contextMenu = new QMenu(this);
     QAction *refreshAction = m_contextMenu->addAction(QIcon(QStringLiteral(":/image/icon/refresh")), tr("Refresh"));
     connect(refreshAction, &QAction::triggered, this, &HistoryWidget::loadHistory);
+#ifndef GC_WASM_BUILD
+    QAction *folderAction = m_contextMenu->addAction(tr("Open rides folder"));
+    connect(folderAction, &QAction::triggered, this, &HistoryWidget::openFolderRequested);
+#endif
     m_contextMenu->addSeparator();
     m_deleteAction = m_contextMenu->addAction(QIcon(QStringLiteral(":/image/icon/delete")), tr("Delete"));
     connect(m_deleteAction, &QAction::triggered, this, &HistoryWidget::deleteSelected);
@@ -81,7 +86,6 @@ void HistoryWidget::setupUi()
     auto *toolBar = new QHBoxLayout();
     toolBar->addWidget(m_cpBtn);
     toolBar->addWidget(m_pmcBtn);
-    toolBar->addWidget(m_statusLabel);
     toolBar->addStretch();
 
     // ── Search + date-range filter row ───────────────────────────────────────
@@ -119,6 +123,24 @@ void HistoryWidget::setupUi()
     histLayout->setContentsMargins(8, 8, 8, 8);
     histLayout->setSpacing(6);
     histLayout->addLayout(toolBar);
+
+    // The stats above, the rides below.
+    auto *line = new QFrame(histTab);
+    line->setFrameShape(QFrame::HLine);
+    line->setFrameShadow(QFrame::Sunken);
+    auto *historyTitle = new QLabel(tr("History"), histTab);
+    QFont titleFont = historyTitle->font();
+    titleFont.setPointSizeF(titleFont.pointSizeF() + 3);
+    titleFont.setBold(true);
+    historyTitle->setFont(titleFont);
+    auto *historyRow = new QHBoxLayout();
+    historyRow->addWidget(historyTitle);
+    historyRow->addSpacing(8);
+    historyRow->addWidget(m_statusLabel);
+    historyRow->addStretch();
+    histLayout->addSpacing(4);
+    histLayout->addWidget(line);
+    histLayout->addLayout(historyRow);
     histLayout->addLayout(filterBar);
     histLayout->addWidget(m_tableView);
 

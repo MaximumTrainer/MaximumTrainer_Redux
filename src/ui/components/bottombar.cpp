@@ -6,7 +6,6 @@
 #include <QMenuBar>
 
 #include "util.h"
-#include "dialogmainwindowconfig.h"
 #include "account.h"
 
 

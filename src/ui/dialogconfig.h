@@ -25,6 +25,15 @@ public:
     DialogConfig(QList<Radio> lstRadio, QWidget *parent, WorkoutDialog *ptrParent);
     ~DialogConfig() override;
 
+    /// The pages, in stack order.
+    enum Page { GeneralPage, WidgetsPage, GraphPage, SoundsPage, VideoPage, RadioPage, PageCount };
+
+    /// Hand the pages to the Settings tab (this object was built without a
+    /// workout): they save on every change.
+    QList<QWidget *> takePagesForSettings();
+    /// Show the account's current values (a ride may have changed them).
+    void reloadFromAccount();
+
     void accept() override;
     void reject() override;
 
@@ -141,6 +150,7 @@ private :
     void initUi();
 
     void playSoundTestEffect();
+    void selectLastStation();
 
     // Interval-summary overlay setting (lives at the bottom of the General tab)
     void buildIntervalSummaryGroup();
@@ -156,10 +166,10 @@ private:
 
 
     Ui::DialogConfig *ui;
-    WorkoutDialog *parentDialog;
+    WorkoutDialog *parentDialog = nullptr;   // null in the Settings tab: no ride to update
 public:
     /// A course has no intervals, graph or metric widgets: only the Sounds and
-    /// Radio sections apply, the others are greyed out.
+    /// Radio sections apply, the others are hidden.
     void setCourseMode();
 private:
     Account *account;

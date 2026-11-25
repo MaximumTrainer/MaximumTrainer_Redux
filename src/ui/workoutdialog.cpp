@@ -1499,13 +1499,11 @@ void WorkoutDialog::start_or_pause_workout() {
         return;
     }
 
-    // In a group workout nobody starts alone: the host's Enter/Start schedules
-    // the shared start, and pedalling triggers wait for it.
-    if (!isWorkoutStarted && m_groupRide && m_groupRide->awaitingStart()) {
-        if (m_groupRide->isHost())
-            m_groupRide->requestStart();
+    // In a group workout only the host's Start group ride button schedules the
+    // shared start. Keys and pedalling never do: Enter also sends chat messages,
+    // and it would start the ride for everyone.
+    if (!isWorkoutStarted && m_groupRide && m_groupRide->awaitingStart())
         return;
-    }
 
     // If workout not started, we start it
     if (!isWorkoutStarted) {
@@ -2671,7 +2669,7 @@ void WorkoutDialog::setMessagePlot() {
             const qint64 remainingMs = m_groupRide->scheduledStartLocalMs() - QDateTime::currentMSecsSinceEpoch();
             groupMessage = tr("Group ride starts in %1 s").arg((qMax<qint64>(0, remainingMs) + 999) / 1000);
         } else if (m_groupRide->isHost()) {
-            groupMessage = tr("When everyone is ready, press Enter or Start group ride");
+            groupMessage = tr("When everyone is ready, click Start group ride");
         } else {
             groupMessage = tr("Waiting for the host to start the group ride");
         }

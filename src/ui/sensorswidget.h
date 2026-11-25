@@ -43,8 +43,6 @@ private slots:
     void onSimulatedSensorsToggled(bool checked);
     void addSimulatedSensorsGroup(QVBoxLayout *layout);
     void onErgRampChanged(int seconds);
-    void onSensorDropoutChanged();
-    void onBatteryThresholdChanged(int percent);
 
 private:
     struct SlotRow {
@@ -75,9 +73,6 @@ private:
     QCheckBox *m_simulatedSensorsCheck = nullptr;
     QLabel    *m_zwiftClickHint = nullptr;
     QSpinBox  *m_ergRampSpin            = nullptr;
-    QCheckBox *m_dropoutEnabledCheck    = nullptr;
-    QSpinBox  *m_dropoutTimeoutSpin     = nullptr;
-    QSpinBox  *m_batteryThresholdSpin   = nullptr;
     Account   *m_account = nullptr;
 };
 

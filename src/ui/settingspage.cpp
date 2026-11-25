@@ -1,8 +1,8 @@
-#include "dialogmainwindowconfig.h"
+#include "settingspage.h"
 #include <QAbstractSpinBox>
 #include <QLocale>
 #include "setting_keys.h"
-#include "ui_dialogmainwindowconfig.h"
+#include "ui_settingspage.h"
 #include "asyncdialogs.h"
 
 #include <QDebug>
@@ -27,6 +27,11 @@
 #include "xmlutil.h"
 #include "logger.h"
 #include "apptheme.h"
+#include "dialogconfig.h"
+#ifdef GC_HAVE_QTMULTIMEDIA
+#include "qtmediaplayer.h"
+#endif
+#include <QScrollArea>
 
 
 namespace {
@@ -51,16 +56,50 @@ int themeModeFromComboIndex(int comboIndex)
     default: return AppTheme::System; // index 0 == OS Default
     }
 }
+
+// The pages came from fixed-size dialogs; their filler would leave gaps here.
+void collapseSpacers(QLayout *layout)
+{
+    if (!layout)
+        return;
+    for (int index = 0; index < layout->count(); ++index) {
+        QLayoutItem *item = layout->itemAt(index);
+        if (QSpacerItem *spacer = item->spacerItem()) {
+            if (spacer->expandingDirections() & Qt::Vertical)
+                spacer->changeSize(0, 0, QSizePolicy::Minimum, QSizePolicy::Fixed);
+        } else if (item->layout()) {
+            collapseSpacers(item->layout());
+        } else if (item->widget()) {
+            collapseSpacers(item->widget()->layout());
+        }
+    }
+    layout->invalidate();
+}
+
+void collapseSpacers(QWidget *widget)
+{
+    collapseSpacers(widget->layout());
+}
+
+QGroupBox *titled(const QString &title, QWidget *content)
+{
+    auto *box = new QGroupBox(title);
+    auto *layout = new QVBoxLayout(box);
+    layout->setContentsMargins(4, 4, 4, 4);
+    layout->addWidget(content);
+    content->show();
+    return box;
+}
 } // namespace
 
 
-DialogMainWindowConfig::~DialogMainWindowConfig()
+SettingsPage::~SettingsPage()
 {
     delete ui;
 }
 
 
-DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent), ui(new Ui::DialogMainWindowConfig)
+SettingsPage::SettingsPage(QWidget *parent) : QWidget(parent), ui(new Ui::SettingsPage)
 {
     // Strava login runs in the system browser (StravaOAuthFlow) — Strava blocks
     // embedded webviews. Set up in stravaLabelClicked().
@@ -72,58 +111,77 @@ DialogMainWindowConfig::DialogMainWindowConfig(QWidget *parent) : QDialog(parent
     this->account = qApp->property("Account").value<Account*>();
 
 
-    /// List widgets
-    ui->listWidget_settings->setIconSize(QSize(24, 24));
+    setAutoFillBackground(true);
+    ui->listWidget_settings->setIconSize(QSize(20, 20));
+    ui->listWidget_settings->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    ui->listWidget_settings->setFixedWidth(190);
 
-    // Add the logging page to the stacked widget first (lands at index 4, after
-    // the static page_profile at index 3) so the UserRole indices below are valid.
-    ui->stackedWidget->addWidget(createLoggingPage());
+    // The .ui and ride pages are moved into sections below; drop the empty stack first.
+    QWidget *generalPage = ui->page_general;
+    QWidget *profilePage = ui->page_profile;
+    QWidget *stravaPage = ui->page_upload;
+    QWidget *intervalsPage = ui->page_cloud_sync;
+    while (ui->stackedWidget->count() > 0)
+        ui->stackedWidget->removeWidget(ui->stackedWidget->widget(0));
 
-    // Two groups: app settings on top, third-party integrations under a divider
-    // at the bottom (so it reads as "these are external services"). The nav order
-    // no longer matches the stacked-page order, so each entry carries its target
-    // page index in UserRole — read back in currentListViewSelectionChanged().
-    auto addNav = [this](const QString &iconPath, const QString &label, int pageIndex) {
-        QListWidgetItem *it = new QListWidgetItem(QIcon(iconPath), label);
-        it->setSizeHint(QSize(35, 35));
-        it->setData(Qt::UserRole, pageIndex);
-        ui->listWidget_settings->addItem(it);
-    };
+    m_rideConfig = new DialogConfig(Util::loadLocalRadioList(), this, nullptr);
+    const QList<QWidget *> ride = m_rideConfig->takePagesForSettings();
+#ifdef GC_HAVE_QTMULTIMEDIA
+    m_radioPlayer = new QtMediaPlayer(this);
+    m_radioPlayer->setVisible(false);
+    m_radioPlayer->setRadio(true);
+    connect(m_rideConfig, &DialogConfig::signal_connectToRadioUrl, m_radioPlayer, &QtMediaPlayer::openUrlRadio);
+    connect(m_rideConfig, &DialogConfig::signal_volumeRadioChanged, m_radioPlayer, &QtMediaPlayer::changeVolume);
+    connect(m_rideConfig, &DialogConfig::signal_stopPlayingRadio, m_radioPlayer, &QtMediaPlayer::stop);
+    connect(m_radioPlayer, &QtMediaPlayer::playing, m_rideConfig, &DialogConfig::radioStartedPlaying);
+    connect(m_radioPlayer, &QtMediaPlayer::paused, m_rideConfig, &DialogConfig::radioStoppedPlaying);
+    connect(m_radioPlayer, &QtMediaPlayer::stopped, m_rideConfig, &DialogConfig::radioStoppedPlaying);
+#endif
 
-    // App settings
-    addNav(":/image/icon/general", tr("General"), 0);
-    addNav(":/image/icon/user",    tr("Profile"), 3);
-    addNav(":/image/icon/gear",    tr("Logging"), 4);
+    addGroupTitle(tr("YOU"));
+    addSection(Section::Profile, QStringLiteral(":/image/icon/user"), tr("Profile"), {profilePage});
+    addSection(Section::Accounts, QStringLiteral(":/image/icon/intervals"), tr("Accounts"),
+               {intervalsPage, stravaPage, createAccountPage()});
+    addGroupTitle(tr("RIDE"));
+    addSection(Section::Ride, QStringLiteral(":/image/icon/workoutMan"), tr("Start && alerts"),
+               {ride.at(DialogConfig::GeneralPage), createSensorAlertsGroup()});
+    addSection(Section::RideScreen, QStringLiteral(":/image/icon/display"), tr("Ride screen"),
+               {ride.at(DialogConfig::WidgetsPage), titled(tr("Graph"), ride.at(DialogConfig::GraphPage))});
+    addSection(Section::Sounds, QStringLiteral(":/image/icon/sound"), tr("Sounds"), {ride.at(DialogConfig::SoundsPage)});
+    addSection(Section::Media, QStringLiteral(":/image/icon/movie"), tr("Video && radio"),
+               {titled(tr("Video"), ride.at(DialogConfig::VideoPage)),
+                titled(tr("Radio stations"), ride.at(DialogConfig::RadioPage))}, true);
+    addGroupTitle(tr("APP"));
+    addSection(Section::General, QStringLiteral(":/image/icon/general"), tr("General"), {generalPage});
+    addSection(Section::Logs, QStringLiteral(":/image/icon/gear"), tr("Files && logs"), {createFoldersGroup(), createLoggingPage()});
+    addSection(Section::Help, QStringLiteral(":/image/icon/main_icon"), tr("Help && about"), {createHelpPage()});
 
-    // Divider — a non-selectable spacer row mapping to no page.
-    QListWidgetItem *sep = new QListWidgetItem(ui->listWidget_settings);
-    sep->setFlags(Qt::NoItemFlags);
-    sep->setSizeHint(QSize(35, 12));
-    QFrame *sepLine = new QFrame();
-    sepLine->setFrameShape(QFrame::HLine);
-    sepLine->setFrameShadow(QFrame::Sunken);
-    ui->listWidget_settings->setItemWidget(sep, sepLine);
+    connect(ui->listWidget_settings, &QListWidget::currentRowChanged, this, &SettingsPage::currentListViewSelectionChanged);
+    showSection(Section::Profile);
 
-    // Integrations (third-party services)
-    addNav(":/image/icon/strava_logo", tr("Strava"),        1);
-    addNav(":/image/icon/intervals",   tr("Intervals.icu"), 2);
-
-
-    connect(ui->listWidget_settings, &QListWidget::currentRowChanged, this, &DialogMainWindowConfig::currentListViewSelectionChanged);
-
-    ui->listWidget_settings->setCurrentRow(0);
+    // Everything applies as it changes. clicked / activated / editingFinished
+    // only fire on user input, so loading values never saves them back.
+    for (QCheckBox *box : {ui->checkBox_stravaAutoUpload, ui->checkBox_forceOnTop, ui->checkBox_rowingMode,
+                           ui->checkBox_intervalsAutoUpload, m_checkFileLogging})
+        connect(box, &QCheckBox::clicked, this, &SettingsPage::apply);
+    for (QComboBox *box : {ui->comboBox_distance, ui->comboBox_theme, m_comboLogLevel})
+        connect(box, &QComboBox::activated, this, &SettingsPage::apply);
+    for (QAbstractSpinBox *box : std::initializer_list<QAbstractSpinBox *>{
+             ui->spinBox_ftp, ui->spinBox_lthr, ui->doubleSpinBox_weight})
+        connect(box, &QAbstractSpinBox::editingFinished, this, &SettingsPage::apply);
+    connect(m_editLogFilePath, &QLineEdit::editingFinished, this, &SettingsPage::apply);
 
     initUI();
 }
 
 
-void DialogMainWindowConfig::initUI() {
+void SettingsPage::initUI() {
 
     // Strava
     ui->label_stravaUnlink->setText(tr("Unlink"));
     // Light blue that stays readable on both the dark and light Preferences themes.
     ui->label_stravaUnlink->setStyleSheet("background-color : transparent; color : #5a9fd4; text-decoration: underline;");
-    connect(ui->label_stravaUnlink, &FaderLabel::clicked, this, &DialogMainWindowConfig::unlinkStravaClicked);
+    connect(ui->label_stravaUnlink, &FaderLabel::clicked, this, &SettingsPage::unlinkStravaClicked, Qt::UniqueConnection);
 
     if (account->strava_access_token != "") {
         stravaLinked(true);
@@ -153,10 +211,13 @@ void DialogMainWindowConfig::initUI() {
     ui->spinBox_lthr->setValue(account->LTHR);
     ui->doubleSpinBox_weight->setValue(account->weight_kg);
 
+    m_dropoutEnabled->setChecked(account->sensor_dropout_enabled);
+    m_dropoutTimeout->setValue(account->sensor_dropout_timeout_s);
+    m_batteryThreshold->setValue(account->battery_warning_threshold);
 }
 
 
-void DialogMainWindowConfig::stravaLinked(bool linked) {
+void SettingsPage::stravaLinked(bool linked) {
 
     ui->checkBox_stravaAutoUpload->setEnabled(linked);
     ui->label_stravaConnected->setVisible(linked);
@@ -165,7 +226,7 @@ void DialogMainWindowConfig::stravaLinked(bool linked) {
         ui->label_connectStrava->setCursor(Qt::ArrowCursor);
         ui->label_connectStrava->setVisible(false);
 
-        disconnect(ui->label_connectStrava, &FaderLabel::clicked, this, &DialogMainWindowConfig::stravaLabelClicked);
+        disconnect(ui->label_connectStrava, &FaderLabel::clicked, this, &SettingsPage::stravaLabelClicked);
 
         ui->label_stravaUnlink->setVisible(true);
         ui->label_stravaUnlink->setCursor(Qt::PointingHandCursor);
@@ -176,7 +237,7 @@ void DialogMainWindowConfig::stravaLinked(bool linked) {
         ui->label_connectStrava->setStyleSheet("image: url(:/image/icon/strava);");
         ui->label_connectStrava->setCursor(Qt::PointingHandCursor);
         ui->label_connectStrava->setVisible(true);
-        connect(ui->label_connectStrava, &FaderLabel::clicked, this, &DialogMainWindowConfig::stravaLabelClicked);
+        connect(ui->label_connectStrava, &FaderLabel::clicked, this, &SettingsPage::stravaLabelClicked, Qt::UniqueConnection);
 
         ui->label_stravaUnlink->setVisible(false);
     }
@@ -185,7 +246,7 @@ void DialogMainWindowConfig::stravaLinked(bool linked) {
 }
 
 
-void DialogMainWindowConfig::stravaLabelClicked() {
+void SettingsPage::stravaLabelClicked() {
 
     // Open the Strava login in the user's system browser and capture the
     // redirect via a localhost loopback listener (Strava blocks embedded views).
@@ -209,19 +270,19 @@ void DialogMainWindowConfig::stravaLabelClicked() {
 }
 
 
-void DialogMainWindowConfig::unlinkStravaClicked() {
+void SettingsPage::unlinkStravaClicked() {
 
 
     replyStravaDeauthorization = ExtRequest::stravaDeauthorization(account->strava_access_token);
-    connect(replyStravaDeauthorization, &QNetworkReply::finished, this, &DialogMainWindowConfig::stravaUnlinkFinished);
+    connect(replyStravaDeauthorization, &QNetworkReply::finished, this, &SettingsPage::stravaUnlinkFinished);
 }
 
 
-void DialogMainWindowConfig::stravaUnlinkFinished() {
+void SettingsPage::stravaUnlinkFinished() {
 
 
     // Unlink locally whether or not Strava acknowledged the deauthorization,
-    // and persist now: Cancel on this dialog must not resurrect the link.
+    // and persist now.
     account->strava_access_token.clear();
     account->strava_refresh_token.clear();
     account->strava_token_expires_at = 0;
@@ -233,7 +294,7 @@ void DialogMainWindowConfig::stravaUnlinkFinished() {
 }
 
 
-void DialogMainWindowConfig::currentListViewSelectionChanged(int section) {
+void SettingsPage::currentListViewSelectionChanged(int section) {
 
     // The nav order no longer matches the stacked-page order; each row stores its
     // target page in UserRole. Skip rows without one (e.g. the group divider).
@@ -246,10 +307,188 @@ void DialogMainWindowConfig::currentListViewSelectionChanged(int section) {
     ui->stackedWidget->setCurrentIndex(page.toInt());
 }
 
+void SettingsPage::addGroupTitle(const QString &title)
+{
+    auto *item = new QListWidgetItem(title, ui->listWidget_settings);
+    item->setFlags(Qt::NoItemFlags);
+    QFont small = font();
+    small.setPointSizeF(font().pointSizeF() * 0.8);
+    small.setBold(true);
+    item->setFont(small);
+    item->setTextAlignment(Qt::AlignLeft | Qt::AlignBottom);
+    item->setSizeHint(QSize(35, ui->listWidget_settings->count() == 1 ? 24 : 38));
+}
 
-void DialogMainWindowConfig::showEvent(QShowEvent *event) {
+void SettingsPage::addSection(Section section, const QString &iconPath, const QString &label,
+                              const QList<QWidget *> &widgets, bool lastFillsPage)
+{
+    constexpr int kContentWidth = 720;
+    auto *content = new QWidget();
+    if (!lastFillsPage)
+        content->setMaximumWidth(kContentWidth);
+    auto *layout = new QVBoxLayout(content);
+    auto *title = new QLabel(QString(label).replace(QStringLiteral("&&"), QStringLiteral("&")), content);
+    title->setTextFormat(Qt::PlainText);
+    QFont titleFont = title->font();
+    titleFont.setPointSizeF(titleFont.pointSizeF() + 3);
+    titleFont.setBold(true);
+    title->setFont(titleFont);
+    layout->addWidget(title);
+    for (QWidget *widget : widgets) {
+        layout->addWidget(widget);
+        collapseSpacers(widget);
+        if (widget->layout() && !qobject_cast<QGroupBox *>(widget))
+            widget->layout()->setContentsMargins(0, 4, 0, 4);
+        widget->show();   // a page taken from a stack is hidden
+    }
+    if (lastFillsPage)
+        layout->setStretchFactor(widgets.constLast(), 1);
+    else
+        layout->addStretch(1);
 
-    QDialog::showEvent(event);
+    auto *holder = new QWidget();
+    auto *row = new QHBoxLayout(holder);
+    row->setContentsMargins(8, 0, 8, 0);
+    row->addWidget(content, 1);
+    row->addStretch(0);
+    auto *scroll = new QScrollArea();
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setWidget(holder);
+    scroll->viewport()->setAutoFillBackground(false);
+    holder->setAutoFillBackground(false);
+
+    auto *item = new QListWidgetItem(QIcon(iconPath), title->text(), ui->listWidget_settings);
+    item->setSizeHint(QSize(35, 34));
+    item->setData(Qt::UserRole, ui->stackedWidget->addWidget(scroll));
+    item->setData(Qt::UserRole + 1, static_cast<int>(section));
+}
+
+void SettingsPage::stopRadio()
+{
+#ifdef GC_HAVE_QTMULTIMEDIA
+    m_radioPlayer->stop();
+#endif
+}
+
+void SettingsPage::hideEvent(QHideEvent *event)
+{
+    QWidget::hideEvent(event);
+    if (!event->spontaneous())   // minimizing keeps it playing
+        stopRadio();
+}
+
+void SettingsPage::showSection(Section section)
+{
+    for (int row = 0; row < ui->listWidget_settings->count(); ++row) {
+        const QVariant value = ui->listWidget_settings->item(row)->data(Qt::UserRole + 1);
+        if (value.isValid() && value.toInt() == static_cast<int>(section))
+            ui->listWidget_settings->setCurrentRow(row);
+    }
+}
+
+QWidget *SettingsPage::createAccountPage()
+{
+    auto *page = new QWidget();
+    auto *layout = new QHBoxLayout(page);
+    m_logoutButton = new QPushButton(tr("Log Out"), page);
+    m_logoutButton->setObjectName(QStringLiteral("settingsLogout"));
+    connect(m_logoutButton, &QPushButton::clicked, this, &SettingsPage::logoutRequested);
+    layout->addWidget(m_logoutButton);
+    layout->addStretch(1);
+    return page;
+}
+
+QWidget *SettingsPage::createSensorAlertsGroup()
+{
+    auto *page = new QWidget();
+    auto *layout = new QVBoxLayout(page);
+
+    auto *dropout = new QGroupBox(tr("Sensor dropout"), page);
+    auto *dropoutLayout = new QVBoxLayout(dropout);
+    m_dropoutEnabled = new QCheckBox(tr("Auto-pause workout when sensor signal is lost"), dropout);
+    m_dropoutEnabled->setToolTip(tr("Workout resumes automatically 3 seconds after the signal is restored."));
+    dropoutLayout->addWidget(m_dropoutEnabled);
+    auto *dropoutRow = new QHBoxLayout();
+    dropoutRow->addWidget(new QLabel(tr("Dropout timeout:"), dropout));
+    m_dropoutTimeout = new QSpinBox(dropout);
+    m_dropoutTimeout->setRange(2, 30);
+    m_dropoutTimeout->setSuffix(tr(" s"));
+    m_dropoutTimeout->setMinimumWidth(80);
+    dropoutRow->addWidget(m_dropoutTimeout);
+    dropoutRow->addStretch();
+    dropoutLayout->addLayout(dropoutRow);
+    layout->addWidget(dropout);
+
+    auto *battery = new QGroupBox(tr("Battery warning"), page);
+    auto *batteryRow = new QHBoxLayout(battery);
+    batteryRow->addWidget(new QLabel(tr("Warn when battery drops below:"), battery));
+    m_batteryThreshold = new QSpinBox(battery);
+    m_batteryThreshold->setRange(5, 50);
+    m_batteryThreshold->setSuffix(tr(" %"));
+    m_batteryThreshold->setMinimumWidth(80);
+    m_batteryThreshold->setToolTip(tr("A notification is shown when a sensor reports a battery level at or "
+                                      "below this threshold."));
+    batteryRow->addWidget(m_batteryThreshold);
+    batteryRow->addStretch();
+    layout->addWidget(battery);
+
+    const auto saveDropout = [this]() {
+        account->sensor_dropout_enabled = m_dropoutEnabled->isChecked();
+        account->sensor_dropout_timeout_s = m_dropoutTimeout->value();
+        account->saveSensorDropoutSettings();
+    };
+    connect(m_dropoutEnabled, &QCheckBox::clicked, this, saveDropout);
+    connect(m_dropoutTimeout, &QSpinBox::editingFinished, this, saveDropout);
+    connect(m_batteryThreshold, &QSpinBox::editingFinished, this, [this]() {
+        account->battery_warning_threshold = m_batteryThreshold->value();
+        account->saveBatteryWarningThreshold();
+    });
+    return page;
+}
+
+QWidget *SettingsPage::createFoldersGroup()
+{
+    auto *box = new QGroupBox(tr("Folders"));
+    auto *row = new QHBoxLayout(box);
+    const auto addButton = [&](const QString &label, const QString &toolTip, void (SettingsPage::*signal)()) {
+        auto *button = new QPushButton(label, box);
+        button->setToolTip(toolTip);
+        connect(button, &QPushButton::clicked, this, signal);
+        row->addWidget(button);
+    };
+    addButton(tr("Rides"), tr("Open the folder that holds your FIT files"), &SettingsPage::ridesFolderRequested);
+    addButton(tr("Workouts"), tr("Open the workout folder"), &SettingsPage::workoutsFolderRequested);
+    row->addStretch(1);
+#ifdef GC_WASM_BUILD
+    box->setEnabled(false);   // no local folders in the browser
+#endif
+    return box;
+}
+
+QWidget *SettingsPage::createHelpPage()
+{
+    auto *page = new QWidget();
+    auto *layout = new QVBoxLayout(page);
+    const auto addButton = [&](const QString &label, void (SettingsPage::*signal)()) {
+        auto *button = new QPushButton(label, page);
+        button->setFixedWidth(220);
+        connect(button, &QPushButton::clicked, this, signal);
+        layout->addWidget(button);
+    };
+    addButton(tr("User guide"), &SettingsPage::userGuideRequested);
+    addButton(tr("Keyboard shortcuts"), &SettingsPage::keyboardShortcutsRequested);
+    addButton(tr("About MaximumTrainer"), &SettingsPage::aboutRequested);
+    return page;
+}
+
+
+void SettingsPage::showEvent(QShowEvent *event) {
+
+    QWidget::showEvent(event);
+    initUI();
+    loadLoggingSettings();
+    m_rideConfig->reloadFromAccount();
 
     // The athlete profile can change outside this dialog — an FTP test or the
     // intervals.icu login sync writes a new FTP/LTHR straight into the account.
@@ -266,7 +505,7 @@ void DialogMainWindowConfig::showEvent(QShowEvent *event) {
 /// Signed in, FTP / LTHR / weight are copied from Intervals.icu at every
 /// login, so a local edit would not last: show them read-only and say where to
 /// change them. Offline they stay editable.
-void DialogMainWindowConfig::updateProfileSyncLabel() {
+void SettingsPage::updateProfileSyncLabel() {
 
     const bool fromIntervals = !account->intervals_icu_access_token.isEmpty();
     for (QAbstractSpinBox *box : std::initializer_list<QAbstractSpinBox *>{
@@ -291,16 +530,7 @@ void DialogMainWindowConfig::updateProfileSyncLabel() {
 }
 
 
-void DialogMainWindowConfig::reject() {
-
-
-    initUI();
-
-    QDialog::reject();
-}
-
-
-void DialogMainWindowConfig::accept() {
+void SettingsPage::apply() {
 
     account->strava_auto_upload = ui->checkBox_stravaAutoUpload->isChecked();
     account->force_workout_window_on_top = ui->checkBox_forceOnTop->isChecked();
@@ -350,8 +580,6 @@ void DialogMainWindowConfig::accept() {
                               tr("Save Failed"),
                               tr("Could not save Intervals.icu credentials to the local file.\n"
                                  "Your settings may not be remembered after the next restart."));
-        // Do not close the dialog — let the user correct the situation (e.g.
-        // free disk space) or explicitly dismiss.
         return;
     }
 
@@ -370,32 +598,28 @@ void DialogMainWindowConfig::accept() {
     if (profileChangedNow)
         emit profileChanged();
 
-    QDialog::accept();
-
     if (themeChanged) {
-        // Parented to the main window: this dialog just accept()ed (hidden),
-        // and the box outlives it on screen.
         AsyncDialogs::information(
-            parentWidget(),
+            this,
             tr("Theme Changed"),
             tr("The new theme will be applied the next time you restart MaximumTrainer."));
     }
 }
 
 
-void DialogMainWindowConfig::setOnlineMode(bool isOnline)
+void SettingsPage::setOnlineMode(bool isOnline)
 {
     m_networkOnline = isOnline;
     updateIntervalsAvailability();
 }
 
-void DialogMainWindowConfig::updateIntervalsAvailability()
+void SettingsPage::updateIntervalsAvailability()
 {
     const bool signedIn = !account->intervals_icu_access_token.isEmpty();
     QString reason;
     if (!signedIn)
         reason = tr("Intervals.icu features need you to sign in with Intervals.icu. "
-                    "Choose MaximumTrainer → Log Out to return to the sign-in screen.");
+                    "Choose Log Out below to return to the sign-in screen.");
     else if (!m_networkOnline)
         reason = tr("Intervals.icu is not available while offline. "
                     "Please check your internet connection.");
@@ -408,7 +632,7 @@ void DialogMainWindowConfig::updateIntervalsAvailability()
 // Logging settings page
 // ─────────────────────────────────────────────────────────────────────────────
 
-QWidget *DialogMainWindowConfig::createLoggingPage()
+QWidget *SettingsPage::createLoggingPage()
 {
     QWidget *page = new QWidget(this);
     QVBoxLayout *mainLayout = new QVBoxLayout(page);
@@ -470,17 +694,17 @@ QWidget *DialogMainWindowConfig::createLoggingPage()
     mainLayout->addStretch();
 
     connect(m_checkFileLogging, &QCheckBox::toggled,
-            this, &DialogMainWindowConfig::onLogFileEnabledToggled);
+            this, &SettingsPage::onLogFileEnabledToggled);
     connect(m_btnBrowseLog, &QPushButton::clicked,
-            this, &DialogMainWindowConfig::onBrowseLogFileClicked);
+            this, &SettingsPage::onBrowseLogFileClicked);
     connect(m_btnOpenLog, &QPushButton::clicked,
-            this, &DialogMainWindowConfig::onOpenLogFolderClicked);
+            this, &SettingsPage::onOpenLogFolderClicked);
 
     loadLoggingSettings();
     return page;
 }
 
-void DialogMainWindowConfig::loadLoggingSettings()
+void SettingsPage::loadLoggingSettings()
 {
     if (!m_comboLogLevel) return;
 
@@ -503,7 +727,7 @@ void DialogMainWindowConfig::loadLoggingSettings()
     m_btnOpenLog->setEnabled(enabled);
 }
 
-void DialogMainWindowConfig::saveLoggingSettings()
+void SettingsPage::saveLoggingSettings()
 {
     if (!m_comboLogLevel) return;
 
@@ -517,7 +741,7 @@ void DialogMainWindowConfig::saveLoggingSettings()
     Logger::instance().saveConfig();
 }
 
-void DialogMainWindowConfig::onLogFileEnabledToggled(bool checked)
+void SettingsPage::onLogFileEnabledToggled(bool checked)
 {
     if (!m_editLogFilePath) return;
     m_editLogFilePath->setEnabled(checked);
@@ -525,7 +749,7 @@ void DialogMainWindowConfig::onLogFileEnabledToggled(bool checked)
     m_btnOpenLog->setEnabled(checked);
 }
 
-void DialogMainWindowConfig::onBrowseLogFileClicked()
+void SettingsPage::onBrowseLogFileClicked()
 {
     const QString current = m_editLogFilePath->text().trimmed();
     const QString suggested = current.isEmpty()
@@ -539,10 +763,11 @@ void DialogMainWindowConfig::onBrowseLogFileClicked()
     if (!path.isEmpty()) {
         m_editLogFilePath->setText(path);
         m_btnOpenLog->setEnabled(true);
+        apply();
     }
 }
 
-void DialogMainWindowConfig::onOpenLogFolderClicked()
+void SettingsPage::onOpenLogFolderClicked()
 {
     QString path = m_editLogFilePath->text().trimmed();
     if (path.isEmpty()) {

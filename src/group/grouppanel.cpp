@@ -72,7 +72,7 @@ GroupPanel::GroupPanel(GroupSession *session, QWidget *parent)
     connect(m_ridersModel, &QAbstractItemModel::modelReset, this, &GroupPanel::refreshStatus);
 
     m_startButton = new QPushButton(tr("Start group ride"), this);
-    m_startButton->setToolTip(tr("Everyone starts together 10 seconds after you press this (or Enter)"));
+    m_startButton->setToolTip(tr("Everyone starts together 10 seconds after you press this"));
     m_startButton->setFocusPolicy(Qt::NoFocus);
     layout->addWidget(m_startButton);
 

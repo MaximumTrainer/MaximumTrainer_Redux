@@ -32,6 +32,9 @@ public slots:
 protected:
     void showEvent(QShowEvent *event) override;
 
+signals:
+    void openFolderRequested();
+
 private slots:
     void openCriticalPowerDialog();
     void openPmcDialog();
