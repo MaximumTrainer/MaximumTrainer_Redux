@@ -10,6 +10,9 @@ on:
   # found clobbered (secrets: inherit passes the caller's Cloudflare secrets).
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Deploy to Cloudflare Workers
