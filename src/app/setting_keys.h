@@ -55,7 +55,7 @@ inline constexpr SettingKey<int>  DisplayCadence                 {"displayPrefs/
 inline constexpr SettingKey<int>  DisplayVideo                   {"displayPrefs/display_video",                       0};
 /// Retired power offset; removed at load.
 inline constexpr SettingKey<int>  OffsetPower                    {"displayPrefs/offset_power",                        0};
-inline constexpr SettingKey<int>  StartTrigger                   {"displayPrefs/start_trigger",                       0};
+inline constexpr SettingKey<int>  StartTrigger                   {"displayPrefs/start_trigger",                       3};
 inline constexpr SettingKey<int>  ValueCadenceStart              {"displayPrefs/value_cadence_start",                 40};
 inline constexpr SettingKey<int>  ValuePowerStart                {"displayPrefs/value_power_start",                   120};
 inline constexpr SettingKey<int>  ValueSpeedStart                {"displayPrefs/value_speed_start",                   20};
@@ -63,7 +63,7 @@ inline constexpr SettingKey<int>  LastIndexSelectedConfigWorkout {"displayPrefs/
 /// Retired (no sub-tabs); removed at load.
 inline constexpr SettingKey<int>  LastTabSubConfigSelected       {"displayPrefs/last_tab_sub_config_selected",        0};
 inline constexpr SettingKey<bool> ControlTrainerResistance       {"displayPrefs/control_trainer_resistance",          true};
-inline constexpr SettingKey<bool> VirtualShifting                {"displayPrefs/virtual_shifting",                    false};
+inline constexpr SettingKey<bool> VirtualShifting                {"displayPrefs/virtual_shifting",                    true};
 inline constexpr SettingKey<bool> UseZwiftClick                  {"displayPrefs/use_zwift_click",                     false};
 inline constexpr SettingKey<bool> UseSimulatedSensors            {"displayPrefs/use_simulated_sensors",               false};
 inline constexpr SettingKey<bool> EnableStudioMode               {"displayPrefs/enable_studio_mode",                  false};
