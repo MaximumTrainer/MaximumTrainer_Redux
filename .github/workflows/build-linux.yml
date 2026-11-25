@@ -25,12 +25,44 @@ env:
 jobs:
 
   build_linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    # Built on 22.04's glibc so the AppImage keeps running on Ubuntu 22.04;
+    # the hosted 22.04 runner goes away in April 2027.
+    container: ubuntu:22.04
+    env:
+      AQT_CONFIG: /__w/MaximumTrainer_Redux/MaximumTrainer_Redux/.github/aqt-settings.ini
+    defaults:
+      run:
+        shell: bash
     timeout-minutes: 35
     permissions:
       contents: read
 
     steps:
+    - name: Install base tools
+      run: |
+        apt-get -o Acquire::Retries=3 update -y
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+          sudo ca-certificates curl git file bzip2 xz-utils zstd unzip \
+          python3 python3-pip python3-venv build-essential ninja-build pkg-config
+        # 22.04's cmake is too old, and its pip fails on a truncated download
+        # instead of retrying it.
+        for attempt in 1 2 3; do
+          pip3 install --no-cache-dir cmake==3.31.10 && break
+          sleep 5
+        done
+        cmake --version
+        # Libraries Qt links against that the hosted image ships and the bare image lacks.
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+          libnss3 libnspr4 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libasound2 libxkbfile1 \
+          libxkbcommon0 libxkbcommon-x11-0 libdbus-1-3 libfontconfig1 libxcb-cursor0 libxcb-icccm4 \
+          libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
+          libxcb-xinerama0 libxcb-xkb1 libxcb-util1 libgtk-3-0 libpulse0 libglib2.0-0 \
+          libwayland-client0 libwayland-cursor0 libwayland-egl1 libdrm2 libgbm1 libcups2 \
+          libpcsclite1 libva2 libva-drm2 libva-x11-2 libudev1 libxshmfence1 libx11-xcb1 \
+          libsm6 libice6 libegl1
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
     - name: checkout
       uses: actions/checkout@v7
       with:
@@ -67,7 +99,8 @@ jobs:
         arch: 'linux_gcc_64'
         modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia qtwebsockets'
         cache: true
-        cache-key-prefix: qt-linux
+        cache-key-prefix: qt-linux-jammy
+        setup-python: false
 
     - name: Install system dependencies
       run: |
@@ -82,7 +115,7 @@ jobs:
     - name: Set up ccache
       uses: hendrikmuhs/ccache-action@v1.2.26
       with:
-        key: linux-qt${{ env.QT_VERSION }}
+        key: linux-jammy-qt${{ env.QT_VERSION }}
         max-size: 400M
         evict-old-files: job
         job-summary: ccache stats
@@ -92,7 +125,7 @@ jobs:
       uses: actions/cache@v6
       with:
         path: ${{ env.QWT_DIR }}
-        key: qwt-6.3.0-qt-${{ env.QT_VERSION }}-linux
+        key: qwt-6.3.0-qt-${{ env.QT_VERSION }}-linux-jammy
 
     - name: Validate QWT cache
       id: qwt-validate
@@ -181,7 +214,7 @@ jobs:
   # (uses secrets; QSKIPs gracefully without them).
   # ──────────────────────────────────────────────────────────────────────────
   test_unit_suites:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     permissions:
       contents: read
@@ -205,7 +238,7 @@ jobs:
       run: |
         mirrors=""
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/noble/Release"; then
             mirrors="$mirrors http://$host/ubuntu/"
           fi
         done
@@ -290,7 +323,7 @@ jobs:
   # credentials).
   # ──────────────────────────────────────────────────────────────────────────
   test_integration_headless:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     needs: build_linux
     permissions:
@@ -309,7 +342,7 @@ jobs:
       run: |
         mirrors=""
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/noble/Release"; then
             mirrors="$mirrors http://$host/ubuntu/"
           fi
         done
@@ -382,7 +415,7 @@ jobs:
   # as one artifact.
   # ──────────────────────────────────────────────────────────────────────────
   test_gui:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     needs: build_linux
     permissions:
@@ -403,7 +436,7 @@ jobs:
       run: |
         mirrors=""
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/noble/Release"; then
             mirrors="$mirrors http://$host/ubuntu/"
           fi
         done
@@ -442,7 +475,7 @@ jobs:
           libxdamage1 \
           libxrandr2 \
           libxkbcommon0 \
-          libasound2
+          libasound2t64
 
     - name: Download build artifact
       uses: actions/download-artifact@v8
@@ -532,7 +565,7 @@ jobs:
   # Tests QSKIP gracefully when the secrets are absent (fork PRs).
   # ──────────────────────────────────────────────────────────────────────────
   test_gui_live:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     needs: build_linux
     permissions:
@@ -551,7 +584,7 @@ jobs:
       run: |
         mirrors=""
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/noble/Release"; then
             mirrors="$mirrors http://$host/ubuntu/"
           fi
         done
@@ -590,7 +623,7 @@ jobs:
           libxdamage1 \
           libxrandr2 \
           libxkbcommon0 \
-          libasound2
+          libasound2t64
 
     - name: Download build artifact
       uses: actions/download-artifact@v8

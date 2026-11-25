@@ -144,7 +144,7 @@ jobs:
   build_wasm:
     needs: [compute_version]
     if: ${{ always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository) }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     continue-on-error: true
     permissions:
@@ -177,7 +177,7 @@ jobs:
       run: |
         mirrors=""
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/noble/Release"; then
             mirrors="$mirrors http://$host/ubuntu/"
           fi
         done
@@ -375,7 +375,7 @@ jobs:
       run: |
         mirrors=""
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/noble/Release"; then
             mirrors="$mirrors http://$host/ubuntu/"
           fi
         done
