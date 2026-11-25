@@ -104,7 +104,7 @@ public:
     QStringList power_zone_names;      ///< Intervals.icu zone names, one per zone (may be empty)
 
     bool control_trainer_resistance;
-    bool virtual_shifting;         ///< Opt-in (default off): drive resistance from a virtual gear (▲/▼) for single-cog / Zwift Cog setups. Off = real gears / free ride unchanged.
+    bool virtual_shifting;         ///< On for new installs: drive resistance from a virtual gear (▲/▼). Off = real gears / free ride unchanged.
     bool use_zwift_click;          ///< Opt-in (default off): read a Zwift Click v2 RIGHT controller over a direct BLE connection (separate from the trainer; ERG unaffected). Left controller unsupported (needs Zwift's proprietary unlock).
     bool use_simulated_sensors = false;  ///< Workouts run on generated sensor data (no hardware), set on the Devices page.
     int erg_smoothing_duration_s;  ///< Ramp duration (seconds) for ERG setpoint transitions; 0 = disabled.
@@ -124,7 +124,7 @@ public:
 
 
 
-    int start_trigger;
+    int start_trigger;             ///< 0 cadence, 1 power, 2 speed, 3 button press (new installs)
     int value_cadence_start;
     int value_power_start;
     int value_speed_start;

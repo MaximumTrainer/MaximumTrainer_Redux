@@ -144,10 +144,10 @@ void SensorsWidget::buildUi()
     trainerLayout->addWidget(m_cyclingOnlyBox);
 
     m_virtualShiftingCheck =
-        new QCheckBox(tr("Virtual shifting (Zwift Cog / single-gear setups)"), m_cyclingOnlyBox);
+        new QCheckBox(tr("Virtual shifting"), m_cyclingOnlyBox);
     m_virtualShiftingCheck->setToolTip(tr("Adds ▲/▼ gear shifting (keyboard or the on-screen arrows) so a "
            "single-cog trainer has usable resistance on free rides and tests. "
-           "Leave off if you shift with a real cassette."));
+           "Turn off if you shift with a real cassette."));
     connect(m_virtualShiftingCheck, &QCheckBox::toggled,
             this, &SensorsWidget::onVirtualShiftingToggled);
     cyclingOnlyLayout->addWidget(m_virtualShiftingCheck);

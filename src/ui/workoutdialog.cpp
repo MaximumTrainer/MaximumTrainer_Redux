@@ -2048,7 +2048,8 @@ void WorkoutDialog::enableTrainerControl() {
 // off the rider controls resistance *through* the gears.
 bool WorkoutDialog::virtualShiftingActive() const {
     return trainerControlUserId != -1 && account
-        && account->virtual_shifting          // opt-in; off => real gears / free ride
+        && account->virtual_shifting          // off => real gears / free ride
+        && !account->rowing_mode
         && !account->enable_studio_mode;
 }
 

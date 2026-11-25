@@ -152,6 +152,15 @@ void Account::loadDisplayPrefs() {
     namespace Keys = SettingKeys::DisplayPrefs;
     QSettings settings;
 
+    // Riders from before virtual shifting and button start became the defaults
+    // keep the old ones. Written at once, so a new install stays new next launch.
+    const bool existingInstall = AppSettings::contains(settings, SettingKeys::MainWindow::Size)
+                              || AppSettings::contains(settings, Keys::ShowHrWidget);
+    if (!AppSettings::contains(settings, Keys::VirtualShifting))
+        AppSettings::write(settings, Keys::VirtualShifting, existingInstall ? false : Keys::VirtualShifting.defaultValue);
+    if (!AppSettings::contains(settings, Keys::StartTrigger))
+        AppSettings::write(settings, Keys::StartTrigger, existingInstall ? 0 : Keys::StartTrigger.defaultValue);
+
     // Widget visibility
     show_hr_widget            = AppSettings::read(settings, Keys::ShowHrWidget);
     show_power_widget         = AppSettings::read(settings, Keys::ShowPowerWidget);

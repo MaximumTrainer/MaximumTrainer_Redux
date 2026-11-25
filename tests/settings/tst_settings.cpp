@@ -19,6 +19,8 @@ private slots:
     void initTestCase();
     void init();
     void testDisplayPrefs_freshStoreGivesDefaults();
+    void testRideDefaults_newInstallKeepsThemOnNextLaunch();
+    void testRideDefaults_existingInstallKeepsOldOnes();
     void testDisplayPrefs_saveUsesOnDiskKeyNames();
     void testDisplayPrefs_roundTripsEveryField();
     void testUiStateKeys_onDiskNamesAndDefaults();
@@ -62,13 +64,13 @@ void TstSettings::testDisplayPrefs_freshStoreGivesDefaults()
         QCOMPARE(account.display_power_balance, 1);
         QCOMPARE(account.display_cadence, 1);
         QCOMPARE(account.display_video, 0);
-        QCOMPARE(account.start_trigger, 0);
+        QCOMPARE(account.start_trigger, 3);
         QCOMPARE(account.value_cadence_start, 40);
         QCOMPARE(account.value_power_start, 120);
         QCOMPARE(account.value_speed_start, 20);
         QCOMPARE(account.last_index_selected_config_workout, 0);
         QCOMPARE(account.control_trainer_resistance, true);
-        QCOMPARE(account.virtual_shifting, false);
+        QCOMPARE(account.virtual_shifting, true);
         QCOMPARE(account.use_zwift_click, false);
         QCOMPARE(account.enable_studio_mode, false);
         QCOMPARE(account.distance_in_km, true);
@@ -103,6 +105,25 @@ void TstSettings::testDisplayPrefs_freshStoreGivesDefaults()
         QCOMPARE(account.sound_alert_power_above_target, false);
         QCOMPARE(account.sound_alert_cadence_under_target, false);
         QCOMPARE(account.sound_alert_cadence_above_target, false);
+}
+
+void TstSettings::testRideDefaults_newInstallKeepsThemOnNextLaunch()
+{
+    { const Account firstLaunch; }
+    AppSettings::write(SettingKeys::MainWindow::Size, QSize(1600, 900));   // saved on quit
+
+    const Account secondLaunch;
+    QCOMPARE(secondLaunch.virtual_shifting, true);
+    QCOMPARE(secondLaunch.start_trigger, 3);
+}
+
+void TstSettings::testRideDefaults_existingInstallKeepsOldOnes()
+{
+    AppSettings::write(SettingKeys::MainWindow::Size, QSize(1600, 900));
+
+    const Account account;
+    QCOMPARE(account.virtual_shifting, false);
+    QCOMPARE(account.start_trigger, 0);
 }
 
 void TstSettings::testDisplayPrefs_saveUsesOnDiskKeyNames()
