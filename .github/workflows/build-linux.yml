@@ -45,7 +45,13 @@ jobs:
         DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
           sudo ca-certificates curl git file bzip2 xz-utils zstd unzip \
           python3 python3-pip python3-venv build-essential ninja-build pkg-config
-        pip3 install "cmake>=3.28,<4"
+        # 22.04's cmake is too old, and its pip fails on a truncated download
+        # instead of retrying it.
+        for attempt in 1 2 3; do
+          pip3 install --no-cache-dir cmake==3.31.10 && break
+          sleep 5
+        done
+        cmake --version
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
     - name: checkout
