@@ -3573,7 +3573,7 @@ void WorkoutDialog::setRace(const RaceCourse &course, const RaceBot::FieldSettin
 
     m_raceView = new RaceView(m_race.get(), ui->widgetVideo->parentWidget());
     if (riderKg > 0.0)
-        m_raceView->setRedLineWattsPerKg(account->FTP / riderKg);   // above FTP: red
+        m_raceView->setFtpWattsPerKg(account->FTP / riderKg);   // sprints show in red
     m_raceView->setZones(account->FTP, PowerZones::boundsPct(account->power_zones_pct));
     if (auto *videoLayout = qobject_cast<QBoxLayout*>(ui->widgetVideo->parentWidget()->layout()))
         videoLayout->insertWidget(videoLayout->indexOf(ui->widgetVideo), m_raceView, 1);
