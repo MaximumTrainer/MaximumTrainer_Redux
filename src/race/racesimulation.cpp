@@ -8,21 +8,21 @@
 namespace {
 constexpr double kMinGapSpeedMps = 1.0;
 
-// Holding a wheel. A real rider feathers the pedals to sit behind someone; raw
-// power alone either drifts off the back or slingshots past. While your power
-// is enough for the draft but not enough to ride away, you settle on the wheel.
+// Sitting on a wheel, for every rider. Speed always comes from watts and draft;
+// near a wheel a rider may only ease off (soft-pedal, or feather the brakes) to
+// stay behind it instead of running past. Nobody is ever pushed along, so too
+// few watts means slipping back.
 constexpr double kWheelGapM = 1.5;
-constexpr double kOnWheelGapM = 1.0;   // where a wheel gives its full draft
+constexpr double kOnWheelGapM = 1.0;      // where a wheel gives its full draft
 constexpr double kPowerSmoothingSec = 3.0;
-constexpr double kEnoughToHold = 0.95;    // of the watts needed on the wheel...
-constexpr double kCloseToTheirs = 0.90;   // ...or of the W/kg they are pushing (they may come past with momentum)
-constexpr double kHoldRangeM = 15.0;      // a little beyond the draft: time to jump on as someone passes
-constexpr double kEnoughToPass = 1.08;    // of the watts needed without it
+constexpr double kHoldRangeM = 15.0;      // ease off early enough to arrive smoothly
+constexpr double kEnoughToPass = 1.08;    // of the watts their speed takes without draft
 constexpr double kMinHoldWatts = 20.0;    // nearly coasting downhill: plain physics
-constexpr double kLettingGoMps = 0.15;     // a wheel this much slower than one further up is losing it
+constexpr double kLettingGoMps = 0.15;    // a wheel this much slower than one further up is losing it
+constexpr double kLostWheelM = 3.0;        // ...and it has really opened a gap
 constexpr double kGapPull = 0.06;         // 1/s^2
 constexpr double kSpeedPull = 0.5;        // 1/s
-constexpr double kMaxHoldAccel = 0.6;     // m/s^2
+constexpr double kMaxEaseOff = 0.6;       // m/s^2
 }
 
 RaceSimulation::RaceSimulation(RaceCourse course, QString yourName, double yourRiderKg, double yourBikeKg,
@@ -83,17 +83,16 @@ void RaceSimulation::updateDrafting()
     }
 }
 
-double RaceSimulation::yourSpeedAfter(double dtSec, double grade) const
+double RaceSimulation::speedAfter(int riderIndex, double watts, double dtSec, double grade) const
 {
-    const Rider &me = you();
-    const double plain = RacePhysics::stepSpeed(me.speedMps, m_yourPowerW, me.massKg, me.cda, grade,
+    const Rider &me = m_riders.at(riderIndex);
+    const double smoothedW = m_smoothedPowerW.at(riderIndex);
+    const double plain = RacePhysics::stepSpeed(me.speedMps, watts, me.massKg, me.cda, grade,
                                                 me.draftReduction, dtSec);
-    if (m_yourPowerW <= 0.0)
-        return plain;
     QVector<int> wheelsAhead;
-    for (int index = 1; index < m_riders.size(); ++index) {
+    for (int index = 0; index < m_riders.size(); ++index) {
         const double gapAhead = m_riders.at(index).distanceM - me.distanceM;
-        if (gapAhead > 0.0 && gapAhead <= kHoldRangeM && !m_riders.at(index).finishTimeSec)
+        if (index != riderIndex && gapAhead > 0.0 && gapAhead <= kHoldRangeM && !m_riders.at(index).finishTimeSec)
             wheelsAhead.append(index);
     }
     if (wheelsAhead.isEmpty())
@@ -107,32 +106,26 @@ double RaceSimulation::yourSpeedAfter(double dtSec, double grade) const
     // On that wheel you are sheltered by everyone ahead of it too.
     const auto wattsOnWheelOf = [&](const Rider &rider) {
         QVector<double> gaps;
-        for (int index = 1; index < m_riders.size(); ++index)
-            if (!m_riders.at(index).finishTimeSec && m_riders.at(index).distanceM >= rider.distanceM)
+        for (const int index : std::as_const(wheelsAhead))
+            if (m_riders.at(index).distanceM >= rider.distanceM)
                 gaps.append(m_riders.at(index).distanceM - rider.distanceM + kOnWheelGapM);
         return wattsAtSpeedOf(rider, RacePhysics::draftReduction(gaps));
     };
-    const auto strongEnoughFor = [&](const Rider &rider) {
-        return m_yourSmoothedPowerW >= kEnoughToHold * wattsOnWheelOf(rider)
-            || m_yourSmoothedPowerW / me.riderKg >= kCloseToTheirs * rider.powerW / rider.riderKg;
-    };
-    // The nearest wheel, unless it is letting a faster one go whose draft your watts
-    // fully cover (a wheel you would lose again is not worth leaving this one for).
+    // The nearest wheel, unless it is letting a faster one go whose draft these
+    // watts fully cover (a wheel you would lose again is not worth leaving this one for).
     int chosen = wheelsAhead.constFirst();
     for (const int candidate : std::as_const(wheelsAhead))
         if (m_riders.at(candidate).speedMps > m_riders.at(chosen).speedMps + kLettingGoMps
-            && m_yourSmoothedPowerW >= wattsAtSpeedOf(m_riders.at(candidate), RacePhysics::kWheelDraftReduction))
+            && m_riders.at(candidate).distanceM > m_riders.at(chosen).distanceM + kLostWheelM
+            && smoothedW >= wattsOnWheelOf(m_riders.at(candidate)))
             chosen = candidate;
     const Rider &wheel = m_riders.at(chosen);
-    const double alone = wattsAtSpeedOf(wheel, 0.0);
-    const double onWheel = wattsOnWheelOf(wheel);
-    if (onWheel < kMinHoldWatts || !strongEnoughFor(wheel)
-        || m_yourSmoothedPowerW > kEnoughToPass * alone)
+    if (wattsOnWheelOf(wheel) < kMinHoldWatts || smoothedW > kEnoughToPass * wattsAtSpeedOf(wheel, 0.0))
         return plain;
     const double gap = wheel.distanceM - me.distanceM;
-    const double accel = std::clamp(kGapPull * (gap - kWheelGapM) + kSpeedPull * (wheel.speedMps - me.speedMps),
-                                    -kMaxHoldAccel, kMaxHoldAccel);
-    return std::max(0.0, me.speedMps + accel * dtSec);
+    const double accel = std::max(kGapPull * (gap - kWheelGapM) + kSpeedPull * (wheel.speedMps - me.speedMps),
+                                  -kMaxEaseOff);
+    return std::clamp(me.speedMps + accel * dtSec, 0.0, plain);
 }
 
 void RaceSimulation::step(double dtSec)
@@ -140,18 +133,22 @@ void RaceSimulation::step(double dtSec)
     if (dtSec <= 0.0)
         return;
     updateDrafting();
-    m_yourSmoothedPowerW += (m_yourPowerW - m_yourSmoothedPowerW) * std::min(1.0, dtSec / kPowerSmoothingSec);
+    m_smoothedPowerW.resize(m_riders.size());
     const double total = m_course.totalDistanceM();
     for (int index = 0; index < m_riders.size(); ++index) {
         Rider &rider = m_riders[index];
         if (rider.finishTimeSec)
             continue;
         const double grade = m_course.gradeAt(std::max(0.0, rider.distanceM));
-        rider.powerW = rider.isYou ? m_yourPowerW
-                                   : m_bots[index - 1].nextPower(grade, dtSec, total - rider.distanceM);
-        rider.speedMps = rider.isYou ? yourSpeedAfter(dtSec, grade)
-                                     : RacePhysics::stepSpeed(rider.speedMps, rider.powerW, rider.massKg, rider.cda,
-                                                grade, rider.draftReduction, dtSec);
+        const double watts = rider.isYou ? m_yourPowerW
+                                         : m_bots[index - 1].nextPower(grade, dtSec, total - rider.distanceM);
+        m_smoothedPowerW[index] += (watts - m_smoothedPowerW.at(index)) * std::min(1.0, dtSec / kPowerSmoothingSec);
+        const double nextSpeed = speedAfter(index, watts, dtSec, grade);
+        rider.powerW = rider.isYou
+            ? watts
+            : std::min(watts, RacePhysics::powerForStep(rider.speedMps, nextSpeed, rider.massKg, rider.cda, grade,
+                                                        rider.draftReduction, dtSec));
+        rider.speedMps = nextSpeed;
         rider.powerSaving = RacePhysics::powerSaving(rider.speedMps, rider.massKg, rider.cda,
                                                      grade, rider.draftReduction);
         const double before = rider.distanceM;
