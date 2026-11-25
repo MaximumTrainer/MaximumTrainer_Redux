@@ -53,6 +53,9 @@ private slots:
     void bots_sprintForTheLine();
     void bots_rideYourBikeAtAboutYourWeight();
     void youAtTheirPace_holdTheWheelsOnCentralPark();
+    void slightlyStrongerWheel_isCaughtOnTheDraftAlone_data();
+    void slightlyStrongerWheel_isCaughtOnTheDraftAlone();
+    void fasterWheelLeaving_isFollowedPastASlowerOne();
     void muchStronger_rideAwayFromAWheel();
     void muchWeaker_areDropped();
     void gears_easyEndHasManySmallSteps();
@@ -373,6 +376,68 @@ void TstRace::youAtTheirPace_holdTheWheelsOnCentralPark()
             drafting += race.you().draftingBehind >= 0 ? 1 : 0;
         }
         QVERIFY2(drafting > 0.6 * ticks, qPrintable(QStringLiteral("%1 W/kg: %2 %").arg(wattsPerKg).arg(100.0 * drafting / ticks)));
+    }
+}
+
+namespace {
+// Warm up, then put every rider on the road relative to the last bot, at its
+// speed (gapsBehindM[0] is you), and ride on.
+void lineUp(RaceSimulation &race, double yourWatts, const QVector<double> &gapsBehindM)
+{
+    race.setYourPower(yourWatts);
+    while (race.elapsedSec() < 120)
+        race.step(0.04);
+    auto &riders = const_cast<QVector<RaceSimulation::Rider> &>(race.riders());
+    const RaceSimulation::Rider front = riders.constLast();
+    for (int index = 0; index < gapsBehindM.size(); ++index) {
+        riders[index].distanceM = front.distanceM - gapsBehindM.at(index);
+        riders[index].speedMps = front.speedMps;
+    }
+}
+}
+
+void TstRace::slightlyStrongerWheel_isCaughtOnTheDraftAlone_data()
+{
+    QTest::addColumn<QString>("id");
+    QTest::addColumn<double>("gapM");
+    for (const char *id : {"longchamp", "central-park", "alpe-dhuez"})
+        for (const double gapM : {1.5, 4.0, 8.0, 12.0})
+            QTest::addRow("%s %.1f m", id, gapM) << QString::fromLatin1(id) << gapM;
+}
+
+void TstRace::slightlyStrongerWheel_isCaughtOnTheDraftAlone()
+{
+    QFETCH(QString, id);
+    QFETCH(double, gapM);
+    for (quint32 seed = 1; seed <= 5; ++seed) {
+        RaceSimulation race(loadCourse(id), QStringLiteral("You"), 74, 9, 0.35);
+        race.addBot(RaceBot(QStringLiteral("Ana"), 2.5, 74, seed));
+        lineUp(race, 2.3 * 74, {gapM});
+        const double startSec = race.elapsedSec();
+        double smallestGapM = gapM;
+        while (race.elapsedSec() < startSec + 300) {
+            race.step(0.04);
+            smallestGapM = std::min(smallestGapM, race.riders().at(1).distanceM - race.you().distanceM);
+        }
+        QVERIFY2(smallestGapM < 2.2, qPrintable(QStringLiteral("never closer than %1 m").arg(smallestGapM)));
+        const double endGapM = race.riders().at(1).distanceM - race.you().distanceM;
+        QVERIFY2(endGapM < 10.0, qPrintable(QStringLiteral("dropped: %1 m").arg(endGapM)));
+    }
+}
+
+// A slower rider right in front must not cost you the faster wheel past it.
+void TstRace::fasterWheelLeaving_isFollowedPastASlowerOne()
+{
+    for (quint32 seed = 1; seed <= 10; ++seed) {
+        RaceSimulation race(loadCourse(QStringLiteral("longchamp")), QStringLiteral("You"), 74, 9, 0.35);
+        race.addBot(RaceBot(QStringLiteral("Slow"), 2.2, 74, seed));
+        race.addBot(RaceBot(QStringLiteral("Ana"), 2.5, 74, seed + 50));
+        lineUp(race, 2.3 * 74, {7.0, 5.0});
+        const double startSec = race.elapsedSec();
+        while (race.elapsedSec() < startSec + 300)
+            race.step(0.04);
+        const double endGapM = race.riders().at(2).distanceM - race.you().distanceM;
+        QVERIFY2(endGapM < 10.0, qPrintable(QStringLiteral("dropped: %1 m").arg(endGapM)));
     }
 }
 
