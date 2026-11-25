@@ -12,6 +12,7 @@ constexpr double kMinGapSpeedMps = 1.0;
 // power alone either drifts off the back or slingshots past. While your power
 // is enough for the draft but not enough to ride away, you settle on the wheel.
 constexpr double kWheelGapM = 1.5;
+constexpr double kOnWheelGapM = 1.0;   // where a wheel gives its full draft
 constexpr double kPowerSmoothingSec = 3.0;
 constexpr double kEnoughToHold = 0.95;    // of the watts needed on the wheel...
 constexpr double kCloseToTheirs = 0.90;   // ...or of the W/kg they are pushing (they may come past with momentum)
@@ -103,8 +104,16 @@ double RaceSimulation::yourSpeedAfter(double dtSec, double grade) const
     const auto wattsAtSpeedOf = [&](const Rider &rider, double draft) {
         return RacePhysics::steadyPower(rider.speedMps, me.massKg, me.cda, grade, draft);
     };
+    // On that wheel you are sheltered by everyone ahead of it too.
+    const auto wattsOnWheelOf = [&](const Rider &rider) {
+        QVector<double> gaps;
+        for (int index = 1; index < m_riders.size(); ++index)
+            if (!m_riders.at(index).finishTimeSec && m_riders.at(index).distanceM >= rider.distanceM)
+                gaps.append(m_riders.at(index).distanceM - rider.distanceM + kOnWheelGapM);
+        return wattsAtSpeedOf(rider, RacePhysics::draftReduction(gaps));
+    };
     const auto strongEnoughFor = [&](const Rider &rider) {
-        return m_yourSmoothedPowerW >= kEnoughToHold * wattsAtSpeedOf(rider, RacePhysics::kWheelDraftReduction)
+        return m_yourSmoothedPowerW >= kEnoughToHold * wattsOnWheelOf(rider)
             || m_yourSmoothedPowerW / me.riderKg >= kCloseToTheirs * rider.powerW / rider.riderKg;
     };
     // The nearest wheel, unless it is letting a faster one go whose draft your watts
@@ -116,7 +125,7 @@ double RaceSimulation::yourSpeedAfter(double dtSec, double grade) const
             chosen = candidate;
     const Rider &wheel = m_riders.at(chosen);
     const double alone = wattsAtSpeedOf(wheel, 0.0);
-    const double onWheel = wattsAtSpeedOf(wheel, RacePhysics::kWheelDraftReduction);
+    const double onWheel = wattsOnWheelOf(wheel);
     if (onWheel < kMinHoldWatts || !strongEnoughFor(wheel)
         || m_yourSmoothedPowerW > kEnoughToPass * alone)
         return plain;

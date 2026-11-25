@@ -56,6 +56,7 @@ private slots:
     void slightlyStrongerWheel_isCaughtOnTheDraftAlone_data();
     void slightlyStrongerWheel_isCaughtOnTheDraftAlone();
     void fasterWheelLeaving_isFollowedPastASlowerOne();
+    void bunch_shelterCountsForHoldingItsWheels();
     void muchStronger_rideAwayFromAWheel();
     void muchWeaker_areDropped();
     void gears_easyEndHasManySmallSteps();
@@ -439,6 +440,29 @@ void TstRace::fasterWheelLeaving_isFollowedPastASlowerOne()
         const double endGapM = race.riders().at(2).distanceM - race.you().distanceM;
         QVERIFY2(endGapM < 10.0, qPrintable(QStringLiteral("dropped: %1 m").arg(endGapM)));
     }
+}
+
+// A bunch shelters you more than one wheel does, so on the flat you stay in
+// with watts that could not hold a lone rider at its speed.
+void TstRace::bunch_shelterCountsForHoldingItsWheels()
+{
+    const auto flat = RaceCourse::fromJson(R"({"points":[[0,45,2,100],[20000,45,2,100]]})");
+    QVERIFY(flat.has_value());
+    int stayedIn = 0;
+    for (quint32 seed = 1; seed <= 10; ++seed) {
+        RaceSimulation race(*flat, QStringLiteral("You"), 74, 9, 0.35);
+        for (quint32 bot = 0; bot < 6; ++bot)
+            race.addBot(RaceBot(QStringLiteral("Bot"), 2.7, 74, seed * 10 + bot));
+        lineUp(race, 2.3 * 74, {9.5, 7.5, 6.0, 4.5, 3.0, 1.5});
+        const double startSec = race.elapsedSec();
+        while (race.elapsedSec() < startSec + 60)
+            race.step(0.04);
+        double nearestM = 1e9;
+        for (int index = 1; index < race.riders().size(); ++index)
+            nearestM = std::min(nearestM, race.riders().at(index).distanceM - race.you().distanceM);
+        stayedIn += nearestM < 10.0 ? 1 : 0;
+    }
+    QVERIFY2(stayedIn >= 8, qPrintable(QStringLiteral("stayed in %1 of 10").arg(stayedIn)));
 }
 
 void TstRace::muchStronger_rideAwayFromAWheel()
