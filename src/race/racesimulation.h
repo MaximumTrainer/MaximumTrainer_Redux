@@ -23,7 +23,7 @@ public:
         double cda = 0.30;
         double distanceM = 0.0;
         double speedMps = 0.0;
-        double powerW = 0.0;
+        double powerW = 0.0;           // bots push less while sheltered
         double draftReduction = 0.0;   // share of air drag saved
         double powerSaving = 0.0;      // share of power saved ("saving 24 %")
         int draftingBehind = -1;       // rider index of the wheel being followed
@@ -60,13 +60,13 @@ public:
 
 private:
     void updateDrafting();
-    double yourSpeedAfter(double dtSec, double grade) const;
+    double speedAfter(int riderIndex, double watts, double dtSec, double grade) const;
 
     RaceCourse m_course;
     QVector<Rider> m_riders;          // index 0 is you
     QVector<RaceBot> m_bots;          // m_bots[i] drives m_riders[i + 1]
     double m_yourPowerW = 0.0;
-    double m_yourSmoothedPowerW = 0.0;
+    QVector<double> m_smoothedPowerW;   // per rider, of what they are willing to push
     double m_elapsedSec = 0.0;
 };
 

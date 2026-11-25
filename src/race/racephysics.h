@@ -19,10 +19,13 @@
  */
 namespace RacePhysics {
 
-constexpr double kMaxDraftReduction = 0.40;
-constexpr double kWheelDraftReduction = 0.30;   // right on a wheel, ~1 m back
+// One wheel at ~1 m: 38 % less drag (Belloli et al. 2016, pedalling riders in a
+// wind tunnel; Kyle 1979, coast-down). Sheltered in a group of three or four:
+// about 60 %, deep in a peloton over 90 % (Blocken et al.). How it fades out to 10 m is our choice.
+constexpr double kMaxDraftReduction = 0.70;   // only a big pack gets here
+constexpr double kWheelDraftReduction = 0.38;
 constexpr double kDraftRangeM = 10.0;
-constexpr double kExtraRiderBonus = 0.05;       // each further rider ahead, at full strength
+constexpr double kExtraRiderBonus = 0.07;       // each further rider ahead, at full strength
 
 inline double stepSpeed(double vMps, double powerW, double massKg, double cda,
                         double grade, double draftReduction, double dtSec)
@@ -47,6 +50,16 @@ inline double steadyPower(double vMps, double massKg, double cda, double grade, 
                    + 0.5 * kAirDensity * cda * (1.0 - draftReduction) * vMps * vMps);
 }
 
+/// The watts behind a change of speed over \a dtSec (the inverse of stepSpeed);
+/// 0 when the rider is coasting or braking.
+inline double powerForStep(double vMps, double nextMps, double massKg, double cda, double grade,
+                           double draftReduction, double dtSec)
+{
+    const double watts = steadyPower(std::max(vMps, 0.5), massKg, cda, grade, draftReduction)
+        + massKg * (nextMps - vMps) / dtSec * std::max(vMps, 0.5);
+    return std::max(0.0, watts);
+}
+
 /// How much of the draft a wheel \a gapM ahead gives: all of it at 1 m or
 /// closer, fading in a straight line to none at 10 m.
 inline double draftFade(double gapM)
@@ -57,9 +70,9 @@ inline double draftFade(double gapM)
 }
 
 /// Air-drag reduction for a rider, given the gaps (m) to the riders ahead.
-/// The closest wheel gives up to 30 % (at 1 m or closer, none at 10 m). Each
-/// further rider ahead adds up to 5 %, scaled the same way by its distance,
-/// so a line of riders right in front shelters you more. Capped at 40 %.
+/// The closest wheel gives up to 38 % (at 1 m or closer, none at 10 m). Each
+/// further rider ahead adds up to 7 %, scaled the same way by its distance,
+/// so a line of riders right in front shelters you more. Capped at 70 %.
 inline double draftReduction(const QVector<double> &gapsAheadM)
 {
     QVector<double> fades;

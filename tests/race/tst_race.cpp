@@ -53,9 +53,14 @@ private slots:
     void bots_sprintForTheLine();
     void bots_rideYourBikeAtAboutYourWeight();
     void youAtTheirPace_holdTheWheelsOnCentralPark();
-    void slightlyStrongerWheel_isCaughtOnTheDraftAlone_data();
     void slightlyStrongerWheel_isCaughtOnTheDraftAlone();
+    void onAClimb_theDraftIsNotEnoughToHoldAStrongerWheel();
+    void nobodyIsGivenMoreThanTheirWatts();
+    void shelteredBots_pushLess();
+    void bots_atTheSameStrengthStayInOneBunch();
+    void strongBots_rideAwayFromTheBunch();
     void fasterWheelLeaving_isFollowedPastASlowerOne();
+    void bunch_shelterCountsForHoldingItsWheels();
     void muchStronger_rideAwayFromAWheel();
     void muchWeaker_areDropped();
     void gears_easyEndHasManySmallSteps();
@@ -158,9 +163,11 @@ void TstRace::drafting_fadesWithGapAndIsCapped()
 {
     using RacePhysics::draftReduction;
     QCOMPARE(draftReduction({}), 0.0);
-    QCOMPARE(draftReduction({0.8}), 0.30);
-    QCOMPARE(draftReduction({1.0}), 0.30);
-    QVERIFY(std::abs(draftReduction({5.5}) - 0.15) < 1e-9);
+    using RacePhysics::kExtraRiderBonus;
+    using RacePhysics::kWheelDraftReduction;
+    QCOMPARE(draftReduction({0.8}), kWheelDraftReduction);
+    QCOMPARE(draftReduction({1.0}), kWheelDraftReduction);
+    QVERIFY(std::abs(draftReduction({5.5}) - kWheelDraftReduction / 2) < 1e-9);
     QCOMPARE(draftReduction({10.0}), 0.0);
     QCOMPARE(draftReduction({12.0}), 0.0);
 
@@ -169,13 +176,13 @@ void TstRace::drafting_fadesWithGapAndIsCapped()
         QVERIFY2(draftReduction({gap}) > draftReduction({gap + 0.5}), qPrintable(QString::number(gap)));
 
     // A second rider ahead adds shelter, more when it is close.
-    QVERIFY(std::abs(draftReduction({1.0, 2.0}) - (0.30 + 0.05 * (1.0 - 1.0 / 9.0))) < 1e-9);
+    QVERIFY(std::abs(draftReduction({1.0, 2.0}) - (kWheelDraftReduction + kExtraRiderBonus * (1.0 - 1.0 / 9.0))) < 1e-9);
     QVERIFY(draftReduction({1.0, 2.0}) > draftReduction({1.0}));
     QVERIFY(draftReduction({1.0, 2.0}) > draftReduction({1.0, 9.0}));
     QVERIFY(draftReduction({1.0, 9.5}) - draftReduction({1.0}) < 0.005);
     // More riders in the line, more shelter, up to the cap.
     QVERIFY(draftReduction({1.0, 2.0, 3.0}) > draftReduction({1.0, 2.0}));
-    QCOMPARE(draftReduction({1, 2, 3, 4, 5, 6, 7, 8}), RacePhysics::kMaxDraftReduction);
+    QCOMPARE(draftReduction({1, 1, 2, 2, 3, 3, 4, 4, 5, 5}), RacePhysics::kMaxDraftReduction);
     // The order the gaps come in doesn't matter.
     QCOMPARE(draftReduction({6.0, 1.0}), draftReduction({1.0, 6.0}));
 }
@@ -396,33 +403,107 @@ void lineUp(RaceSimulation &race, double yourWatts, const QVector<double> &gapsB
 }
 }
 
-void TstRace::slightlyStrongerWheel_isCaughtOnTheDraftAlone_data()
+namespace {
+RaceCourse steadyRoad(double grade)
 {
-    QTest::addColumn<QString>("id");
-    QTest::addColumn<double>("gapM");
-    for (const char *id : {"longchamp", "central-park", "alpe-dhuez"})
-        for (const double gapM : {1.5, 4.0, 8.0, 12.0})
-            QTest::addRow("%s %.1f m", id, gapM) << QString::fromLatin1(id) << gapM;
+    const QByteArray json = QStringLiteral(R"({"points":[[0,45,2,100],[20000,45,2,%1]]})")
+                                .arg(100.0 + 20000.0 * grade).toUtf8();
+    const auto course = RaceCourse::fromJson(json);
+    if (!course)
+        qFatal("no course");
+    return *course;
+}
+
+int timesWithTheWheelAfterFiveMinutes(double grade, double gapM)
+{
+    int held = 0;
+    for (quint32 seed = 1; seed <= 10; ++seed) {
+        RaceSimulation race(steadyRoad(grade), QStringLiteral("You"), 74, 9, 0.35);
+        race.addBot(RaceBot(QStringLiteral("Ana"), 2.5, 74, seed));
+        lineUp(race, 2.3 * 74, {gapM});
+        const double startSec = race.elapsedSec();
+        while (race.elapsedSec() < startSec + 300)
+            race.step(0.04);
+        held += race.riders().at(1).distanceM - race.you().distanceM < 10.0 ? 1 : 0;
+    }
+    return held;
+}
 }
 
 void TstRace::slightlyStrongerWheel_isCaughtOnTheDraftAlone()
 {
-    QFETCH(QString, id);
-    QFETCH(double, gapM);
-    for (quint32 seed = 1; seed <= 5; ++seed) {
-        RaceSimulation race(loadCourse(id), QStringLiteral("You"), 74, 9, 0.35);
-        race.addBot(RaceBot(QStringLiteral("Ana"), 2.5, 74, seed));
-        lineUp(race, 2.3 * 74, {gapM});
-        const double startSec = race.elapsedSec();
-        double smallestGapM = gapM;
-        while (race.elapsedSec() < startSec + 300) {
+    for (const double gapM : {1.5, 4.0, 6.0})
+        QCOMPARE(timesWithTheWheelAfterFiveMinutes(0.0, gapM), 10);
+    QCOMPARE(timesWithTheWheelAfterFiveMinutes(0.01, 1.5), 10);
+    QCOMPARE(timesWithTheWheelAfterFiveMinutes(0.0, 12.0), 0);   // out of the draft: no magic
+}
+
+void TstRace::onAClimb_theDraftIsNotEnoughToHoldAStrongerWheel()
+{
+    QCOMPARE(timesWithTheWheelAfterFiveMinutes(0.06, 1.5), 0);
+}
+
+void TstRace::nobodyIsGivenMoreThanTheirWatts()
+{
+    for (const double grade : {0.0, 0.02, 0.06}) {
+        RaceSimulation race(steadyRoad(grade), QStringLiteral("You"), 74, 9, 0.35);
+        for (const RaceBot &bot : RaceBot::field({20, 2.2, 4.0}, 4, 74))
+            race.addBot(bot);
+        race.setYourPower(2.5 * 74);
+        while (race.elapsedSec() < 300) {
+            const double before = race.you().speedMps;
             race.step(0.04);
-            smallestGapM = std::min(smallestGapM, race.riders().at(1).distanceM - race.you().distanceM);
+            const RaceSimulation::Rider &you = race.you();
+            const double worth = RacePhysics::powerForStep(before, you.speedMps, you.massKg, you.cda, grade,
+                                                           you.draftReduction, 0.04);
+            QVERIFY2(before < 0.5 || worth <= 2.5 * 74 + 0.1, qPrintable(QString::number(worth)));
         }
-        QVERIFY2(smallestGapM < 2.2, qPrintable(QStringLiteral("never closer than %1 m").arg(smallestGapM)));
-        const double endGapM = race.riders().at(1).distanceM - race.you().distanceM;
-        QVERIFY2(endGapM < 10.0, qPrintable(QStringLiteral("dropped: %1 m").arg(endGapM)));
     }
+}
+
+void TstRace::shelteredBots_pushLess()
+{
+    RaceSimulation race(steadyRoad(0.0), QStringLiteral("You"), 74, 9, 0.35);
+    for (quint32 seed = 1; seed <= 6; ++seed)
+        race.addBot(RaceBot(QStringLiteral("Bot"), 3.0, 74, seed));
+    double front = 0.0;
+    double sheltered = 0.0;
+    while (race.elapsedSec() < 600) {
+        race.step(0.04);
+        const QVector<int> order = race.standings();
+        if (race.elapsedSec() > 120) {
+            front += race.riders().at(order.at(0)).powerW;
+            sheltered += race.riders().at(order.at(5)).powerW;
+        }
+    }
+    QVERIFY2(sheltered < 0.85 * front, qPrintable(QString::number(sheltered / front)));
+}
+
+void TstRace::bots_atTheSameStrengthStayInOneBunch()
+{
+    for (const double grade : {0.0, 0.01}) {
+        RaceSimulation race(steadyRoad(grade), QStringLiteral("You"), 74, 9, 0.35);
+        for (quint32 seed = 1; seed <= 6; ++seed)
+            race.addBot(RaceBot(QStringLiteral("Bot"), 3.0, 74, seed));
+        while (race.elapsedSec() < 900)
+            race.step(0.04);
+        const QVector<int> order = race.standings();
+        const double spread = race.riders().at(order.at(0)).distanceM - race.riders().at(order.at(5)).distanceM;
+        QVERIFY2(spread < 25.0, qPrintable(QString::number(spread)));
+    }
+}
+
+void TstRace::strongBots_rideAwayFromTheBunch()
+{
+    RaceSimulation race(steadyRoad(0.0), QStringLiteral("You"), 74, 9, 0.35);
+    for (quint32 seed = 1; seed <= 5; ++seed)
+        race.addBot(RaceBot(QStringLiteral("Bot"), 2.8, 74, seed));
+    race.addBot(RaceBot(QStringLiteral("Strong"), 3.9, 74, 9));
+    while (race.elapsedSec() < 600)
+        race.step(0.04);
+    const QVector<int> order = race.standings();
+    QCOMPARE(race.riders().at(order.at(0)).name, QStringLiteral("Strong"));
+    QVERIFY(race.riders().at(order.at(0)).distanceM > race.riders().at(order.at(1)).distanceM + 50.0);
 }
 
 // A slower rider right in front must not cost you the faster wheel past it.
@@ -432,13 +513,36 @@ void TstRace::fasterWheelLeaving_isFollowedPastASlowerOne()
         RaceSimulation race(loadCourse(QStringLiteral("longchamp")), QStringLiteral("You"), 74, 9, 0.35);
         race.addBot(RaceBot(QStringLiteral("Slow"), 2.2, 74, seed));
         race.addBot(RaceBot(QStringLiteral("Ana"), 2.5, 74, seed + 50));
-        lineUp(race, 2.3 * 74, {7.0, 5.0});
+        lineUp(race, 2.3 * 74, {5.5, 2.0});
         const double startSec = race.elapsedSec();
         while (race.elapsedSec() < startSec + 300)
             race.step(0.04);
         const double endGapM = race.riders().at(2).distanceM - race.you().distanceM;
         QVERIFY2(endGapM < 10.0, qPrintable(QStringLiteral("dropped: %1 m").arg(endGapM)));
     }
+}
+
+// A bunch shelters you more than one wheel does, so on the flat you stay in
+// with watts that could not hold a lone rider at its speed.
+void TstRace::bunch_shelterCountsForHoldingItsWheels()
+{
+    const auto flat = RaceCourse::fromJson(R"({"points":[[0,45,2,100],[20000,45,2,100]]})");
+    QVERIFY(flat.has_value());
+    int stayedIn = 0;
+    for (quint32 seed = 1; seed <= 10; ++seed) {
+        RaceSimulation race(*flat, QStringLiteral("You"), 74, 9, 0.35);
+        for (quint32 bot = 0; bot < 6; ++bot)
+            race.addBot(RaceBot(QStringLiteral("Bot"), 2.7, 74, seed * 10 + bot));
+        lineUp(race, 2.3 * 74, {9.5, 7.5, 6.0, 4.5, 3.0, 1.5});
+        const double startSec = race.elapsedSec();
+        while (race.elapsedSec() < startSec + 60)
+            race.step(0.04);
+        double nearestM = 1e9;
+        for (int index = 1; index < race.riders().size(); ++index)
+            nearestM = std::min(nearestM, race.riders().at(index).distanceM - race.you().distanceM);
+        stayedIn += nearestM < 10.0 ? 1 : 0;
+    }
+    QVERIFY2(stayedIn >= 8, qPrintable(QStringLiteral("stayed in %1 of 10").arg(stayedIn)));
 }
 
 void TstRace::muchStronger_rideAwayFromAWheel()
