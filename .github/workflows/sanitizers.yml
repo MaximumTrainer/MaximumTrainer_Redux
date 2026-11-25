@@ -26,7 +26,7 @@ env:
 jobs:
   asan_ubsan:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
       contents: read
@@ -43,7 +43,7 @@ jobs:
       run: |
         mirrors=""
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/noble/Release"; then
             mirrors="$mirrors http://$host/ubuntu/"
           fi
         done
@@ -114,7 +114,7 @@ jobs:
 
   clang_tidy:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
       contents: read
@@ -127,7 +127,7 @@ jobs:
       run: |
         mirrors=""
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/noble/Release"; then
             mirrors="$mirrors http://$host/ubuntu/"
           fi
         done
@@ -206,7 +206,7 @@ jobs:
   # Covers the sources those suites compile, not UI-only code.
   coverage:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
       contents: read
@@ -221,7 +221,7 @@ jobs:
       run: |
         mirrors=""
         for host in mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/jammy/Release"; then
+          if curl -fsS -o /dev/null -m 10 "http://$host/ubuntu/dists/noble/Release"; then
             mirrors="$mirrors http://$host/ubuntu/"
           fi
         done

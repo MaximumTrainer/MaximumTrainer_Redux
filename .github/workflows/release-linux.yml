@@ -20,13 +20,30 @@ env:
 jobs:
 
   build_linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    # Built on 22.04's glibc so the AppImage keeps running on Ubuntu 22.04;
+    # the hosted 22.04 runner goes away in April 2027.
+    container: ubuntu:22.04
+    env:
+      AQT_CONFIG: /__w/MaximumTrainer_Redux/MaximumTrainer_Redux/.github/aqt-settings.ini
+      APPIMAGE_EXTRACT_AND_RUN: "1"   # no FUSE in a container
+    defaults:
+      run:
+        shell: bash
     timeout-minutes: 35
     permissions:
       contents: read
       actions: read
 
     steps:
+    - name: Install base tools
+      run: |
+        apt-get -o Acquire::Retries=3 update -y
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+          sudo ca-certificates curl git file bzip2 xz-utils zstd unzip \
+          python3 python3-pip python3-venv build-essential cmake ninja-build pkg-config
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
     - name: Checkout
       uses: actions/checkout@v7
       with:
@@ -74,7 +91,8 @@ jobs:
         arch: 'linux_gcc_64'
         modules: 'qtwebengine qtconnectivity qtwebchannel qtpositioning qtmultimedia qtserialport qtwebsockets'
         cache: true
-        cache-key-prefix: qt-linux
+        cache-key-prefix: qt-linux-jammy
+        setup-python: false
 
     - name: Install system dependencies
       run: |
@@ -84,7 +102,6 @@ jobs:
           libssl-dev \
           libgl1-mesa-dev \
           libxcb-cursor0 \
-          libfuse2 \
           file
 
     - name: Restore QWT cache
@@ -92,7 +109,7 @@ jobs:
       uses: actions/cache@v6
       with:
         path: ${{ env.QWT_DIR }}
-        key: qwt-6.3.0-qt-${{ env.QT_VERSION }}-linux
+        key: qwt-6.3.0-qt-${{ env.QT_VERSION }}-linux-jammy
 
     - name: Build and install QWT
       if: steps.qwt-cache.outputs.cache-hit != 'true'
