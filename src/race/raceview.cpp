@@ -15,8 +15,8 @@ namespace {
 
 const QColor kYou(0xf0, 0x8a, 0x44);
 const QColor kRider(0x7f, 0x9f, 0xd6);
-const QColor kRidden(0x4c, 0xc0, 0x8f);
 const QColor kDraft(0x4c, 0xc0, 0x8f);
+const QColor kProgress(0x4c, 0xc0, 0x8f);
 // Fixed, not from the palette: the workout window's theme makes "mid" nearly
 // the background colour, and the road vanished.
 const QColor kRoad(0x5b, 0x62, 0x6c);
@@ -203,7 +203,7 @@ void RaceView::paintProgressPanel(QPainter &painter, const QRectF &mapArea) cons
     painter.setPen(Qt::NoPen);
     painter.setBrush(palette().color(QPalette::Mid));
     painter.drawRoundedRect(bar, 4.5, 4.5);
-    painter.setBrush(kRidden);
+    painter.setBrush(kProgress);
     painter.drawRoundedRect(QRectF(bar.left(), bar.top(), bar.width() * share, bar.height()), 4.5, 4.5);
 
     painter.setFont(font());
@@ -274,26 +274,6 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
     painter.setBrush(Qt::NoBrush);
     painter.drawPath(road);
 
-    // The part of the current lap you have ridden, ending just behind your dot and
-    // its ring (which sit further back while you follow a wheel).
-    constexpr double kClearOfYourDotPx = 24.0;
-    const double pixelsPerMetre = std::min(roadArea.width() - 56.0, roadArea.height() - 56.0) / (2.0 * kZoomHalfM);
-    const double riddenToM = you.distanceM - (kClearOfYourDotPx + m_yourSlideBack) / pixelsPerMetre;
-    const double lapStart = course.isLoop() ? std::floor(std::max(0.0, you.distanceM) / course.lapDistanceM()) * course.lapDistanceM() : 0.0;
-    QPainterPath ridden;
-    bool started = false;
-    const int samples = static_cast<int>(std::floor((riddenToM - lapStart) / 20.0));
-    for (int sample = 0; sample <= samples; ++sample) {
-        const QPointF point = routePoint(lapStart + sample * 20.0, roadArea, bounds);
-        started ? ridden.lineTo(point) : ridden.moveTo(point);
-        started = true;
-    }
-    if (started) {
-        ridden.lineTo(routePoint(riddenToM, roadArea, bounds));
-        painter.setPen(QPen(kRidden, 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-        painter.drawPath(ridden);
-    }
-
     const QPointF start = routePoint(0.0, roadArea, bounds);
     painter.setPen(Qt::NoPen);
     painter.setBrush(palette().color(QPalette::Text));
@@ -333,6 +313,7 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
             m_laneOffsets[index] = m_lanes.at(index);
         }
     }
+    const double pixelsPerMetre = std::min(roadArea.width() - 56.0, roadArea.height() - 56.0) / (2.0 * kZoomHalfM);
     const int wheel = you.draftingBehind;
     QVector<QPointF> centres(riderCount);
     QVector<QPointF> laneTargets;   // where the riders already placed are heading
@@ -692,7 +673,7 @@ void RaceView::paintGearPanel(QPainter &painter, const QRectF &mapArea) const
     auto drawButton = [&](const QRectF &button, const QString &arrow, int direction) {
         const bool lit = m_shiftDirection == direction && now - m_shiftAtMs < kFlashMs;
         painter.setPen(Qt::NoPen);
-        painter.setBrush(lit ? kRidden : palette().color(QPalette::Mid));
+        painter.setBrush(lit ? kProgress : palette().color(QPalette::Mid));
         painter.drawRoundedRect(button, 6, 6);
         QFont arrowFont = font();
         arrowFont.setBold(true);
