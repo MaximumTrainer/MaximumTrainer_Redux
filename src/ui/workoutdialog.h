@@ -65,6 +65,9 @@ class WorkoutDialog : public QDialog
 
 public:
     void adoptZwiftClickManager(ZwiftClickManager *manager);
+    /// Scans for Zwift Click controllers when the rider uses them. Not done in
+    /// the constructor: on Windows a Bluetooth scan spins an event loop.
+    void startZwiftClick();
     explicit WorkoutDialog(Workout workout,
                            QList<Radio> lstRadio, QVector<UserStudio> vecUserStudio, QWidget *parent = nullptr);
     ~WorkoutDialog() override;
@@ -347,7 +350,6 @@ private:
     // Zwift Click v2 RIGHT controller, read over its own BLE link (separate from
     // the trainer — ERG unaffected). Opt-in via account.use_zwift_click. Owned by
     // this dialog; scanning/connections are freed when the workout closes.
-    void setupZwiftClick();
     void connectZwiftClick();
     void saveTestResult(int ftpWatts, int lthrBpm);
 #ifndef Q_OS_WASM
@@ -466,7 +468,7 @@ private:
     bool isTestWorkout;
     QVector<UserStudio> vecUserStudio;
     //DataWorkout *dataWorkout; //Pointer because is a QObject (needs Signal) - deletion is automatic
-    DataWorkout *arrDataWorkout[constants::nbMaxUserStudio];
+    DataWorkout *arrDataWorkout[constants::nbMaxUserStudio] = {};
     UserStudioWidget *arrUserStudioWidget[constants::nbMaxUserStudio];
     SoundPlayer *soundPlayer;
 
@@ -511,9 +513,9 @@ private:
     QTime timeInterval;
 
 
-    bool isWorkoutStarted;
-    bool isWorkoutOver;
-    bool isWorkoutPaused;
+    bool isWorkoutStarted = false;
+    bool isWorkoutOver = false;
+    bool isWorkoutPaused = true;
 
     GroupPanel *m_groupPanel = nullptr;
     GroupRideCoordinator *m_groupRide = nullptr;

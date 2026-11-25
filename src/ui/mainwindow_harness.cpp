@@ -527,7 +527,7 @@ void MainWindow::screenshotNextStep()
         m_ssWorkoutDlg->activateWindow();
         QCoreApplication::processEvents();
         // Start it, so the capture shows live numbers on every rider card.
-        QKeyEvent startKey(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+        QKeyEvent startKey(QEvent::KeyPress, Qt::Key_Space, Qt::NoModifier);
         QCoreApplication::sendEvent(m_ssWorkoutDlg, &startKey);
         break;
     }

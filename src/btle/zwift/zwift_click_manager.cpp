@@ -4,6 +4,8 @@
 #include "zwift_click_protocol.h"
 #include "logger.h"
 
+#include <QTimer>
+
 namespace {
 // Stable per-device key (deviceUuid on macOS, address otherwise) for dedup —
 // the scan surfaces the same controller several times (adv vs scan response)
@@ -148,8 +150,13 @@ void ZwiftClickManager::connectDevice(const QBluetoothDeviceInfo &info)
         m_knownIds.remove(hub->deviceAddress());
         m_hubs.removeOne(hub);
         hub->deleteLater();
+        // Pick the controller up again when it wakes. Queued: on Windows starting
+        // a scan spins an event loop, which would free the hub emitting this.
         if (m_scanWanted && !m_singleDevice)
-            restartDiscovery();   // pick the controller up again when it wakes
+            QTimer::singleShot(0, this, [this]() {
+                if (m_scanWanted)
+                    restartDiscovery();
+            });
         emit connectionChanged();
     });
     connect(hub, &ZwiftClickHub::buttonPressed, this,

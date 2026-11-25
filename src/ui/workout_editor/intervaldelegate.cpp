@@ -196,25 +196,25 @@ void IntervalDelegate::updateEditorGeometry(QWidget *editor,  const QStyleOption
     /// Power
     if (index.column() == 2) {
         editor->setWindowFlags(Qt::Popup);
-        editor->setGeometry(option.rect.x(), option.rect.y(), 701, 90);
+        editor->resize(qMax(701, editor->sizeHint().width()), 90);
         editor->move(editor->parentWidget()->mapToGlobal(option.rect.topLeft()));
     }
     /// Cadence
     else if  (index.column() == 3) {
         editor->setWindowFlags(Qt::Popup);
-        editor->setGeometry(option.rect.x(), option.rect.y(), 350, 90);
+        editor->resize(qMax(350, editor->sizeHint().width()), 90);
         editor->move(editor->parentWidget()->mapToGlobal(option.rect.topLeft()));
     }
     /// HR
     else if  (index.column() == 4) {
         editor->setWindowFlags(Qt::Popup);
-        editor->setGeometry(option.rect.x(), option.rect.y(), 350, 90);
+        editor->resize(qMax(350, editor->sizeHint().width()), 90);
         editor->move(editor->parentWidget()->mapToGlobal(option.rect.topLeft()));
     }
     /// Repeat Change
     else if  (index.column() == 6) {
         editor->setWindowFlags(Qt::Popup);
-        editor->setGeometry(option.rect.x(), option.rect.y(), 490, 150);
+        editor->resize(qMax(490, editor->sizeHint().width()), 150);
         editor->move(editor->parentWidget()->mapToGlobal(option.rect.topLeft()));
     }
 

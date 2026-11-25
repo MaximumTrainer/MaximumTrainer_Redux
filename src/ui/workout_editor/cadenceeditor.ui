@@ -148,12 +148,6 @@
         </item>
         <item>
          <widget class="QLabel" name="label_toCadenceTxt">
-          <property name="maximumSize">
-           <size>
-            <width>15</width>
-            <height>16777215</height>
-           </size>
-          </property>
           <property name="text">
            <string>to</string>
           </property>

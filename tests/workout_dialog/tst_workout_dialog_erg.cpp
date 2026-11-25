@@ -5,13 +5,17 @@
  * holding the ERG target.
  */
 #include <QApplication>
+#include <QLabel>
 #include <QSignalSpy>
 #include <QStandardPaths>
 #include <QTest>
 
 #include "account.h"
+#include "cadenceeditor.h"
+#include "hreditor.h"
 #include "interval.h"
 #include "managerachievement.h"
+#include "powereditor.h"
 #include "radio.h"
 #include "sensor.h"
 #include "settings.h"
@@ -20,6 +24,9 @@
 #include "userstudio.h"
 #include "workout.h"
 #include "workoutdialog.h"
+#ifndef Q_OS_WASM
+#include "zwift_click_manager.h"
+#endif
 
 namespace {
 constexpr int kFtpWatts = 250;
@@ -165,6 +172,65 @@ private slots:
         QVERIFY(!sentFreeRide());
         for (const QList<QVariant> &load : std::as_const(*m_loads))
             QCOMPARE(load.at(1).toDouble(), double(kTargetWatts));
+    }
+
+    // Enter belongs to text fields; Space starts and pauses.
+    void enterIsNotAHotkey()
+    {
+        openDialog(false, 0);   // started
+        m_dialog->show();
+        QSignalSpy pauses(m_dialog, &WorkoutDialog::pauseClock);
+        QTest::keyClick(m_dialog, Qt::Key_Return);
+        QTest::keyClick(m_dialog, Qt::Key_Enter);
+        QCOMPARE(pauses.count(), 0);
+        QVERIFY(m_dialog->isVisible());
+        QTest::keyClick(m_dialog, Qt::Key_Space);
+        QCOMPARE(pauses.count(), 1);
+    }
+
+    // Starting a Bluetooth scan spins an event loop on Windows, so a half-built
+    // dialog would get clock data (crash of 2026-11-25).
+    void constructorStartsNoBluetoothScan()
+    {
+        m_account->use_zwift_click = true;
+        m_account->enable_studio_mode = false;
+        m_dialog = new WorkoutDialog(makeErgWorkout(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+        m_account->use_zwift_click = false;
+        QVERIFY(m_dialog->findChildren<ZwiftClickManager *>().isEmpty());
+    }
+
+    // A progressive step shows "to" between its two values, uncut. The wide font
+    // stands in for Windows scaling.
+    void progressiveEditorsShowWholeToLabel()
+    {
+        Interval ramp;
+        ramp.setTime(QTime(0, 5, 0));
+        ramp.setPowerStepType(Interval::PROGRESSIVE);
+        ramp.setCadenceStepType(Interval::PROGRESSIVE);
+        ramp.setHrStepType(Interval::PROGRESSIVE);
+        ramp.setRightPowerTarget(0.5);
+
+        PowerEditor power;
+        CadenceEditor cadence;
+        HrEditor heartRate;
+        power.setInterval(ramp);
+        cadence.setInterval(ramp);
+        heartRate.setInterval(ramp);
+
+        QFont wideFont = QApplication::font();
+        wideFont.setPointSize(13);
+        QList<QPair<QWidget *, QString>> editors = {{&power, "label_toFtpTxt"},
+                                                    {&cadence, "label_toCadenceTxt"},
+                                                    {&heartRate, "label_toLthrTxt"}};
+        for (const auto &[editor, labelName] : editors) {
+            editor->setFont(wideFont);
+            editor->resize(350, 90);
+            editor->show();
+            QVERIFY(QTest::qWaitForWindowExposed(editor));
+            auto *label = editor->findChild<QLabel *>(labelName);
+            QVERIFY2(label && label->isVisible(), qPrintable(labelName));
+            QVERIFY2(label->width() >= label->sizeHint().width(), qPrintable(labelName));
+        }
     }
 
 };

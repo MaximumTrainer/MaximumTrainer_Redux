@@ -195,10 +195,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     lastIntervalEndTime_sec = 0;
 
 
-    sendUserInfoToClock();
-    emit startClockSpeed();
-
-
     // Ignore click on workout plot while widget is loading
     timerIgnoreClickPlot = new QTimer(this);
     bignoreClickPlot = true;
@@ -427,7 +423,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     // On-screen virtual-shift arrows mirror the Up/Down keys.
     connect(ui->widget_topMenu, &TopMenuWorkout::gearUp,   this, [this]{ shiftGear(+1); });
     connect(ui->widget_topMenu, &TopMenuWorkout::gearDown, this, [this]{ shiftGear(-1); });
-    setupZwiftClick();   // opt-in Zwift Click v2 (right) controller, direct BLE
     connect(this, &WorkoutDialog::insideConfig, ui->widget_topMenu, &TopMenuWorkout::changeConfigIcon);
 
     // Make the splitter gutters easy to grab — the 1px default was nearly
@@ -594,6 +589,9 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
     initUI();
     setWidgetsStopped(true);
+
+    sendUserInfoToClock();
+    emit startClockSpeed();
 
     this->setFocus();
 
@@ -1500,8 +1498,8 @@ void WorkoutDialog::start_or_pause_workout() {
     }
 
     // In a group workout only the host's Start group ride button schedules the
-    // shared start. Keys and pedalling never do: Enter also sends chat messages,
-    // and it would start the ride for everyone.
+    // shared start. Keys and pedalling never do: they would start the ride for
+    // everyone.
     if (!isWorkoutStarted && m_groupRide && m_groupRide->awaitingStart())
         return;
 
@@ -2112,7 +2110,7 @@ void WorkoutDialog::sendGearLoad() {
     }
 }
 
-void WorkoutDialog::setupZwiftClick()
+void WorkoutDialog::startZwiftClick()
 {
 #ifndef Q_OS_WASM
     if (!account || !account->use_zwift_click)
@@ -2121,14 +2119,14 @@ void WorkoutDialog::setupZwiftClick()
     // trainer, so ERG/FTMS is unaffected. Right-side mapping (left unsupported):
     //   Y → gear up   B → gear down   A → radio next   Z → radio prev
     //   right paddle (+) → start/pause workout
-    m_clickManager = new ZwiftClickManager(this);   // freed with the dialog (BLE released)
-    connectZwiftClick();
+    if (!m_clickManager) {
+        m_clickManager = new ZwiftClickManager(this);   // freed with the dialog (BLE released)
+        connectZwiftClick();
+    }
     m_clickManager->start();   // scan + connect; only the right controller's buttons are mapped
 #endif
 }
 
-// Takes the controllers the pre-workout screen already paired, replacing the
-// manager this dialog started scanning with.
 void WorkoutDialog::adoptZwiftClickManager(ZwiftClickManager *manager)
 {
 #ifndef Q_OS_WASM
@@ -2692,7 +2690,7 @@ void WorkoutDialog::setMessagePlot() {
         showMessage = true;
 
         if (account->enable_studio_mode) {
-            toShow = tr("To start workout, press Enter or the start button");
+            toShow = tr("To start workout, press Space or the start button");
         }
         else if (trigger == 0) {
             toShow = tr("To start workout, pedal over ");
@@ -2713,14 +2711,14 @@ void WorkoutDialog::setMessagePlot() {
                 toShow += tr("mph");
         }
         else {
-            toShow = tr("To start workout, press Enter or the start button");
+            toShow = tr("To start workout, press Space or the start button");
         }
     }
     else if (isWorkoutPaused) {
         showMessage = true;
 
         if (account->enable_studio_mode) {
-            toShow = tr("To resume workout, press Enter or the resume button");
+            toShow = tr("To resume workout, press Space or the resume button");
         }
         else if (trigger == 0) {
             toShow = tr("To resume workout, pedal over ");
@@ -2741,7 +2739,7 @@ void WorkoutDialog::setMessagePlot() {
                 toShow += tr("mph");
         }
         else {
-            toShow = tr("To resume workout, press Enter or the resume button");
+            toShow = tr("To resume workout, press Space or the resume button");
         }
     }
     if (showMessage) {
@@ -2852,14 +2850,9 @@ void WorkoutDialog::keyPressEvent(QKeyEvent *event)
         return;
     case Qt::Key_Return:
     case Qt::Key_Enter:
-        // Enter starts/pauses the workout (matching the eventFilter and the
-        // "press Enter or the start button" prompt). Handle it here too and do
-        // NOT fall through to QDialog::keyPressEvent(), which would click the
-        // dialog's default button and accept()/close the workout — triggered
-        // unexpectedly when the embedded web video player (QWebEngineView) has
-        // focus and forwards a Return key back to the dialog.
-        if (!event->isAutoRepeat())
-            start_or_pause_workout();
+        // Not a hotkey (it clashed with typing in the web browser), but keep it
+        // away from QDialog, which would click the default button: the web view
+        // forwards the Return keys its page did not use.
         return;
     default:
         break;
@@ -3484,18 +3477,13 @@ bool WorkoutDialog::eventFilter(QObject *watched, QEvent *event) {
     if(event->type() == QEvent::KeyPress && isActiveWindow()) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
         // Typing in a text field (the browser address bar, or a search box
-        // inside the web page) needs Enter and the arrows for itself; only the
+        // inside the web page) needs the arrows for itself; only the
         // function keys stay global there.
         const int key = keyEvent->key();
-        const bool isEditingKey = key == Qt::Key_Enter || key == Qt::Key_Return
-                                  || key == Qt::Key_Up || key == Qt::Key_Down;
+        const bool isEditingKey = key == Qt::Key_Up || key == Qt::Key_Down;
         if (isEditingKey && focusIsTextInput())
             return false;
-        if(keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return ) {
-            start_or_pause_workout();
-            return true; // mark the event as handled
-        }
-        else if (keyEvent->key() == Qt::Key_Up) {
+        if (keyEvent->key() == Qt::Key_Up) {
             // Virtual shifting takes the arrows when enabled; otherwise they keep
             // their legacy role of nudging workout difficulty.
             if (virtualShiftingActive()) shiftGear(+1);
