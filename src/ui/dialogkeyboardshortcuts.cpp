@@ -39,7 +39,7 @@ DialogKeyboardShortcuts::DialogKeyboardShortcuts(QWidget *parent)
 
     // ----- Workout Player tab -----
     const QVector<QPair<QString,QString>> workoutRows = {
-        {tr("Space  /  Enter"),  tr("Start / Pause workout")},
+        {tr("Space"),  tr("Start / Pause workout")},
         {tr("→  (Right)"),       tr("Skip to next interval")},
         {tr("↑  /  ↓"),          tr("Virtual shift up / down (or difficulty if shifting is off)")},
         {tr("+  /  ="),          tr("Increase difficulty +5 %")},
@@ -62,7 +62,7 @@ DialogKeyboardShortcuts::DialogKeyboardShortcuts(QWidget *parent)
     tabs->addTab(makeTable(mainRows), tr("Main Window"));
 
     // ----- Zwift Click (right controller) tab -----
-    // Right-side mapping from WorkoutDialog::setupZwiftClick (left unsupported).
+    // Right-side mapping from ZwiftClickManager::onButtonPressed (left unsupported).
     const QVector<QPair<QString,QString>> zwiftRows = {
         {tr("Y"),               tr("Gear up (or difficulty in ERG)")},
         {tr("B"),               tr("Gear down (or difficulty in ERG)")},

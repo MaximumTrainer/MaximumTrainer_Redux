@@ -177,12 +177,6 @@
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
-        <property name="minimumSize">
-         <size>
-          <width>260</width>
-          <height>0</height>
-         </size>
-        </property>
         <layout class="QHBoxLayout" name="horizontalLayout">
          <property name="leftMargin">
           <number>0</number>
@@ -234,12 +228,6 @@
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>7</width>
-             <height>0</height>
-            </size>
            </property>
            <property name="maximumSize">
             <size>

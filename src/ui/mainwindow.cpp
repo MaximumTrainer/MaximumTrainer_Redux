@@ -1066,6 +1066,7 @@ void MainWindow::startSimulatedWorkout(const Workout &workout)
         simHub->start();
     attachPendingGroupSession(w);
     workoutExecuting();
+    w->startZwiftClick();
     QApplication::restoreOverrideCursor();
     w->show();
     w->showSimulatedDataNotice();
@@ -1176,6 +1177,7 @@ void MainWindow::startWorkoutWithConnectedHub(const Workout &workout, BtleHub *b
 
     attachPendingGroupSession(w);
     workoutExecuting();
+    w->startZwiftClick();
     QApplication::restoreOverrideCursor();
     w->show();
     m_launchingWorkout = false;
@@ -1233,7 +1235,6 @@ void MainWindow::startWorkoutConnectingSensors(const Workout &workout,
                                                                     : SensorStatusStrip::State::Searching);
         });
         w->adoptZwiftClickManager(click);
-        click->start();
     }
 
     connect(w, &WorkoutDialog::ftp_lthr_changed, ui->tab_workout1, &Main_WorkoutPage::updateTableViewMetrics);
@@ -1245,9 +1246,12 @@ void MainWindow::startWorkoutConnectingSensors(const Workout &workout,
 
     attachPendingGroupSession(w);
     workoutExecuting();
+    // Scans start before the window shows: on Windows starting one spins an event
+    // loop, and the rider must not be able to close the workout inside it.
+    w->startZwiftClick();
+    connector->start();
     QApplication::restoreOverrideCursor();
     w->show();
-    connector->start();
 }
 
 // Wire one rider's connected hubs (keyed by role) to the dialog: shared
@@ -1419,10 +1423,13 @@ void MainWindow::startStudioWorkoutConnectingSensors(const Workout &workout)
 
     attachPendingGroupSession(w);
     workoutExecuting();
-    QApplication::restoreOverrideCursor();
-    w->show();
+    // Scans start before the window shows: on Windows starting one spins an event
+    // loop, and the rider must not be able to close the workout inside it.
+    w->startZwiftClick();
     for (SensorConnector *connector : connectors)
         connector->start();
+    QApplication::restoreOverrideCursor();
+    w->show();
 }
 #endif // GC_WASM_BUILD
 
