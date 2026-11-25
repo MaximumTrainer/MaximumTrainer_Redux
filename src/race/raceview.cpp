@@ -657,15 +657,11 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
         const QString wheel = m_race->riders().at(you.draftingBehind).name;
         painter.drawText(draftCell, Qt::AlignHCenter | Qt::AlignVCenter,
                          QFontMetrics(draftFont).elidedText(
-                             tr("On %1's wheel \u00b7 %2%3 \u00b7 saving %4 %")
+                             tr("On %1's wheel%2")
                                  .arg(wheel)
-                                 .arg(gapM(you.draftingBehind) < 0.5
-                                          ? tr("<0.5 m")
-                                          : tr("%1 m").arg(gapM(you.draftingBehind), 0, 'f', 1))
                                  .arg(you.ridersSheltering > 1
                                           ? tr(" \u00b7 %1 riders").arg(you.ridersSheltering)
-                                          : QString())
-                                 .arg(qRound(you.powerSaving * 100)),
+                                          : QString()),
                              Qt::ElideMiddle, static_cast<int>(draftCell.width())));
     } else {
         constexpr double kShowAheadM = 60.0;
