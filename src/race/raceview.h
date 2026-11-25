@@ -100,6 +100,7 @@ private:
     mutable QRectF m_gearUpRect;
     mutable QRectF m_gearDownRect;
     mutable QVector<double> m_laneOffsets;
+    mutable double m_shownSaving = 0.0;     // smoothed, so the number does not flicker
     mutable double m_yourSlideBack = 0.0;   // pixels your dot sits behind the wheel you follow
 };
 

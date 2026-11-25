@@ -413,12 +413,15 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
         const double radius = index == 0 ? kYourRadius : kRadius;
         taken.append(QRectF(centres.at(index) - QPointF(radius, radius), QSizeF(2 * radius, 2 * radius)));
     }
+    taken.append(nowCardRect(area));   // drawn over the map
     const QFontMetricsF tagMetrics(dotFont);
     auto placeTag = [&](int index, bool mustShow) {
         const RaceSimulation::Rider &rider = m_race->riders().at(index);
         const QPointF centre = centres.at(index);
-        const double radius = rider.isYou ? kYourRadius : kRadius;
-        const QString label = rider.isYou ? tr("You") : rider.name;
+        const double radius = rider.isYou ? kYourRadius + 6 : kRadius;   // clear of your draft ring
+        const QString label = rider.isYou
+            ? tr("%1 m \u00b7 -%2 %").arg(std::max(0.0, gapM(wheel)), 0, 'f', 1).arg(qRound(m_shownSaving * 100))
+            : rider.name;
         const double width = tagMetrics.horizontalAdvance(label) + 12;
         const QRectF candidates[] = {
             {centre.x() + radius + 3, centre.y() - 9, width, 18},
@@ -426,8 +429,10 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
             {centre.x() - width / 2, centre.y() - radius - 21, width, 18},
             {centre.x() - width / 2, centre.y() + radius + 3, width, 18},
         };
-        if (m_tagSides.size() != m_race->riders().size())
+        if (m_tagSides.size() != m_race->riders().size()) {
             m_tagSides = QVector<int>(m_race->riders().size(), 0);
+            m_tagSides[0] = 1;   // your card is on the right
+        }
         int chosen = -1;
         for (int attempt = 0; attempt < 4; ++attempt) {
             const int side = (m_tagSides.at(index) + attempt) % 4;
@@ -441,16 +446,23 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
             return;
         if (chosen >= 0)
             m_tagSides[index] = chosen;
-        const QRectF tag = candidates[std::max(chosen, 0)];
+        const QRectF tag = candidates[chosen >= 0 ? chosen : 2];
         taken.append(tag);
-        const QColor colour = rider.isYou ? kYou : kRider;
+        const QColor colour = rider.isYou ? kDraft : kRider;
         painter.setPen(rider.isYou ? Qt::NoPen : QPen(colour, 1));
         painter.setBrush(rider.isYou ? colour : palette().color(QPalette::Base));
         painter.drawRoundedRect(tag, 4, 4);
         painter.setFont(dotFont);
-        painter.setPen(rider.isYou ? Qt::white : colour);
+        painter.setPen(rider.isYou ? Qt::black : colour);
         painter.drawText(tag, Qt::AlignCenter, label);
     };
+    // How far back you are and the power you save, beside your dot while its ring is green.
+    if (draftState() == DraftState::Drafting) {
+        m_shownSaving = m_shownSaving <= 0.0 ? you.powerSaving : m_shownSaving + (you.powerSaving - m_shownSaving) * 0.1;
+        placeTag(0, true);
+    } else {
+        m_shownSaving = 0.0;
+    }
     QVector<int> nearby;
     for (int index = 1; index < m_race->riders().size(); ++index)
         if (std::abs(gapM(index)) <= kNameRangeM)
