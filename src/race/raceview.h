@@ -20,9 +20,9 @@ public:
 
     QSize sizeHint() const override { return {960, 520}; }
 
-    /// Your W/kg turns red above this (your FTP over your weight), and so
-    /// does your ring on the map; a bot flashes red at 1.5 times it (a sprint). 0 = never.
-    void setRedLineWattsPerKg(double wattsPerKg);
+    /// Your FTP over your weight. A rider at 1.5 times it or more is sprinting:
+    /// the W/kg turns red and the dot's border flashes red. 0 = never.
+    void setFtpWattsPerKg(double wattsPerKg);
 
     /// The virtual gear, drawn top left of the map with ▼/▲ buttons.
     void setGear(int gear, int gearCount, bool visible);
@@ -39,7 +39,7 @@ public:
     /// The lane (0 to 3, across the road) a rider's dot is in, as last drawn.
     int laneOf(int riderIndex) const { return riderIndex < m_lanes.size() ? m_lanes.at(riderIndex) : -1; }
     /// Your draft, as the ring around your dot shows it.
-    enum class DraftState { None, JustOut, Drafting };
+    enum class DraftState { None, Drafting };
     DraftState draftState() const;
     /// The standings order as last drawn.
     const QVector<int> &displayOrder() const { return m_displayOrder; }
@@ -72,7 +72,6 @@ private:
     QPointF project(double raceDistanceM) const;   // metres east/north of the start
     QRectF zoomBounds() const;                     // the stretch of road around you
     double gapM(int riderIndex) const;
-    bool aboveRedLine(double wattsPerKg) const;
     bool aboveSprintLine(double wattsPerKg) const;             // metres ahead of you (negative: behind)
     QPointF routePoint(double raceDistanceM, const QRectF &area, const QRectF &bounds, double margin = 28.0) const;
     QColor gradeColor(double grade) const;
@@ -81,7 +80,7 @@ private:
     // The lap's route projected flat once (x east, y north, in metres).
     QVector<QPointF> m_projected;
     QRectF m_projectedBounds;
-    double m_redLineWattsPerKg = 0.0;
+    double m_ftpWattsPerKg = 0.0;
     // Each rider's lane across the road (0 to 3) and where their dot is on
     // its way to it; kept between frames so riders don't hop sides.
     QVector<int> m_displayOrder;   // standings as shown: bots pass each other by a clear margin, you by any

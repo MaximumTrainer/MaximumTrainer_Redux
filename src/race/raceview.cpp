@@ -17,12 +17,10 @@ const QColor kYou(0xf0, 0x8a, 0x44);
 const QColor kRider(0x7f, 0x9f, 0xd6);
 const QColor kRidden(0x4c, 0xc0, 0x8f);
 const QColor kDraft(0x4c, 0xc0, 0x8f);
-const QColor kJustOut(0xf2, 0xc2, 0x30);
-constexpr double kJustOutM = 25.0;   // this far back you have just lost a wheel
 // Fixed, not from the palette: the workout window's theme makes "mid" nearly
 // the background colour, and the road vanished.
 const QColor kRoad(0x5b, 0x62, 0x6c);
-const QColor kAboveThreshold(0xef, 0x4b, 0x3f);
+const QColor kSprint(0xef, 0x4b, 0x3f);
 const QColor kGradeEasy(0x7c, 0xc4, 0x7f);
 const QColor kGradeMid(0xe0, 0xc3, 0x41);
 const QColor kGradeHard(0xe8, 0xa2, 0x3a);
@@ -373,23 +371,19 @@ void RaceView::paintRoute(QPainter &painter, const QRectF &area) const
             laneTargets.last() = centres[0];
         }
     }
-    // A bot sprinting (1.5 x your FTP per kg or more): its border flashes red.
+    // Anyone sprinting, you too (1.5 x your FTP per kg or more): the border flashes red.
     const bool flashOn = (QDateTime::currentMSecsSinceEpoch() / 250) % 2 == 0;
     auto drawDot = [&](int index) {
         const RaceSimulation::Rider &rider = m_race->riders().at(index);
         const QPointF centre = centres.at(index);
         const double radius = rider.isYou ? kYourRadius : kRadius;
-        // Your ring turns red with the W/kg on the card: at once, above your FTP.
-        const bool overFtp = rider.isYou && !rider.finishTimeSec && aboveRedLine(rider.powerW / rider.riderKg);
-        const bool sprinting = !rider.isYou && !rider.finishTimeSec && aboveSprintLine(rider.powerW / rider.riderKg);
-        painter.setPen(overFtp || (sprinting && flashOn) ? QPen(kAboveThreshold, 3.5) : QPen(palette().color(QPalette::Window), 2));
+        const bool sprinting = !rider.finishTimeSec && aboveSprintLine(rider.powerW / rider.riderKg);
+        painter.setPen(sprinting && flashOn ? QPen(kSprint, 3.5) : QPen(palette().color(QPalette::Window), 2));
         painter.setBrush(rider.isYou ? kYou : kRider);
         painter.drawEllipse(centre, radius, radius);
-        if (rider.isYou && draftState() != DraftState::None) {
-            // Outer ring: green on a wheel, dashed amber just out of reach of one.
-            const bool drafting = draftState() == DraftState::Drafting;
+        if (rider.isYou && draftState() == DraftState::Drafting) {
             painter.setBrush(Qt::NoBrush);
-            painter.setPen(drafting ? QPen(kDraft, 3) : QPen(kJustOut, 2.5, Qt::DashLine));
+            painter.setPen(QPen(kDraft, 3));
             painter.drawEllipse(centre, radius + 5, radius + 5);
         }
         painter.setFont(dotFont);
@@ -524,34 +518,21 @@ QRectF RaceView::nowCardRect(const QRectF &mapArea) const
     return {left, std::min(top, mapArea.bottom() - kNowCardHeight - 8), width, kNowCardHeight};
 }
 
-void RaceView::setRedLineWattsPerKg(double wattsPerKg)
+void RaceView::setFtpWattsPerKg(double wattsPerKg)
 {
-    m_redLineWattsPerKg = wattsPerKg;
+    m_ftpWattsPerKg = wattsPerKg;
     update();
-}
-
-bool RaceView::aboveRedLine(double wattsPerKg) const
-{
-    return m_redLineWattsPerKg > 0.0 && wattsPerKg > m_redLineWattsPerKg;
 }
 
 bool RaceView::aboveSprintLine(double wattsPerKg) const
 {
     constexpr double kSprintShareOfFtp = 1.5;
-    return m_redLineWattsPerKg > 0.0 && wattsPerKg >= kSprintShareOfFtp * m_redLineWattsPerKg;
+    return m_ftpWattsPerKg > 0.0 && wattsPerKg >= kSprintShareOfFtp * m_ftpWattsPerKg;
 }
 
 RaceView::DraftState RaceView::draftState() const
 {
-    if (m_race->youFinished())
-        return DraftState::None;
-    if (m_race->you().draftingBehind >= 0)
-        return DraftState::Drafting;
-    const QVector<RaceSimulation::Rider> &riders = m_race->riders();
-    for (int index = 1; index < riders.size(); ++index)
-        if (!riders.at(index).finishTimeSec && gapM(index) > 0.0 && gapM(index) <= kJustOutM)
-            return DraftState::JustOut;
-    return DraftState::None;
+    return !m_race->youFinished() && m_race->you().draftingBehind >= 0 ? DraftState::Drafting : DraftState::None;
 }
 
 double RaceView::gapM(int riderIndex) const
@@ -581,7 +562,7 @@ void RaceView::paintNowPanel(QPainter &painter, const QRectF &mapArea) const
     // W/kg sits under the power, in the power cell.
     const Cell cells[] = {
         {tr("POWER"), QString::number(qRound(you.powerW)), tr("W"), text,
-         tr("%1 W/kg").arg(wattsPerKg, 0, 'f', 1), aboveRedLine(wattsPerKg) ? kAboveThreshold : text},
+         tr("%1 W/kg").arg(wattsPerKg, 0, 'f', 1), aboveSprintLine(wattsPerKg) ? kSprint : text},
         {tr("CADENCE"), orDash(m_cadenceRpm), tr("rpm"), text, QString(), text},
         {tr("HEART RATE"), orDash(m_heartRateBpm), tr("bpm"), text, QString(), text},
         {tr("SPEED"), QString::number(you.speedMps * 3.6, 'f', 1), tr("km/h"), text, QString(), text},
@@ -892,7 +873,7 @@ void RaceView::paintStandings(QPainter &painter, const QRectF &area) const
         painter.setFont(numbers);
         if (!rider.finishTimeSec) {
             const double wattsPerKg = rider.powerW / rider.riderKg;
-            painter.setPen(rider.isYou && aboveRedLine(wattsPerKg) ? kAboveThreshold : muted);
+            painter.setPen(aboveSprintLine(wattsPerKg) ? kSprint : muted);
             painter.drawText(wkgCell, Qt::AlignVCenter | Qt::AlignRight,
                              QStringLiteral("%1 W/kg").arg(wattsPerKg, 0, 'f', 1));
         }
