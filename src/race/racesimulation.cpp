@@ -50,6 +50,7 @@ void RaceSimulation::addBot(const RaceBot &bot)
     Rider rider;
     rider.name = bot.name();
     rider.riderKg = bot.massKg();
+    rider.ftpWattsPerKg = bot.wattsPerKg();
     rider.massKg = bot.massKg() + you().massKg - you().riderKg;
     rider.cda = you().cda;
     rider.powerW = bot.wattsPerKg() * bot.massKg();   // on the start line, before the first step

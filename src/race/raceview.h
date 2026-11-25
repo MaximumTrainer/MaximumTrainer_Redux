@@ -20,8 +20,8 @@ public:
 
     QSize sizeHint() const override { return {960, 520}; }
 
-    /// Your FTP over your weight. A rider at 1.5 times it or more is sprinting:
-    /// the W/kg turns red and the dot's border flashes red. 0 = never.
+    /// Your FTP over your weight. A rider at 1.5 times their own FTP (a bot's:
+    /// its steady W/kg) is sprinting: the W/kg turns red and the dot flashes red.
     void setFtpWattsPerKg(double wattsPerKg);
 
     /// The virtual gear, drawn top left of the map with ▼/▲ buttons.
@@ -72,7 +72,7 @@ private:
     QPointF project(double raceDistanceM) const;   // metres east/north of the start
     QRectF zoomBounds() const;                     // the stretch of road around you
     double gapM(int riderIndex) const;
-    bool aboveSprintLine(double wattsPerKg) const;             // metres ahead of you (negative: behind)
+    bool sprinting(int riderIndex) const;             // metres ahead of you (negative: behind)
     QPointF routePoint(double raceDistanceM, const QRectF &area, const QRectF &bounds, double margin = 28.0) const;
     QColor gradeColor(double grade) const;
 

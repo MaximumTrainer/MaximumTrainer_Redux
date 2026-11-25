@@ -19,6 +19,7 @@ public:
         QString name;
         bool isYou = false;
         double riderKg = 75.0;         // body weight, for W/kg
+        double ftpWattsPerKg = 0.0;    // a bot's steady W/kg; yours comes from your profile
         double massKg = 83.0;          // rider plus bike, for the physics
         double cda = 0.30;
         double distanceM = 0.0;
