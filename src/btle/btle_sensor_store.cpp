@@ -18,7 +18,8 @@ QList<BtleSensorRole> BtleSensorStore::allRoles()
         BtleSensorRole::Power,
         BtleSensorRole::CadenceSpeed,
         BtleSensorRole::HeartRate,
-        BtleSensorRole::Oxygen
+        BtleSensorRole::Oxygen,
+        BtleSensorRole::SecondaryPower
     };
 }
 
@@ -55,6 +56,7 @@ QString BtleSensorStore::roleKey(BtleSensorRole role)
     case BtleSensorRole::Trainer:      return QStringLiteral("trainer");
     case BtleSensorRole::Oxygen:       return QStringLiteral("oxygen");
     case BtleSensorRole::Rower:        return QStringLiteral("rower");
+    case BtleSensorRole::SecondaryPower: return QStringLiteral("power2");
     }
     return QStringLiteral("unknown");
 }
@@ -68,6 +70,7 @@ QString BtleSensorStore::roleDisplayName(BtleSensorRole role)
     case BtleSensorRole::Trainer:      return QObject::tr("Trainer");
     case BtleSensorRole::Oxygen:       return QObject::tr("Oxygen");
     case BtleSensorRole::Rower:        return QObject::tr("Rower");
+    case BtleSensorRole::SecondaryPower: return QObject::tr("2nd power meter");
     }
     return QString();
 }
@@ -96,6 +99,8 @@ QList<QBluetoothUuid> BtleSensorStore::serviceUuidsForRole(BtleSensorRole role)
         return { QBluetoothUuid(MoxyOxygen) };
     case BtleSensorRole::Rower:
         return { QBluetoothUuid(FitnessMachine) };
+    case BtleSensorRole::SecondaryPower:
+        return { QBluetoothUuid(CyclingPower) };
     }
     return {};
 }

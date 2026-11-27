@@ -113,8 +113,9 @@ void DataWorkout::setStartTimeWorkout(QDateTime dt) {
     this->startTimeWorkout = std::move(dt);
 }
 
-void DataWorkout::initFitFile(QString username, QString nameWorkout, QDateTime timeStarted, bool rowing) {
-    fitCreator.initialize_FIT_File(username, nameWorkout, timeStarted, rowing);
+void DataWorkout::initFitFile(QString username, QString nameWorkout, QDateTime timeStarted, bool rowing,
+                              const QString &deviceTag, const QString &subfolder) {
+    fitCreator.initialize_FIT_File(username, nameWorkout, timeStarted, rowing, deviceTag, subfolder);
 }
 void DataWorkout::closeFitFile() {
     fitCreator.close_FIT_File();
@@ -150,7 +151,8 @@ void DataWorkout::updateData(int secReceived,
 
     // --- HR ------------------------------------------------------------------
     if (averageHr1sec != -1) {
-        DataHeartRate::instance().append( QPointF( secReceived, averageHr1sec) );
+        if (m_feedsGraphs)
+            DataHeartRate::instance().append( QPointF( secReceived, averageHr1sec) );
         hrDataReceived(averageHr1sec);
         writeRecord = true;
         lastHr = averageHr1sec;
@@ -165,7 +167,8 @@ void DataWorkout::updateData(int secReceived,
     }
     // --- Cadence ------------------------------------------------------------------
     if (averageCadence1sec != -1) {
-        DataCadence::instance().append( QPointF( secReceived, averageCadence1sec) );
+        if (m_feedsGraphs)
+            DataCadence::instance().append( QPointF( secReceived, averageCadence1sec) );
         cadDataReceived(averageCadence1sec);
         writeRecord = true;
         lastCadence = averageCadence1sec;
@@ -180,7 +183,8 @@ void DataWorkout::updateData(int secReceived,
     }
     // --- Speed ------------------------------------------------------------------
     if (averageSpeed1sec != -1) {
-        DataSpeed::instance().append( QPointF( secReceived, averageSpeed1sec) );
+        if (m_feedsGraphs)
+            DataSpeed::instance().append( QPointF( secReceived, averageSpeed1sec) );
         speedDataReceived(averageSpeed1sec);
         writeRecord = true;
         lastSpeed = averageSpeed1sec;
@@ -195,7 +199,8 @@ void DataWorkout::updateData(int secReceived,
     }
     // --- Power ------------------------------------------------------------------
     if (averagePower1sec != -1) {
-        DataPower::instance().append( QPointF( secReceived, averagePower1sec) );
+        if (m_feedsGraphs)
+            DataPower::instance().append( QPointF( secReceived, averagePower1sec) );
         powerDataReceived(secReceived, averagePower1sec);
         writeRecord = true;
         lastPower = averagePower1sec;

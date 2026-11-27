@@ -16,6 +16,11 @@
 #include "interval.h"
 #include "managerachievement.h"
 #include "powereditor.h"
+#include "dataworkout.h"
+#include "datapower.h"
+#include "util.h"
+#include <QDir>
+#include <QFileInfo>
 #include "radio.h"
 #include "radiotablemodel.h"
 #include "sensorstatusstrip.h"
@@ -260,6 +265,32 @@ private slots:
         QVERIFY(strip.isVisible());
         strip.clear();
         QVERIFY(strip.chipText(1).isEmpty());
+    }
+
+    // Dual recording: the 2nd power meter's file sits in History/Dual recording,
+    // is named after the meter, and never reaches the live graphs.
+    void dualRecording_fileIsTaggedAndOffTheGraphs()
+    {
+        DataWorkout secondary(makeErgWorkout(), kFtpWatts);
+        secondary.setFeedsGraphs(false);
+        const int graphPointsBefore = DataPower::instance().size();
+        const QDateTime started = QDateTime::currentDateTimeUtc();
+        secondary.setStartTimeWorkout(started);
+        secondary.initFitFile(QStringLiteral("rider"), QStringLiteral("Sweet Spot"), started, false,
+                              QStringLiteral("Assioma Duo"), QString::fromLatin1(WorkoutDialog::kDualRecordingFolder));
+        for (int second = 1; second <= 5; ++second)
+            secondary.updateData(second, 140, 90, 30.0, 230.0, -1, -1, -1);
+        secondary.writeEndFile(5.0);
+        secondary.closeFitFile();
+
+        const QString file = secondary.getFitFilename();
+        QVERIFY2(QFileInfo::exists(file), qPrintable(file));
+        QCOMPARE(QFileInfo(file).dir().dirName(), QStringLiteral("Dual recording"));
+        QVERIFY2(QFileInfo(file).fileName().endsWith(QStringLiteral("-Sweet Spot [Assioma Duo].fit")), qPrintable(file));
+        QCOMPARE(QFileInfo(file).dir().absolutePath(),
+                 QDir(Util::getSystemPathHistory() + QStringLiteral("/Dual recording")).absolutePath());
+        QCOMPARE(DataPower::instance().size(), graphPointsBefore);
+        QFile::remove(file);
     }
 
     void enterIsNotAHotkey()

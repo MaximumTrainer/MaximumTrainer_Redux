@@ -34,7 +34,12 @@ public:
 
     void changeInterval(double timeStarted, double timeNow, int timePaused_msec, bool workoutOver, bool testInterval);
     void writeEndFile(double timeNow);
-    void initFitFile(QString username, QString nameWorkout, QDateTime timeStarted, bool rowing = false);
+    /// \a deviceTag (e.g. the power meter's name) is appended to the file name in
+    /// brackets; \a subfolder is created under the History folder.
+    void initFitFile(QString username, QString nameWorkout, QDateTime timeStarted, bool rowing = false,
+                     const QString &deviceTag = QString(), const QString &subfolder = QString());
+    /// Off for a background recording (dual power): its samples stay off the live graphs.
+    void setFeedsGraphs(bool feeds) { m_feedsGraphs = feeds; }
     void closeFitFile();
     void closeAndDeleteFitFile();
 
@@ -100,6 +105,7 @@ private :
 
 
 private:
+    bool m_feedsGraphs = true;
     FitActivityCreator fitCreator;
     Workout workout;
 

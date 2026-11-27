@@ -1346,7 +1346,13 @@ void WorkoutDialog::startWorkout() {
     dateTimeStartedWorkout = QDateTime::currentDateTime();
 
     m_dataWorkout->setStartTimeWorkout(dateTimeStartedWorkout.toUTC());
-    m_dataWorkout->initFitFile(account->email_clean, workout.getName(), dateTimeStartedWorkout.toUTC(), account->rowing_mode );
+    m_dataWorkout->initFitFile(account->email_clean, workout.getName(), dateTimeStartedWorkout.toUTC(), account->rowing_mode,
+                               m_secondaryWorkout ? m_mainPowerName : QString());
+    if (m_secondaryWorkout) {
+        m_secondaryWorkout->setStartTimeWorkout(dateTimeStartedWorkout.toUTC());
+        m_secondaryWorkout->initFitFile(account->email_clean, workout.getName(), dateTimeStartedWorkout.toUTC(),
+                                        account->rowing_mode, m_secondaryPowerName, kDualRecordingFolder);
+    }
 
     timerCheckToActivateSound->start();
 }
@@ -1530,6 +1536,36 @@ void WorkoutDialog::recordRiderSecond(int riderIndex, int seconds) {
     m_dataWorkout->updateData(seconds, second.heartRate, second.cadence,
                                            second.speed, second.power, second.rightPedalPercent,
                                            second.saturatedHemoglobinPercent, second.totalHemoglobinConcentration);
+    if (m_secondaryWorkout) {
+        // Same second, same HR/cadence/speed; only the power comes from the 2nd meter.
+        const double secondaryPower = m_secondaryPowerSamples > 0 ? m_secondaryPowerSum / m_secondaryPowerSamples : -1;
+        m_secondaryWorkout->updateData(seconds, second.heartRate, second.cadence, second.speed, secondaryPower, -1,
+                                       second.saturatedHemoglobinPercent, second.totalHemoglobinConcentration);
+        m_secondaryPowerSum = 0;
+        m_secondaryPowerSamples = 0;
+    }
+}
+
+void WorkoutDialog::setDualRecording(const QString &mainName, const QString &secondaryName)
+{
+    if (m_secondaryWorkout || secondaryName.trimmed().isEmpty())
+        return;
+    m_mainPowerName = mainName.trimmed().isEmpty() ? tr("Main") : mainName.trimmed();
+    m_secondaryPowerName = secondaryName.trimmed();
+    m_secondaryWorkout = new DataWorkout(workout, account->FTP, this);
+    m_secondaryWorkout->setFeedsGraphs(false);
+    LOG_INFO("WorkoutDialog", QStringLiteral("dual recording: %1 + %2").arg(m_mainPowerName, m_secondaryPowerName));
+}
+
+void WorkoutDialog::SecondaryPowerDataReceived(int userID, int watts)
+{
+    Q_UNUSED(userID)
+    if (!m_secondaryWorkout || watts < 0 || !isWorkoutStarted || isWorkoutPaused || isWorkoutOver)
+        return;
+    m_secondaryPowerSum += watts;
+    ++m_secondaryPowerSamples;
+    m_secondaryPowerSeen = true;
+    m_secondaryWorkout->checkUpdateMaxPower(watts);
 }
 
 
@@ -1588,6 +1624,8 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
     if (!isWorkoutPaused && !isWorkoutOver) {
 
         m_dataWorkout->checkUpdateMaxHr(value);
+        if (m_secondaryWorkout)
+            m_secondaryWorkout->checkUpdateMaxHr(value);
 
         m_secondSamples.addSample(0, SensorSecondAccumulator::Metric::HeartRate, value);
 
@@ -1632,6 +1670,8 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
     if (!isWorkoutPaused && !isWorkoutOver) {
 
         m_dataWorkout->checkUpdateMaxCad(value);
+        if (m_secondaryWorkout)
+            m_secondaryWorkout->checkUpdateMaxCad(value);
 
 
         ///Check to play sound, 10sec cooldown between sound and not first/last 3 second of an interval
@@ -1709,6 +1749,8 @@ void WorkoutDialog::VirtualSpeedDataReceived(int userID, double valueMS, double 
     //Update Distance Counter
     if (!isWorkoutPaused && !isWorkoutOver) {
         m_dataWorkout->updateDistance(valueMS*timeAtThisSpeedSec);
+        if (m_secondaryWorkout)
+            m_secondaryWorkout->updateDistance(valueMS*timeAtThisSpeedSec);
     }
 
 }
@@ -1727,6 +1769,8 @@ void WorkoutDialog::speedDataChosen(int userID, double value) {
     if (!isWorkoutPaused && !isWorkoutOver) {
 
         m_dataWorkout->checkUpdateMaxSpeed(value);
+        if (m_secondaryWorkout)
+            m_secondaryWorkout->checkUpdateMaxSpeed(value);
 
 
         //averaging 1sec
@@ -2963,12 +3007,24 @@ void WorkoutDialog::closeFitFiles(double timeElapSec) {
 
     m_dataWorkout->writeEndFile(timeElapSec);
     m_dataWorkout->closeFitFile();
+    if (m_secondaryWorkout) {
+        if (m_secondaryPowerSeen) {
+            m_secondaryWorkout->writeEndFile(timeElapSec);
+            m_secondaryWorkout->closeFitFile();
+            LOG_INFO("WorkoutDialog", QStringLiteral("dual recording saved: %1").arg(m_secondaryWorkout->getFitFilename()));
+        } else {
+            LOG_INFO("WorkoutDialog", QStringLiteral("dual recording dropped: no power from %1").arg(m_secondaryPowerName));
+            m_secondaryWorkout->closeAndDeleteFitFile();
+        }
+    }
     checkFitFileCreated();
 }
 
 void WorkoutDialog::closeAndDeleteFitFile() {
 
     m_dataWorkout->closeAndDeleteFitFile();
+    if (m_secondaryWorkout)
+        m_secondaryWorkout->closeAndDeleteFitFile();
 }
 
 void WorkoutDialog::changeIntervalsDataWorkout(double timeStarted, double timeNow, int timePaused_msec, bool workoutOver, bool testInterval) {
@@ -2990,6 +3046,8 @@ void WorkoutDialog::changeIntervalsDataWorkout(double timeStarted, double timeNo
     }
 
     m_dataWorkout->changeInterval(timeStarted, timeNow, timePaused_msec, workoutOver, testInterval);
+    if (m_secondaryWorkout)
+        m_secondaryWorkout->changeInterval(timeStarted, timeNow, timePaused_msec, workoutOver, testInterval);
 
     if (showSummary)
         showIntervalSummaryOverlay(summaryAvgPower, summaryAvgHr, summaryAvgCad,
