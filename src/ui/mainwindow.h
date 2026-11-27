@@ -109,7 +109,8 @@ private:
                           bool releaseOnClose = true);
 
     void rebuildDeviceBar();
-    void showDeviceMenu(const QPoint &globalPos);
+    /// Right-click on the device bar; \a key is the chip clicked (-1: none).
+    void showDeviceMenu(int key, const QPoint &globalPos);
 
     DeviceSession     *m_devices = nullptr;
     SensorStatusStrip *m_deviceStrip = nullptr;

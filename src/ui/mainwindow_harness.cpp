@@ -753,7 +753,21 @@ void MainWindow::runDeviceSessionCheck(const QString &outDir)
                         const bool up = m_devices->trainerHub() && m_devices->trainerHub()->isConnected();
                         note(up ? QStringLiteral("trainer still connected after closing ride 2")
                                 : QStringLiteral("FAIL trainer dropped after closing ride 2"));
-                        finish(wired1 && stillUp && flowing && up ? 0 : 1);
+                        const int trainerKey = int(account->rowing_mode ? BtleSensorRole::Rower : BtleSensorRole::Trainer);
+                        m_devices->disconnectDevice(trainerKey);
+                        // One background-retry tick must not bring it back.
+                        QTimer::singleShot(35000, this, [=, this]() {
+                            const bool off = m_devices->trainerHub() == nullptr;
+                            note(off ? QStringLiteral("trainer stayed disconnected through a retry tick")
+                                     : QStringLiteral("FAIL disconnected trainer came back on its own"));
+                            grab().save(outDir + QLatin1String("/main_window_trainer_off.png"), "PNG");
+                            m_devices->retry(trainerKey);
+                            waitFor([this]() { return m_devices->trainerHub() != nullptr; }, 30000, [=](bool back) {
+                                note(back ? QStringLiteral("trainer reconnected on request")
+                                          : QStringLiteral("FAIL trainer did not reconnect"));
+                                finish(wired1 && stillUp && flowing && up && off && back ? 0 : 1);
+                            });
+                        });
                     });
                 });
             });

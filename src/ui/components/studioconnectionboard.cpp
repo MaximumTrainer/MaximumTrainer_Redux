@@ -112,7 +112,8 @@ void StudioConnectionBoard::setState(int rider, int key, SensorStatusStrip::Stat
     case SensorStatusStrip::State::Connected:  color = kGreen; break;
     case SensorStatusStrip::State::NotFound:
     case SensorStatusStrip::State::Lost:       color = kRed; break;
-    case SensorStatusStrip::State::Searching:  break;
+    case SensorStatusStrip::State::Searching:
+    case SensorStatusStrip::State::Disconnected: break;
     }
     row.dot->setStyleSheet(QStringLiteral("font-size: 9pt; color: %1;").arg(color));
     row.status->setText(statusText(rider, key));
@@ -131,6 +132,7 @@ QString StudioConnectionBoard::statusText(int rider, int key) const
     case SensorStatusStrip::State::Connected:  return tr("Connected");
     case SensorStatusStrip::State::NotFound:   return tr("Not found - click to retry");
     case SensorStatusStrip::State::Lost:       return tr("Lost - click to retry");
+    case SensorStatusStrip::State::Disconnected: return tr("Disconnected");
     }
     return {};
 }

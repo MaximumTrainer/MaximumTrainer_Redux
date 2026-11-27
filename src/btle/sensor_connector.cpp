@@ -110,6 +110,8 @@ void SensorConnector::retry(BtleSensorRole role)
         if (slot.role != role || slot.status == Status::Connected)
             continue;
         const QString key = deviceKey(slot.saved);
+        if (slot.hub)
+            m_releasedHubs.remove(slot.hub);
         if (slot.hub && m_infoByDevice.contains(key)) {
             setStatusForHub(slot.hub, Status::Connecting);
             slot.hub->connectToDevice(m_infoByDevice.value(key));
@@ -117,6 +119,18 @@ void SensorConnector::retry(BtleSensorRole role)
         }
         setStatus(index, Status::Searching);
         start();
+        return;
+    }
+}
+
+void SensorConnector::release(BtleSensorRole role)
+{
+    for (const Slot &slot : std::as_const(m_slots)) {
+        if (slot.role != role || !slot.hub)
+            continue;
+        m_releasedHubs.insert(slot.hub);
+        slot.hub->disconnectFromDevice();
+        setStatusForHub(slot.hub, Status::Disconnected);
         return;
     }
 }
@@ -136,7 +150,7 @@ BtleHub *SensorConnector::hubForDevice(const QString &key, const QBluetoothDevic
     // The hub retries an unexpected drop on its own; show it as reconnecting
     // until it either comes back or gives up with connectionError.
     connect(hub, &BtleHub::deviceDisconnected, this, [this, hub]() {
-        setStatusForHub(hub, Status::Connecting);
+        setStatusForHub(hub, m_releasedHubs.contains(hub) ? Status::Disconnected : Status::Connecting);
     });
     connect(hub, &BtleHub::connectionError, this, [this, hub](const QString &) {
         setStatusForHub(hub, Status::Lost);

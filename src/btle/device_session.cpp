@@ -35,8 +35,8 @@ DeviceSession::Mode DeviceSession::wantedMode() const
         return Mode::Simulated;
     if (m_account->enable_studio_mode)
         return Mode::Studio;
-    if (m_released || m_paused)
-        return Mode::Released;
+    if (m_paused)
+        return Mode::Paused;
     if (SensorConnector::slotsFor(BtleSensorStore::loadAll(), m_account->rowing_mode).isEmpty()
             && !m_account->use_zwift_click)
         return Mode::NothingPaired;
@@ -64,19 +64,24 @@ void DeviceSession::reconfigure()
     build();
 }
 
-void DeviceSession::release()
+void DeviceSession::disconnectDevice(int key)
 {
-    LOG_INFO("Devices", QStringLiteral("released every device"));
-    m_released = true;
-    m_signature.clear();
-    reconfigure();
-}
-
-void DeviceSession::reconnect()
-{
-    m_released = false;
-    m_signature.clear();
-    reconfigure();
+    m_waitingSince.remove(key);
+    if (key == kZwiftClickKey) {
+        if (!m_click || m_clickReleased)
+            return;
+        LOG_INFO("Devices", QStringLiteral("Zwift Click disconnected by the rider"));
+        m_clickReleased = true;
+        m_clickBurstEnd->stop();
+        m_click->stop();
+        emit statusChanged(kZwiftClickKey, clickStatus());
+        return;
+    }
+    if (m_connector) {
+        LOG_INFO("Devices", QStringLiteral("%1 disconnected by the rider")
+                     .arg(BtleSensorStore::roleDisplayName(BtleSensorRole(key))));
+        m_connector->release(BtleSensorRole(key));
+    }
 }
 
 void DeviceSession::setPaused(bool paused)
@@ -93,6 +98,7 @@ void DeviceSession::teardown()
     m_maintenance->stop();
     m_clickBurstEnd->stop();
     m_waitingSince.clear();
+    m_clickReleased = false;
     if (m_click) {
         m_click->stop();
         delete m_click;
@@ -110,7 +116,7 @@ void DeviceSession::build()
             m_waitingSince[int(slot.role)].start();
         connect(m_connector, &SensorConnector::statusChanged, this,
                 [this](BtleSensorRole role, SensorConnector::Status status) {
-            if (status == SensorConnector::Status::Connected)
+            if (status == SensorConnector::Status::Connected || status == SensorConnector::Status::Disconnected)
                 m_waitingSince.remove(int(role));
             else if (!m_waitingSince.contains(int(role)))
                 m_waitingSince[int(role)].start();
@@ -123,7 +129,7 @@ void DeviceSession::build()
             m_waitingSince[kZwiftClickKey].start();
             connect(m_click, &ZwiftClickManager::connectionChanged, this, [this]() {
                 const SensorConnector::Status status = clickStatus();
-                if (status == SensorConnector::Status::Connected)
+                if (status == SensorConnector::Status::Connected || m_clickReleased)
                     m_waitingSince.remove(kZwiftClickKey);
                 else if (!m_waitingSince.contains(kZwiftClickKey))
                     m_waitingSince[kZwiftClickKey].start();
@@ -160,6 +166,8 @@ ZwiftClickManager *DeviceSession::clickManager() const
 
 SensorConnector::Status DeviceSession::clickStatus() const
 {
+    if (m_clickReleased)
+        return SensorConnector::Status::Disconnected;
     // Only the right controller's buttons are mapped, so it alone counts.
     return m_click && m_click->rightConnected() ? SensorConnector::Status::Connected
                                                 : SensorConnector::Status::Searching;
@@ -192,10 +200,19 @@ BtleHub *DeviceSession::trainerHub() const
 void DeviceSession::retry(int key)
 {
     if (key == kZwiftClickKey) {
-        if (m_click)
-            m_click->resumeDiscovery();
+        if (!m_click)
+            return;
+        if (m_clickReleased) {
+            m_clickReleased = false;
+            m_waitingSince[kZwiftClickKey].start();
+            emit statusChanged(kZwiftClickKey, clickStatus());
+        }
+        m_click->resumeDiscovery();
+        if (!m_rideActive)
+            m_clickBurstEnd->start();
         return;
     }
+    m_waitingSince[key].start();
     if (m_connector)
         m_connector->retry(BtleSensorRole(key));
 }
@@ -203,7 +220,7 @@ void DeviceSession::retry(int key)
 void DeviceSession::setRideActive(bool active)
 {
     m_rideActive = active;
-    if (!m_click)
+    if (!m_click || m_clickReleased)
         return;
     if (active) {
         m_clickBurstEnd->stop();
@@ -228,6 +245,7 @@ void DeviceSession::maintain()
                 || slot.status == SensorConnector::Status::Lost;
             const auto since = m_waitingSince.constFind(int(slot.role));
             const bool stuck = slot.status != SensorConnector::Status::Connected
+                && slot.status != SensorConnector::Status::Disconnected
                 && since != m_waitingSince.constEnd() && since->elapsed() > kStuckMs;
             if (waiting || stuck) {
                 LOG_INFO("Devices", QStringLiteral("retrying %1").arg(BtleSensorStore::roleDisplayName(slot.role)));
@@ -236,7 +254,8 @@ void DeviceSession::maintain()
             }
         }
     }
-    if (m_click && !m_rideActive && !m_click->rightConnected() && m_ticks % kClickBurstEveryTicks == 0)
+    if (m_click && !m_clickReleased && !m_rideActive && !m_click->rightConnected()
+            && m_ticks % kClickBurstEveryTicks == 0)
         clickBurst();
 }
 

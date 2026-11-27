@@ -18,7 +18,7 @@ class SensorStatusStrip : public QWidget
     Q_OBJECT
 
 public:
-    enum class State { Searching, Connecting, Connected, NotFound, Lost };
+    enum class State { Searching, Connecting, Connected, NotFound, Lost, Disconnected };
 
     explicit SensorStatusStrip(QWidget *parent = nullptr);
 
@@ -33,6 +33,8 @@ public:
 
 signals:
     void retryRequested(int key);
+    /// Right-click on a chip.
+    void chipMenuRequested(int key, const QPoint &globalPos);
 
 private:
     void refreshChip(int key);

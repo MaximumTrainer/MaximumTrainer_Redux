@@ -29,7 +29,7 @@ class DeviceSession : public QObject
     Q_OBJECT
 
 public:
-    enum class Mode { Live, Studio, Simulated, NothingPaired, Released };
+    enum class Mode { Live, Studio, Simulated, NothingPaired, Paused };
     Q_ENUM(Mode)
 
     struct Item {
@@ -46,10 +46,9 @@ public:
 
     /// Re-reads the saved sensors and settings; reconnects only when they changed.
     void reconfigure();
-    /// Lets go of every device (another app can then take the trainer) until
-    /// reconnect() or the next reconfigure() that finds new settings.
-    void release();
-    void reconnect();
+    /// Lets go of one device (e.g. so another app can take the trainer) until
+    /// retry(key); not retried in the background meanwhile.
+    void disconnectDevice(int key);
     /// While pairing on the Devices page every device is let go, then reconnected.
     void setPaused(bool paused);
     bool isPaused() const { return m_paused; }
@@ -91,7 +90,7 @@ private:
     QTimer                        *m_clickBurstEnd = nullptr;
     Mode                           m_mode = Mode::NothingPaired;
     QString                        m_signature;
-    bool                           m_released = false;
+    bool                           m_clickReleased = false;
     bool                           m_paused = false;
     bool                           m_rideActive = false;
     int                            m_ticks = 0;

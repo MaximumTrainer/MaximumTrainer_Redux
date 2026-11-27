@@ -60,8 +60,12 @@ void SensorStatusStrip::addSensor(int key, const QString &name, const QString &d
     chip->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     connect(chip, &QToolButton::clicked, this, [this, key]() {
         const State current = state(key);
-        if (current == State::NotFound || current == State::Lost)
+        if (current == State::NotFound || current == State::Lost || current == State::Disconnected)
             emit retryRequested(key);
+    });
+    chip->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(chip, &QToolButton::customContextMenuRequested, this, [this, key, chip](const QPoint &pos) {
+        emit chipMenuRequested(key, chip->mapToGlobal(pos));
     });
     m_layout->addWidget(chip);
     m_chips.insert(key, chip);
@@ -100,6 +104,10 @@ void SensorStatusStrip::refreshChip(int key)
     case State::NotFound:
         status = tr("Not found - click to retry"); dot = QColor(0xe5, 0x53, 0x4b);
         tip = tr("Not found. Check that it is awake and nearby, then click to search again.");
+        break;
+    case State::Disconnected:
+        status = tr("Disconnected"); dot = QColor(0x5a, 0x5a, 0x66);
+        tip = tr("Disconnected. Click or right-click to reconnect.");
         break;
     case State::Lost:
         status = tr("Lost - click to retry"); dot = QColor(0xe5, 0x53, 0x4b);

@@ -27,7 +27,8 @@ QString dotColor(SensorStatusStrip::State state)
     case SensorStatusStrip::State::Connecting: return kYellow;
     case SensorStatusStrip::State::NotFound:
     case SensorStatusStrip::State::Lost:       return kRed;
-    case SensorStatusStrip::State::Searching:  break;
+    case SensorStatusStrip::State::Searching:
+    case SensorStatusStrip::State::Disconnected: break;
     }
     return kGrey;
 }
@@ -194,6 +195,7 @@ void UserStudioWidget::setSensorState(int key, SensorStatusStrip::State state)
     case SensorStatusStrip::State::Connected:  status = tr("connected"); break;
     case SensorStatusStrip::State::NotFound:   status = tr("not found, click to retry"); break;
     case SensorStatusStrip::State::Lost:       status = tr("lost, click to retry"); break;
+    case SensorStatusStrip::State::Disconnected: status = tr("disconnected"); break;
     }
     dot->setToolTip(QStringLiteral("%1: %2").arg(m_sensorNames.value(key), status));
     updateStatus();

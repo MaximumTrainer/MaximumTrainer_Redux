@@ -5,6 +5,7 @@
 #include <QBluetoothDeviceInfo>
 #include <QMap>
 #include <QObject>
+#include <QSet>
 #include <QVector>
 
 #include "btle_sensor_config.h"
@@ -27,7 +28,8 @@ class SensorConnector : public QObject
     Q_OBJECT
 
 public:
-    enum class Status { Searching, Connecting, Connected, NotFound, Lost };
+    /// Disconnected: let go on purpose (right-click on its chip) until retry().
+    enum class Status { Searching, Connecting, Connected, NotFound, Lost, Disconnected };
     Q_ENUM(Status)
 
     struct Slot {
@@ -65,8 +67,10 @@ public:
 
 public slots:
     void start();
-    /// Reconnect a lost role, or scan again for one that was not found.
+    /// Reconnect a lost or disconnected role, or scan again for one that was not found.
     void retry(BtleSensorRole role);
+    /// Disconnect the device behind \a role (and the roles it shares) until retry().
+    void release(BtleSensorRole role);
     void stopScan();
 
 signals:
@@ -87,6 +91,7 @@ private:
     QMap<QString, BtleHub*>               m_hubByDevice;
     QMap<QString, QBluetoothDeviceInfo>   m_infoByDevice;
     bool                                  m_hubsTaken = false;
+    QSet<BtleHub*>                        m_releasedHubs;
     int                                   m_hubUserId = 0;
 
     static constexpr int kScanTimeoutMs = 15000;

@@ -252,9 +252,9 @@ private slots:
         session.reconfigure();
         QCOMPARE(session.mode(), DeviceSession::Mode::NothingPaired);
 
-        session.release();
-        QCOMPARE(session.mode(), DeviceSession::Mode::Released);
-        session.reconnect();
+        session.setPaused(true);
+        QCOMPARE(session.mode(), DeviceSession::Mode::Paused);
+        session.setPaused(false);
         QCOMPARE(session.mode(), DeviceSession::Mode::NothingPaired);
     }
 #endif

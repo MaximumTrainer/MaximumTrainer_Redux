@@ -699,7 +699,8 @@ void MainWindow::startDevices()
     row->addWidget(m_deviceNote);
     bar->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(bar, &QWidget::customContextMenuRequested, this,
-            [this, bar](const QPoint &pos) { showDeviceMenu(bar->mapToGlobal(pos)); });
+            [this, bar](const QPoint &pos) { showDeviceMenu(-1, bar->mapToGlobal(pos)); });
+    connect(m_deviceStrip, &SensorStatusStrip::chipMenuRequested, this, &MainWindow::showDeviceMenu);
     ui->widget_bottomMenu->setStatusWidget(bar);
 
     connect(m_devices, &DeviceSession::itemsChanged, this, &MainWindow::rebuildDeviceBar);
@@ -731,27 +732,28 @@ void MainWindow::rebuildDeviceBar()
     QString note;
     switch (m_devices->mode()) {
     case DeviceSession::Mode::Live:          break;
-    case DeviceSession::Mode::Studio:        note = tr("Studio: sensors connect when the ride starts"); break;
+    case DeviceSession::Mode::Studio:        break;   // Studio connects its riders' sensors per ride
     case DeviceSession::Mode::Simulated:     note = tr("Simulated sensors"); break;
     case DeviceSession::Mode::NothingPaired: note = tr("No devices paired - pair them on the Devices page"); break;
-    case DeviceSession::Mode::Released:
-        note = m_devices->isPaused() ? tr("Devices paused while pairing")
-                                     : tr("Devices disconnected - right-click to reconnect");
-        break;
+    case DeviceSession::Mode::Paused:        note = tr("Devices paused while pairing"); break;
     }
     m_deviceNote->setText(note);
     m_deviceNote->setVisible(!note.isEmpty());
     m_deviceStrip->setVisible(!m_devices->items().isEmpty());
 }
 
-void MainWindow::showDeviceMenu(const QPoint &globalPos)
+void MainWindow::showDeviceMenu(int key, const QPoint &globalPos)
 {
     QMenu menu(this);
-    const DeviceSession::Mode mode = m_devices->mode();
-    if (mode == DeviceSession::Mode::Live) {
-        menu.addAction(tr("Disconnect all devices"), this, [this]() { m_devices->release(); });
-    } else if (mode == DeviceSession::Mode::Released && !m_devices->isPaused()) {
-        menu.addAction(tr("Reconnect devices"), this, [this]() { m_devices->reconnect(); });
+    for (const DeviceSession::Item &item : m_devices->items()) {
+        if (item.key != key)
+            continue;
+        const QString device = item.device.isEmpty() ? item.name : item.device;
+        if (item.status == SensorConnector::Status::Disconnected)
+            menu.addAction(tr("Reconnect %1").arg(device), this, [this, key]() { m_devices->retry(key); });
+        else
+            menu.addAction(tr("Disconnect %1").arg(device), this, [this, key]() { m_devices->disconnectDevice(key); });
+        menu.addSeparator();
     }
     menu.addAction(tr("Devices page..."), this, [this]() { ftb->setCurrentIndex(m_tabs.devices); });
     menu.exec(globalPos);
