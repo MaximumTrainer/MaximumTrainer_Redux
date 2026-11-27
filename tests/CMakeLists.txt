@@ -270,7 +270,8 @@ mt_add_test(ui_screens_tests QWT
 
 mt_add_test(workout_io_tests QWT
     SOURCES ${LOGGER} ${APP_MODEL} ${APP_DAO} ${CRED_STUB} ${REPEAT_WIDGET}
-        "${SRC}/persistence/file/importerworkoutzwo.cpp" integration/tst_workout_io.cpp
+        "${SRC}/persistence/file/importerworkoutzwo.cpp" "${SRC}/persistence/file/importerworkout.cpp"
+        integration/tst_workout_io.cpp
     QT Gui Widgets Network
     INCLUDES ${APP_INCLUDES})
 # The bundled plan files sit next to the binary, as in the app.

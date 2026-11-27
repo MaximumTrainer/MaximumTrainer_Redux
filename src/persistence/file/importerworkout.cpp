@@ -76,7 +76,7 @@ Workout ImporterWorkout::parseMrcErgFile(QString filename, int userFTP) {
     QString name = filename.mid(posLastSlash+1, posDot-posLastSlash-1);
 
 
-    QString description = "Imported description";
+    QString description;
     QString author = "-";
     QString plan = "-";
 
@@ -113,19 +113,19 @@ Workout ImporterWorkout::parseMrcErgFile(QString filename, int userFTP) {
         {
             QString line = in.readLine();
 
-            // FTP
-            if (!foundFTP && line.contains("FTP", Qt::CaseInsensitive) && line.contains("=", Qt::CaseInsensitive)) {
-                QStringList pieces = line.split( "=" );
-                double value = pieces.at(pieces.length()-1).toDouble();
-                if (value > 0) {
-                    ftp = pieces.at(pieces.length()-1).toDouble();
+            // Header lines are "KEY = value": match the key itself, so a description
+            // that mentions FTP is not read as the FTP line.
+            const qsizetype equals = line.indexOf(QLatin1Char('='));
+            const QString key = equals > 0 ? line.left(equals).trimmed().toUpper() : QString();
+            const QString value = equals > 0 ? line.mid(equals + 1).trimmed() : QString();
+            if (!foundFTP && key == QLatin1String("FTP")) {
+                if (value.toDouble() > 0) {
+                    ftp = value.toDouble();
                     foundFTP = true;
                 }
             }
-            // Description
-            else if (!foundDescription && line.contains("DESCRIPTION", Qt::CaseInsensitive)) {
-                QStringList pieces = line.split( "=" );
-                description = pieces.at(pieces.length()-1);
+            else if (!foundDescription && key == QLatin1String("DESCRIPTION")) {
+                description = value;
                 foundDescription = true;
             }
             // foundDescriptorMinutes_X
