@@ -7,6 +7,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
+#include <QVBoxLayout>
 
 #include <algorithm>
 #include <cmath>
@@ -700,6 +701,17 @@ void RaceView::setGear(int gear, int gearCount, bool visible)
     m_gearCount = gearCount;
     m_gearVisible = visible;
     update();
+}
+
+void RaceView::setTopStrip(QWidget *strip)
+{
+    const bool hidden = strip->isHidden();   // the strip hides itself once all is connected
+    auto *overlay = new QVBoxLayout(this);
+    const int rightOfProgressPanel = int(progressPanelRect(QRectF()).right()) + 12;
+    overlay->setContentsMargins(rightOfProgressPanel, 12, 12, 0);
+    overlay->addWidget(strip, 0, Qt::AlignLeft | Qt::AlignTop);
+    overlay->addStretch();
+    strip->setHidden(hidden);
 }
 
 void RaceView::flashShift(int direction)

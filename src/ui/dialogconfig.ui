@@ -1191,6 +1191,26 @@ QLabel#label_imageCalories {
               </widget>
              </item>
              <item>
+              <widget class="QPushButton" name="pushButton_moveRadioUp">
+               <property name="toolTip">
+                <string>Move the selected station up</string>
+               </property>
+               <property name="text">
+                <string>Up</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButton_moveRadioDown">
+               <property name="toolTip">
+                <string>Move the selected station down</string>
+               </property>
+               <property name="text">
+                <string>Down</string>
+               </property>
+              </widget>
+             </item>
+             <item>
               <spacer name="horizontalSpacer_radioEdit">
                <property name="orientation">
                 <enum>Qt::Horizontal</enum>

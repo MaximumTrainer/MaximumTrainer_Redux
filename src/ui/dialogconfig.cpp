@@ -848,7 +848,7 @@ void DialogConfig::buildIntervalSummaryGroup()
     durRow->addWidget(new QLabel(tr("Display duration (seconds):"), grpSummary));
     spinIntervalSummaryDuration = new QSpinBox(grpSummary);
     spinIntervalSummaryDuration->setRange(2, 15);
-    spinIntervalSummaryDuration->setValue(5);
+    spinIntervalSummaryDuration->setValue(SettingKeys::Account::IntervalSummaryDurationS.defaultValue);
     // Native Windows spin buttons crowd a short value; reserve room.
     spinIntervalSummaryDuration->setMinimumWidth(80);
     durRow->addWidget(spinIntervalSummaryDuration);
@@ -1006,4 +1006,36 @@ void DialogConfig::on_pushButton_deleteRadio_clicked() {
             currentRadioIndex = QModelIndex();
         Util::saveLocalRadioList(tableModel->getAllRadios());
     });
+}
+
+
+void DialogConfig::on_pushButton_moveRadioUp_clicked() {
+    moveSelectedRadio(-1);
+}
+
+
+void DialogConfig::on_pushButton_moveRadioDown_clicked() {
+    moveSelectedRadio(+1);
+}
+
+
+void DialogConfig::moveSelectedRadio(int step) {
+
+    QModelIndex idx = ui->tableView_radio->selectionModel()->currentIndex();
+    if (!idx.isValid())
+        idx = currentRadioIndex;
+    if (!idx.isValid())
+        return;
+
+    const int row = idx.row();
+    if (!tableModel->moveRadio(row, step))
+        return;
+    const int newRow = row + step;
+    if (currentRadioIndex.isValid() && (currentRadioIndex.row() == row || currentRadioIndex.row() == newRow))
+        currentRadioIndex = tableModel->index(currentRadioIndex.row() == row ? newRow : row, 0);
+    const QModelIndex moved = tableModel->index(newRow, 0);
+    ui->tableView_radio->selectionModel()->setCurrentIndex(
+        moved, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+    ui->tableView_radio->scrollTo(moved);
+    Util::saveLocalRadioList(tableModel->getAllRadios());
 }

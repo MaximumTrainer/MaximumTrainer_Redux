@@ -665,8 +665,23 @@ private slots:
         QCOMPARE(events.first().watts, 620.0);  // 600,600,600,650,650
         QCOMPARE(events.first().previousWatts, 500.0);
         QVERIFY(!events.first().allTime);
-        // The same level does not fire again in this ride.
-        QVERIFY(feed(tracker, {700, 700, 700, 700, 700, 0, 0, 0}).isEmpty());
+        // A weaker effort later in the ride is quiet: 620 W is now the record.
+        QVERIFY(feed(tracker, {610, 610, 610, 610, 610, 0, 0, 0}).isEmpty());
+    }
+
+    void personalBest_strongerEffortLaterInTheRideFiresAgain()
+    {
+        // A Z3 interval sets new bests, then a harder Z4 interval beats them.
+        PersonalBestTracker tracker;
+        tracker.start({{5, 500, 500}});
+        const QVector<PersonalBestTracker::Event> first = feed(tracker, {600, 600, 600, 600, 600, 0, 0, 0});
+        QCOMPARE(first.size(), 1);
+        QVERIFY(first.first().allTime);
+        const QVector<PersonalBestTracker::Event> second = feed(tracker, {700, 700, 700, 700, 700, 0, 0, 0});
+        QCOMPARE(second.size(), 1);
+        QVERIFY(second.first().allTime);
+        QCOMPARE(second.first().watts, 700.0);
+        QCOMPARE(second.first().previousWatts, 600.0);
     }
 
     void personalBest_allTimeUpgradesAfterARecentBest()

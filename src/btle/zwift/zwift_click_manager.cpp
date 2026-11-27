@@ -77,6 +77,11 @@ void ZwiftClickManager::restartDiscovery()
     m_agent->setLowEnergyDiscoveryTimeout(0);
     connect(m_agent, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered,
             this, &ZwiftClickManager::onDeviceDiscovered);
+    // A running scan reports each device as discovered only once; a controller
+    // that dropped while the scan kept going (the other side not in yet) comes
+    // back only as an update.
+    connect(m_agent, &QBluetoothDeviceDiscoveryAgent::deviceUpdated, this,
+            [this](const QBluetoothDeviceInfo &info, QBluetoothDeviceInfo::Fields) { onDeviceDiscovered(info); });
     m_agent->start(QBluetoothDeviceDiscoveryAgent::LowEnergyMethod);
 }
 
@@ -144,7 +149,9 @@ void ZwiftClickManager::connectDevice(const QBluetoothDeviceInfo &info)
         emit deviceConnected(hub->deviceName(), hub->deviceAddress());
         emit connectionChanged();
     });
-    connect(hub, &ZwiftClickHub::disconnected, this, [this, hub, side]() {
+    const auto forgetHub = [this, hub, side]() {
+        if (!m_hubs.contains(hub))
+            return;   // an error followed by its disconnect
         m_connectedSides.remove(side);
         emit deviceDisconnected(hub->deviceAddress());
         m_knownIds.remove(hub->deviceAddress());
@@ -158,7 +165,9 @@ void ZwiftClickManager::connectDevice(const QBluetoothDeviceInfo &info)
                     restartDiscovery();
             });
         emit connectionChanged();
-    });
+    };
+    connect(hub, &ZwiftClickHub::disconnected, this, forgetHub);
+    connect(hub, &ZwiftClickHub::connectionError, this, forgetHub);
     connect(hub, &ZwiftClickHub::buttonPressed, this,
             &ZwiftClickManager::onButtonPressed);
 

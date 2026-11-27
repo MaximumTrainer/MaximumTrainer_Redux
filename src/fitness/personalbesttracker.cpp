@@ -15,7 +15,7 @@ void PersonalBestTracker::start(const QVector<Record> &records)
     m_slots.clear();
     for (const Record &record : records)
         if (record.seconds > 0)
-            m_slots.append(Slot{record, {}, 0.0, 0.0, 0, None});
+            m_slots.append(Slot{record, {}, 0.0, 0.0, 0});
     m_active = true;
 }
 
@@ -49,7 +49,11 @@ PersonalBestTracker::Event PersonalBestTracker::takePending(Slot &slot)
     event.watts = slot.peak;
     event.allTime = level == AllTime;
     event.previousWatts = event.allTime ? slot.record.allTimeWatts : slot.record.recentWatts;
-    slot.reported = level;
+    // Today's effort is the record to beat from now on, so a stronger effort
+    // later in the ride is reported too.
+    slot.record.recentWatts = slot.peak;
+    if (event.allTime)
+        slot.record.allTimeWatts = slot.peak;
     slot.peak = 0.0;
     slot.secondsSincePeak = 0;
     return event;
@@ -73,7 +77,7 @@ QVector<PersonalBestTracker::Event> PersonalBestTracker::addSecond(double watts)
             continue;
 
         const double average = slot.sum / slot.record.seconds;
-        if (levelFor(slot, average) > slot.reported && average > slot.peak) {
+        if (levelFor(slot, average) != None && average > slot.peak) {
             slot.peak = average;
             slot.secondsSincePeak = 0;
         } else if (slot.peak > 0.0 && ++slot.secondsSincePeak >= settleSeconds(slot.record.seconds)) {

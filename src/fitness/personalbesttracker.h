@@ -10,7 +10,8 @@
 /// rolling average and compares it with the rider's best of the last 90 days
 /// and of all time. An effort is reported once it is over (the average stopped
 /// rising for a few seconds), so the reported value is the effort's peak, not
-/// the first watt above the old record.
+/// the first watt above the old record. A reported effort becomes the record,
+/// so only a stronger effort later in the same ride is reported again.
 class PersonalBestTracker
 {
 public:
@@ -55,7 +56,6 @@ private:
         double sum = 0.0;
         double peak = 0.0;          ///< Highest average of the effort in progress.
         int secondsSincePeak = 0;
-        Level reported = None;      ///< Each level is reported once per ride.
     };
 
     static Level levelFor(const Slot &slot, double watts);

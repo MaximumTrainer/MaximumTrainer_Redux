@@ -593,13 +593,19 @@ void WorkoutPlotZoomer::fitAxisToLiveValues() {
         return;
     int lowest = m_lastValue;
     int highest = m_lastValue;
+    const double visibleFrom = samples.isEmpty() ? 0.0 : samples.last().x() - 15.0;
     for (const QPointF &sample : std::as_const(samples)) {
+        if (sample.x() < visibleFrom)
+            continue;
         lowest = qMin(lowest, int(sample.y()));
         highest = qMax(highest, int(sample.y()));
     }
+    // A dropout or spike may stretch the axis by one band height at most, so the
+    // target band stays readable near the middle; the big number shows the rest.
+    const int bandHeight = qMax(1, targetHigh - targetLow);
     const int margin = qMax(3, extraAfterRange / 2);
-    leftLow = qMax(0, qMin(targetLow, lowest - margin));
-    leftHigh = qMax(targetHigh, highest + margin);
+    leftLow = qMax(0, qMax(targetLow - bandHeight, qMin(targetLow, lowest - margin)));
+    leftHigh = qMin(targetHigh + bandHeight, qMax(targetHigh, highest + margin));
     // Headroom so the line never runs under the big value drawn at the top.
     if (m_valueOverlayVisible && leftHigh > targetHigh)
         leftHigh += (leftHigh - leftLow) / 4;

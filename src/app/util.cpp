@@ -458,7 +458,7 @@ QColor Util::getColor(Color color) {
     /// Cadence
     //    QColor colorCadenceShapeTarget(216, 222, 255, 20);
     QColor colorCadenceShapeTarget(77, 208, 225);
-    QColor lineCadence(0,0,255);
+    QColor lineCadence(20, 106, 249);   // the cadence icon's blue
 
     /// HR
     QColor colorHRShapeTarget(247, 143, 179);
