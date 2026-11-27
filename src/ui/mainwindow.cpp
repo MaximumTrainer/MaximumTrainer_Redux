@@ -955,6 +955,12 @@ void MainWindow::startSimulatedWorkout(const Workout &workout)
     auto *simHub = new SimulatorHub(this);
     simHub->setRowingMode(account->rowing_mode);
     connectSimulatorHub(simHub, w);
+    // Simulated rides always dual record, so the 2nd power meter UI can be tried without hardware.
+    if (!account->rowing_mode) {
+        w->setDualRecording(tr("Simulated trainer"), tr("Simulated power meter"));
+        simHub->setSecondaryPowerEnabled(true);
+        connect(simHub, &SimulatorHub::signal_secondaryPower, w, &WorkoutDialog::SecondaryPowerDataReceived);
+    }
     connect(w, &WorkoutDialog::setLoad, simHub, &SimulatorHub::setLoad);
     connect(w, &WorkoutDialog::setSlope, simHub, &SimulatorHub::setSlope);
     connect(w, &WorkoutDialog::stopDecodingMsgHub, simHub, &SimulatorHub::stopDecodingMsg);

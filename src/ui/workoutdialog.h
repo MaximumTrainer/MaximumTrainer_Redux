@@ -471,6 +471,7 @@ private:
     QList<QPair<qint64, int>> m_secondaryPowerWindow;
     QTimer *m_secondaryStaleTimer = nullptr;
     void showSecondaryPower(int watts);
+    void showSecondaryReading(int watts, const QString &gap, bool record);
     SoundPlayer *soundPlayer;
 
     QTimer *timer_sec;

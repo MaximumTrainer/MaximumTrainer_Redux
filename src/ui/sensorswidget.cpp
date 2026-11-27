@@ -37,7 +37,7 @@ void SensorsWidget::addSimulatedSensorsGroup(QVBoxLayout *layout)
     QGroupBox *simulatedGroup = new QGroupBox(tr("Simulated Sensors"), this);
     QVBoxLayout *simulatedLayout = new QVBoxLayout(simulatedGroup);
     simulatedLayout->setSpacing(4);
-    m_simulatedSensorsCheck = new QCheckBox(tr("Use simulated sensors (power, heart rate, cadence, speed)"), simulatedGroup);
+    m_simulatedSensorsCheck = new QCheckBox(tr("Use simulated sensors (power, heart rate, cadence, speed, and a 2nd power meter)"), simulatedGroup);
     m_simulatedSensorsCheck->setObjectName(QStringLiteral("checkSimulatedSensors"));
     connect(m_simulatedSensorsCheck, &QCheckBox::toggled, this, &SensorsWidget::onSimulatedSensorsToggled);
     simulatedLayout->addWidget(m_simulatedSensorsCheck);

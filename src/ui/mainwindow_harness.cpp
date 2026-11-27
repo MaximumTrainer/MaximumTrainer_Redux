@@ -26,6 +26,7 @@
 #include <QLabel>
 
 #include "util.h"
+#include "infowidget.h"
 #ifndef GC_WASM_BUILD
 #include "device_session.h"
 #include "btle_hub.h"
@@ -649,8 +650,8 @@ void MainWindow::runDeviceSessionCheck(const QString &outDir)
                     note(flowing ? QStringLiteral("ride 2 shows power from the trainer hub %1 ms after opening").arg(opened->elapsed())
                                  : QStringLiteral("FAIL ride 2 is not wired to the trainer hub"));
                     if (WorkoutDialog *ride = findRide())
-                        if (auto *second = ride->findChild<QLabel *>(QStringLiteral("label_secondaryPower")); second && second->isVisibleTo(ride))
-                            note(QStringLiteral("2nd power readout: %1").arg(second->text()));
+                        if (auto *power = ride->findChild<InfoWidget *>(QStringLiteral("wid_2_infoBoxPower")); power && !power->secondaryReading().isEmpty())
+                            note(QStringLiteral("2nd power reading: %1").arg(power->secondaryReading()));
                     delete opened;
                     if (WorkoutDialog *ride = findRide()) {
                         ride->grab().save(outDir + QLatin1String("/ride2.png"), "PNG");

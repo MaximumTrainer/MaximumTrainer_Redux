@@ -594,11 +594,13 @@ void WorkoutPlotZoomer::fitAxisToLiveValues() {
     int lowest = m_lastValue;
     int highest = m_lastValue;
     const double visibleFrom = samples.isEmpty() ? 0.0 : samples.last().x() - 15.0;
-    for (const QPointF &sample : std::as_const(samples)) {
-        if (sample.x() < visibleFrom)
-            continue;
-        lowest = qMin(lowest, int(sample.y()));
-        highest = qMax(highest, int(sample.y()));
+    for (const QVector<QPointF> *line : {&samples, &m_secondarySamples}) {
+        for (const QPointF &sample : std::as_const(*line)) {
+            if (sample.x() < visibleFrom)
+                continue;
+            lowest = qMin(lowest, int(sample.y()));
+            highest = qMax(highest, int(sample.y()));
+        }
     }
     // A dropout or spike may stretch the axis by one band height at most, so the
     // target band stays readable near the middle; the big number shows the rest.
@@ -623,8 +625,74 @@ void WorkoutPlotZoomer::addMarkerInterval(double time) {
 }
 
 
+void WorkoutPlotZoomer::setSecondary(const QString &name) {
+    m_secondaryName = name;
+    m_secondaryText = name;
+    if (!m_secondaryCurve) {
+        m_secondaryCurve = new QwtPlotCurve();
+        m_secondaryCurve->setStyle(QwtPlotCurve::Lines);
+        m_secondaryCurve->setPaintAttribute(QwtPlotCurve::ClipPolygons, false);
+        m_secondaryCurve->setZ(11);   // under the main line
+        m_secondaryCurve->setPen(QPen(secondaryColor(), 2.0));
+        m_secondaryCurve->setRenderHint(QwtPlotItem::RenderAntialiased, true);
+        m_secondaryCurve->setPaintAttribute(QwtPlotCurve::FilterPoints, true);
+        m_secondaryCurve->attach(this);
+        m_secondaryLabel = new QwtPlotTextLabel();
+        m_secondaryLabel->setMargin(6);
+        m_secondaryLabel->setZ(14);
+        m_secondaryLabel->attach(this);
+    }
+    refreshSecondaryLabel();
+    replot();
+}
+
+void WorkoutPlotZoomer::updateSecondary(double timeNow, int watts, bool record, const QString &gap) {
+    if (!m_secondaryCurve)
+        return;
+    if (record && watts >= 0) {
+        if (m_secondarySamples.size() > 90)
+            m_secondarySamples.pop_front();
+        m_secondarySamples.append(QPointF(timeNow, watts));
+        m_secondaryCurve->setSamples(m_secondarySamples);
+    }
+    m_secondaryText = m_secondaryName;
+    if (watts >= 0)
+        m_secondaryText += QStringLiteral("  %1 W").arg(watts);
+    if (!gap.isEmpty())
+        m_secondaryText += QStringLiteral("  ") + gap;
+    refreshSecondaryLabel();
+}
+
+void WorkoutPlotZoomer::refreshSecondaryLabel() {
+    if (!m_secondaryLabel)
+        return;
+    if (!m_valueOverlayVisible) {
+        m_secondaryLabel->hide();
+        return;
+    }
+    QFont font("Inter");
+    font.setPointSize(9);
+    font.setBold(true);
+    // The big value sits on the "now" line in the middle: keep the badge left of
+    // it, shortening the meter's name and keeping its reading.
+    const QFontMetrics metrics(font);
+    const QString reading = m_secondaryText.mid(m_secondaryName.size());
+    const int room = canvas()->width() / 2 - 90 - metrics.horizontalAdvance(reading);
+    const QString name = metrics.elidedText(m_secondaryName, Qt::ElideRight, qMax(room, 40));
+    const QString pad = QStringLiteral("\u2009\u2009");
+    QwtText text(pad + name + reading + pad);
+    text.setFont(font);
+    text.setColor(secondaryColor());
+    text.setBackgroundBrush(QColor(20, 20, 24, 200));
+    text.setBorderRadius(6);
+    text.setRenderFlags(Qt::AlignLeft | Qt::AlignTop);
+    m_secondaryLabel->setText(text);
+    m_secondaryLabel->show();
+}
+
 void WorkoutPlotZoomer::setValueOverlayVisible(bool visible) {
     m_valueOverlayVisible = visible;
+    refreshSecondaryLabel();
     if (m_zoneLabel && !visible)
         m_zoneLabel->hide();
     if (qwtTextLabel)

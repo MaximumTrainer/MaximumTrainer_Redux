@@ -40,6 +40,9 @@ public:
     /// Shows or hides the Avg / Max rows (interval and workout); without them
     /// the box is just its title and current value, and can be much shorter.
     void setStatsVisible(bool visible);
+    /// Dual recording: the 2nd power meter's reading under the value, in \a color.
+    void setSecondaryReading(const QString &text, const QColor &color);
+    QString secondaryReading() const;
 
 
 signals:
@@ -67,6 +70,8 @@ private:
     TypeInfoBox type = POWER;
     bool rowingMode = false;
     QLabel *m_caption    = nullptr;   ///< "POWER", "CADENCE", ... in the title row
+    QLabel *m_secondaryReading = nullptr;
+    class QHBoxLayout *m_valueRow = nullptr;
     QLabel *m_targetPill = nullptr;   ///< "Target 143 W ±10"
     QLabel *m_zonePill = nullptr;     ///< power card: "Z3 Tempo" in the zone colour
     void updateZonePill(double targetFraction);

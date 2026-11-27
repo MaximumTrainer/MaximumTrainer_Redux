@@ -21,6 +21,8 @@
 #include "util.h"
 #include <QDir>
 #include <QFileInfo>
+#include "infowidget.h"
+#include "simulator_hub.h"
 #include "radio.h"
 #include "radiotablemodel.h"
 #include "sensorstatusstrip.h"
@@ -293,22 +295,44 @@ private slots:
         QFile::remove(file);
     }
 
-    // The 2nd meter's live reading sits in the top bar with its gap to the main power.
-    void dualRecording_topBarShowsTheSecondMeter()
+    // The 2nd meter shares the power card: an orange line on the same graph and
+    // an orange reading under the main value, with its gap (+5 W = 5 W higher).
+    void dualRecording_powerCardShowsTheSecondMeterInOrange()
     {
         openDialog(false, 0);
-        auto *readout = m_dialog->findChild<QLabel *>(QStringLiteral("label_secondaryPower"));
-        QVERIFY(readout);
-        QVERIFY(!readout->isVisibleTo(m_dialog));
+        auto *info = m_dialog->findChild<InfoWidget *>(QStringLiteral("wid_2_infoBoxPower"));
+        auto *graph = m_dialog->findChild<WorkoutPlotZoomer *>(QStringLiteral("wid_2_workoutPlot_PowerZoom"));
+        QVERIFY(info && graph);
+        QVERIFY(info->secondaryReading().isEmpty());
         m_dialog->setDualRecording(QStringLiteral("Victory MaJet"), QStringLiteral("Assioma Duo"));
-        QVERIFY(readout->isVisibleTo(m_dialog));
-        QVERIFY(readout->text().contains(QStringLiteral("Assioma Duo")));
+        QCOMPARE(info->secondaryReading(), QStringLiteral("ASSIOMA DUO"));
+        QCOMPARE(graph->secondaryLabel(), QStringLiteral("ASSIOMA DUO"));
+
         m_dialog->PowerDataReceived(1, 200);
         m_dialog->SecondaryPowerDataReceived(1, 205);
-        QVERIFY2(readout->text().contains(QStringLiteral("205 W")), qPrintable(readout->text()));
-        QVERIFY2(readout->text().contains(QStringLiteral("(+5)")), qPrintable(readout->text()));
-        QCOMPARE(m_dialog->findChild<QWidget *>(QStringLiteral("wid_2_infoBoxPower"))
-                     ->findChild<QLabel *>(QStringLiteral("label_currentValue"))->text(), QStringLiteral("200"));
+        QCOMPARE(info->secondaryReading(), QStringLiteral("ASSIOMA DUO  205 W  +5 W"));
+        QCOMPARE(graph->secondaryLabel(), QStringLiteral("ASSIOMA DUO  205 W  +5 W"));
+        QCOMPARE(info->findChild<QLabel *>(QStringLiteral("label_currentValue"))->text(), QStringLiteral("200"));
+
+        m_dialog->PowerDataReceived(1, 210);
+        m_dialog->SecondaryPowerDataReceived(1, 205);   // both average 205: no gap
+        QCOMPARE(info->secondaryReading(), QStringLiteral("ASSIOMA DUO  205 W"));
+    }
+
+    // Simulated rides dual record: the 2nd stream stays a few watts off the main one.
+    void simulator_sendsASecondPowerMeterCloseToTheMainOne()
+    {
+        SimulatorHub hub;
+        hub.setSecondaryPowerEnabled(true);
+        QSignalSpy main(&hub, &SimulatorHub::signal_power);
+        QSignalSpy second(&hub, &SimulatorHub::signal_secondaryPower);
+        hub.start();
+        QTRY_VERIFY_WITH_TIMEOUT(second.count() >= 3, 10000);
+        hub.stop();
+        for (int index = 0; index < second.count() && index < main.count(); ++index) {
+            const int gap = second.at(index).at(1).toInt() - main.at(index).at(1).toInt();
+            QVERIFY2(gap >= -7 && gap <= 8, qPrintable(QString::number(gap)));
+        }
     }
 
     void enterIsNotAHotkey()
