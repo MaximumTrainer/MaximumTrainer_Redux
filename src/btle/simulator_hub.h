@@ -29,6 +29,7 @@ public:
 
     void start();
     void setRowingMode(bool rowing);
+    void setSecondaryPowerEnabled(bool enabled) { m_secondaryPower = enabled; }
     void stop();
 
 signals:
@@ -37,6 +38,8 @@ signals:
     void signal_cadence(int userID, int cadence);
     void signal_speed(int userID, double speed);   // km/h
     void signal_power(int userID, int power);      // watts
+    /// A 2nd power meter reading a few watts off the main one (dual recording).
+    void signal_secondaryPower(int userID, int power);
     void signal_balance(int userID, int rightPedalPercentage); // L/R pedal balance, right pedal %
     void signal_oxygen(int userID, double smo2Percent, double thbGdL);
 
@@ -61,6 +64,8 @@ private:
     double m_smo2    =  65.0;   // SmO2 % – typical mid-exercise value
     double m_thb     =  13.0;   // tHb g/dL – typical value
     double m_balance =  48.0;   // right pedal % (left slightly stronger, typical)
+    bool   m_secondaryPower = false;
+    double m_secondaryOffset = 3.0;   // 2nd meter minus main, drifts between -6 and +8 W
 
     // Drift direction per channel (+1 / -1)
     int m_hrDir      = 1;
@@ -70,6 +75,7 @@ private:
     int m_smo2Dir    = 1;
     int m_thbDir     = 1;
     int m_balanceDir = 1;
+    int m_secondaryOffsetDir = 1;
 
     const int m_userID = 1;   ///< the solo rider's id, emitted in every signal
 };

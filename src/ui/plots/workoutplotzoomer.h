@@ -59,6 +59,13 @@ public slots:
     /// The big value and icon drawn over the graph; hidden when the metric
     /// card already shows the numbers above it.
     void setValueOverlayVisible(bool visible);
+    /// Dual recording: the 2nd power meter as an orange line on the same axes,
+    /// named (with its reading) in an orange badge while the big value shows.
+    void setSecondary(const QString &name);
+    /// \a record adds the point to the line (riding); \a gap is e.g. "+3 W" or empty.
+    void updateSecondary(double timeNow, int watts, bool record, const QString &gap);
+    QString secondaryLabel() const { return m_secondaryText; }
+    static QColor secondaryColor() { return QColor(255, 140, 0); }
     void updateTextLabelValue(int value);
     void targetChanged(double percentageTarget, int range );
 
@@ -130,6 +137,12 @@ private:
 
     QwtPlotCurve *curve;
     QVector<QPointF> samples;
+    QwtPlotCurve *m_secondaryCurve = nullptr;
+    QVector<QPointF> m_secondarySamples;
+    QwtPlotTextLabel *m_secondaryLabel = nullptr;
+    QString m_secondaryName;
+    QString m_secondaryText;
+    void refreshSecondaryLabel();
 
     QwtInterval d_interval;
 

@@ -1559,14 +1559,17 @@ void WorkoutDialog::setDualRecording(const QString &mainName, const QString &sec
     m_secondaryStaleTimer->setInterval(4000);
     connect(m_secondaryStaleTimer, &QTimer::timeout, this, [this]() {
         m_secondaryPowerWindow.clear();
-        ui->widget_topMenu->setSecondaryPower(m_secondaryPowerName, -1, false, 0);
+        showSecondaryReading(-1, QString(), false);
     });
-    ui->widget_topMenu->setSecondaryPower(m_secondaryPowerName, -1, false, 0);
-    ui->widget_topMenu->setSecondaryPowerVisible(true);
+    // The 2nd meter shares the power card: an orange line on the same graph and
+    // an orange reading under the main value, so the colour says which is which.
+    ui->wid_2_workoutPlot_PowerZoom->setSecondary(m_secondaryPowerName.toUpper());
+    showSecondaryReading(-1, QString(), false);
     LOG_INFO("WorkoutDialog", QStringLiteral("dual recording: %1 + %2").arg(m_mainPowerName, m_secondaryPowerName));
 }
 
-// The 2nd meter's 3 s average and its gap to the main power over the same window.
+// The 2nd meter's 3 s average and its gap to the main power over the same window
+// ("+3 W" reads 3 W higher; nothing when they agree).
 void WorkoutDialog::showSecondaryPower(int watts)
 {
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
@@ -1586,9 +1589,22 @@ void WorkoutDialog::showSecondaryPower(int watts)
     double main = 0;
     average(m_secondaryPowerWindow, secondary);
     const bool hasMain = average(m_mainPowerWindow, main);
-    ui->widget_topMenu->setSecondaryPower(m_secondaryPowerName, qRound(secondary), hasMain,
-                                          qRound(secondary) - qRound(main));
+    const int gap = hasMain ? qRound(secondary) - qRound(main) : 0;
+    const QString gapText = gap == 0 ? QString()
+                                     : QStringLiteral("%1%2 W").arg(gap > 0 ? QStringLiteral("+") : QString()).arg(gap);
+    showSecondaryReading(watts, gapText, isWorkoutStarted && !isWorkoutPaused && !isWorkoutOver);
     m_secondaryStaleTimer->start();
+}
+
+void WorkoutDialog::showSecondaryReading(int watts, const QString &gap, bool record)
+{
+    ui->wid_2_workoutPlot_PowerZoom->updateSecondary(timeElapsed_sec, watts, record, gap);
+    QString text = m_secondaryPowerName.toUpper();
+    if (watts >= 0)
+        text += QStringLiteral("  %1 W").arg(watts);
+    if (!gap.isEmpty())
+        text += QStringLiteral("  ") + gap;
+    ui->wid_2_infoBoxPower->setSecondaryReading(text, WorkoutPlotZoomer::secondaryColor());
 }
 
 void WorkoutDialog::SecondaryPowerDataReceived(int userID, int watts)

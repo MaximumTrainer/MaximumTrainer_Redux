@@ -83,6 +83,7 @@ InfoWidget::InfoWidget(QWidget *parent) : QWidget(parent), ui(new Ui::InfoWidget
     valueRow->addWidget(ui->label_currentValue, 0, Qt::AlignBottom);
     valueRow->addWidget(m_unit, 0, Qt::AlignBottom);
     valueRow->addStretch();
+    m_valueRow = valueRow;
     grid->addLayout(valueRow, 0, 0, 1, 3);
     grid->addWidget(ui->label_range, 1, 0, 1, 3);
 }
@@ -423,4 +424,25 @@ void InfoWidget::setStatsVisible(bool visible) {
         label->setVisible(visible);
     // The .ui minimum height makes room for the rows.
     setMinimumHeight(visible ? 140 : 0);
+}
+
+
+void InfoWidget::setSecondaryReading(const QString &text, const QColor &color)
+{
+    if (!m_secondaryReading) {
+        m_secondaryReading = new QLabel(this);
+        m_secondaryReading->setObjectName(QStringLiteral("infoSecondaryReading"));
+        // Same row as the value, right of the unit: no extra height in a short pane.
+        m_valueRow->insertSpacing(2, 14);
+        m_valueRow->insertWidget(3, m_secondaryReading, 0, Qt::AlignBottom);
+    }
+    m_secondaryReading->setStyleSheet(QStringLiteral("font: 600 9pt 'Inter'; color: %1; background: transparent;")
+                                          .arg(color.name()));
+    m_secondaryReading->setText(text);
+    m_secondaryReading->setVisible(!text.isEmpty());
+}
+
+QString InfoWidget::secondaryReading() const
+{
+    return m_secondaryReading ? m_secondaryReading->text() : QString();
 }

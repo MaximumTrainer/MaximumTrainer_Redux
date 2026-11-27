@@ -251,39 +251,6 @@ TopMenuWorkout::TopMenuWorkout(QWidget *parent) : QWidget(parent), ui(new Ui::To
         ui->horizontalLayout->insertWidget(timerIdx + 1, m_gearWidget);
     else
         ui->horizontalLayout->addWidget(m_gearWidget);
-
-    m_secondaryPowerLabel = new QLabel(this);
-    m_secondaryPowerLabel->setObjectName(QStringLiteral("label_secondaryPower"));
-    m_secondaryPowerLabel->setTextFormat(Qt::RichText);
-    m_secondaryPowerLabel->setStyleSheet(QStringLiteral("color: white; padding: 0 8px;"));
-    m_secondaryPowerLabel->setToolTip(tr("2nd power meter (dual recording), 3 s average. "
-                                         "In brackets: the difference to the main power."));
-    m_secondaryPowerLabel->setVisible(false);
-    const int gearIdx = ui->horizontalLayout->indexOf(m_gearWidget);
-    ui->horizontalLayout->insertWidget(gearIdx + 1, m_secondaryPowerLabel);
-}
-
-void TopMenuWorkout::setSecondaryPowerVisible(bool visible)
-{
-    if (m_secondaryPowerLabel)
-        m_secondaryPowerLabel->setVisible(visible);
-}
-
-void TopMenuWorkout::setSecondaryPower(const QString &device, int watts, bool hasDelta, int deltaToMain)
-{
-    if (!m_secondaryPowerLabel)
-        return;
-    const QFontMetrics metrics = m_secondaryPowerLabel->fontMetrics();
-    const QString elided = metrics.elidedText(device, Qt::ElideRight, 130);
-    // Room for the widest reading, so the bar does not shift as the digits change.
-    m_secondaryPowerLabel->setMinimumWidth(metrics.horizontalAdvance(elided + QStringLiteral(" 9999 W (+999)")) + 40);
-    const QString name = elided.toHtmlEscaped();
-    QString text = QStringLiteral("<img src=':/image/icon/power2' width='12' height='12'> %1 <b>%2</b>")
-                       .arg(name, watts < 0 ? QStringLiteral("–") : tr("%1 W").arg(watts));
-    if (watts >= 0 && hasDelta)
-        text += QStringLiteral(" <span style='color:#9a9aa6;'>(%1%2)</span>")
-                    .arg(deltaToMain > 0 ? QStringLiteral("+") : QString()).arg(deltaToMain);
-    m_secondaryPowerLabel->setText(text);
 }
 
 void TopMenuWorkout::setGearVisible(bool visible)
