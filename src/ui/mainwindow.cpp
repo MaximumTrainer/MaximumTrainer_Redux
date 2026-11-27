@@ -1136,6 +1136,17 @@ void MainWindow::startWorkoutOnLiveDevices(const Workout &workout)
             w->trainerConnected();
     });
 
+    // Dual recording: a saved 2nd power meter gets its own .fit file, and both
+    // files are named after the device that measured their power.
+    const QMap<BtleSensorRole, BtleSavedSensor> saved = BtleSensorStore::loadAll();
+    const BtleSavedSensor secondary = saved.value(BtleSensorRole::SecondaryPower);
+    if (secondary.isValid() && secondary.enabled && !account->rowing_mode) {
+        const BtleSavedSensor trainer = saved.value(BtleSensorRole::Trainer);
+        const BtleSavedSensor power = saved.value(BtleSensorRole::Power);
+        const bool trainerMeasures = trainer.isValid() && trainer.enabled;
+        w->setDualRecording(trainerMeasures ? trainer.name : power.name, secondary.name);
+    }
+
     if (ZwiftClickManager *click = m_devices->clickManager())
         w->useZwiftClickManager(click);
     m_devices->setRideActive(true);
@@ -1168,6 +1179,9 @@ void MainWindow::wireHubsToDialog(WorkoutDialog *w,
     QMap<BtleSensorRole, BtleHub*> hubsByRole = hubsByRoleIn;
     if (hubsByRole.contains(BtleSensorRole::Rower) && !hubsByRole.contains(BtleSensorRole::Trainer))
         hubsByRole.insert(BtleSensorRole::Trainer, hubsByRole.value(BtleSensorRole::Rower));
+    // The 2nd power meter only feeds the dual recording: it must not drive the
+    // ride's power, nor pause the ride when it drops.
+    BtleHub *secondaryPowerHub = hubsByRole.take(BtleSensorRole::SecondaryPower);
 
     QSet<BtleHub*> uniqueHubs;
     for (BtleHub *hub : hubsByRole)
@@ -1245,6 +1259,10 @@ void MainWindow::wireHubsToDialog(WorkoutDialog *w,
     if (hubsByRole.contains(BtleSensorRole::Oxygen))
         connect(hubsByRole.value(BtleSensorRole::Oxygen),
                 &BtleHub::signal_oxygen, w, &WorkoutDialog::OxygenValueChanged);
+    if (secondaryPowerHub) {
+        allHubs.insert(secondaryPowerHub);
+        connect(secondaryPowerHub, &BtleHub::signal_power, w, &WorkoutDialog::SecondaryPowerDataReceived);
+    }
 }
 
 #endif // GC_WASM_BUILD

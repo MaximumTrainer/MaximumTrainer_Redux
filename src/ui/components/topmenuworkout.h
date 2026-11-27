@@ -58,6 +58,10 @@ public:
     /// Briefly highlight a toolbar control (green pulse) so the rider sees an
     /// input registered, whatever the source (keys or on-screen).
     void flashShift(int direction);   // ▲ if > 0 else ▼ gear button
+    /// Dual recording: the 2nd power meter's reading next to the gear indicator.
+    /// \a watts < 0 shows "–"; \a deltaToMain is shown when \a hasDelta.
+    void setSecondaryPowerVisible(bool visible);
+    void setSecondaryPower(const QString &device, int watts, bool hasDelta, int deltaToMain);
     void flashRadioPrev();
     void flashRadioNext();
     void flashRadioPlayPause();
@@ -129,6 +133,7 @@ private:
     QToolButton *m_gearDownBtn = nullptr;
     QToolButton *m_gearUpBtn   = nullptr;
     QLabel      *m_gearLabel   = nullptr;
+    QLabel      *m_secondaryPowerLabel = nullptr;
     int          m_lastRadioVolumePct = -1;   // flash the volume icon only on change
 
     bool hasTargetPower;

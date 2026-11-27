@@ -26,7 +26,8 @@ public:
     }
 
 
-    void initialize_FIT_File(QString username, QString name, QDateTime startTimeWorkout, bool rowing = false);
+    void initialize_FIT_File(QString username, QString name, QDateTime startTimeWorkout, bool rowing = false,
+                             const QString &deviceTag = QString(), const QString &subfolder = QString());
     void close_FIT_File();
     void writeEndFile(double timeNow,
                       double avgIntervalSpeedKph, double avgCadence, double avgPower, double avgHr,
@@ -49,7 +50,8 @@ public:
 
 private :
     bool m_rowing = false; ///< Rowing (Beta): FIT sport for session/lap
-    QString generateFileName(QString username, QString name, QDateTime startTimeWorkout);
+    QString generateFileName(QString username, QString name, QDateTime startTimeWorkout,
+                             const QString &deviceTag, const QString &subfolder);
 
 
 private :

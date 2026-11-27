@@ -35,22 +35,31 @@ FitActivityCreator::FitActivityCreator() {
 }
 
 
-QString FitActivityCreator::generateFileName(QString username, QString nameWorkout, QDateTime startTimeWorkout) {
+QString FitActivityCreator::generateFileName(QString username, QString nameWorkout, QDateTime startTimeWorkout,
+                                             const QString &deviceTag, const QString &subfolder) {
 
 
     QString nameFile = Util::getSystemPathHistory() + "/";
-    nameFile += startTimeWorkout.toLocalTime().toString("yyyy-MM-dd(hh-mm-ss)") + "-MT-" + username + "-" + nameWorkout + ".fit";
+    if (!subfolder.isEmpty()) {
+        nameFile += subfolder + "/";
+        QDir().mkpath(nameFile);
+    }
+    nameFile += startTimeWorkout.toLocalTime().toString("yyyy-MM-dd(hh-mm-ss)") + "-MT-" + username + "-" + nameWorkout;
+    if (!deviceTag.trimmed().isEmpty())
+        nameFile += " [" + Util::cleanForOsSaving(deviceTag.trimmed()) + "]";
+    nameFile += ".fit";
 
 
     return nameFile;
 }
 
 
-void FitActivityCreator::initialize_FIT_File(QString username, QString nameWorkout, QDateTime startTimeWorkout, bool rowing) {
+void FitActivityCreator::initialize_FIT_File(QString username, QString nameWorkout, QDateTime startTimeWorkout, bool rowing,
+                                             const QString &deviceTag, const QString &subfolder) {
     m_rowing = rowing;
 
 
-    fileName = generateFileName(username, nameWorkout, startTimeWorkout);
+    fileName = generateFileName(username, nameWorkout, startTimeWorkout, deviceTag, subfolder);
 
 
 #ifdef Q_OS_WIN32

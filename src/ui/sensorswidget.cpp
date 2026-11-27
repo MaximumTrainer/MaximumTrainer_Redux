@@ -85,6 +85,10 @@ void SensorsWidget::buildUi()
         slot.role = role;
 
         QLabel *roleLabel = new QLabel(BtleSensorStore::roleDisplayName(role), group);
+        if (role == BtleSensorRole::SecondaryPower)
+            roleLabel->setToolTip(tr("Dual recording: the ride is also saved to a second .fit file with this "
+                                     "power meter's power, named after it, next to the main one. Only the main "
+                                     "file is uploaded and counted in your stats."));
         slot.roleLabel = roleLabel;
 
         slot.deviceLabel = new QLabel(group);
@@ -323,7 +327,9 @@ void SensorsWidget::refreshRow(int rowIndex)
         slot.deviceLabel->setStyleSheet(QString());
         slot.clearButton->setEnabled(true);
     } else {
-        slot.deviceLabel->setText(tr("(none saved)"));
+        slot.deviceLabel->setText(slot.role == BtleSensorRole::SecondaryPower
+                                  ? tr("(none saved) - records a second .fit file to compare power meters")
+                                  : tr("(none saved)"));
         slot.deviceLabel->setStyleSheet(QStringLiteral("color: #777;"));
         slot.clearButton->setEnabled(false);
     }

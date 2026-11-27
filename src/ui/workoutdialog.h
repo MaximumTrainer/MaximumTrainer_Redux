@@ -62,6 +62,10 @@ class WorkoutDialog : public QDialog
     Q_OBJECT
 
 public:
+    /// Dual recording: also save \a secondaryName's power to its own .fit file (in
+    /// History/Dual recording); \a mainName tags the main file. Call before the start.
+    void setDualRecording(const QString &mainName, const QString &secondaryName);
+    static constexpr const char *kDualRecordingFolder = "Dual recording";
     /// Borrows the app's Zwift Click connection; the dialog does not own it.
     void useZwiftClickManager(ZwiftClickManager *manager);
     /// Scans for Zwift Click controllers when the rider uses them. Not done in
@@ -209,6 +213,8 @@ public slots:
     void HrDataReceived(int userID, int value);
     void CadenceDataReceived(int userID, int value);
     void PowerDataReceived(int userID, int value);
+    /// Dual recording only: goes to the second .fit file, never to the ride itself.
+    void SecondaryPowerDataReceived(int userID, int watts);
     void PowerBalanceDataReceived(int userID, int rightPedalPercentage);
     void TrainerSpeedDataReceived(int userID, double value);
     void VirtualSpeedDataReceived(int userID, double value, double timeAtThisSpeedSec);
@@ -455,6 +461,16 @@ private:
     Workout workout;
     bool isTestWorkout;
     DataWorkout *m_dataWorkout = nullptr;
+    DataWorkout *m_secondaryWorkout = nullptr;   ///< dual recording, power from the 2nd meter
+    QString m_mainPowerName;
+    QString m_secondaryPowerName;
+    double m_secondaryPowerSum = 0;
+    int m_secondaryPowerSamples = 0;
+    bool m_secondaryPowerSeen = false;
+    QList<QPair<qint64, int>> m_mainPowerWindow;       ///< last 3 s, for the 2nd-meter gap
+    QList<QPair<qint64, int>> m_secondaryPowerWindow;
+    QTimer *m_secondaryStaleTimer = nullptr;
+    void showSecondaryPower(int watts);
     SoundPlayer *soundPlayer;
 
     QTimer *timer_sec;

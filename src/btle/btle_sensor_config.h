@@ -18,8 +18,9 @@ enum class BtleSensorRole {
     CadenceSpeed, // Cycling Speed & Cadence service (0x1816) or FTMS cadence/speed
     Trainer,      // Fitness Machine / FTMS (0x1826) – resistance control
     Oxygen,       // Moxy Muscle Oxygen service (0xAAB0)
-    Rower         // Fitness Machine / FTMS (0x1826) rower — own saved pairing so
+    Rower,        // Fitness Machine / FTMS (0x1826) rower — own saved pairing so
                   // switching between cycling and rowing modes never re-pairs
+    SecondaryPower // Cycling Power (0x1818) recorded to its own .fit file only
 };
 
 /*
