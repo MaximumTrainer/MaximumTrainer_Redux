@@ -27,7 +27,7 @@ inline constexpr SettingKey<bool>   SensorDropoutEnabled     {"account/sensor_dr
 inline constexpr SettingKey<int>    SensorDropoutTimeoutS    {"account/sensor_dropout_timeout_s",    ConfigDefaults::SensorDropoutTimeoutS};
 inline constexpr SettingKey<int>    BatteryWarningThreshold  {"account/battery_warning_threshold",   ConfigDefaults::BatteryWarningThreshold};
 inline constexpr SettingKey<bool>   IntervalSummaryEnabled   {"account/interval_summary_enabled",    true};
-inline constexpr SettingKey<int>    IntervalSummaryDurationS {"account/interval_summary_duration_s", 5};
+inline constexpr SettingKey<int>    IntervalSummaryDurationS {"account/interval_summary_duration_s", 6};
 inline constexpr SettingKey<int>    AppTheme                 {"account/app_theme",                   2}; // AppTheme::Mode::System
 inline constexpr SettingKey<bool>   ForcedDarkDefaultApplied {"account/forced_dark_default_applied", false};
 inline constexpr SettingKey<bool>   IntervalsIcuAutoUpload   {"account/intervals_icu_auto_upload",   false};
@@ -90,7 +90,7 @@ inline constexpr SettingKey<bool> ShowSpeedTarget                {"displayPrefs/
 inline constexpr SettingKey<bool> ShowHrCurve                    {"displayPrefs/show_hr_curve",                       true};
 inline constexpr SettingKey<bool> ShowPowerCurve                 {"displayPrefs/show_power_curve",                    true};
 inline constexpr SettingKey<bool> ShowCadenceCurve               {"displayPrefs/show_cadence_curve",                  true};
-inline constexpr SettingKey<bool> ShowSpeedCurve                 {"displayPrefs/show_speed_curve",                    true};
+inline constexpr SettingKey<bool> ShowSpeedCurve                 {"displayPrefs/show_speed_curve",                    false};
 inline constexpr SettingKey<int>  SoundPlayerVol                 {"displayPrefs/sound_player_vol",                    100};
 inline constexpr SettingKey<bool> EnableSound                    {"displayPrefs/enable_sound",                        true};
 inline constexpr SettingKey<bool> SoundInterval                  {"displayPrefs/sound_interval",                      true};

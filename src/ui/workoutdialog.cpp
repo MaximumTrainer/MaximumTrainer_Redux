@@ -1980,7 +1980,10 @@ SensorStatusStrip *WorkoutDialog::sensorStrip()
 {
     if (!m_sensorStrip) {
         m_sensorStrip = new SensorStatusStrip(this);
-        ui->widget_workoutPlot->setTopLeftStrip(m_sensorStrip);
+        if (m_raceView)
+            m_raceView->setTopStrip(m_sensorStrip);
+        else
+            ui->widget_workoutPlot->setTopLeftStrip(m_sensorStrip);
     }
     return m_sensorStrip;
 }
@@ -3212,12 +3215,17 @@ void WorkoutDialog::showIntervalSummaryOverlay(double avgPower, double avgHr, do
         ? qRound(avgPower * 100.0 / account->FTP)
         : 0;
 
-    // Build HTML summary shown in the existing interval-message overlay
+    // The same icons as the metric cards below the graph stand in for labels.
+    const auto icon = [](const char *resource) {
+        return QStringLiteral("<img src='%1' width='18' height='18' style='vertical-align:middle'>")
+            .arg(QLatin1String(resource));
+    };
     QString html = QString(
         "<div style='text-align:center; line-height:1.5;'>"
         "<b>%1</b><br>"
-        "<span style='color:%2;font-size:1.2em;'>&#9679; %3 W (%4%% FTP)</span><br>"
-        "<span>HR: %5 bpm &nbsp;&nbsp; Cad: %6 rpm</span><br>"
+        "<span style='color:%2;font-size:1.2em;'>" + icon(":/image/icon/power2") + " %3 W (%4% FTP)</span><br>"
+        "<span>" + icon(":/image/icon/heart2") + " %5 bpm &nbsp;&nbsp; "
+        + icon(":/image/icon/crank2") + " %6 rpm</span><br>"
         "<span style='color:#aaa;font-size:0.85em;'>%7</span>"
         "</div>")
         .arg(tr("Interval Complete"))
@@ -3579,6 +3587,8 @@ void WorkoutDialog::setRace(const RaceCourse &course, const RaceBot::FieldSettin
         videoLayout->insertWidget(videoLayout->indexOf(ui->widgetVideo), m_raceView, 1);
     ui->widget_workoutPlot->hide();
     ui->widget_allSpeedo->hide();   // power, cadence and heart rate are on the race card
+    if (m_sensorStrip)
+        m_raceView->setTopStrip(m_sensorStrip);   // the graph it sat on is hidden
     ui->widget_topMenu->setCourseMode();
     dconfig->setCourseMode();
     connect(m_raceView, &RaceView::gearUpClicked, this, [this]() { shiftGear(1); });

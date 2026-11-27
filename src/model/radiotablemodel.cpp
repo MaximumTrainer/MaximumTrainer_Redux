@@ -79,6 +79,23 @@ void RadioTableModel::removeRadioAtRow(int row) {
 }
 
 
+bool RadioTableModel::moveRadio(int row, int step) {
+
+    const int target = row + step;
+    if (row < 0 || row >= lstRadio.size() || target < 0 || target >= lstRadio.size() || target == row)
+        return false;
+
+    // beginMoveRows' destination is the row the item lands before.
+    const int destination = step > 0 ? target + 1 : target;
+    beginMoveRows(QModelIndex(), row, row, QModelIndex(), destination);
+    lstRadio.move(row, target);
+    endMoveRows();
+    if (activeIndex.isValid() && (activeIndex.row() == row || activeIndex.row() == target))
+        activeIndex = index(activeIndex.row() == row ? target : row, 0);
+    return true;
+}
+
+
 QList<Radio> RadioTableModel::getAllRadios() const {
     return lstRadio;
 }

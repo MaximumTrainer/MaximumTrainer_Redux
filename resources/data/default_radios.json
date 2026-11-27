@@ -16,6 +16,22 @@
         "url": "https://ice1.somafm.com/beatblender-128-mp3"
     },
     {
+        "name": "SomaFM Drone Zone",
+        "genre": "Ambient",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://ice1.somafm.com/dronezone-128-mp3"
+    },
+    {
+        "name": "Radio Paradise — Global Mix",
+        "genre": "World / Electronic",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://stream.radioparadise.com/global-128"
+    },
+    {
         "name": "SomaFM Indie Pop Rocks",
         "genre": "Indie Pop",
         "gotAds": "0",
@@ -24,20 +40,12 @@
         "url": "https://ice1.somafm.com/indiepop-128-mp3"
     },
     {
-        "name": "SomaFM Boot Liquor",
-        "genre": "Americana / Country",
+        "name": "SomaFM PopTron",
+        "genre": "Electro Pop / Upbeat",
         "gotAds": "0",
         "bitrate": "128",
         "lang": "EN",
-        "url": "https://ice1.somafm.com/bootliquor-128-mp3"
-    },
-    {
-        "name": "SomaFM Drone Zone",
-        "genre": "Ambient",
-        "gotAds": "0",
-        "bitrate": "128",
-        "lang": "EN",
-        "url": "https://ice1.somafm.com/dronezone-128-mp3"
+        "url": "https://ice1.somafm.com/poptron-128-mp3"
     },
     {
         "name": "SomaFM Underground 80s",
@@ -56,100 +64,12 @@
         "url": "https://stream.radioparadise.com/aac-128"
     },
     {
-        "name": "Radio Paradise — Global Mix",
-        "genre": "World / Electronic",
-        "gotAds": "0",
-        "bitrate": "128",
-        "lang": "EN",
-        "url": "https://stream.radioparadise.com/global-128"
-    },
-    {
-        "name": "SomaFM The Trip",
-        "genre": "Progressive House / Trance",
-        "gotAds": "0",
-        "bitrate": "128",
-        "lang": "EN",
-        "url": "https://ice1.somafm.com/thetrip-128-mp3"
-    },
-    {
-        "name": "Dance Wave!",
-        "genre": "Dance / EDM",
-        "gotAds": "0",
-        "bitrate": "128",
-        "lang": "EN",
-        "url": "https://dancewave.online/dance.mp3"
-    },
-    {
-        "name": "TechnoBase.FM",
-        "genre": "Techno / HandsUp / Dance",
-        "gotAds": "0",
-        "bitrate": "192",
-        "lang": "DE/EN",
-        "url": "https://listen.technobase.fm/tunein-mp3"
-    },
-    {
-        "name": "HouseTime.FM",
-        "genre": "House / Electro / EDM",
-        "gotAds": "0",
-        "bitrate": "192",
-        "lang": "DE/EN",
-        "url": "https://listen.housetime.fm/tunein-mp3"
-    },
-    {
-        "name": "90s90s Dance",
-        "genre": "90s Dance / EuroDance",
-        "gotAds": "1",
-        "bitrate": "192",
-        "lang": "DE",
-        "url": "https://streams.90s90s.de/dance/mp3-192/"
-    },
-    {
-        "name": "Nightride FM",
-        "genre": "Synthwave / Retro Electro",
-        "gotAds": "0",
-        "bitrate": "128",
-        "lang": "EN",
-        "url": "https://stream.nightride.fm/nightride.mp3"
-    },
-    {
-        "name": "Dance Wave Retro!",
-        "genre": "90s/00s Dance / EuroDance",
-        "gotAds": "0",
-        "bitrate": "128",
-        "lang": "EN",
-        "url": "https://dancewave.online/retrodance.mp3"
-    },
-    {
-        "name": "90s90s Eurodance",
-        "genre": "EuroDance",
-        "gotAds": "1",
-        "bitrate": "192",
-        "lang": "DE",
-        "url": "https://streams.90s90s.de/eurodance/mp3-192/"
-    },
-    {
         "name": "Radio Paradise — Rock Mix",
         "genre": "Rock",
         "gotAds": "0",
         "bitrate": "128",
         "lang": "EN",
         "url": "https://stream.radioparadise.com/rock-128"
-    },
-    {
-        "name": "SomaFM Metal Detector",
-        "genre": "Metal",
-        "gotAds": "0",
-        "bitrate": "128",
-        "lang": "EN",
-        "url": "https://ice1.somafm.com/metal-128-mp3"
-    },
-    {
-        "name": "SomaFM PopTron",
-        "genre": "Electro Pop / Upbeat",
-        "gotAds": "0",
-        "bitrate": "128",
-        "lang": "EN",
-        "url": "https://ice1.somafm.com/poptron-128-mp3"
     },
     {
         "name": "SomaFM Left Coast 70s",
@@ -160,60 +80,28 @@
         "url": "https://ice1.somafm.com/seventies-128-mp3"
     },
     {
-        "name": "TranceBase.FM",
-        "genre": "Vocal / Uplifting Trance",
-        "gotAds": "0",
-        "bitrate": "192",
-        "lang": "DE/EN",
-        "url": "https://listen.trancebase.fm/tunein-mp3"
-    },
-    {
-        "name": "HardBase.FM",
-        "genre": "Hardstyle / Jumpstyle",
-        "gotAds": "0",
-        "bitrate": "192",
-        "lang": "DE/EN",
-        "url": "https://listen.hardbase.fm/tunein-mp3"
-    },
-    {
-        "name": "Intense Radio",
-        "genre": "Dance / House / Trance",
-        "gotAds": "0",
-        "bitrate": "256",
-        "lang": "EN",
-        "url": "https://secure.live-streams.nl/main"
-    },
-    {
-        "name": "Hirschmilch Techno",
-        "genre": "Techno",
+        "name": "SomaFM Boot Liquor",
+        "genre": "Americana / Country",
         "gotAds": "0",
         "bitrate": "128",
         "lang": "EN",
-        "url": "https://hirschmilch.de:7000/techno.mp3"
+        "url": "https://ice1.somafm.com/bootliquor-128-mp3"
     },
     {
-        "name": "Hirschmilch Progressive",
-        "genre": "Progressive House / Trance",
+        "name": "SomaFM Metal Detector",
+        "genre": "Metal",
         "gotAds": "0",
         "bitrate": "128",
         "lang": "EN",
-        "url": "https://hirschmilch.de:7000/progressive.mp3"
+        "url": "https://ice1.somafm.com/metal-128-mp3"
     },
     {
-        "name": "Hirschmilch Psytrance",
-        "genre": "Psytrance",
+        "name": "Nightride FM",
+        "genre": "Synthwave / Retro Electro",
         "gotAds": "0",
         "bitrate": "128",
         "lang": "EN",
-        "url": "https://hirschmilch.de:7000/psytrance.mp3"
-    },
-    {
-        "name": "Bassdrive",
-        "genre": "Drum and Bass",
-        "gotAds": "0",
-        "bitrate": "192",
-        "lang": "EN",
-        "url": "https://bassdrive.radioca.st/stream"
+        "url": "https://stream.nightride.fm/nightride.mp3"
     },
     {
         "name": "Nightride Darksynth",
@@ -240,11 +128,123 @@
         "url": "https://ice1.somafm.com/defcon-128-mp3"
     },
     {
+        "name": "Dance Wave!",
+        "genre": "Dance / EDM",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://dancewave.online/dance.mp3"
+    },
+    {
+        "name": "Dance Wave Retro!",
+        "genre": "90s/00s Dance / EuroDance",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://dancewave.online/retrodance.mp3"
+    },
+    {
+        "name": "90s90s Dance",
+        "genre": "90s Dance / EuroDance",
+        "gotAds": "1",
+        "bitrate": "192",
+        "lang": "DE",
+        "url": "https://streams.90s90s.de/dance/mp3-192/"
+    },
+    {
+        "name": "90s90s Eurodance",
+        "genre": "EuroDance",
+        "gotAds": "1",
+        "bitrate": "192",
+        "lang": "DE",
+        "url": "https://streams.90s90s.de/eurodance/mp3-192/"
+    },
+    {
+        "name": "TechnoBase.FM",
+        "genre": "Techno / HandsUp / Dance",
+        "gotAds": "0",
+        "bitrate": "192",
+        "lang": "DE/EN",
+        "url": "https://listen.technobase.fm/tunein-mp3"
+    },
+    {
+        "name": "HouseTime.FM",
+        "genre": "House / Electro / EDM",
+        "gotAds": "0",
+        "bitrate": "192",
+        "lang": "DE/EN",
+        "url": "https://listen.housetime.fm/tunein-mp3"
+    },
+    {
         "name": "FIP Electro",
         "genre": "House / Electro",
         "gotAds": "0",
         "bitrate": "128",
         "lang": "FR",
         "url": "https://icecast.radiofrance.fr/fipelectro-midfi.mp3"
+    },
+    {
+        "name": "Intense Radio",
+        "genre": "Dance / House / Trance",
+        "gotAds": "0",
+        "bitrate": "256",
+        "lang": "EN",
+        "url": "https://secure.live-streams.nl/main"
+    },
+    {
+        "name": "SomaFM The Trip",
+        "genre": "Progressive House / Trance",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://ice1.somafm.com/thetrip-128-mp3"
+    },
+    {
+        "name": "Hirschmilch Progressive",
+        "genre": "Progressive House / Trance",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://hirschmilch.de:7000/progressive.mp3"
+    },
+    {
+        "name": "TranceBase.FM",
+        "genre": "Vocal / Uplifting Trance",
+        "gotAds": "0",
+        "bitrate": "192",
+        "lang": "DE/EN",
+        "url": "https://listen.trancebase.fm/tunein-mp3"
+    },
+    {
+        "name": "Hirschmilch Psytrance",
+        "genre": "Psytrance",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://hirschmilch.de:7000/psytrance.mp3"
+    },
+    {
+        "name": "Hirschmilch Techno",
+        "genre": "Techno",
+        "gotAds": "0",
+        "bitrate": "128",
+        "lang": "EN",
+        "url": "https://hirschmilch.de:7000/techno.mp3"
+    },
+    {
+        "name": "HardBase.FM",
+        "genre": "Hardstyle / Jumpstyle",
+        "gotAds": "0",
+        "bitrate": "192",
+        "lang": "DE/EN",
+        "url": "https://listen.hardbase.fm/tunein-mp3"
+    },
+    {
+        "name": "Bassdrive",
+        "genre": "Drum and Bass",
+        "gotAds": "0",
+        "bitrate": "192",
+        "lang": "EN",
+        "url": "https://bassdrive.radioca.st/stream"
     }
 ]

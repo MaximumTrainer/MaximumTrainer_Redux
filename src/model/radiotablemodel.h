@@ -23,6 +23,8 @@ public:
     void addRadio(const Radio& radio);
     void replaceRadioAtRow(int row, const Radio& radio);
     void removeRadioAtRow(int row);
+    /// Swaps \a row with its neighbour (\a step -1 = up, +1 = down). Returns false at either end.
+    bool moveRadio(int row, int step);
     QList<Radio> getAllRadios() const;
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;

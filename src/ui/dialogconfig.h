@@ -112,6 +112,8 @@ private slots:
     void on_pushButton_addRadio_clicked();
     void on_pushButton_editRadio_clicked();
     void on_pushButton_deleteRadio_clicked();
+    void on_pushButton_moveRadioUp_clicked();
+    void on_pushButton_moveRadioDown_clicked();
 
 
     ///timers
@@ -151,6 +153,7 @@ private :
 
     void playSoundTestEffect();
     void selectLastStation();
+    void moveSelectedRadio(int step);
 
     // Interval-summary overlay setting (lives at the bottom of the General tab)
     void buildIntervalSummaryGroup();

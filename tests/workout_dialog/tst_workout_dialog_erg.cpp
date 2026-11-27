@@ -17,6 +17,7 @@
 #include "managerachievement.h"
 #include "powereditor.h"
 #include "radio.h"
+#include "radiotablemodel.h"
 #include "sensor.h"
 #include "settings.h"
 #include "soundplayer.h"
@@ -24,6 +25,9 @@
 #include "userstudio.h"
 #include "workout.h"
 #include "workoutdialog.h"
+#include "workoutplotzoomer.h"
+
+#include <qwt_scale_div.h>
 #ifndef Q_OS_WASM
 #include "zwift_click_manager.h"
 #endif
@@ -175,6 +179,50 @@ private slots:
     }
 
     // Enter belongs to text fields; Space starts and pauses.
+    // A single 0 W packet late in an interval used to stretch the power graph
+    // down to 0, leaving the target band as a thin strip at the top.
+    void powerGraphKeepsTheTargetBandInViewAfterADropout()
+    {
+        openDialog(false, 0);
+        auto *zoomer = m_dialog->findChild<WorkoutPlotZoomer *>(QStringLiteral("wid_2_workoutPlot_PowerZoom"));
+        QVERIFY(zoomer);
+        double timeSec = 600.0;
+        for (int sample = 0; sample < 20; ++sample, timeSec += 0.5) {
+            zoomer->updateCurve(timeSec, kTargetWatts);
+            zoomer->updateTextLabelValue(kTargetWatts);
+        }
+        zoomer->updateCurve(timeSec, 0);
+        zoomer->updateTextLabelValue(0);
+        zoomer->updateCurve(timeSec + 0.5, kTargetWatts);
+        zoomer->updateTextLabelValue(kTargetWatts);
+        zoomer->moveIntervalTime((timeSec + 0.5) * 1000.0);
+
+        const QwtScaleDiv axis = zoomer->axisScaleDiv(QwtPlot::yLeft);
+        const double share = (kTargetWatts - axis.lowerBound()) / (axis.upperBound() - axis.lowerBound());
+        QVERIFY2(axis.lowerBound() > 0.0, qPrintable(QString::number(axis.lowerBound())));
+        QVERIFY2(share >= 0.25 && share <= 0.75, qPrintable(QString::number(share)));
+    }
+
+    void radioListMovesAStationUpAndDown()
+    {
+        RadioTableModel model;
+        const auto station = [](const QString &name) { return Radio(name, QString(), false, 128, QString(), QString()); };
+        model.setRadios({station("A"), station("B"), station("C")});
+        const auto names = [&model]() {
+            QStringList list;
+            for (const Radio &radio : model.getAllRadios())
+                list << radio.getName();
+            return list.join(',');
+        };
+        QVERIFY(model.moveRadio(2, -1));
+        QCOMPARE(names(), QStringLiteral("A,C,B"));
+        QVERIFY(model.moveRadio(0, +1));
+        QCOMPARE(names(), QStringLiteral("C,A,B"));
+        QVERIFY(!model.moveRadio(0, -1));
+        QVERIFY(!model.moveRadio(2, +1));
+        QCOMPARE(names(), QStringLiteral("C,A,B"));
+    }
+
     void enterIsNotAHotkey()
     {
         openDialog(false, 0);   // started

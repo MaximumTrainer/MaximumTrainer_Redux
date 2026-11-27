@@ -26,6 +26,9 @@ public:
 
     /// The virtual gear, drawn top left of the map with ▼/▲ buttons.
     void setGear(int gear, int gearCount, bool visible);
+    /// Shows \a strip (the sensor connection chips) at the top of the map, right
+    /// of the progress panel. The view takes ownership.
+    void setTopStrip(QWidget *strip);
     /// Light the ▲ (direction > 0) or ▼ button briefly after a shift.
     void flashShift(int direction);
     /// Cadence and heart rate for the card (power comes from the race). 0 = none.

@@ -94,7 +94,7 @@ void TstSettings::testDisplayPrefs_freshStoreGivesDefaults()
         QCOMPARE(account.show_hr_curve, true);
         QCOMPARE(account.show_power_curve, true);
         QCOMPARE(account.show_cadence_curve, true);
-        QCOMPARE(account.show_speed_curve, true);
+        QCOMPARE(account.show_speed_curve, false);
         QCOMPARE(account.sound_player_vol, 100);
         QCOMPARE(account.enable_sound, true);
         QCOMPARE(account.sound_interval, true);
@@ -238,7 +238,7 @@ void TstSettings::testDisplayPrefs_roundTripsEveryField()
         writer.show_hr_curve = false;
         writer.show_power_curve = false;
         writer.show_cadence_curve = false;
-        writer.show_speed_curve = false;
+        writer.show_speed_curve = true;
         writer.sound_player_vol = 107;
         writer.enable_sound = false;
         writer.sound_interval = false;
@@ -295,7 +295,7 @@ void TstSettings::testDisplayPrefs_roundTripsEveryField()
         QCOMPARE(reader.show_hr_curve, false);
         QCOMPARE(reader.show_power_curve, false);
         QCOMPARE(reader.show_cadence_curve, false);
-        QCOMPARE(reader.show_speed_curve, false);
+        QCOMPARE(reader.show_speed_curve, true);
         QCOMPARE(reader.sound_player_vol, 107);
         QCOMPARE(reader.enable_sound, false);
         QCOMPARE(reader.sound_interval, false);
