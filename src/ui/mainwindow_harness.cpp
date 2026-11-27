@@ -22,8 +22,14 @@
 #include <QGuiApplication>
 #include <QStyleHints>
 #include <QScopeGuard>
+#include <functional>
+#include <QLabel>
 
 #include "util.h"
+#ifndef GC_WASM_BUILD
+#include "device_session.h"
+#include "btle_hub.h"
+#endif
 #include "logger.h"
 #include "environnement.h"
 #include "soundplayer.h"
@@ -65,7 +71,6 @@
 #include "btle_sensor_store.h"
 #endif
 #include "sensorswidget.h"
-#include "studiowidget.h"
 #include "asyncdialogs.h"
 #include "groupconfig.h"
 #include "groupsession.h"
@@ -88,16 +93,14 @@ static const int ssDelays[] = {
     500,   // after step  2 (captured WorkoutCreator)   → launch WorkoutDialog
     9000,  // after step  3 (launched WorkoutDialog)    → capture running workout
     200,   // after step  4 (captured workout)          → close WorkoutDialog
-    600,   // after step  5 (closed WorkoutDialog)      → enable studio mode
-    2000,  // after step  6 (enabled studio mode)       → capture Studio
-    500,   // after step  7 (captured Studio)           → switch to Intervals.icu
+    0,     // after step  5 (closed WorkoutDialog)      → (unused)
+    0,     // after step  6 (unused)
+    500,   // after step  7 (unused)                    → switch to Intervals.icu
     1500,  // after step  8 (switched to Intervals.icu) → capture Intervals.icu
     0,     // after step  9 (captured Intervals.icu)    → (unused)
     0,     // after step 10 (unused)
     500,   // after step 11 (unused)                    → switch to History
     1500,  // after step 12 (switched to History)       → capture History
-    600,   // after step 13 (captured History)          → launch studio workout
-    4000,  // after step 14 (launched studio workout)   → capture studio workout
 };
 
 Workout MainWindow::makeDemoWorkout() const
@@ -162,9 +165,8 @@ void MainWindow::launchDemoWorkout()
     ui->tabWidget_workout->setCurrentIndex(0);
 
     m_ssSimHub = new SimulatorHub(this);
-    m_ssSimHub->setUserID(1); // userID must be 1-based; default 0 causes arrUserStudioWidget[-1] OOB crash
     m_ssSimHub->setRowingMode(account->rowing_mode); // demo follows the app mode
-    m_ssWorkoutDlg = new WorkoutDialog(makeDemoWorkout(), lstRadio, vecUserStudio, this);
+    m_ssWorkoutDlg = new WorkoutDialog(makeDemoWorkout(), lstRadio, this);
 
     connectSimulatorHub(m_ssSimHub, m_ssWorkoutDlg);
 
@@ -300,11 +302,6 @@ void MainWindow::startScreenshotMode(const QString &outputDir)
     m_ssOutputDir = outputDir;
     m_ssStep      = 0;
 
-    // Remember the user's real studio settings; the studio capture steps toggle
-    // these, and they are restored before the app quits (see the final step).
-    m_ssSavedStudioEnabled = account->enable_studio_mode;
-    m_ssSavedRiderCount    = account->nb_user_studio;
-
     // Force offline so WorkoutDialog skips the online session check.
     // There is no server to reach in screenshot/CI mode, and the blocking
     // "could not retrieve session" message-box that appears after 3 failed
@@ -432,33 +429,9 @@ void MainWindow::screenshotNextStep()
         QCoreApplication::processEvents();
         break;
 
-    // ── Step 6: capture the Studio tab off (switch only) then on ─────────
-    case 6: {
-        StudioWidget *sw = qobject_cast<StudioWidget*>(ui->studioWidget);
-        ftb->setCurrentIndex(m_tabs.studio);
-
-        // Off: only the Studio Mode switch row should show, pinned at the top.
-        enableStudioMode(false);
-        if (sw) sw->reload();
-        QCoreApplication::processEvents();
-        grab().save(m_ssOutputDir + QLatin1String("/screenshot_studio_off.png"), "PNG");
-        qInfo() << "Screenshot: studio_off";
-
-        // On: reveal the full configuration UI for the studio_mode capture.
-        setNumberUserStudio(6);
-        enableStudioMode(true);
-        if (sw) sw->reload();
-        raise();
-        activateWindow();
-        QCoreApplication::processEvents();
-        break;
-    }
-
-    // ── Step 7: capture studio mode ───────────────────────────────────────
+    // Steps 6-7 used to capture the removed Studio page.
+    case 6:
     case 7:
-        grab().save(m_ssOutputDir + QLatin1String("/screenshot_studio_mode.png"), "PNG");
-        qInfo() << "Screenshot: studio_mode";
-        enableStudioMode(false);
         break;
 
     // ── Step 8: switch to Intervals.icu tab (tab 1) ─────────────────────
@@ -493,68 +466,6 @@ void MainWindow::screenshotNextStep()
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_history.png"), "PNG");
         qInfo() << "Screenshot: history";
         break;
-
-    // ── Step 14: launch a Studio-mode workout with N simulated riders ─────
-    case 14: {
-        setNumberUserStudio(8);   // a full studio: 4 x 2 rider cards
-        enableStudioMode(true);
-        ftb->setCurrentIndex(0);
-        ui->tabWidget_workout->setCurrentIndex(0);
-
-        const int nbRiders = qBound(1, account->nb_user_studio, constants::nbMaxUserStudio);
-        QVector<UserStudio> riders = prepareStudioRiders(true);
-        // A believable class: varied names and FTPs, so most riders sit on
-        // their own target and a couple are off it.
-        static const char *const names[] = {"Julie", "Marc", "Sam", "Chloe", "Nico", "Lea", "Tom", "Ines"};
-        static const int ftps[] = {330, 300, 345, 280, 335, 340, 325, 360};
-        for (int i = 0; i < riders.size() && i < 8; ++i) {
-            riders[i].setDisplayName(QString::fromLatin1(names[i]));
-            riders[i].setFTP(ftps[i]);
-        }
-        m_ssWorkoutDlg = new WorkoutDialog(makeDemoWorkout(), lstRadio, riders, this);
-
-        for (int i = 0; i < nbRiders; ++i) {
-            SimulatorHub *simHub = new SimulatorHub(this);
-            simHub->setRowingMode(account->rowing_mode);
-            simHub->setUserID(i + 1);
-            connectSimulatorHub(simHub, m_ssWorkoutDlg);
-            simHub->start();
-            m_ssStudioHubs.append(simHub);
-        }
-        m_ssWorkoutDlg->resize(1350, 800);
-        m_ssWorkoutDlg->show();
-        m_ssWorkoutDlg->raise();
-        m_ssWorkoutDlg->activateWindow();
-        QCoreApplication::processEvents();
-        // Start it, so the capture shows live numbers on every rider card.
-        QKeyEvent startKey(QEvent::KeyPress, Qt::Key_Space, Qt::NoModifier);
-        QCoreApplication::sendEvent(m_ssWorkoutDlg, &startKey);
-        break;
-    }
-
-    // ── Step 15: capture the Studio workout, then quit ───────────────────
-    case 15:
-        if (m_ssWorkoutDlg) {
-            m_ssWorkoutDlg->raise();
-            QCoreApplication::processEvents();
-            m_ssWorkoutDlg->grab().save(
-                m_ssOutputDir + QLatin1String("/screenshot_studio_workout.png"), "PNG");
-            qInfo() << "Screenshot: studio_workout";
-            m_ssWorkoutDlg->hide();
-            delete m_ssWorkoutDlg;
-            m_ssWorkoutDlg = nullptr;
-        }
-        for (SimulatorHub *simHub : m_ssStudioHubs) {
-            simHub->stopDecodingMsg();
-            delete simHub;
-        }
-        m_ssStudioHubs.clear();
-        // Restore the user's real studio settings the capture steps changed.
-        account->enable_studio_mode = m_ssSavedStudioEnabled;
-        account->nb_user_studio     = m_ssSavedRiderCount;
-        account->saveDisplayPrefs();
-        scheduleScreenshotQuit();
-        return; // No further steps — quit is already scheduled.
 
     default:
         scheduleScreenshotQuit();
@@ -629,3 +540,145 @@ void MainWindow::runWorkoutBenchmark(int seconds)
     QCoreApplication::quit();
 }
 #endif
+
+
+void MainWindow::runDeviceSessionCheck(const QString &outDir)
+{
+#ifndef GC_WASM_BUILD
+    QDir().mkpath(outDir);
+    account->use_simulated_sensors = false;
+    account->isOffline = true;
+    account->display_video = 0;
+    resize(1280, 800);
+    startDevices();
+
+    auto *clock = new QElapsedTimer;
+    clock->start();
+    auto *report = new QStringList;
+    const auto note = [clock, report](const QString &line) {
+        const QString stamped = QStringLiteral("[%1 s] %2").arg(clock->elapsed() / 1000.0, 0, 'f', 1).arg(line);
+        qInfo().noquote() << "DeviceSessionCheck" << stamped;
+        report->append(stamped);
+    };
+    const auto finish = [this, outDir, report, clock](int code) {
+        grab().save(outDir + QLatin1String("/main_window.png"), "PNG");
+        QFile file(outDir + QLatin1String("/report.txt"));
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text))
+            QTextStream(&file) << report->join(QLatin1Char('\n')) << '\n';
+        delete report;
+        delete clock;
+        QTimer::singleShot(500, qApp, [code]() { qApp->exit(code); });
+    };
+    const auto findRide = []() -> WorkoutDialog * {
+        for (QWidget *top : QApplication::topLevelWidgets())
+            if (auto *ride = qobject_cast<WorkoutDialog *>(top))
+                if (ride->isVisible())
+                    return ride;
+        return nullptr;
+    };
+    // Polls \a done every 250 ms for up to \a timeoutMs, then runs \a next(ok).
+    const auto waitFor = [](std::function<bool()> done, int timeoutMs, std::function<void(bool)> next) {
+        auto *poll = new QTimer;
+        auto *waited = new QElapsedTimer;
+        waited->start();
+        QObject::connect(poll, &QTimer::timeout, poll, [poll, waited, done, timeoutMs, next]() {
+            const bool ok = done();
+            if (!ok && waited->elapsed() < timeoutMs)
+                return;
+            poll->deleteLater();
+            delete waited;
+            next(ok);
+        });
+        poll->start(250);
+    };
+    // Counts power packets the open ride receives, to prove the hub is wired to it.
+    auto *packets = new int(0);
+    const auto countPower = [this, packets]() {
+        *packets = 0;
+        if (BtleHub *trainer = m_devices->trainerHub())
+            connect(trainer, &BtleHub::signal_power, m_devices, [packets](int, int) { ++*packets; });
+    };
+
+    // Nobody pedals during the check, so one 222 W packet goes through the real
+    // hub; the open ride's power box must show it (read before the trainer's
+    // next real 0 W packet overwrites it).
+    const auto ridePowerShows222 = [this, findRide]() {
+        BtleHub *trainer = m_devices->trainerHub();
+        WorkoutDialog *ride = findRide();
+        if (!trainer || !ride)
+            return false;
+        // The JetBlack reports power over Cycling Power (FTMS power is then ignored).
+        trainer->simulateNotification(0x2A63, QByteArray::fromHex("0000de00"));
+        auto *box = ride->findChild<QWidget *>(QStringLiteral("wid_2_infoBoxPower"));
+        auto *value = box ? box->findChild<QLabel *>(QStringLiteral("label_currentValue")) : nullptr;
+        return value && value->text().contains(QLatin1String("222"));
+    };
+
+    note(QStringLiteral("session mode %1, %2 device(s)").arg(int(m_devices->mode())).arg(m_devices->items().size()));
+    waitFor([this]() { return m_devices->trainerHub() != nullptr; }, 90000,
+            [=, this](bool trainerUp) {
+        note(trainerUp ? QStringLiteral("trainer connected at startup") : QStringLiteral("FAIL trainer never connected"));
+        if (!trainerUp) { finish(1); return; }
+        countPower();
+        grab().save(outDir + QLatin1String("/main_window_connected.png"), "PNG");
+
+        on_actionOpen_Ride_triggered();
+        WorkoutDialog *first = findRide();
+        note(first ? QStringLiteral("ride 1 open") : QStringLiteral("FAIL ride 1 did not open"));
+        if (!first) { finish(1); return; }
+        const int before = *packets;
+        QTimer::singleShot(6000, this, [=, this]() {
+            note(QStringLiteral("ride 1: %1 real power packet(s) from the trainer in 6 s").arg(*packets - before));
+            const bool wired1 = ridePowerShows222();
+            note(wired1 ? QStringLiteral("ride 1 shows power from the trainer hub")
+                        : QStringLiteral("FAIL ride 1 is not wired to the trainer hub"));
+            if (WorkoutDialog *ride = findRide())
+                ride->grab().save(outDir + QLatin1String("/ride1.png"), "PNG");
+            if (WorkoutDialog *ride = findRide())
+                QMetaObject::invokeMethod(ride, "reject");
+            QTimer::singleShot(4000, this, [=, this]() {
+                const bool stillUp = m_devices->trainerHub() && m_devices->trainerHub()->isConnected();
+                note(stillUp ? QStringLiteral("trainer still connected after closing ride 1")
+                             : QStringLiteral("FAIL trainer dropped after closing ride 1"));
+                QElapsedTimer *opened = new QElapsedTimer;
+                opened->start();
+                const int atOpen = *packets;
+                on_actionOpen_Ride_triggered();
+                Q_UNUSED(atOpen)
+                waitFor(ridePowerShows222, 15000, [=, this](bool flowing) {
+                    note(flowing ? QStringLiteral("ride 2 shows power from the trainer hub %1 ms after opening").arg(opened->elapsed())
+                                 : QStringLiteral("FAIL ride 2 is not wired to the trainer hub"));
+                    delete opened;
+                    if (WorkoutDialog *ride = findRide()) {
+                        ride->grab().save(outDir + QLatin1String("/ride2.png"), "PNG");
+                        QMetaObject::invokeMethod(ride, "reject");
+                    }
+                    QTimer::singleShot(3000, this, [=, this]() {
+                        const bool up = m_devices->trainerHub() && m_devices->trainerHub()->isConnected();
+                        note(up ? QStringLiteral("trainer still connected after closing ride 2")
+                                : QStringLiteral("FAIL trainer dropped after closing ride 2"));
+                        const int trainerKey = int(account->rowing_mode ? BtleSensorRole::Rower : BtleSensorRole::Trainer);
+                        m_devices->disconnectDevice(trainerKey);
+                        // One background-retry tick must not bring it back.
+                        QTimer::singleShot(35000, this, [=, this]() {
+                            const bool off = m_devices->trainerHub() == nullptr;
+                            note(off ? QStringLiteral("trainer stayed disconnected through a retry tick")
+                                     : QStringLiteral("FAIL disconnected trainer came back on its own"));
+                            grab().save(outDir + QLatin1String("/main_window_trainer_off.png"), "PNG");
+                            m_devices->retry(trainerKey);
+                            waitFor([this]() { return m_devices->trainerHub() != nullptr; }, 30000, [=](bool back) {
+                                note(back ? QStringLiteral("trainer reconnected on request")
+                                          : QStringLiteral("FAIL trainer did not reconnect"));
+                                finish(wired1 && stillUp && flowing && up && off && back ? 0 : 1);
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+#else
+    Q_UNUSED(outDir)
+    qApp->quit();
+#endif
+}

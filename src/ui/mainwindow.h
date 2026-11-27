@@ -18,7 +18,6 @@ class CoursesPage;
 #include "workout.h"
 #include "settings.h"
 #include "settingspage.h"
-#include "userstudio.h"
 #include "myconstants.h"
 #include "tab_intervals_icu.h"
 #include "historywidget.h"
@@ -42,6 +41,9 @@ class WorkoutDialog;
 class ZwiftClickManager;
 class AchievementsWidget;
 class SimulatorHub;
+class DeviceSession;
+class SensorStatusStrip;
+class QLabel;
 
 
 class MainWindow : public QMainWindow
@@ -52,6 +54,8 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
     void closeEvent(QCloseEvent *event) override;
+    /// Connects the saved sensors and Zwift Click for the whole session (after login).
+    void startDevices();
 
 
 signals :
@@ -74,6 +78,10 @@ public slots:
     /// (setLoad/setSlope) to prove ERG actually drives the trainer. Writes a
     /// report then quits. Entry: --sensor-check [dir].
     void runSensorCheck(const QString &outDir);
+    /// --device-session-check: real hardware. Connects the saved sensors at
+    /// startup, opens a free ride, closes it, opens a second one, and reports
+    /// whether the trainer stayed connected and how fast power reached each ride.
+    void runDeviceSessionCheck(const QString &outDir);
     /// --bench-workout: run the simulated demo workout headless for @p seconds,
     /// then print the process CPU usage over that window and quit.
     void runWorkoutBenchmark(int seconds);
@@ -85,22 +93,25 @@ public slots:
 
 #ifndef GC_WASM_BUILD
 private:
-    /// Open the workout window straight away and connect the saved sensors
-    /// inside it: a chip per sensor shows its state, and each hub is wired to
-    /// the workout as soon as it connects.
-    void startWorkoutConnectingSensors(const Workout &workout,
-                                       const QMap<BtleSensorRole, BtleSavedSensor> &savedSensors);
+    /// Open the workout window straight away on the app's live connections
+    /// (DeviceSession): a chip per sensor shows its state, and each hub is wired
+    /// to the workout as soon as it connects. Closing the workout keeps them.
+    void startWorkoutOnLiveDevices(const Workout &workout);
 
-    /// Wire one rider's role→hub map to the dialog; distinct hubs accumulate in
-    /// \a allHubs for cleanup. Shared by the solo and Studio launch paths.
+    /// Wire the role→hub map to the dialog; distinct hubs accumulate in
+    /// \a allHubs. With \a releaseOnClose the hubs disconnect when the workout closes.
     void wireHubsToDialog(WorkoutDialog *w,
                           const QMap<BtleSensorRole, BtleHub*> &hubsByRole,
                           QSet<BtleHub*> &allHubs,
-                          int riderIndex = 0);
+                          bool releaseOnClose = true);
 
-    /// Studio: open the workout window straight away and connect every
-    /// rider's saved sensors inside it, all at once.
-    void startStudioWorkoutConnectingSensors(const Workout &workout);
+    void rebuildDeviceBar();
+    /// Right-click on the device bar; \a key is the chip clicked (-1: none).
+    void showDeviceMenu(int key, const QPoint &globalPos);
+
+    DeviceSession     *m_devices = nullptr;
+    SensorStatusStrip *m_deviceStrip = nullptr;
+    QLabel            *m_deviceNote = nullptr;
 public slots:
 #endif
 
@@ -115,8 +126,7 @@ private:
         int history = 3;
         int achievements = 4;
         int devices = 5;
-        int studio = 6;
-        int settings = 7;
+        int settings = 6;
     } m_tabs;
     /// The old menu bar's actions, as buttons on the pages they belong to.
     void setupPageActions();
@@ -139,17 +149,6 @@ private:
 #endif
 public slots:
 
-    //Coming from Studio QWebView ----------
-    void enableStudioMode(bool enable);
-    void setNumberUserStudio(int numberUser);
-    void updateVecStudio(QVector<UserStudio>);
-    void updateFieldForUser(int riderID, int fieldNumber, QVariant value);
-
-    /// Build the per-rider UserStudio vector to hand to a Studio-mode workout:
-    /// fills FTP/LTHR from the account when a rider left them unset, and sets the
-    /// metric-section visibility flags (hrID/powerID/…). \a simulator shows every
-    /// metric; otherwise the flags reflect that rider's saved BLE sensors.
-    QVector<UserStudio> prepareStudioRiders(bool simulator);
     void leftMenuChanged(int tabSelected);
 
     void goToWorkoutNameFilterFromIntervals(const QString &workoutName);
@@ -226,7 +225,6 @@ private:
     Workout makeDemoWorkout() const;
 
 private:
-    QVector<UserStudio> vecUserStudio;
 
     //pairing
     QList<int> lstDevicePaired;
@@ -278,11 +276,6 @@ private:
     WorkoutDialog *m_ssWorkoutDlg = nullptr;
     SimulatorHub  *m_ssSimHub     = nullptr;
 
-    QList<SimulatorHub*> m_ssStudioHubs;   // per-rider sim hubs for the studio-workout shot
-    // Saved so screenshot mode (which toggles studio mode + rider count for its
-    // captures) can restore the user's real settings before quitting.
-    bool m_ssSavedStudioEnabled = false;
-    int  m_ssSavedRiderCount    = 1;
 
 };
 

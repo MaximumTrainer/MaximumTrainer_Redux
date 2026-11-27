@@ -30,12 +30,10 @@
 #ifdef GC_HAVE_QTMULTIMEDIA
 #include "qtmediaplayer.h"
 #endif
-#include "userstudiowidget.h"
 #include "myconstants.h"
 #include "maptesttracker.h"
 #include "targetalert.h"
 #include "sensorsecondaccumulator.h"
-#include "userstudio.h"
 #include "keepawake.h"
 
 #ifdef Q_OS_MAC
@@ -64,12 +62,12 @@ class WorkoutDialog : public QDialog
     Q_OBJECT
 
 public:
-    void adoptZwiftClickManager(ZwiftClickManager *manager);
+    /// Borrows the app's Zwift Click connection; the dialog does not own it.
+    void useZwiftClickManager(ZwiftClickManager *manager);
     /// Scans for Zwift Click controllers when the rider uses them. Not done in
     /// the constructor: on Windows a Bluetooth scan spins an event loop.
     void startZwiftClick();
-    explicit WorkoutDialog(Workout workout,
-                           QList<Radio> lstRadio, QVector<UserStudio> vecUserStudio, QWidget *parent = nullptr);
+    explicit WorkoutDialog(Workout workout, QList<Radio> lstRadio, QWidget *parent = nullptr);
     ~WorkoutDialog() override;
 
     void reject() override;
@@ -89,11 +87,6 @@ public:
     /// top-left of the main graph).
     class SensorStatusStrip *sensorStrip();
 
-    /// Studio: the board that shows every rider's sensors connecting, in place
-    /// of the video area until all are in or the workout starts.
-    class StudioConnectionBoard *studioConnectionBoard();
-    /// Studio: rider \a rider's card (1-based), or nullptr.
-    UserStudioWidget *riderWidget(int rider) const;
 
     /// A trainer was (re)wired after the workout opened: take control and send it
     /// the current target, which was emitted before anyone was listening.
@@ -147,14 +140,13 @@ signals:
     void pauseClock();
     void resumeClock();
     void finishClock();
-    void sendUserInfo(int userID, double cda, double weight, int nbUser);
+    void sendUserInfo(double cda, double weight);
     void sendPowerData(int userID, int power);
     void sendSlopeData(int userID, double slope);
     void startClockSpeed();
 
 
     //--Send to Hub
-    void sendDataUserStudio(QVector<UserStudio>);
     void sendSoloData(int wheelCircMM, QList<Sensor> lstSensor, bool usePmForCadence, bool usePmForSpeed);
 
     void stopDecodingMsgHub();
@@ -175,7 +167,6 @@ signals:
     //    void powerChangedAfterTreatment(int power);
 
 
-    void ftpUserStudioChanged(QVector<UserStudio>);
     void ftp_lthr_changed();
     void fitFileReady(QString filename, QString nameOnly, QString description);
 
@@ -262,8 +253,6 @@ private slots:
 private:
     bool m_simulatedDataNotice = false;
     class SensorStatusStrip *m_sensorStrip = nullptr;
-    class StudioConnectionBoard *m_connectionBoard = nullptr;
-    void foldConnectionBoard();
     double m_lastPowerTargetPct = 0.0;
     int m_lastPowerTargetRange = 0;
 
@@ -277,7 +266,6 @@ private:
     void changeIntervalsDataWorkout(double, double, int, bool, bool);
     void initDataWorkout();
     void connectDataWorkout();
-    void createUserStudioWidget();
     void showIntervalSummaryOverlay(double avgPower, double avgHr, double avgCad,
                                     int durationSec, double targetPowerFraction);
 
@@ -353,7 +341,7 @@ private:
     void connectZwiftClick();
     void saveTestResult(int ftpWatts, int lthrBpm);
 #ifndef Q_OS_WASM
-    ZwiftClickManager *m_clickManager = nullptr;
+    QPointer<ZwiftClickManager> m_clickManager;
 #endif
 
     //Internet radio player
@@ -466,10 +454,7 @@ private:
 
     Workout workout;
     bool isTestWorkout;
-    QVector<UserStudio> vecUserStudio;
-    //DataWorkout *dataWorkout; //Pointer because is a QObject (needs Signal) - deletion is automatic
-    DataWorkout *arrDataWorkout[constants::nbMaxUserStudio] = {};
-    UserStudioWidget *arrUserStudioWidget[constants::nbMaxUserStudio];
+    DataWorkout *m_dataWorkout = nullptr;
     SoundPlayer *soundPlayer;
 
     QTimer *timer_sec;
@@ -482,7 +467,7 @@ private:
     // For Rolling Averaging Power
     //    QQueue<double> queuePower;
     //to calculate mean every second ,[0] = Rider#1
-    SensorSecondAccumulator m_secondSamples{constants::nbMaxUserStudio};
+    SensorSecondAccumulator m_secondSamples{1};
     bool powerBalanceDataSeen = false; ///< a balance-capable power meter has reported
 
 

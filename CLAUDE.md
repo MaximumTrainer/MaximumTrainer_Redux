@@ -159,7 +159,7 @@ build step, or an integration, **re-validate all three against the actual code**
 - **`docs/index.html`** — the GitHub Pages **landing page** (features, gallery,
   download cards, specs, license).
 - **`docs/user-guide.html`** — the GitHub Pages **User Guide** (the full how-to:
-  pairing, workouts, training, Studio, uploads, settings, shortcuts).
+  pairing, workouts, training, uploads, settings, shortcuts).
 
 Validation checklist:
 - Cross-check every UI claim (menu paths, tab/button labels, settings categories,
@@ -192,8 +192,11 @@ Per `agents.md §7`:
 
 **Removed integrations (don't re-add):** SelfLoops & TrainingPeaks uploads
 (#244 — uploads now focus on Strava + Intervals.icu), the maximumtrainer.com
-web frontend (#245), and ANT+ support (#240). Studio mode's old server-hosted
-`QWebEngineView` is gone too (replaced by the native path in #253).
+web frontend (#245), and ANT+ support (#240).
+
+**Studio mode (multi-rider on one PC) was removed** with the persistent device
+connections work: no demand, and Windows tops out around 7-8 BLE links. Bring it
+back only on a real request (git history has the native version from #253).
 
 ---
 
@@ -206,10 +209,11 @@ Two big features shipped and are now in master:
   `Account::strava_auto_upload` toggle, and a post-workout upload panel. Worker
   is deployed and the flow is e2e-tested. Code: `strava_oauth_flow.*`,
   `strava_service.*`; tests in `tests/strava/`.
-- **Studio mode** (#253): native per-rider config (**up to 15 riders**),
-  per-rider sensors + FTP/LTHR, QSettings persistence, BLE + simulator support,
-  JSON import/export. Replaces the dead server-hosted webview. Code:
-  `studiowidget.*`, `userstudiowidget.*`, `userstudio.*`; tests in `tests/studio/`.
+- **Persistent device connections**: `DeviceSession` (`src/btle/device_session.*`,
+  owned by MainWindow, started after login) keeps the saved sensors and Zwift Click
+  connected for the whole app run; rides borrow the hubs. The main window's bottom
+  bar shows a chip per device (right-click: disconnect/reconnect that device).
+  Hardware check: `--device-session-check DIR`.
 
 Other recent merges: #237 (Intervals OAuth URL fix), #238 (QLayout/pixmap/AppImage
 warnings), #239 (workout-editor step-type helper), #240 (ANT remnant removal),

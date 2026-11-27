@@ -103,9 +103,7 @@ QVariant WorkoutTableModel::data(const QModelIndex &index, int role) const {
     // instead — see the DisplayRole for the last column below.
 
     ///Highlight colour for user-created workout names
-    if (role == Qt::ForegroundRole && index.column() == 0 && account->enable_studio_mode && work.getWorkoutNameEnum() == Workout::MAP_TEST)
-        return QVariant::fromValue(QColor(Qt::lightGray));
-    else if (role == Qt::ForegroundRole && index.column() == 0 && work.getWorkoutNameEnum() == Workout::USER_MADE) {
+    if (role == Qt::ForegroundRole && index.column() == 0 && work.getWorkoutNameEnum() == Workout::USER_MADE) {
         // Pick a blue that stays legible on both themes: plain Qt::blue is too
         // dark to read on the dark-mode background, so use a lighter azure there
         // and a deeper blue on the light background.

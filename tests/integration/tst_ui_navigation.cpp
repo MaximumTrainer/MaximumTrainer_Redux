@@ -32,7 +32,6 @@
  *      • screenshot_workout_editor.png
  *      • screenshot_workout_running.png
  *      • screenshot_settings.png
- *      • screenshot_studio_mode.png
  *      • screenshot_activity_history.png
  *      • screenshot_history.png
  *    Binary is located via the MT_APP_BINARY env-var override or the
@@ -186,7 +185,7 @@ private slots:
     //
     //     The application bypasses the login dialog, shows the MainWindow,
     //     navigates through every major tab (main, settings, workout editor,
-    //     workout running with SimulatorHub, studio mode, history/Intervals.icu)
+    //     workout running with SimulatorHub, history/Intervals.icu)
     //     and writes six 1280×720 PNG files to a temporary directory.
     //
     //     This test verifies:
@@ -242,13 +241,12 @@ private slots:
 
         // ── Verify expected screenshots ──────────────────────────────────────
         // These file names are hard-coded in MainWindow::screenshotNextStep().
-        // Covers all 7 main tabs of the application.
+        // Covers the main tabs of the application.
         const QStringList expectedFiles = {
             QStringLiteral("screenshot_main_window.png"),
             QStringLiteral("screenshot_settings.png"),
             QStringLiteral("screenshot_workout_editor.png"),
             QStringLiteral("screenshot_workout_running.png"),
-            QStringLiteral("screenshot_studio_mode.png"),
             QStringLiteral("screenshot_activity_history.png"),
             QStringLiteral("screenshot_history.png"),
         };

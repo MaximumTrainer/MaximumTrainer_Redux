@@ -31,11 +31,6 @@ public:
     void setRowingMode(bool rowing);
     void stop();
 
-    /// Set the userID emitted in every signal (default: 1).
-    /// WorkoutDialog expects 1-based userIDs; in Studio Mode each rider's hub
-    /// must use a distinct ID (1…N) so signals route to the correct widget.
-    void setUserID(int id) { m_userID = id; }
-
 signals:
     // Same signatures as BtleHub / Hub so MainWindow can wire them identically
     void signal_hr(int userID, int hr);
@@ -76,7 +71,7 @@ private:
     int m_thbDir     = 1;
     int m_balanceDir = 1;
 
-    int m_userID     = 1;    ///< userID used in all emitted signals (1-based; matches WorkoutDialog's 1-based arrays)
+    const int m_userID = 1;   ///< the solo rider's id, emitted in every signal
 };
 
 #endif // SIMULATOR_HUB_H

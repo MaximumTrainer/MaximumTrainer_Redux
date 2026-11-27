@@ -113,8 +113,8 @@ void DataWorkout::setStartTimeWorkout(QDateTime dt) {
     this->startTimeWorkout = std::move(dt);
 }
 
-void DataWorkout::initFitFile(bool createDir, QString username, QString nameWorkout, QDateTime timeStarted, bool rowing) {
-    fitCreator.initialize_FIT_File(createDir, username, nameWorkout, timeStarted, rowing);
+void DataWorkout::initFitFile(QString username, QString nameWorkout, QDateTime timeStarted, bool rowing) {
+    fitCreator.initialize_FIT_File(username, nameWorkout, timeStarted, rowing);
 }
 void DataWorkout::closeFitFile() {
     fitCreator.close_FIT_File();
@@ -137,7 +137,7 @@ QString DataWorkout::getFitFilename() {
 }
 
 
-void DataWorkout::updateData(bool studioMode, int secReceived,
+void DataWorkout::updateData(int secReceived,
                              double averageHr1sec, double averageCadence1sec, double averageSpeed1sec, double averagePower1sec,
                              double rightPedal,
                              double saturatedHemoglobinPercent, double totalHemoglobinConc) {
@@ -150,8 +150,7 @@ void DataWorkout::updateData(bool studioMode, int secReceived,
 
     // --- HR ------------------------------------------------------------------
     if (averageHr1sec != -1) {
-        if (!studioMode)
-            DataHeartRate::instance().append( QPointF( secReceived, averageHr1sec) );
+        DataHeartRate::instance().append( QPointF( secReceived, averageHr1sec) );
         hrDataReceived(averageHr1sec);
         writeRecord = true;
         lastHr = averageHr1sec;
@@ -166,8 +165,7 @@ void DataWorkout::updateData(bool studioMode, int secReceived,
     }
     // --- Cadence ------------------------------------------------------------------
     if (averageCadence1sec != -1) {
-        if (!studioMode)
-            DataCadence::instance().append( QPointF( secReceived, averageCadence1sec) );
+        DataCadence::instance().append( QPointF( secReceived, averageCadence1sec) );
         cadDataReceived(averageCadence1sec);
         writeRecord = true;
         lastCadence = averageCadence1sec;
@@ -182,8 +180,7 @@ void DataWorkout::updateData(bool studioMode, int secReceived,
     }
     // --- Speed ------------------------------------------------------------------
     if (averageSpeed1sec != -1) {
-        if (!studioMode)
-            DataSpeed::instance().append( QPointF( secReceived, averageSpeed1sec) );
+        DataSpeed::instance().append( QPointF( secReceived, averageSpeed1sec) );
         speedDataReceived(averageSpeed1sec);
         writeRecord = true;
         lastSpeed = averageSpeed1sec;
@@ -198,8 +195,7 @@ void DataWorkout::updateData(bool studioMode, int secReceived,
     }
     // --- Power ------------------------------------------------------------------
     if (averagePower1sec != -1) {
-        if (!studioMode)
-            DataPower::instance().append( QPointF( secReceived, averagePower1sec) );
+        DataPower::instance().append( QPointF( secReceived, averagePower1sec) );
         powerDataReceived(secReceived, averagePower1sec);
         writeRecord = true;
         lastPower = averagePower1sec;

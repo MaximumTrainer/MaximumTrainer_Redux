@@ -66,11 +66,9 @@ inline constexpr SettingKey<bool> ControlTrainerResistance       {"displayPrefs/
 inline constexpr SettingKey<bool> VirtualShifting                {"displayPrefs/virtual_shifting",                    true};
 inline constexpr SettingKey<bool> UseZwiftClick                  {"displayPrefs/use_zwift_click",                     false};
 inline constexpr SettingKey<bool> UseSimulatedSensors            {"displayPrefs/use_simulated_sensors",               false};
-inline constexpr SettingKey<bool> EnableStudioMode               {"displayPrefs/enable_studio_mode",                  false};
 inline constexpr SettingKey<bool> DistanceInKm                   {"displayPrefs/distance_in_km",                      true};
 inline constexpr SettingKey<bool> ForceWorkoutWindowOnTop        {"displayPrefs/force_workout_window_on_top",         false};
 inline constexpr SettingKey<bool> StravaAutoUpload               {"displayPrefs/strava_auto_upload",                  false};
-inline constexpr SettingKey<int>  NbUserStudio                   {"displayPrefs/nb_user_studio",                      3};
 inline constexpr SettingKey<bool> UsePmForCadence                {"displayPrefs/use_pm_for_cadence",                  false};
 inline constexpr SettingKey<bool> UsePmForSpeed                  {"displayPrefs/use_pm_for_speed",                    false};
 inline constexpr SettingKey<bool> ShowIncludedWorkout            {"displayPrefs/show_included_workout",               true};

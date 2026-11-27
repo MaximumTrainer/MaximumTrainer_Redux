@@ -26,7 +26,6 @@
 #include "settings.h"
 #include "soundplayer.h"
 #include "trackpoint.h"
-#include "userstudio.h"
 #include "workout.h"
 #include "workoutdialog.h"
 
@@ -67,7 +66,6 @@ private slots:
         qRegisterMetaType<Sensor>("Sensor");
         qRegisterMetaType<QList<Sensor>>("QList<Sensor>");
         qRegisterMetaType<QList<int>>("QList<int>");
-        qRegisterMetaType<QVector<UserStudio>>("QVector<UserStudio>");
         qRegisterMetaType<QList<Trackpoint>>("QList<Trackpoint>");
 
         m_account = new Account(qApp);
@@ -130,11 +128,10 @@ private slots:
     void bottomPane_keepsItsHeightAcrossWorkouts()
     {
         QFETCH(bool, courseInBetween);
-        m_account->enable_studio_mode = false;
         m_account->isOffline = true;
         constexpr int kBottomPx = 130;
 
-        auto *first = new WorkoutDialog(freeRide(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+        auto *first = new WorkoutDialog(freeRide(), QList<Radio>(), nullptr);
         first->show();
         first->resize(1280, 820);
         QTest::qWait(300);
@@ -152,7 +149,7 @@ private slots:
 
         if (courseInBetween) {
             const auto course = RaceCourse::fromFile(QStringLiteral(":/courses/longchamp.json"));
-            auto *ride = new WorkoutDialog(freeRide(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+            auto *ride = new WorkoutDialog(freeRide(), QList<Radio>(), nullptr);
             ride->setRace(*course, RaceBot::FieldSettings());
             ride->show();
             QTest::qWait(300);
@@ -161,7 +158,7 @@ private slots:
             delete ride;
         }
 
-        auto *next = new WorkoutDialog(freeRide(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+        auto *next = new WorkoutDialog(freeRide(), QList<Radio>(), nullptr);
         next->show();
         QTest::qWait(300);
         next->resize(1600, 1100);   // the window manager maximises after it opens
@@ -236,11 +233,10 @@ private slots:
         m_account->bike_weight_kg = 8;
         m_account->control_trainer_resistance = true;
         m_account->virtual_shifting = false;
-        m_account->enable_studio_mode = false;
         m_account->display_video = 0;
         m_account->isOffline = true;
 
-        auto *dialog = new WorkoutDialog(freeRide(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+        auto *dialog = new WorkoutDialog(freeRide(), QList<Radio>(), nullptr);
         QSignalSpy slopes(dialog, &WorkoutDialog::setSlope);
         QSignalSpy loads(dialog, &WorkoutDialog::setLoad);
         const auto course = RaceCourse::fromFile(QStringLiteral(":/courses/alpe-dhuez.json"));

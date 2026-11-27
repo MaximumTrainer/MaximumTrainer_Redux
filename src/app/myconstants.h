@@ -16,8 +16,6 @@ const double GLOBAL_CONST_CONVERT_KG_TO_LBS = 2.20462;
 const double GLOBAL_CONST_CONVERT_KMH_TO_MILES = 0.621371;
 
 
-//NbMaxUserStudio
-const int nbMaxUserStudio = 40;
 
 const int nbMaxRepeatPointFitFile = 5; //4sec
 const int nbMaxRepeatHrPointFitFile = 10; //4sec

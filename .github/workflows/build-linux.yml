@@ -285,12 +285,12 @@ jobs:
           logger_tests apptheme_tests intervals_icu_tests importer_workout_zwo_tests \
           intervals_icu_dao_bearer_tests intervals_icu_oauth_exchange_tests strava_tests \
           group_tests race_tests credential_store_tests config_bootstrap_tests settings_tests \
-          webengine_safe_mode_tests history_tests studio_tests workout_export_tests \
+          webengine_safe_mode_tests history_tests workout_export_tests \
           intervals_icu_integration_tests
 
     - name: Run unit suites
       run: |
-        ctest --test-dir build --output-on-failure -j"$(nproc)" -R '^(logger|apptheme|intervals_icu|importer_workout_zwo|intervals_icu_dao_bearer|intervals_icu_oauth_exchange|strava|group|race|credential_store|config_bootstrap|settings|webengine_safe_mode|history|studio|workout_export)_tests$'
+        ctest --test-dir build --output-on-failure -j"$(nproc)" -R '^(logger|apptheme|intervals_icu|importer_workout_zwo|intervals_icu_dao_bearer|intervals_icu_oauth_exchange|strava|group|race|credential_store|config_bootstrap|settings|webengine_safe_mode|history|workout_export)_tests$'
 
     - name: Run Intervals.icu live integration tests
       run: |

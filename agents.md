@@ -350,7 +350,6 @@ Each service and domain component has its own standalone Qt Test target
 | `credential_store_tests` | `tests/credential_store/` | Round-trip read/write, overwrite, remove, missing key, multi-service, WASM no-op |
 | `config_bootstrap_tests` | `tests/config_bootstrap/` | First-run defaults, no overwrite on rerun, config_version upgrade, legacy migration before defaults, corrupt store left untouched, credential failures logged without values |
 | `logger_tests` | `tests/logger/` | Log level filtering, output format (timestamp/level/module/message), file write enable/disable |
-| `studio_tests` | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling formula, settings persistence |
 | `workout_export_tests` | `tests/workout_export/` | FIT workout export: steps from ramps / flat intervals, % FTP power, cadence, intensity, decodes as a FIT workout |
 
 **Build & run pattern (same for every service test):**
@@ -673,8 +672,7 @@ it), so the wheel circumference is now a fixed constant (`BtleHub::DEFAULT_WHEEL
 rider weight for the virtual-speed rider params.
 
 **Speed is always virtual.** Indoor speed is derived from power via
-`CyclingPhysics` for both solo and Studio riders (`Clock` emits per-rider
-`virtualSpeed`). The old "Speed Source" (Virtual/Trainer) setting and
+`CyclingPhysics` (`Clock` emits `virtualSpeed`). The old "Speed Source" (Virtual/Trainer) setting and
 `Account::use_virtual_speed` were removed; a paired sensor's speed only shows
 as the optional "Show Trainer Speed" readout.
 

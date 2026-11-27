@@ -94,6 +94,13 @@ void ZwiftClickManager::stopDiscovery()
     }
 }
 
+void ZwiftClickManager::resumeDiscovery()
+{
+    m_scanWanted = true;
+    if (!(leftConnected() && rightConnected()))
+        restartDiscovery();
+}
+
 void ZwiftClickManager::stop()
 {
     m_scanWanted = false;

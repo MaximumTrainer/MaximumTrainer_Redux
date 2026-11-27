@@ -402,7 +402,6 @@
 
         <li class="toc-section">App</li>
         <li><a href="#settings">Settings</a></li>
-        <li><a href="#studio-mode">Studio Mode</a></li>
         <li><a href="#log-files">Log Files &amp; Troubleshooting</a></li>
         <li><a href="#tips">Tips &amp; Shortcuts</a></li>
         <li><a href="#platform-requirements">Platform Requirements</a></li>
@@ -601,11 +600,13 @@
           <li>For a smart trainer, tick <strong>Control trainer resistance (ERG / FTMS)</strong> in the Smart Trainer section to enable automatic ERG resistance.</li>
         </ol>
         <p>
-          Saved sensors connect <strong>automatically when you start a workout</strong>, so you don't
-          need to re-pair them each session. The workout window opens straight away with a chip per
-          sensor at the top left of the graph: grey <em>Searching…</em>, yellow <em>Connecting…</em>,
-          green <em>Connected</em>. A red chip (<em>Not found</em> or <em>Lost</em>) can be clicked to
-          try again. Once everything is connected the chips step aside, and come back if a sensor drops.
+          Saved sensors connect <strong>when the app starts</strong> and stay connected between
+          workouts and courses. The bar at the bottom of the window shows a chip per device:
+          grey <em>Searching…</em>, yellow <em>Connecting…</em>, green <em>Connected</em>. A red chip
+          (<em>Not found</em> or <em>Lost</em>) can be clicked to try again; missing devices are also
+          retried on their own. Right-click a chip to <strong>Disconnect</strong> that device (e.g. to let
+          another app use the trainer) and again to <strong>Reconnect</strong> it. In a workout the same chips sit at the top left of the graph
+          (on the map in a course) and step aside once everything is connected.
           The workout waits for its start trigger, so nothing runs before your sensors are in.
           If nothing is paired yet, starting a workout offers <strong>Go to Devices</strong> (or
           <strong>Continue without sensors</strong>).
@@ -687,11 +688,6 @@
           <strong>Trainer</strong> slot (it uses FTMS) and tick <strong>Control trainer resistance
           (ERG / FTMS)</strong>. A trainer paired only as a plain Power sensor sends data but won't
           accept resistance commands.
-        </div>
-
-        <div class="callout">
-          <strong>Studio mode:</strong> in <a href="#studio-mode">Studio Mode</a> each rider has their
-          own sensor slots, paired the same way from that rider's card.
         </div>
 
         <div class="callout callout--warn">
@@ -1188,8 +1184,8 @@
               for safety.</li>
           <li>Each rider's activity is saved and uploaded to Strava or Intervals.icu as for a solo
               ride (see <a href="#uploading">Uploading</a>).</li>
-          <li>Group workouts are available in the desktop app. They aren't available in Studio Mode,
-              for Free Ride, or in the browser version yet.</li>
+          <li>Group workouts are available in the desktop app. They aren't available for Free Ride
+              or in the browser version yet.</li>
         </ul>
 
         <div class="callout">
@@ -1255,7 +1251,7 @@
         </ul>
 
         <div class="callout">
-          <strong>Beta:</strong> courses are solo rides against bots for now, and not available in Studio Mode.
+          <strong>Beta:</strong> courses are solo rides against bots for now.
           Map data &copy; OpenStreetMap contributors; elevation: Copernicus, NASA.
         </div>
       </section>
@@ -1443,55 +1439,6 @@
           The <strong>Settings</strong> gear in the workout player opens the same ride options while you
           ride: radio, sounds, panels, graph, video, start and alerts.
         </p>
-      </section>
-
-      <!-- ── Studio Mode ───────────────────────────────────────── -->
-      <section class="guide-section" id="studio-mode">
-        <h2>🏟️ Studio Mode</h2>
-        <p>
-          Studio Mode allows <strong>multiple riders</strong> to train simultaneously on a single
-          installation — perfect for spinning studios and group training sessions. Each rider has
-          their own BLE device slot and individual metrics display.
-        </p>
-        <p>
-          Riding with friends somewhere else? Use a <a href="#group-workouts">group workout</a>
-          (<strong>Group → Host Group Workout…</strong>) instead, with Studio Mode off.
-        </p>
-
-        <figure class="guide-screenshot">
-          <img src="assets/screenshots/screenshot_studio_mode.png"
-               alt="Studio mode — per-rider configuration" />
-          <figcaption>Studio Mode — per-rider configuration: each rider gets their own name, FTP/LTHR, sensors, and ERG control</figcaption>
-        </figure>
-
-        <figure class="guide-screenshot">
-          <img src="assets/screenshots/screenshot_studio_workout.png"
-               alt="Studio mode workout with eight rider cards" />
-          <figcaption>A Studio workout: one card per rider with power against their own target and zone, cadence, heart rate and sensor dots; the left edge turns amber above target and red below</figcaption>
-        </figure>
-
-        <h3>Enabling Studio Mode</h3>
-        <ol class="steps">
-          <li>Click the <strong>Studio</strong> tab in the left sidebar of the main window.</li>
-          <li>Toggle <strong>Studio Mode</strong> on.</li>
-          <li>Set the <strong>number of riders</strong> — up to <strong>8</strong>, limited by simultaneous BLE connections.</li>
-          <li>For each rider, set their name, FTP, and LTHR, scan and assign their sensors, and choose whether ERG/FTMS control is enabled.</li>
-          <li>Start a workout. The workout window opens straight away and every rider's sensors connect
-              at once: until everyone is in (or you press Start) the video area shows a
-              <strong>Connecting sensors</strong> board with a card per rider ("19 of 22 connected"); a red
-              <em>Not found</em> or <em>Lost</em> line can be clicked to try again.</li>
-          <li>Each rider then has a card at the bottom: power with their own target in watts and zone,
-              cadence, heart rate, a dot per sensor, and a status line (<em>on target</em>,
-              <em>12 W above target</em>, or a lost sensor to click). The card's left edge turns amber
-              above target and red below. You can also <strong>Import</strong> / <strong>Export</strong>
-              the whole studio configuration as JSON.</li>
-        </ol>
-
-        <div class="callout">
-          <strong>Note:</strong> In Studio Mode, each rider's ride is recorded to their own
-          <code>.fit</code> file. Workout targets are scaled per-rider based on
-          individual FTP values.
-        </div>
       </section>
 
       <!-- ── Log Files & Troubleshooting ──────────────────────── -->

@@ -21,7 +21,7 @@ public:
     ~DataWorkout() override; // closeFitFile
 
 
-    void updateData(bool studioMode, int secReceived,
+    void updateData(int secReceived,
                     double hr, double cadence, double speed, double power,
                     double rightPedal,
                     double saturatedHemoglobinPercent, double totalHemoglobinConc);
@@ -34,7 +34,7 @@ public:
 
     void changeInterval(double timeStarted, double timeNow, int timePaused_msec, bool workoutOver, bool testInterval);
     void writeEndFile(double timeNow);
-    void initFitFile(bool createDir, QString username, QString nameWorkout, QDateTime timeStarted, bool rowing = false);
+    void initFitFile(QString username, QString nameWorkout, QDateTime timeStarted, bool rowing = false);
     void closeFitFile();
     void closeAndDeleteFitFile();
 

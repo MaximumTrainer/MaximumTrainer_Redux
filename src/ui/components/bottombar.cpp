@@ -1,4 +1,6 @@
 #include "bottombar.h"
+
+#include <QBoxLayout>
 #include "ui_bottombar.h"
 
 #include <QSizeGrip>
@@ -46,3 +48,10 @@ void BottomBar::removeGeneralMessage() {
     ui->label_generalMsg->fadeOut(500);
 }
 
+
+
+void BottomBar::setStatusWidget(QWidget *widget)
+{
+    if (auto *row = qobject_cast<QBoxLayout *>(layout()))
+        row->insertWidget(0, widget, 0, Qt::AlignLeft | Qt::AlignVCenter);
+}

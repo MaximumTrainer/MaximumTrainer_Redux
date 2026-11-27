@@ -1,6 +1,5 @@
 #include "workoutdialog.h"
 #include "sensorstatusstrip.h"
-#include "studioconnectionboard.h"
 #include "setting_keys.h"
 #include "asyncdialogs.h"
 #include "virtual_gear.h"
@@ -106,8 +105,7 @@ WorkoutDialog::~WorkoutDialog() {
 }
 
 
-WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<UserStudio> vecUserStudio,
-                             QWidget *parent) : QDialog(parent), ui(new Ui::WorkoutDialog) {
+WorkoutDialog::WorkoutDialog(Workout workout, QList<Radio> lstRadio, QWidget *parent) : QDialog(parent), ui(new Ui::WorkoutDialog) {
 
     ui->setupUi(this);
     this->setFocusPolicy(Qt::ClickFocus);
@@ -132,7 +130,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
     this->achievementManager = qApp->property("ManagerAchievement").value<ManagerAchievement*>();
     achievementManager->startLiveRide();
     this->workout = workout;
-    this->vecUserStudio = vecUserStudio;
     soundPlayer->setVolume(account->sound_player_vol);
     msgPairingDone = tr("Done!");
 
@@ -455,8 +452,6 @@ WorkoutDialog::WorkoutDialog(Workout workout,  QList<Radio> lstRadio, QVector<Us
 
     // Initialise DataWorkout
     initDataWorkout();
-    //createUserStudio Widget
-    createUserStudioWidget();
     // Connect DataWorkout
     connectDataWorkout();
 
@@ -665,9 +660,7 @@ void WorkoutDialog::batteryStatusReceived(QString sensorType, int percentage) {
 
 void WorkoutDialog::initUI() {
 
-    if (!account->enable_studio_mode) {
-        layoutBottomWidgets();
-    }
+    layoutBottomWidgets();
 
     ///Timers
     ui->widget_topMenu->setTimersVisible(true);
@@ -682,7 +675,7 @@ void WorkoutDialog::initUI() {
     showCadenceDisplayWidget(account->display_cadence);
     showSpeedDisplayWidget();
     showTrainerSpeed(account->show_trainer_speed);
-    // Speed is always virtual (derived from power), for solo and Studio riders.
+    // Speed is always virtual (derived from power).
     useVirtualSpeedData(true);
     showOxygenDisplayWidget();
     showCaloriesDisplayWidget();
@@ -741,19 +734,6 @@ void WorkoutDialog::initUI() {
     ui->wid_3_workoutPlot_CadenceZoom->setPosition(0);
 
 
-    if (account->enable_studio_mode) {
-        ui->wid_1_infoBoxHr->setVisible(false);
-        ui->wid_1_infoBoxHr->setVisible(false);
-        ui->wid_1_workoutPlot_HeartrateZoom->setVisible(false);
-        ui->wid_2_balancePower->setVisible(false);
-        ui->wid_2_infoBoxPower->setVisible(false);
-        ui->wid_2_workoutPlot_PowerZoom->setVisible(false);
-        ui->wid_3_infoBoxCadence->setVisible(false);
-        ui->wid_3_workoutPlot_CadenceZoom->setVisible(false);
-        ui->wid_4_infoBoxSpeed->setVisible(false);
-        ui->wid_5_infoWorkout->setVisible(false);
-        ui->wid_oxygen->setVisible(false);
-    }
 
     setMessagePlot();
 }
@@ -843,8 +823,6 @@ void WorkoutDialog::updateRealTimeGraph(double totalTimeElapsed_msec) {
 
     timeElapsed_sec = totalTimeElapsed_msec /1000;
 
-    if (account->enable_studio_mode)
-        return;
 
     // Ride-length achievements fire live, once per new minute.
     const int elapsedMinutes = static_cast<int>(timeElapsed_sec / 60);
@@ -952,7 +930,7 @@ void WorkoutDialog::update1sec(double totalTimeElapsed_sec) {
     sendLastSecondData(totalTimeElapsed_sec_i);
 
     // Check MAP Test stop condition
-    if (!account->enable_studio_mode && workout.getWorkoutNameEnum() == Workout::MAP_TEST && currentIntervalObj.isTestInterval() && m_secondSamples.rider(0).power != -1) {
+    if (workout.getWorkoutNameEnum() == Workout::MAP_TEST && currentIntervalObj.isTestInterval() && m_secondSamples.rider(0).power != -1) {
         checkMAPTestOver();
     }
 
@@ -1367,18 +1345,8 @@ void WorkoutDialog::startWorkout() {
     QDateTime dateTimeStartedWorkout;
     dateTimeStartedWorkout = QDateTime::currentDateTime();
 
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            arrDataWorkout[i]->setStartTimeWorkout(dateTimeStartedWorkout.toUTC());
-            UserStudio userStudio = vecUserStudio.at(i);
-            QString userIdentifier = "user" + QString::number(i+1) + "-" + Util::cleanForOsSaving(userStudio.getDisplayName());
-            arrDataWorkout[i]->initFitFile(true, userIdentifier, workout.getName(), dateTimeStartedWorkout.toUTC() );
-        }
-    }
-    else {
-        arrDataWorkout[0]->setStartTimeWorkout(dateTimeStartedWorkout.toUTC());
-        arrDataWorkout[0]->initFitFile(false, account->email_clean, workout.getName(), dateTimeStartedWorkout.toUTC(), account->rowing_mode );
-    }
+    m_dataWorkout->setStartTimeWorkout(dateTimeStartedWorkout.toUTC());
+    m_dataWorkout->initFitFile(account->email_clean, workout.getName(), dateTimeStartedWorkout.toUTC(), account->rowing_mode );
 
     timerCheckToActivateSound->start();
 }
@@ -1403,12 +1371,10 @@ void WorkoutDialog::workoutOver() {
 
     setWidgetsStopped(true);
 
-    if (!account->enable_studio_mode) {
-        achievementManager->finishLiveRide();
-        achievementManager->workoutCompleted(workout);
-        if (m_groupRide)
-            achievementManager->recordEvent(AchievementCatalog::Events::GroupRide);
-    }
+    achievementManager->finishLiveRide();
+    achievementManager->workoutCompleted(workout);
+    if (m_groupRide)
+        achievementManager->recordEvent(AchievementCatalog::Events::GroupRide);
 
 
     //Close FIT FILE
@@ -1438,7 +1404,6 @@ void WorkoutDialog::onBleConnectionError(const QString &errorString)
 void WorkoutDialog::checkSensorDropout()
 {
     if (!account->sensor_dropout_enabled) return;
-    if (account->enable_studio_mode) return;
     if (!isWorkoutStarted || isWorkoutOver) return;
 
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
@@ -1511,7 +1476,6 @@ void WorkoutDialog::start_or_pause_workout() {
         ui->widget_workoutPlot->removeMainMessage();
         if (m_simulatedDataNotice)
             QTimer::singleShot(15000, this, [this]() { ui->widget_workoutPlot->hideNotice(); });
-        foldConnectionBoard();
         isWorkoutStarted = true;
         isWorkoutPaused = false;
         if (this->workout.getInterval(0).getDisplayMessage() != "")
@@ -1563,7 +1527,7 @@ void WorkoutDialog::start_or_pause_workout() {
 
 void WorkoutDialog::recordRiderSecond(int riderIndex, int seconds) {
     const RiderSecond &second = m_secondSamples.rider(riderIndex);
-    arrDataWorkout[riderIndex]->updateData(account->enable_studio_mode, seconds, second.heartRate, second.cadence,
+    m_dataWorkout->updateData(seconds, second.heartRate, second.cadence,
                                            second.speed, second.power, second.rightPedalPercent,
                                            second.saturatedHemoglobinPercent, second.totalHemoglobinConcentration);
 }
@@ -1571,16 +1535,9 @@ void WorkoutDialog::recordRiderSecond(int riderIndex, int seconds) {
 
 void WorkoutDialog::sendLastSecondData(int seconds) {
 
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            recordRiderSecond(i, seconds);
-        }
-    }
-    else {
-        recordRiderSecond(0, seconds);
-        const RiderSecond &second = m_secondSamples.rider(0);
-        achievementManager->checkLiveSecond(second.power, second.cadence, account->FTP);
-    }
+    recordRiderSecond(0, seconds);
+    const RiderSecond &second = m_secondSamples.rider(0);
+    achievementManager->checkLiveSecond(second.power, second.cadence, account->FTP);
 
     // Re-send the gear's load each second so faster/slower pedaling changes
     // resistance like a real gear (ERG-fallback trainers); harmless dedup for
@@ -1591,7 +1548,7 @@ void WorkoutDialog::sendLastSecondData(int seconds) {
 
 
 void WorkoutDialog::markSensorPaired(bool &pairingDone, QLabel *pairingLabel) {
-    if (account->enable_studio_mode || pairingDone)
+    if (pairingDone)
         return;
     pairingDone = true;
     pairingLabel->setText(pairingLabel->text() + msgPairingDone);
@@ -1612,16 +1569,13 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
     if (value == -1) {
         ui->wid_1_infoBoxHr->setValue(value);
         ui->wid_1_workoutPlot_HeartrateZoom->updateTextLabelValue(value);
-        if (account->enable_studio_mode) {
-            arrUserStudioWidget[userID-1]->setHrValue(value);
-        }
         return;
     }
     if (value < 0)
         return;
 
     // Track for sensor dropout detection
-    if (!account->enable_studio_mode && isWorkoutStarted && !isWorkoutOver)
+    if (isWorkoutStarted && !isWorkoutOver)
         m_lastHrMs = QDateTime::currentMSecsSinceEpoch();
 
 
@@ -1633,9 +1587,9 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
 
     if (!isWorkoutPaused && !isWorkoutOver) {
 
-        arrDataWorkout[userID-1]->checkUpdateMaxHr(value);
+        m_dataWorkout->checkUpdateMaxHr(value);
 
-        m_secondSamples.addSample(userID-1, SensorSecondAccumulator::Metric::HeartRate, value);
+        m_secondSamples.addSample(0, SensorSecondAccumulator::Metric::HeartRate, value);
 
 
         //Update Graph (zoomer)
@@ -1645,9 +1599,6 @@ void WorkoutDialog::HrDataReceived(int userID, int value) {
     // Show data to the display
     ui->wid_1_infoBoxHr->setValue(value);
     ui->wid_1_workoutPlot_HeartrateZoom->updateTextLabelValue(value);
-    if (account->enable_studio_mode) {
-        arrUserStudioWidget[userID-1]->setHrValue(value);
-    }
 }
 
 
@@ -1665,9 +1616,6 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
     if (value == -1) {
         ui->wid_3_infoBoxCadence->setValue(value);
         ui->wid_3_workoutPlot_CadenceZoom->updateTextLabelValue(value);
-        if (account->enable_studio_mode) {
-            arrUserStudioWidget[userID-1]->setCadenceValue(value);
-        }
         return;
     }
     if (value < 0)
@@ -1683,11 +1631,11 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
 
     if (!isWorkoutPaused && !isWorkoutOver) {
 
-        arrDataWorkout[userID-1]->checkUpdateMaxCad(value);
+        m_dataWorkout->checkUpdateMaxCad(value);
 
 
         ///Check to play sound, 10sec cooldown between sound and not first/last 3 second of an interval
-        if (!account->enable_studio_mode && currentTargetCadence != -1 && soundsActive && account->enable_sound) {
+        if (currentTargetCadence != -1 && soundsActive && account->enable_sound) {
             const auto breach = m_cadenceAlert.check(value, currentTargetCadence, currentTargetCadenceRange,
                                                      account->sound_alert_cadence_under_target,
                                                      account->sound_alert_cadence_above_target,
@@ -1700,7 +1648,7 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
 
 
         //averaging 1sec
-        m_secondSamples.addSample(userID-1, SensorSecondAccumulator::Metric::Cadence, value);
+        m_secondSamples.addSample(0, SensorSecondAccumulator::Metric::Cadence, value);
 
 
         //Update Graph (zoomer)
@@ -1713,10 +1661,6 @@ void WorkoutDialog::CadenceDataReceived(int userID, int value) {
     // Show raw data to the display
     ui->wid_3_infoBoxCadence->setValue(value);
     ui->wid_3_workoutPlot_CadenceZoom->updateTextLabelValue(value);
-    // UserStudio
-    if (account->enable_studio_mode) {
-        arrUserStudioWidget[userID-1]->setCadenceValue(value);
-    }
 }
 
 
@@ -1764,7 +1708,7 @@ void WorkoutDialog::VirtualSpeedDataReceived(int userID, double valueMS, double 
 
     //Update Distance Counter
     if (!isWorkoutPaused && !isWorkoutOver) {
-        arrDataWorkout[userID-1]->updateDistance(valueMS*timeAtThisSpeedSec);
+        m_dataWorkout->updateDistance(valueMS*timeAtThisSpeedSec);
     }
 
 }
@@ -1782,11 +1726,11 @@ void WorkoutDialog::speedDataChosen(int userID, double value) {
 
     if (!isWorkoutPaused && !isWorkoutOver) {
 
-        arrDataWorkout[userID-1]->checkUpdateMaxSpeed(value);
+        m_dataWorkout->checkUpdateMaxSpeed(value);
 
 
         //averaging 1sec
-        m_secondSamples.addSample(userID-1, SensorSecondAccumulator::Metric::Speed, value);
+        m_secondSamples.addSample(0, SensorSecondAccumulator::Metric::Speed, value);
     }
     applyStartTrigger(2, valueUnit, account->value_speed_start);
 
@@ -1804,9 +1748,6 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
     if (value == -1) {
         ui->wid_2_infoBoxPower->setValue(value);
         ui->wid_2_workoutPlot_PowerZoom->updateTextLabelValue(value);
-        if (account->enable_studio_mode) {
-            arrUserStudioWidget[userID-1]->setPowerValue(value);
-        }
         return;
     }
 
@@ -1820,8 +1761,8 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
         m_racePowerAtMs = QDateTime::currentMSecsSinceEpoch();
     }
 
-    // Track for sensor dropout detection (non-studio, user 1 only)
-    if (!account->enable_studio_mode && isWorkoutStarted && !isWorkoutOver)
+    // Track for sensor dropout detection (user 1 only)
+    if (isWorkoutStarted && !isWorkoutOver)
         m_lastPowerMs = QDateTime::currentMSecsSinceEpoch();
 
     // Send power To Clock
@@ -1837,11 +1778,11 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 
     if (!isWorkoutPaused && !isWorkoutOver) {
 
-        arrDataWorkout[userID-1]->checkUpdateMaxPower(powerValue);
+        m_dataWorkout->checkUpdateMaxPower(powerValue);
 
 
         ///Check to play sound, 10sec cooldown between sound and not first/last 3 second of an interval
-        if (!account->enable_studio_mode && currentTargetPower != -1 && soundsActive && account->enable_sound) {
+        if (currentTargetPower != -1 && soundsActive && account->enable_sound) {
             const auto breach = m_powerAlert.check(powerValue, currentTargetPower, currentTargetPowerRange,
                                                    account->sound_alert_power_under_target,
                                                    account->sound_alert_power_above_target,
@@ -1854,7 +1795,7 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 
 
         //averaging 1sec
-        m_secondSamples.addSample(userID-1, SensorSecondAccumulator::Metric::Power, value);
+        m_secondSamples.addSample(0, SensorSecondAccumulator::Metric::Power, value);
 
         //Update Graph (zoomer)
         ui->wid_2_workoutPlot_PowerZoom->updateCurve(timeElapsed_sec, powerValue);
@@ -1867,9 +1808,6 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
     // Show raw data to the display
     ui->wid_2_infoBoxPower->setValue(powerValue);
     ui->wid_2_workoutPlot_PowerZoom->updateTextLabelValue(powerValue);
-    if (account->enable_studio_mode) {
-        arrUserStudioWidget[userID-1]->setPowerValue(powerValue);
-    }
 }
 
 
@@ -1877,7 +1815,7 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
 // (or start) once it is over it; exactly at the threshold keeps the state.
 void WorkoutDialog::applyStartTrigger(int trigger, double value, double threshold)
 {
-    if (account->enable_studio_mode || account->start_trigger != trigger || isWorkoutOver)
+    if (account->start_trigger != trigger || isWorkoutOver)
         return;
     if (!isWorkoutPaused && value < threshold)
         start_or_pause_workout();
@@ -1889,18 +1827,18 @@ void WorkoutDialog::PowerBalanceDataReceived(int userID, int rightPedalPercentag
 
     if (!powerBalanceDataSeen) {
         powerBalanceDataSeen = true;
-        if (!account->enable_studio_mode)
-            showPowerBalanceWidget(account->display_power_balance);
+        showPowerBalanceWidget(account->display_power_balance);
     }
     ui->wid_2_balancePower->setValue(rightPedalPercentage);
     if (m_balanceTrend && userID == 1)
         m_balanceTrend->addValue(rightPedalPercentage);
-    m_secondSamples.setRightPedalPercent(userID-1, rightPedalPercentage);
+    m_secondSamples.setRightPedalPercent(0, rightPedalPercentage);
 }
 
 
 void WorkoutDialog::OxygenValueChanged(int userID, double percentageSaturatedHemoglobin, double totalHemoglobinConcentration) { // %, g/d;
 
+    Q_UNUSED(userID)
 
     // Mark pairing as done
     markSensorPaired(oxygenPairingDone, labelOxygen);
@@ -1908,68 +1846,37 @@ void WorkoutDialog::OxygenValueChanged(int userID, double percentageSaturatedHem
     if (m_oxygenTrend)
         m_oxygenTrend->addValue(percentageSaturatedHemoglobin);
 
-    m_secondSamples.setHemoglobin(userID-1, percentageSaturatedHemoglobin, totalHemoglobinConcentration);
+    m_secondSamples.setHemoglobin(0, percentageSaturatedHemoglobin, totalHemoglobinConcentration);
 }
 
 
 void WorkoutDialog::sendTargetsPower(double percentageTarget, int range) {
 
 
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            arrUserStudioWidget[i]->setTargetPower(percentageTarget, range);
-        }
-    }
-    else {
-        ui->wid_2_workoutPlot_PowerZoom->targetChanged(percentageTarget, range);
-        ui->wid_2_infoBoxPower->targetChanged(percentageTarget, range);
-    }
+    ui->wid_2_workoutPlot_PowerZoom->targetChanged(percentageTarget, range);
+    ui->wid_2_infoBoxPower->targetChanged(percentageTarget, range);
 }
 
 
 void WorkoutDialog::sendTargetsCadence(int target, int range) {
 
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            arrUserStudioWidget[i]->setTargetCadence(target, range);
-        }
-    }
-    else {
-        ui->wid_3_workoutPlot_CadenceZoom->targetChanged(target, range);
-        ui->wid_3_infoBoxCadence->targetChanged(target, range);
-    }
+    ui->wid_3_workoutPlot_CadenceZoom->targetChanged(target, range);
+    ui->wid_3_infoBoxCadence->targetChanged(target, range);
 }
 
 
 void WorkoutDialog::sendTargetsHr(double percentageTarget, int range) {
 
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            arrUserStudioWidget[i]->setTargetHr(percentageTarget, range);
-        }
-    }
-    else {
-        ui->wid_1_workoutPlot_HeartrateZoom->targetChanged(percentageTarget, range);
-        ui->wid_1_infoBoxHr->targetChanged(percentageTarget, range);
-    }
+    ui->wid_1_workoutPlot_HeartrateZoom->targetChanged(percentageTarget, range);
+    ui->wid_1_infoBoxHr->targetChanged(percentageTarget, range);
 }
 
 
 void WorkoutDialog::sendSlopes(double slope) {
 
 
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            UserStudio myUserStudio = vecUserStudio.at(i);
-            if (myUserStudio.getFecID() > 0) {
-                emit setSlope(myUserStudio.getFecID(), 0);
-            }
-        }
-    }
-    else {
-        if (trainerControlUserId != -1) {
-            emit setSlope(trainerControlUserId, slope);
-        }
+    if (trainerControlUserId != -1) {
+        emit setSlope(trainerControlUserId, slope);
     }
 
 }
@@ -1986,43 +1893,6 @@ SensorStatusStrip *WorkoutDialog::sensorStrip()
             ui->widget_workoutPlot->setTopLeftStrip(m_sensorStrip);
     }
     return m_sensorStrip;
-}
-
-StudioConnectionBoard *WorkoutDialog::studioConnectionBoard()
-{
-    if (!m_connectionBoard) {
-        m_connectionBoard = new StudioConnectionBoard(this);
-        auto *videoLayout = qobject_cast<QBoxLayout*>(ui->widgetVideo->parentWidget()->layout());
-        if (videoLayout)
-            videoLayout->insertWidget(videoLayout->indexOf(ui->widgetVideo), m_connectionBoard, 1);
-        ui->widgetVideo->hide();
-        connect(m_connectionBoard, &StudioConnectionBoard::allConnectedChanged, this, [this](bool allIn) {
-            if (allIn)
-                QTimer::singleShot(3000, this, [this]() {
-                    if (m_connectionBoard && m_connectionBoard->allConnected())
-                        foldConnectionBoard();
-                });
-        });
-    }
-    return m_connectionBoard;
-}
-
-void WorkoutDialog::foldConnectionBoard()
-{
-    if (!m_connectionBoard || !m_connectionBoard->isVisible())
-        return;
-    m_connectionBoard->hide();
-    if (m_raceView)
-        m_raceView->show();
-    else
-        ui->widgetVideo->show();
-}
-
-UserStudioWidget *WorkoutDialog::riderWidget(int rider) const
-{
-    if (!account->enable_studio_mode || rider < 1 || rider > account->nb_user_studio)
-        return nullptr;
-    return arrUserStudioWidget[rider - 1];
 }
 
 void WorkoutDialog::trainerConnected()
@@ -2046,14 +1916,13 @@ void WorkoutDialog::enableTrainerControl() {
     updateGearIndicator();          // a trainer is now wired → reveal the gear UI
 }
 
-// A trainer is under our control (solo, non-studio). Virtual shifting is offered
+// A trainer is under our control. Virtual shifting is offered
 // here regardless of the ERG ("control trainer resistance") checkbox: with ERG
 // off the rider controls resistance *through* the gears.
 bool WorkoutDialog::virtualShiftingActive() const {
     return trainerControlUserId != -1 && account
         && account->virtual_shifting          // off => real gears / free ride
-        && !account->rowing_mode
-        && !account->enable_studio_mode;
+        && !account->rowing_mode;
 }
 
 // ERG only owns an interval when the checkbox is on AND there's a positive power
@@ -2073,7 +1942,7 @@ bool WorkoutDialog::gearsDriveNow() const {
 // leaves ERG for the virtual gears, or a flat road without virtual shifting.
 // Nothing after the finish is recorded.
 void WorkoutDialog::startFreeRideAfterWorkout() {
-    if (account->enable_studio_mode || trainerControlUserId == -1)
+    if (trainerControlUserId == -1)
         return;
     m_freeRideAfterWorkout = true;
     if (virtualShiftingActive()) {
@@ -2123,6 +1992,8 @@ void WorkoutDialog::startZwiftClick()
     // trainer, so ERG/FTMS is unaffected. Right-side mapping (left unsupported):
     //   Y → gear up   B → gear down   A → radio next   Z → radio prev
     //   right paddle (+) → start/pause workout
+    if (m_clickManager && m_clickManager->parent() != this)
+        return;   // borrowed: the app's device session runs its scan
     if (!m_clickManager) {
         m_clickManager = new ZwiftClickManager(this);   // freed with the dialog (BLE released)
         connectZwiftClick();
@@ -2131,14 +2002,14 @@ void WorkoutDialog::startZwiftClick()
 #endif
 }
 
-void WorkoutDialog::adoptZwiftClickManager(ZwiftClickManager *manager)
+void WorkoutDialog::useZwiftClickManager(ZwiftClickManager *manager)
 {
 #ifndef Q_OS_WASM
-    if (!manager)
+    if (!manager || manager == m_clickManager)
         return;
-    delete m_clickManager;
+    if (m_clickManager && m_clickManager->parent() == this)
+        delete m_clickManager;
     m_clickManager = manager;
-    m_clickManager->setParent(this);   // freed with the dialog (BLE released)
     connectZwiftClick();
 #else
     Q_UNUSED(manager)
@@ -2184,8 +2055,7 @@ void WorkoutDialog::shiftGear(int delta) {
 }
 
 // Refresh the top-bar gear indicator. It's a virtual-gear concept, so it's shown
-// only when gears actually drive resistance: a trainer is controllable (not in
-// studio) AND we're not in an ERG-owned interval. In ERG the gear means nothing,
+// only when gears actually drive resistance: a trainer is controllable AND we're not in an ERG-owned interval. In ERG the gear means nothing,
 // so the whole indicator is hidden (the gear up/down controls re-task to
 // difficulty there - see shiftGear()).
 void WorkoutDialog::updateGearIndicator() {
@@ -2203,18 +2073,6 @@ void WorkoutDialog::updateGearIndicator() {
 
 void WorkoutDialog::sendLoads(double percentageFTP) {
 
-    // Studio mode: no smoothing — each rider has a different FTP, broadcast directly.
-    if (account->enable_studio_mode) {
-        stopErgSmoothing();
-        for (int i = 0; i < account->nb_user_studio; i++) {
-            UserStudio myUserStudio = vecUserStudio.at(i);
-            if (myUserStudio.getFecID() > 0 && myUserStudio.getFTP() > 0) {
-                int userTarget = qRound(percentageFTP * myUserStudio.getFTP());
-                emit setLoad(myUserStudio.getFecID(), userTarget);
-            }
-        }
-        return;
-    }
 
     if (trainerControlUserId == -1) {
         stopErgSmoothing();
@@ -2392,7 +2250,7 @@ void WorkoutDialog::adjustTargets(Interval interval) {
     /// Power Balance - Got Target
     else {
         ui->wid_2_balancePower->setZone(interval.getRightPowerTarget(), 3);
-        if ((account->display_power_balance == 0 || account->display_power_balance == 1) && !account->enable_studio_mode) {
+        if ((account->display_power_balance == 0 || account->display_power_balance == 1)) {
             ui->wid_2_balancePower->setVisible(true);
         }
     }
@@ -2693,10 +2551,7 @@ void WorkoutDialog::setMessagePlot() {
     if (!isWorkoutStarted) {
         showMessage = true;
 
-        if (account->enable_studio_mode) {
-            toShow = tr("To start workout, press Space or the start button");
-        }
-        else if (trigger == 0) {
+        if (trigger == 0) {
             toShow = tr("To start workout, pedal over ");
             toShow += QString::number(account->value_cadence_start) + " ";
             toShow += tr("rpm");
@@ -2721,10 +2576,7 @@ void WorkoutDialog::setMessagePlot() {
     else if (isWorkoutPaused) {
         showMessage = true;
 
-        if (account->enable_studio_mode) {
-            toShow = tr("To resume workout, press Space or the resume button");
-        }
-        else if (trigger == 0) {
+        if (trigger == 0) {
             toShow = tr("To resume workout, pedal over ");
             toShow += QString::number(account->value_cadence_start) + " ";
             toShow += tr("rpm");
@@ -2755,23 +2607,16 @@ void WorkoutDialog::setMessagePlot() {
 void WorkoutDialog::setWidgetsStopped(bool b) {
 
 
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            arrUserStudioWidget[i]->setStopped(b);
-        }
-    }
-    else {
-        ui->widget_workoutPlot->setStopped(b);
-        ui->wid_2_workoutPlot_PowerZoom->setStopped(b);
-        ui->wid_3_workoutPlot_CadenceZoom->setStopped(b);
-        ui->wid_1_workoutPlot_HeartrateZoom->setStopped(b);
-        ui->wid_1_infoBoxHr->setStopped(b);
-        ui->wid_2_infoBoxPower->setStopped(b);
-        ui->wid_3_infoBoxCadence->setStopped(b);
-        ui->wid_4_infoBoxSpeed->setStopped(b);
-        ui->wid_5_infoWorkout->setStopped(b);
-        ui->wid_2_balancePower->setStopped(b);
-    }
+    ui->widget_workoutPlot->setStopped(b);
+    ui->wid_2_workoutPlot_PowerZoom->setStopped(b);
+    ui->wid_3_workoutPlot_CadenceZoom->setStopped(b);
+    ui->wid_1_workoutPlot_HeartrateZoom->setStopped(b);
+    ui->wid_1_infoBoxHr->setStopped(b);
+    ui->wid_2_infoBoxPower->setStopped(b);
+    ui->wid_3_infoBoxCadence->setStopped(b);
+    ui->wid_4_infoBoxSpeed->setStopped(b);
+    ui->wid_5_infoWorkout->setStopped(b);
+    ui->wid_2_balancePower->setStopped(b);
 }
 
 
@@ -3015,15 +2860,14 @@ void WorkoutDialog::activateSoundBool() {
 
 void WorkoutDialog::checkFitFileCreated() {
 
-    QString fitFilename = arrDataWorkout[0]->getFitFilename();
+    QString fitFilename = m_dataWorkout->getFitFilename();
     qInfo() << "FIT file:" << fitFilename;
     if (fitFilename != "") {
         fitFilePath        = fitFilename;
         fitFileName        = workout.getName();
         fitFileDescription = m_race ? m_race->course().place() : workout.getDescription();
         // The new ride is in the history now: count it towards the totals.
-        if (!account->enable_studio_mode)
-            achievementManager->evaluateHistory();
+        achievementManager->evaluateHistory();
         if (!m_quitAfterSave)
             showPostWorkoutPanel();
         emit fitFileReady(fitFilename, workout.getName(), workout.getDescription());
@@ -3117,29 +2961,14 @@ void WorkoutDialog::placePostWorkoutOverlays()
 void WorkoutDialog::closeFitFiles(double timeElapSec) {
 
 
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            arrDataWorkout[i]->writeEndFile(timeElapSec);
-            arrDataWorkout[i]->closeFitFile();
-        }
-    }
-    else {
-        arrDataWorkout[0]->writeEndFile(timeElapSec);
-        arrDataWorkout[0]->closeFitFile();
-        checkFitFileCreated();
-    }
+    m_dataWorkout->writeEndFile(timeElapSec);
+    m_dataWorkout->closeFitFile();
+    checkFitFileCreated();
 }
 
 void WorkoutDialog::closeAndDeleteFitFile() {
 
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            arrDataWorkout[i]->closeAndDeleteFitFile();
-        }
-    }
-    else {
-        arrDataWorkout[0]->closeAndDeleteFitFile();
-    }
+    m_dataWorkout->closeAndDeleteFitFile();
 }
 
 void WorkoutDialog::changeIntervalsDataWorkout(double timeStarted, double timeNow, int timePaused_msec, bool workoutOver, bool testInterval) {
@@ -3151,24 +2980,16 @@ void WorkoutDialog::changeIntervalsDataWorkout(double timeStarted, double timeNo
     double summaryAvgPower = 0.0, summaryAvgHr = 0.0, summaryAvgCad = 0.0;
     double intervalDuration = timeNow - timeStarted;
     double targetPowerFraction = currentIntervalObj.getFTP_start();
-    bool showSummary = !account->enable_studio_mode
-                       && !workoutOver
+    bool showSummary = !workoutOver
                        && account->interval_summary_enabled
                        && intervalDuration >= 10.0;
     if (showSummary) {
-        summaryAvgPower = arrDataWorkout[0]->getAvgIntervalPower();
-        summaryAvgHr    = arrDataWorkout[0]->getAvgIntervalHr();
-        summaryAvgCad   = arrDataWorkout[0]->getAvgIntervalCad();
+        summaryAvgPower = m_dataWorkout->getAvgIntervalPower();
+        summaryAvgHr    = m_dataWorkout->getAvgIntervalHr();
+        summaryAvgCad   = m_dataWorkout->getAvgIntervalCad();
     }
 
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            arrDataWorkout[i]->changeInterval(timeStarted, timeNow, timePaused_msec, workoutOver, testInterval);
-        }
-    }
-    else {
-        arrDataWorkout[0]->changeInterval(timeStarted, timeNow, timePaused_msec, workoutOver, testInterval);
-    }
+    m_dataWorkout->changeInterval(timeStarted, timeNow, timePaused_msec, workoutOver, testInterval);
 
     if (showSummary)
         showIntervalSummaryOverlay(summaryAvgPower, summaryAvgHr, summaryAvgCad,
@@ -3181,14 +3002,7 @@ void WorkoutDialog::changeIntervalsDataWorkout(double timeStarted, double timeNo
 
 void WorkoutDialog::initDataWorkout() {
 
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            arrDataWorkout[i] = new DataWorkout(this->workout, account->FTP, this);
-        }
-    }
-    else {
-        arrDataWorkout[0] = new DataWorkout(this->workout, account->FTP, this);
-    }
+    m_dataWorkout = new DataWorkout(this->workout, account->FTP, this);
 }
 
 
@@ -3241,67 +3055,6 @@ void WorkoutDialog::showIntervalSummaryOverlay(double avgPower, double avgHr, do
 }
 
 
-void WorkoutDialog::createUserStudioWidget() {
-
-
-    // Rider cards are laid out in a balanced, screen-adaptive grid. Each card
-    // stretches to fill its column and keeps a fixed height so rows align.
-    // Columns are capped at maxPerRow and balanced across the rows needed, so
-    // e.g. 8 riders -> 4+4 and 6 -> 3+3 rather than a full row plus a stub.
-    const int minBoxWidth = 300;
-    const int boxHeight    = UserStudioWidget::kCardHeight;
-    const int maxPerRow    = 4;
-
-    const int nbRiders = account->nb_user_studio;
-
-    if (account->enable_studio_mode && nbRiders > 0) {
-        const int availWidth   = QGuiApplication::primaryScreen()->availableGeometry().width();
-        const int colsThatFit  = qMax(1, availWidth / minBoxWidth);
-        const int cap          = qMin(maxPerRow, colsThatFit);
-        const int rowsNeeded   = (nbRiders + cap - 1) / cap;
-        const int columns      = qMax(1, (nbRiders + rowsNeeded - 1) / rowsNeeded);
-
-        QGridLayout *glayout = static_cast<QGridLayout*>(ui->widget_allSpeedo->layout());
-        glayout->setHorizontalSpacing(8);
-        glayout->setVerticalSpacing(8);
-        // Every row of cards always fits; the splitter takes the room from the
-        // video area above.
-        const QMargins margins = glayout->contentsMargins();
-        ui->widget_allSpeedo->setMinimumHeight(rowsNeeded * boxHeight + (rowsNeeded - 1) * 8
-                                               + margins.top() + margins.bottom());
-
-        for (int i = 0; i < nbRiders; i++) {
-            UserStudio myUserStudio = vecUserStudio.at(i);
-            // Fall back to "RiderN" when the rider left their name blank in the
-            // Studio tab, so every box is still labelled in the workout view.
-            QString riderName = myUserStudio.getDisplayName().trimmed();
-            if (riderName.isEmpty())
-                riderName = tr("Rider%1").arg(i+1);
-
-            arrUserStudioWidget[i] = new UserStudioWidget(i+1, riderName, myUserStudio.getFTP(), myUserStudio.getLTHR(), this);
-            arrUserStudioWidget[i]->setMinimumWidth(minBoxWidth);
-            arrUserStudioWidget[i]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-
-            if (myUserStudio.getHrID() < 1 && myUserStudio.getFecID() < 1)
-                arrUserStudioWidget[i]->setHrSectionHidden();
-            if (myUserStudio.getPowerID() < 1 && myUserStudio.getFecID() < 1)
-                arrUserStudioWidget[i]->setPowerSectionHidden();
-
-            glayout->addWidget(arrUserStudioWidget[i], i / columns, i % columns);
-        }
-        for (int c = 0; c < columns; c++)
-            glayout->setColumnStretch(c, 1);
-
-        //Set back theses widgets on top of GridStudio
-        widgetLoading->raise();
-        widgetLoading->activateWindow();
-
-        widgetBattery->raise();
-        widgetBattery->activateWindow();
-    }
-}
-
-
 // Saves a test result to the profile and, signed in, to Intervals.icu: login
 // copies FTP/LTHR from there, so a local-only result would be lost at the next
 // sign-in. \a lthrBpm 0 = the test did not measure LTHR.
@@ -3341,39 +3094,18 @@ void WorkoutDialog::showTestResult() {
     // ------------- FTP TEST -----------------
     if (workout.getWorkoutNameEnum() == Workout::FTP_TEST || workout.getWorkoutNameEnum() == Workout::FTP8min_TEST) {
 
-        // GROUP — update every rider's FTP/LTHR from their own test result.
-        if (account->enable_studio_mode) {
-
-            for (int i=0; i<account->nb_user_studio; i++) {
-                QString testResult = workout.getName() + tr(" Result:");
-                int newFTP = arrDataWorkout[i]->getFTP();
-                int newLTHR = arrDataWorkout[i]->getLTHR();
-                arrUserStudioWidget[i]->setResultTest(testResult + QString::number(newFTP));
-
-                UserStudio myUserStudio = vecUserStudio.at(i);
-                if (newFTP > 0) { myUserStudio.setFTP(newFTP); }
-                if (newLTHR >0) { myUserStudio.setLTHR(newLTHR); }
-                vecUserStudio.replace(i, myUserStudio);
-            }
-            // Emit once with the fully-updated vector; MainWindow persists it so
-            // the new values show in the Studio tab and survive a restart.
-            emit ftpUserStudioChanged(vecUserStudio);
-        }
-        //SOLO
-        else {
-            int newFTP = arrDataWorkout[0]->getFTP();
-            int newLTHR = arrDataWorkout[0]->getLTHR();
-            mainPlot->setAlertMessage(true, false, workout.getName() + tr(" Result")
-                                      + "<div style='color:white;height:7px;'>------------------------------------</div><br/> "
-                                      + tr("FTP: ") + QString::number(newFTP) + tr(" watts") + tr(" (Previous: ") +  QString::number(account->FTP) + tr(" watts)") + "<br/>"
-                                      + tr("LTHR: ")  + QString::number(newLTHR) + tr(" bpm") + tr(" (Previous: ") +  QString::number(account->LTHR) + tr(" bpm)"), 500);
-            // Persist the new FTP/LTHR into the athlete profile so they survive
-            // a restart and show up in Preferences. Keep the previous value for
-            // any metric the test could not compute (<= 0).
-            const int ftpToSave  = (newFTP  > 0) ? newFTP  : account->FTP;
-            const int lthrToSave = (newLTHR > 0) ? newLTHR : account->LTHR;
-            saveTestResult(ftpToSave, newLTHR > 0 ? lthrToSave : 0);
-        }
+        int newFTP = m_dataWorkout->getFTP();
+        int newLTHR = m_dataWorkout->getLTHR();
+        mainPlot->setAlertMessage(true, false, workout.getName() + tr(" Result")
+                                  + "<div style='color:white;height:7px;'>------------------------------------</div><br/> "
+                                  + tr("FTP: ") + QString::number(newFTP) + tr(" watts") + tr(" (Previous: ") +  QString::number(account->FTP) + tr(" watts)") + "<br/>"
+                                  + tr("LTHR: ")  + QString::number(newLTHR) + tr(" bpm") + tr(" (Previous: ") +  QString::number(account->LTHR) + tr(" bpm)"), 500);
+        // Persist the new FTP/LTHR into the athlete profile so they survive
+        // a restart and show up in Preferences. Keep the previous value for
+        // any metric the test could not compute (<= 0).
+        const int ftpToSave  = (newFTP  > 0) ? newFTP  : account->FTP;
+        const int lthrToSave = (newLTHR > 0) ? newLTHR : account->LTHR;
+        saveTestResult(ftpToSave, newLTHR > 0 ? lthrToSave : 0);
     }
 
     else {
@@ -3389,74 +3121,42 @@ void WorkoutDialog::showTestResult() {
 void WorkoutDialog::sendUserInfoToClock() {
 
 
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            emit sendUserInfo(i+1, account->userCda, account->bike_weight_kg + account->weight_kg, account->nb_user_studio);
-        }
-    }
-    else {
-        emit sendUserInfo(1, account->userCda, account->bike_weight_kg + account->weight_kg, 1);
-    }
+    emit sendUserInfo(account->userCda, account->bike_weight_kg + account->weight_kg);
 }
 
 
 void WorkoutDialog::connectDataWorkout() {
 
 
-    if (account->enable_studio_mode) {
-        for (int i=0; i<account->nb_user_studio; i++) {
-            connect(arrDataWorkout[i], &DataWorkout::maxPowerIntervalChanged, arrUserStudioWidget[i], &UserStudioWidget::setMaxIntervalPower);
-            connect(arrDataWorkout[i], &DataWorkout::maxPowerWorkoutChanged, arrUserStudioWidget[i], &UserStudioWidget::setMaxWorkoutPower);
-            connect(arrDataWorkout[i], &DataWorkout::avgPowerIntervalChanged, arrUserStudioWidget[i], &UserStudioWidget::setAvgIntervalPower);
-            connect(arrDataWorkout[i], &DataWorkout::avgPowerWorkoutChanged, arrUserStudioWidget[i], &UserStudioWidget::setAvgWorkoutPower);
 
-            connect(arrDataWorkout[i], &DataWorkout::maxCadenceIntervalChanged, arrUserStudioWidget[i], &UserStudioWidget::setMaxIntervalCad);
-            connect(arrDataWorkout[i], &DataWorkout::maxCadenceWorkoutChanged, arrUserStudioWidget[i], &UserStudioWidget::setMaxWorkoutCad);
-            connect(arrDataWorkout[i], &DataWorkout::avgCadenceIntervalChanged, arrUserStudioWidget[i], &UserStudioWidget::setAvgIntervalCad);
-            connect(arrDataWorkout[i], &DataWorkout::avgCadenceWorkoutChanged, arrUserStudioWidget[i], &UserStudioWidget::setAvgWorkoutCad);
+    connect(m_dataWorkout, &DataWorkout::maxHrIntervalChanged, ui->wid_1_infoBoxHr, &InfoWidget::maxIntervalChanged);
+    connect(m_dataWorkout, &DataWorkout::maxHrWorkoutChanged, ui->wid_1_infoBoxHr, &InfoWidget::maxWorkoutChanged);
+    connect(m_dataWorkout, &DataWorkout::avgHrIntervalChanged, ui->wid_1_infoBoxHr, &InfoWidget::avgIntervalChanged);
+    connect(m_dataWorkout, &DataWorkout::avgHrWorkoutChanged, ui->wid_1_infoBoxHr, &InfoWidget::avgWorkoutChanged);
 
-            connect(arrDataWorkout[i], &DataWorkout::maxHrIntervalChanged, arrUserStudioWidget[i], &UserStudioWidget::setMaxIntervalHr);
-            connect(arrDataWorkout[i], &DataWorkout::maxHrWorkoutChanged, arrUserStudioWidget[i], &UserStudioWidget::setMaxWorkoutHr);
-            connect(arrDataWorkout[i], &DataWorkout::avgHrIntervalChanged, arrUserStudioWidget[i], &UserStudioWidget::setAvgIntervalHr);
-            connect(arrDataWorkout[i], &DataWorkout::avgHrWorkoutChanged, arrUserStudioWidget[i], &UserStudioWidget::setAvgWorkoutHr);
+    connect(m_dataWorkout, &DataWorkout::maxCadenceIntervalChanged, ui->wid_3_infoBoxCadence, &InfoWidget::maxIntervalChanged);
+    connect(m_dataWorkout, &DataWorkout::maxCadenceWorkoutChanged, ui->wid_3_infoBoxCadence, &InfoWidget::maxWorkoutChanged);
+    connect(m_dataWorkout, &DataWorkout::avgCadenceIntervalChanged, ui->wid_3_infoBoxCadence, &InfoWidget::avgIntervalChanged);
+    connect(m_dataWorkout, &DataWorkout::avgCadenceWorkoutChanged, ui->wid_3_infoBoxCadence, &InfoWidget::avgWorkoutChanged);
 
-            connect(arrDataWorkout[i], &DataWorkout::normalizedPowerChanged, arrUserStudioWidget[i], &UserStudioWidget::setNormalizedPower);
-            connect(arrDataWorkout[i], &DataWorkout::intensityFactorChanged, arrUserStudioWidget[i], &UserStudioWidget::setIntensityFactor);
-            connect(arrDataWorkout[i], &DataWorkout::tssChanged, arrUserStudioWidget[i], &UserStudioWidget::setTrainingStressScore);
-            connect(arrDataWorkout[i], &DataWorkout::caloriesWorkoutChanged, arrUserStudioWidget[i], &UserStudioWidget::setCalories);
+    connect(m_dataWorkout, &DataWorkout::maxSpeedIntervalChanged, ui->wid_4_infoBoxSpeed, &InfoWidget::maxIntervalChanged);
+    connect(m_dataWorkout, &DataWorkout::maxSpeedWorkoutChanged, ui->wid_4_infoBoxSpeed, &InfoWidget::maxWorkoutChanged);
+    connect(m_dataWorkout, &DataWorkout::avgSpeedIntervalChanged, ui->wid_4_infoBoxSpeed, &InfoWidget::avgIntervalChanged);
+    connect(m_dataWorkout, &DataWorkout::avgSpeedWorkoutChanged, ui->wid_4_infoBoxSpeed, &InfoWidget::avgWorkoutChanged);
 
+    connect(m_dataWorkout, &DataWorkout::maxPowerIntervalChanged, ui->wid_2_infoBoxPower, &InfoWidget::maxIntervalChanged);
+    connect(m_dataWorkout, &DataWorkout::maxPowerWorkoutChanged, ui->wid_2_infoBoxPower, &InfoWidget::maxWorkoutChanged);
+    connect(m_dataWorkout, &DataWorkout::avgPowerIntervalChanged, ui->wid_2_infoBoxPower, &InfoWidget::avgIntervalChanged);
+    connect(m_dataWorkout, &DataWorkout::avgPowerWorkoutChanged, ui->wid_2_infoBoxPower, &InfoWidget::avgWorkoutChanged);
 
-        }
-    }
-
-    connect(arrDataWorkout[0], &DataWorkout::maxHrIntervalChanged, ui->wid_1_infoBoxHr, &InfoWidget::maxIntervalChanged);
-    connect(arrDataWorkout[0], &DataWorkout::maxHrWorkoutChanged, ui->wid_1_infoBoxHr, &InfoWidget::maxWorkoutChanged);
-    connect(arrDataWorkout[0], &DataWorkout::avgHrIntervalChanged, ui->wid_1_infoBoxHr, &InfoWidget::avgIntervalChanged);
-    connect(arrDataWorkout[0], &DataWorkout::avgHrWorkoutChanged, ui->wid_1_infoBoxHr, &InfoWidget::avgWorkoutChanged);
-
-    connect(arrDataWorkout[0], &DataWorkout::maxCadenceIntervalChanged, ui->wid_3_infoBoxCadence, &InfoWidget::maxIntervalChanged);
-    connect(arrDataWorkout[0], &DataWorkout::maxCadenceWorkoutChanged, ui->wid_3_infoBoxCadence, &InfoWidget::maxWorkoutChanged);
-    connect(arrDataWorkout[0], &DataWorkout::avgCadenceIntervalChanged, ui->wid_3_infoBoxCadence, &InfoWidget::avgIntervalChanged);
-    connect(arrDataWorkout[0], &DataWorkout::avgCadenceWorkoutChanged, ui->wid_3_infoBoxCadence, &InfoWidget::avgWorkoutChanged);
-
-    connect(arrDataWorkout[0], &DataWorkout::maxSpeedIntervalChanged, ui->wid_4_infoBoxSpeed, &InfoWidget::maxIntervalChanged);
-    connect(arrDataWorkout[0], &DataWorkout::maxSpeedWorkoutChanged, ui->wid_4_infoBoxSpeed, &InfoWidget::maxWorkoutChanged);
-    connect(arrDataWorkout[0], &DataWorkout::avgSpeedIntervalChanged, ui->wid_4_infoBoxSpeed, &InfoWidget::avgIntervalChanged);
-    connect(arrDataWorkout[0], &DataWorkout::avgSpeedWorkoutChanged, ui->wid_4_infoBoxSpeed, &InfoWidget::avgWorkoutChanged);
-
-    connect(arrDataWorkout[0], &DataWorkout::maxPowerIntervalChanged, ui->wid_2_infoBoxPower, &InfoWidget::maxIntervalChanged);
-    connect(arrDataWorkout[0], &DataWorkout::maxPowerWorkoutChanged, ui->wid_2_infoBoxPower, &InfoWidget::maxWorkoutChanged);
-    connect(arrDataWorkout[0], &DataWorkout::avgPowerIntervalChanged, ui->wid_2_infoBoxPower, &InfoWidget::avgIntervalChanged);
-    connect(arrDataWorkout[0], &DataWorkout::avgPowerWorkoutChanged, ui->wid_2_infoBoxPower, &InfoWidget::avgWorkoutChanged);
-
-    connect(arrDataWorkout[0], &DataWorkout::normalizedPowerChanged, ui->wid_5_infoWorkout, &infosWorkout::NP_Changed);
-    connect(arrDataWorkout[0], &DataWorkout::intensityFactorChanged, ui->wid_5_infoWorkout, &infosWorkout::IF_Changed);
-    connect(arrDataWorkout[0], &DataWorkout::tssChanged, ui->wid_5_infoWorkout, &infosWorkout::TSS_Changed);
-    connect(arrDataWorkout[0], &DataWorkout::tssChanged, achievementManager, &ManagerAchievement::checkLiveTss);
-    connect(arrDataWorkout[0], &DataWorkout::totalDistanceChanged, achievementManager,
+    connect(m_dataWorkout, &DataWorkout::normalizedPowerChanged, ui->wid_5_infoWorkout, &infosWorkout::NP_Changed);
+    connect(m_dataWorkout, &DataWorkout::intensityFactorChanged, ui->wid_5_infoWorkout, &infosWorkout::IF_Changed);
+    connect(m_dataWorkout, &DataWorkout::tssChanged, ui->wid_5_infoWorkout, &infosWorkout::TSS_Changed);
+    connect(m_dataWorkout, &DataWorkout::tssChanged, achievementManager, &ManagerAchievement::checkLiveTss);
+    connect(m_dataWorkout, &DataWorkout::totalDistanceChanged, achievementManager,
             &ManagerAchievement::checkLiveDistance);
-    connect(arrDataWorkout[0], &DataWorkout::caloriesWorkoutChanged, ui->wid_5_infoWorkout, &infosWorkout::calories_Changed);
-    connect(arrDataWorkout[0], &DataWorkout::totalDistanceChanged, ui->wid_5_infoWorkout, &infosWorkout::distanceChanged);
+    connect(m_dataWorkout, &DataWorkout::caloriesWorkoutChanged, ui->wid_5_infoWorkout, &infosWorkout::calories_Changed);
+    connect(m_dataWorkout, &DataWorkout::totalDistanceChanged, ui->wid_5_infoWorkout, &infosWorkout::distanceChanged);
 
 
 }

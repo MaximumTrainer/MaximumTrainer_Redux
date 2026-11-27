@@ -45,7 +45,7 @@ public:
 
 
     int id;
-    int subscription_type_id;  //1 = Free, 2= Regular, 3=Studio
+    int subscription_type_id;  //1 = Free, 2= Regular
 
     QString email;
     QString password;
@@ -79,8 +79,6 @@ public:
 
 
     // -----------------------------------  Settings ----------------------------------------------------------------------
-    int nb_user_studio;
-    bool enable_studio_mode;
     bool use_pm_for_cadence;
     bool use_pm_for_speed;
 

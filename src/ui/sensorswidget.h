@@ -34,6 +34,13 @@ public:
     /// Re-read persisted settings into the rows (e.g. when the tab is shown).
     void reload();
 
+signals:
+    /// Around a pairing scan: the app lets go of its devices meanwhile.
+    void pairingStarted();
+    void pairingFinished();
+    /// A saved sensor or a device setting changed.
+    void devicesChanged();
+
 private slots:
     void onScanClicked(int rowIndex);
     void onClearClicked(int rowIndex);

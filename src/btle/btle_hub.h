@@ -38,15 +38,6 @@ public:
 
     bool isConnected() const;
 
-    // 1-based rider id emitted in every data signal. Defaults to 1 (solo); in
-    // Studio mode each rider's hub is given a distinct id so WorkoutDialog
-    // routes the data to the correct rider box. Mirrors SimulatorHub::setUserID.
-    // Setting it also restricts setLoad()/setSlope() to commands addressed to
-    // this rider, so one rider's ERG target does not drive every trainer. Solo
-    // never calls this, so its trainer keeps accepting every command (the
-    // broadcast deviceId from the legacy sensor list is ignored, as before).
-    void setUserID(int id) { m_userID = id; m_filterControlByUserID = true; }
-
 signals:
     // ----------- Data signals (same signatures as Hub) ---------------------
     void signal_hr(int userID, int hr);
@@ -190,11 +181,8 @@ private:
     // produces an out-of-bounds arrDataWorkout[-1] access on every live packet.
     static constexpr int SOLO_USER_ID = 1;
 
-    // Rider id emitted in every data signal (settable via setUserID()).
-    int m_userID = SOLO_USER_ID;
-    // When true (Studio mode), setLoad()/setSlope() act only on commands whose
-    // deviceId matches m_userID. False for solo so behaviour is unchanged.
-    bool m_filterControlByUserID = false;
+    // Rider id emitted in every data signal.
+    const int m_userID = SOLO_USER_ID;
 
     int m_wheelCircMm = DEFAULT_WHEEL_CIRC_MM;
 
