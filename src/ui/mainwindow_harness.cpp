@@ -22,8 +22,14 @@
 #include <QGuiApplication>
 #include <QStyleHints>
 #include <QScopeGuard>
+#include <functional>
+#include <QLabel>
 
 #include "util.h"
+#ifndef GC_WASM_BUILD
+#include "device_session.h"
+#include "btle_hub.h"
+#endif
 #include "logger.h"
 #include "environnement.h"
 #include "soundplayer.h"
@@ -629,3 +635,132 @@ void MainWindow::runWorkoutBenchmark(int seconds)
     QCoreApplication::quit();
 }
 #endif
+
+
+void MainWindow::runDeviceSessionCheck(const QString &outDir)
+{
+#ifndef GC_WASM_BUILD
+    QDir().mkpath(outDir);
+    account->use_simulated_sensors = false;
+    account->enable_studio_mode = false;
+    account->isOffline = true;
+    account->display_video = 0;
+    resize(1280, 800);
+    startDevices();
+
+    auto *clock = new QElapsedTimer;
+    clock->start();
+    auto *report = new QStringList;
+    const auto note = [clock, report](const QString &line) {
+        const QString stamped = QStringLiteral("[%1 s] %2").arg(clock->elapsed() / 1000.0, 0, 'f', 1).arg(line);
+        qInfo().noquote() << "DeviceSessionCheck" << stamped;
+        report->append(stamped);
+    };
+    const auto finish = [this, outDir, report, clock](int code) {
+        grab().save(outDir + QLatin1String("/main_window.png"), "PNG");
+        QFile file(outDir + QLatin1String("/report.txt"));
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text))
+            QTextStream(&file) << report->join(QLatin1Char('\n')) << '\n';
+        delete report;
+        delete clock;
+        QTimer::singleShot(500, qApp, [code]() { qApp->exit(code); });
+    };
+    const auto findRide = []() -> WorkoutDialog * {
+        for (QWidget *top : QApplication::topLevelWidgets())
+            if (auto *ride = qobject_cast<WorkoutDialog *>(top))
+                if (ride->isVisible())
+                    return ride;
+        return nullptr;
+    };
+    // Polls \a done every 250 ms for up to \a timeoutMs, then runs \a next(ok).
+    const auto waitFor = [](std::function<bool()> done, int timeoutMs, std::function<void(bool)> next) {
+        auto *poll = new QTimer;
+        auto *waited = new QElapsedTimer;
+        waited->start();
+        QObject::connect(poll, &QTimer::timeout, poll, [poll, waited, done, timeoutMs, next]() {
+            const bool ok = done();
+            if (!ok && waited->elapsed() < timeoutMs)
+                return;
+            poll->deleteLater();
+            delete waited;
+            next(ok);
+        });
+        poll->start(250);
+    };
+    // Counts power packets the open ride receives, to prove the hub is wired to it.
+    auto *packets = new int(0);
+    const auto countPower = [this, packets]() {
+        *packets = 0;
+        if (BtleHub *trainer = m_devices->trainerHub())
+            connect(trainer, &BtleHub::signal_power, m_devices, [packets](int, int) { ++*packets; });
+    };
+
+    // Nobody pedals during the check, so one 222 W packet goes through the real
+    // hub; the open ride's power box must show it (read before the trainer's
+    // next real 0 W packet overwrites it).
+    const auto ridePowerShows222 = [this, findRide]() {
+        BtleHub *trainer = m_devices->trainerHub();
+        WorkoutDialog *ride = findRide();
+        if (!trainer || !ride)
+            return false;
+        // The JetBlack reports power over Cycling Power (FTMS power is then ignored).
+        trainer->simulateNotification(0x2A63, QByteArray::fromHex("0000de00"));
+        auto *box = ride->findChild<QWidget *>(QStringLiteral("wid_2_infoBoxPower"));
+        auto *value = box ? box->findChild<QLabel *>(QStringLiteral("label_currentValue")) : nullptr;
+        return value && value->text().contains(QLatin1String("222"));
+    };
+
+    note(QStringLiteral("session mode %1, %2 device(s)").arg(int(m_devices->mode())).arg(m_devices->items().size()));
+    waitFor([this]() { return m_devices->trainerHub() != nullptr; }, 90000,
+            [=, this](bool trainerUp) {
+        note(trainerUp ? QStringLiteral("trainer connected at startup") : QStringLiteral("FAIL trainer never connected"));
+        if (!trainerUp) { finish(1); return; }
+        countPower();
+        grab().save(outDir + QLatin1String("/main_window_connected.png"), "PNG");
+
+        on_actionOpen_Ride_triggered();
+        WorkoutDialog *first = findRide();
+        note(first ? QStringLiteral("ride 1 open") : QStringLiteral("FAIL ride 1 did not open"));
+        if (!first) { finish(1); return; }
+        const int before = *packets;
+        QTimer::singleShot(6000, this, [=, this]() {
+            note(QStringLiteral("ride 1: %1 real power packet(s) from the trainer in 6 s").arg(*packets - before));
+            const bool wired1 = ridePowerShows222();
+            note(wired1 ? QStringLiteral("ride 1 shows power from the trainer hub")
+                        : QStringLiteral("FAIL ride 1 is not wired to the trainer hub"));
+            if (WorkoutDialog *ride = findRide())
+                ride->grab().save(outDir + QLatin1String("/ride1.png"), "PNG");
+            if (WorkoutDialog *ride = findRide())
+                QMetaObject::invokeMethod(ride, "reject");
+            QTimer::singleShot(4000, this, [=, this]() {
+                const bool stillUp = m_devices->trainerHub() && m_devices->trainerHub()->isConnected();
+                note(stillUp ? QStringLiteral("trainer still connected after closing ride 1")
+                             : QStringLiteral("FAIL trainer dropped after closing ride 1"));
+                QElapsedTimer *opened = new QElapsedTimer;
+                opened->start();
+                const int atOpen = *packets;
+                on_actionOpen_Ride_triggered();
+                Q_UNUSED(atOpen)
+                waitFor(ridePowerShows222, 15000, [=, this](bool flowing) {
+                    note(flowing ? QStringLiteral("ride 2 shows power from the trainer hub %1 ms after opening").arg(opened->elapsed())
+                                 : QStringLiteral("FAIL ride 2 is not wired to the trainer hub"));
+                    delete opened;
+                    if (WorkoutDialog *ride = findRide()) {
+                        ride->grab().save(outDir + QLatin1String("/ride2.png"), "PNG");
+                        QMetaObject::invokeMethod(ride, "reject");
+                    }
+                    QTimer::singleShot(3000, this, [=, this]() {
+                        const bool up = m_devices->trainerHub() && m_devices->trainerHub()->isConnected();
+                        note(up ? QStringLiteral("trainer still connected after closing ride 2")
+                                : QStringLiteral("FAIL trainer dropped after closing ride 2"));
+                        finish(wired1 && stillUp && flowing && up ? 0 : 1);
+                    });
+                });
+            });
+        });
+    });
+#else
+    Q_UNUSED(outDir)
+    qApp->quit();
+#endif
+}

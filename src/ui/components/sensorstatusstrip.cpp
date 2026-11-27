@@ -19,8 +19,28 @@ SensorStatusStrip::SensorStatusStrip(QWidget *parent) : QWidget(parent)
     connect(m_hideTimer, &QTimer::timeout, this, &QWidget::hide);
 }
 
+void SensorStatusStrip::setAutoHide(bool autoHide)
+{
+    m_autoHide = autoHide;
+    if (!autoHide) {
+        m_hideTimer->stop();
+        show();
+    }
+}
+
+void SensorStatusStrip::clear()
+{
+    qDeleteAll(m_chips);
+    m_chips.clear();
+    m_names.clear();
+    m_devices.clear();
+    m_states.clear();
+}
+
 void SensorStatusStrip::updateVisibility()
 {
+    if (!m_autoHide)
+        return;
     const bool allConnected = std::all_of(m_states.cbegin(), m_states.cend(),
                                           [](State current) { return current == State::Connected; });
     if (allConnected) {

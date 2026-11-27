@@ -1,5 +1,7 @@
 #include "sensorswidget.h"
 
+#include <QScopeGuard>
+
 #include <QVBoxLayout>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -257,6 +259,7 @@ void SensorsWidget::onSimulatedSensorsToggled(bool checked)
         return;
     m_account->use_simulated_sensors = checked;
     m_account->saveDisplayPrefs();
+    emit devicesChanged();
 }
 
 void SensorsWidget::onUseZwiftClickToggled(bool checked)
@@ -265,6 +268,7 @@ void SensorsWidget::onUseZwiftClickToggled(bool checked)
         return;
     m_account->use_zwift_click = checked;
     m_account->saveDisplayPrefs();
+    emit devicesChanged();
 }
 
 void SensorsWidget::onErgRampChanged(int seconds)
@@ -328,6 +332,8 @@ void SensorsWidget::refreshRow(int rowIndex)
 void SensorsWidget::onScanClicked(int rowIndex)
 {
 #ifndef GC_WASM_BUILD
+    emit pairingStarted();
+    const auto resume = qScopeGuard([this]() { emit pairingFinished(); });
     BtleScannerDialog scanner(m_rows[rowIndex].role, this);
     if (scanner.exec() != QDialog::Accepted || !scanner.hasSelection())
         return;
@@ -338,6 +344,7 @@ void SensorsWidget::onScanClicked(int rowIndex)
     // Refresh every row: pairing the Trainer collapses the Power/Cadence slots.
     for (int i = 0; i < m_rows.size(); ++i)
         refreshRow(i);
+    emit devicesChanged();
 #else
     Q_UNUSED(rowIndex);
 #endif
@@ -351,6 +358,7 @@ void SensorsWidget::onClearClicked(int rowIndex)
     m_rows[rowIndex].current.role = m_rows[rowIndex].role;
     for (int i = 0; i < m_rows.size(); ++i)
         refreshRow(i);
+    emit devicesChanged();
 #else
     Q_UNUSED(rowIndex);
 #endif

@@ -18,6 +18,10 @@
 #include "powereditor.h"
 #include "radio.h"
 #include "radiotablemodel.h"
+#include "sensorstatusstrip.h"
+#ifndef Q_OS_WASM
+#include "device_session.h"
+#endif
 #include "sensor.h"
 #include "settings.h"
 #include "soundplayer.h"
@@ -221,6 +225,51 @@ private slots:
         QVERIFY(!model.moveRadio(0, -1));
         QVERIFY(!model.moveRadio(2, +1));
         QCOMPARE(names(), QStringLiteral("C,A,B"));
+    }
+
+#ifndef Q_OS_WASM
+    // Studio and simulated sensors keep their per-ride flow: the app-wide
+    // session then holds no device, and nothing paired means nothing to connect.
+    void deviceSession_holdsNothingOutsideSoloLive()
+    {
+        m_account->use_zwift_click = false;
+        m_account->rowing_mode = false;
+        DeviceSession session(m_account);
+
+        m_account->use_simulated_sensors = true;
+        session.reconfigure();
+        QCOMPARE(session.mode(), DeviceSession::Mode::Simulated);
+        QVERIFY(session.items().isEmpty());
+        QVERIFY(!session.connector());
+
+        m_account->use_simulated_sensors = false;
+        m_account->enable_studio_mode = true;
+        session.reconfigure();
+        QCOMPARE(session.mode(), DeviceSession::Mode::Studio);
+        QVERIFY(!session.connector());
+
+        m_account->enable_studio_mode = false;
+        session.reconfigure();
+        QCOMPARE(session.mode(), DeviceSession::Mode::NothingPaired);
+
+        session.release();
+        QCOMPARE(session.mode(), DeviceSession::Mode::Released);
+        session.reconnect();
+        QCOMPARE(session.mode(), DeviceSession::Mode::NothingPaired);
+    }
+#endif
+
+    void sensorStrip_staysVisibleWithoutAutoHide()
+    {
+        SensorStatusStrip strip;
+        strip.setAutoHide(false);
+        strip.show();
+        strip.addSensor(1, QStringLiteral("Trainer"));
+        strip.setState(1, SensorStatusStrip::State::Connected);
+        QTest::qWait(5300);
+        QVERIFY(strip.isVisible());
+        strip.clear();
+        QVERIFY(strip.chipText(1).isEmpty());
     }
 
     void enterIsNotAHotkey()

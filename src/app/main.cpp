@@ -423,6 +423,17 @@ int main(int argc, char *argv[]) {
         return app.exec();
     }
 
+    if (cliArgs.contains(QLatin1String("--device-session-check"), Qt::CaseInsensitive)) {
+        splash.hide();
+        MainWindow *w = launchMainWindow();
+        QString outDir = QCoreApplication::applicationDirPath() + QLatin1String("/device-session-check");
+        const int idx = cliArgs.indexOf(QLatin1String("--device-session-check"));
+        if (idx >= 0 && idx + 1 < cliArgs.size() && !cliArgs.at(idx + 1).startsWith(QLatin1Char('-')))
+            outDir = cliArgs.at(idx + 1);
+        QMetaObject::invokeMethod(w, "runDeviceSessionCheck", Qt::QueuedConnection, Q_ARG(QString, outDir));
+        return app.exec();
+    }
+
     if (cliArgs.contains(QLatin1String("--sensor-check"), Qt::CaseInsensitive)) {
         splash.hide();
         MainWindow *w = launchMainWindow();
@@ -481,7 +492,7 @@ int main(int argc, char *argv[]) {
     showLogin = [&]() {
         auto *loginDlg = new DialogLogin(nullptr);
         QObject::connect(loginDlg, &QDialog::accepted, loginDlg, [&launchMainWindow, loginDlg]() {
-            launchMainWindow();
+            launchMainWindow()->startDevices();
             loginDlg->deleteLater();
         });
         QObject::connect(loginDlg, &QDialog::rejected, loginDlg, [loginDlg]() {

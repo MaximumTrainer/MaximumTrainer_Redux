@@ -27,6 +27,9 @@ public:
     void setState(int key, State state);
     State state(int key) const { return m_states.value(key, State::Searching); }
     QString chipText(int key) const;
+    /// Off: the strip stays visible even once everything is connected.
+    void setAutoHide(bool autoHide);
+    void clear();
 
 signals:
     void retryRequested(int key);
@@ -36,6 +39,7 @@ private:
     void updateVisibility();
 
     QTimer                     *m_hideTimer = nullptr;
+    bool                        m_autoHide = true;
 
     QHBoxLayout                *m_layout = nullptr;
     QMap<int, QToolButton*>     m_chips;

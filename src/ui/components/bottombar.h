@@ -15,6 +15,9 @@ public:
     explicit BottomBar(QWidget *parent = nullptr);
     ~BottomBar() override;
 
+    /// Places \a widget at the left end of the bar (the device status).
+    void setStatusWidget(QWidget *widget);
+
 
 
 

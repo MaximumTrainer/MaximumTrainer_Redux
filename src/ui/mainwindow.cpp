@@ -14,6 +14,9 @@
 #include <QFileDialog>
 #include <QTimer>
 #include <QToolButton>
+#include <QLabel>
+#include <QHBoxLayout>
+#include <QMenu>
 #include "updatenotifier.h"
 #include "achievementswidget.h"
 #include <QDir>
@@ -54,6 +57,7 @@
 #else
 #include "btle_scanner_dialog.h"
 #include "btle_sensor_store.h"
+#include "device_session.h"
 #include "sensor_connector.h"
 #include "sensorstatusstrip.h"
 #include "studioconnectionboard.h"
@@ -471,6 +475,12 @@ void MainWindow::leftMenuChanged(int tabSelected) {
         return;
     ui->stackedWidget_menu->setCurrentIndex(m_tabToPage.at(tabSelected));
     currentIndexLeftMenu = tabSelected;
+#ifndef GC_WASM_BUILD
+    // Settings may have changed on the page just left (paired sensors, Zwift
+    // Click, Studio, simulated sensors); reconnects only when they did.
+    if (m_devices && !isInsideWorkout)
+        m_devices->reconfigure();
+#endif
 
     // Refresh saved sensors each time the Devices tab is opened.
     if (tabSelected == m_tabs.devices) {
@@ -667,6 +677,86 @@ void MainWindow::saveSettings() {
 
 }
 
+
+void MainWindow::startDevices()
+{
+#ifndef GC_WASM_BUILD
+    if (m_devices)
+        return;
+    m_devices = new DeviceSession(account, this);
+
+    auto *bar = new QWidget(this);
+    bar->setObjectName(QStringLiteral("deviceBar"));
+    auto *row = new QHBoxLayout(bar);
+    row->setContentsMargins(0, 0, 0, 0);
+    row->setSpacing(4);
+    m_deviceStrip = new SensorStatusStrip(bar);
+    m_deviceStrip->setAutoHide(false);
+    m_deviceStrip->layout()->setContentsMargins(4, 2, 4, 2);
+    m_deviceNote = new QLabel(bar);
+    m_deviceNote->setObjectName(QStringLiteral("deviceBarNote"));
+    row->addWidget(m_deviceStrip);
+    row->addWidget(m_deviceNote);
+    bar->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(bar, &QWidget::customContextMenuRequested, this,
+            [this, bar](const QPoint &pos) { showDeviceMenu(bar->mapToGlobal(pos)); });
+    ui->widget_bottomMenu->setStatusWidget(bar);
+
+    connect(m_devices, &DeviceSession::itemsChanged, this, &MainWindow::rebuildDeviceBar);
+    connect(m_devices, &DeviceSession::modeChanged, this, &MainWindow::rebuildDeviceBar);
+    connect(m_devices, &DeviceSession::statusChanged, m_deviceStrip,
+            [this](int key, SensorConnector::Status status) {
+                m_deviceStrip->setState(key, SensorStatusStrip::State(int(status)));
+            });
+    connect(m_deviceStrip, &SensorStatusStrip::retryRequested, m_devices, &DeviceSession::retry);
+    if (auto *sensors = qobject_cast<SensorsWidget*>(ui->sensorsWidget)) {
+        // A connected device stops advertising, so the pairing scan could not see it.
+        connect(sensors, &SensorsWidget::pairingStarted, m_devices, [this]() { m_devices->setPaused(true); });
+        connect(sensors, &SensorsWidget::pairingFinished, m_devices, [this]() { m_devices->setPaused(false); });
+        connect(sensors, &SensorsWidget::devicesChanged, m_devices, &DeviceSession::reconfigure);
+    }
+    m_devices->reconfigure();
+    rebuildDeviceBar();
+#endif
+}
+
+#ifndef GC_WASM_BUILD
+void MainWindow::rebuildDeviceBar()
+{
+    m_deviceStrip->clear();
+    for (const DeviceSession::Item &item : m_devices->items()) {
+        m_deviceStrip->addSensor(item.key, item.name, item.device);
+        m_deviceStrip->setState(item.key, SensorStatusStrip::State(int(item.status)));
+    }
+    QString note;
+    switch (m_devices->mode()) {
+    case DeviceSession::Mode::Live:          break;
+    case DeviceSession::Mode::Studio:        note = tr("Studio: sensors connect when the ride starts"); break;
+    case DeviceSession::Mode::Simulated:     note = tr("Simulated sensors"); break;
+    case DeviceSession::Mode::NothingPaired: note = tr("No devices paired - pair them on the Devices page"); break;
+    case DeviceSession::Mode::Released:
+        note = m_devices->isPaused() ? tr("Devices paused while pairing")
+                                     : tr("Devices disconnected - right-click to reconnect");
+        break;
+    }
+    m_deviceNote->setText(note);
+    m_deviceNote->setVisible(!note.isEmpty());
+    m_deviceStrip->setVisible(!m_devices->items().isEmpty());
+}
+
+void MainWindow::showDeviceMenu(const QPoint &globalPos)
+{
+    QMenu menu(this);
+    const DeviceSession::Mode mode = m_devices->mode();
+    if (mode == DeviceSession::Mode::Live) {
+        menu.addAction(tr("Disconnect all devices"), this, [this]() { m_devices->release(); });
+    } else if (mode == DeviceSession::Mode::Released && !m_devices->isPaused()) {
+        menu.addAction(tr("Reconnect devices"), this, [this]() { m_devices->reconnect(); });
+    }
+    menu.addAction(tr("Devices page..."), this, [this]() { ftb->setCurrentIndex(m_tabs.devices); });
+    menu.exec(globalPos);
+}
+#endif
 
 void MainWindow::closeEvent(QCloseEvent *event) {
 
@@ -975,6 +1065,9 @@ void MainWindow::executeWorkout(Workout workout) {
     }
 
     // ── BTLE Device path ─────────────────────────────────────────────────
+    if (!m_devices)
+        startDevices();
+    m_devices->reconfigure();   // e.g. Studio just turned on: let go of the solo devices
     // Studio mode: every rider's saved sensors connect at once inside the
     // workout window (connection board, then a dot per sensor on each card).
     if (account->enable_studio_mode) {
@@ -988,7 +1081,7 @@ void MainWindow::executeWorkout(Workout workout) {
     if (SensorConnector::slotsFor(savedSensors, account->rowing_mode).isEmpty() && !account->use_zwift_click) {
         QMessageBox box(QMessageBox::Information, tr("No sensors paired"),
                         tr("Pair your trainer and sensors on the Devices page once; after that they "
-                           "connect by themselves at every workout."),
+                           "connect by themselves when the app starts."),
                         QMessageBox::NoButton, this);
         box.setInformativeText(tr("No hardware? Turn on Simulated Sensors at the bottom of the Devices page."));
         QPushButton *goToDevices = box.addButton(tr("Go to Devices"), QMessageBox::AcceptRole);
@@ -1000,7 +1093,7 @@ void MainWindow::executeWorkout(Workout workout) {
             return;
         }
     }
-    startWorkoutConnectingSensors(workout, savedSensors);
+    startWorkoutOnLiveDevices(workout);
 #endif // GC_WASM_BUILD
 }
 
@@ -1185,8 +1278,7 @@ void MainWindow::startWorkoutWithConnectedHub(const Workout &workout, BtleHub *b
 
 
 #ifndef GC_WASM_BUILD
-void MainWindow::startWorkoutConnectingSensors(const Workout &workout,
-                                               const QMap<BtleSensorRole, BtleSavedSensor> &savedSensors)
+void MainWindow::startWorkoutOnLiveDevices(const Workout &workout)
 {
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
@@ -1196,60 +1288,57 @@ void MainWindow::startWorkoutConnectingSensors(const Workout &workout,
     w->setAttribute(Qt::WA_DeleteOnClose);
     w->setWindowModality(Qt::ApplicationModal);
 
-    auto *connector = new SensorConnector(savedSensors, account->rowing_mode, this);
-    SensorStatusStrip *strip = connector->isEmpty() && !account->use_zwift_click ? nullptr : w->sensorStrip();
-    if (strip) {
-        for (const SensorConnector::Slot &slot : connector->sensorSlots())
-            strip->addSensor(int(slot.role), BtleSensorStore::roleDisplayName(slot.role), slot.saved.name);
-        connect(connector, &SensorConnector::statusChanged, strip,
-                [strip](BtleSensorRole role, SensorConnector::Status status) {
-                    strip->setState(int(role), SensorStatusStrip::State(int(status)));
+    const QVector<DeviceSession::Item> items = m_devices->items();
+    if (!items.isEmpty()) {
+        SensorStatusStrip *strip = w->sensorStrip();
+        for (const DeviceSession::Item &item : items) {
+            strip->addSensor(item.key, item.name, item.device);
+            strip->setState(item.key, SensorStatusStrip::State(int(item.status)));
+        }
+        connect(m_devices, &DeviceSession::statusChanged, strip,
+                [strip](int key, SensorConnector::Status status) {
+                    strip->setState(key, SensorStatusStrip::State(int(status)));
                 });
-        connect(strip, &SensorStatusStrip::retryRequested, connector,
-                [connector](int key) { connector->retry(BtleSensorRole(key)); });
+        connect(strip, &SensorStatusStrip::retryRequested, m_devices, &DeviceSession::retry);
     }
 
     // Re-wire everything that is connected whenever a hub (re)connects, so the
     // source priorities still hold: a dedicated HR strap or cadence sensor that
     // comes up after the trainer takes over from the trainer's own reading.
-    connect(connector, &SensorConnector::hubConnected, w, [this, w, connector](BtleHub *connectedHub) {
-        for (BtleHub *hub : connector->hubs()) {
+    const auto rewire = [this, w]() {
+        if (!m_devices->connector())
+            return;
+        for (BtleHub *hub : m_devices->connector()->hubs()) {
             disconnect(hub, nullptr, w, nullptr);
             disconnect(w, nullptr, hub, nullptr);
             disconnect(hub, &BtleHub::signal_trainerProvidesHr, this, nullptr);
         }
-        const QMap<BtleSensorRole, BtleHub*> connected = connector->connectedHubs();
         QSet<BtleHub*> wiredHubs;
-        wireHubsToDialog(w, connected, wiredHubs);
-        const BtleSensorRole ftmsRole = account->rowing_mode ? BtleSensorRole::Rower : BtleSensorRole::Trainer;
-        if (connected.value(ftmsRole, nullptr) == connectedHub)
+        wireHubsToDialog(w, m_devices->connectedHubs(), wiredHubs, 0, false);
+    };
+    rewire();
+    if (m_devices->trainerHub())
+        w->trainerConnected();
+    connect(m_devices, &DeviceSession::hubConnected, w, [this, w, rewire](BtleHub *connectedHub) {
+        rewire();
+        if (connectedHub == m_devices->trainerHub())
             w->trainerConnected();
     });
 
-    if (account->use_zwift_click) {
-        constexpr int kZwiftClickKey = 1000;
-        auto *click = new ZwiftClickManager();
-        strip->addSensor(kZwiftClickKey, tr("Zwift Click"));
-        connect(click, &ZwiftClickManager::connectionChanged, strip, [strip, click]() {
-            strip->setState(kZwiftClickKey, click->rightConnected() ? SensorStatusStrip::State::Connected
-                                                                    : SensorStatusStrip::State::Searching);
-        });
-        w->adoptZwiftClickManager(click);
-    }
+    if (ZwiftClickManager *click = m_devices->clickManager())
+        w->useZwiftClickManager(click);
+    m_devices->setRideActive(true);
 
     connect(w, &WorkoutDialog::ftp_lthr_changed, ui->tab_workout1, &Main_WorkoutPage::updateTableViewMetrics);
     connect(w, &WorkoutDialog::ftpUserStudioChanged, this, &MainWindow::updateVecStudio);
-    connect(w, &QDialog::finished, this, [this, connector]() {
+    connect(w, &QDialog::finished, this, [this]() {
         workoutOver();
-        delete connector;   // disconnects and frees every hub
+        m_devices->setRideActive(false);
+        m_devices->returnTrainerToFreeRide();
     });
 
     attachPendingGroupSession(w);
     workoutExecuting();
-    // Scans start before the window shows: on Windows starting one spins an event
-    // loop, and the rider must not be able to close the workout inside it.
-    w->startZwiftClick();
-    connector->start();
     QApplication::restoreOverrideCursor();
     w->show();
 }
@@ -1262,7 +1351,8 @@ void MainWindow::startWorkoutConnectingSensors(const Workout &workout,
 void MainWindow::wireHubsToDialog(WorkoutDialog *w,
                                   const QMap<BtleSensorRole, BtleHub*> &hubsByRoleIn,
                                   QSet<BtleHub*> &allHubs,
-                                  int riderIndex)
+                                  int riderIndex,
+                                  bool releaseOnClose)
 {
     // A rower is FTMS like a trainer — alias it onto the Trainer wiring path
     // (power/stroke-rate/pace channels, resistance control, HR bridge) so the
@@ -1279,7 +1369,8 @@ void MainWindow::wireHubsToDialog(WorkoutDialog *w,
         allHubs.insert(hub);
         connect(hub, &BtleHub::signal_battery,  w, &WorkoutDialog::batteryStatusReceived);
         connect(hub, &BtleHub::connectionError, w, &WorkoutDialog::onBleConnectionError);
-        connect(w, &WorkoutDialog::stopDecodingMsgHub, hub, &BtleHub::stopDecodingMsg);
+        if (releaseOnClose)
+            connect(w, &WorkoutDialog::stopDecodingMsgHub, hub, &BtleHub::stopDecodingMsg);
     }
 
     BtleHub *powerHub   = nullptr;

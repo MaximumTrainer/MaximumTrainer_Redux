@@ -2123,6 +2123,8 @@ void WorkoutDialog::startZwiftClick()
     // trainer, so ERG/FTMS is unaffected. Right-side mapping (left unsupported):
     //   Y → gear up   B → gear down   A → radio next   Z → radio prev
     //   right paddle (+) → start/pause workout
+    if (m_clickManager && m_clickManager->parent() != this)
+        return;   // borrowed: the app's device session runs its scan
     if (!m_clickManager) {
         m_clickManager = new ZwiftClickManager(this);   // freed with the dialog (BLE released)
         connectZwiftClick();
@@ -2131,14 +2133,14 @@ void WorkoutDialog::startZwiftClick()
 #endif
 }
 
-void WorkoutDialog::adoptZwiftClickManager(ZwiftClickManager *manager)
+void WorkoutDialog::useZwiftClickManager(ZwiftClickManager *manager)
 {
 #ifndef Q_OS_WASM
-    if (!manager)
+    if (!manager || manager == m_clickManager)
         return;
-    delete m_clickManager;
+    if (m_clickManager && m_clickManager->parent() == this)
+        delete m_clickManager;
     m_clickManager = manager;
-    m_clickManager->setParent(this);   // freed with the dialog (BLE released)
     connectZwiftClick();
 #else
     Q_UNUSED(manager)

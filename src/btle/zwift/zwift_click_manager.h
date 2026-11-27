@@ -50,6 +50,9 @@ public:
     /// Stop scanning but KEEP the connected hubs (used after the connection is
     /// handed to the workout — no need to keep discovering).
     void stopDiscovery();
+    /// Scan again after stopDiscovery() if a controller is still missing.
+    void resumeDiscovery();
+    bool isDiscovering() const { return m_agent != nullptr; }
     void stop();
 
     int connectedCount() const;

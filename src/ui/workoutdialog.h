@@ -64,7 +64,8 @@ class WorkoutDialog : public QDialog
     Q_OBJECT
 
 public:
-    void adoptZwiftClickManager(ZwiftClickManager *manager);
+    /// Borrows the app's Zwift Click connection; the dialog does not own it.
+    void useZwiftClickManager(ZwiftClickManager *manager);
     /// Scans for Zwift Click controllers when the rider uses them. Not done in
     /// the constructor: on Windows a Bluetooth scan spins an event loop.
     void startZwiftClick();
@@ -353,7 +354,7 @@ private:
     void connectZwiftClick();
     void saveTestResult(int ftpWatts, int lthrBpm);
 #ifndef Q_OS_WASM
-    ZwiftClickManager *m_clickManager = nullptr;
+    QPointer<ZwiftClickManager> m_clickManager;
 #endif
 
     //Internet radio player
