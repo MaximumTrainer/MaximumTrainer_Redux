@@ -2953,6 +2953,9 @@ void WorkoutDialog::checkFitFileCreated() {
         fitFilePath        = fitFilename;
         fitFileName        = workout.getName();
         fitFileDescription = m_race ? m_race->course().place() : workout.getDescription();
+        // Workouts imported before the ERG/MRC header fix kept this placeholder.
+        if (fitFileDescription == QLatin1String("Imported description"))
+            fitFileDescription.clear();
         // The new ride is in the history now: count it towards the totals.
         achievementManager->evaluateHistory();
         if (!m_quitAfterSave)

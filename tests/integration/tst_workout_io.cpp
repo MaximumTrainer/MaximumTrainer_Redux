@@ -66,11 +66,13 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QTemporaryFile>
+#include <QTemporaryDir>
 #include <QDir>
 #include <QDirIterator>
 
 #include "../../src/app/util.h"
 #include "../../src/persistence/file/importerworkoutzwo.h"
+#include "../../src/persistence/file/importerworkout.h"
 #include "../../src/persistence/file/xmlutil.h"
 #include "../../src/model/account.h"
 #include "../../src/model/workout.h"
@@ -87,6 +89,47 @@ private:
     Account *m_account = nullptr;
 
 private slots:
+
+    // ── ERG / MRC import ─────────────────────────────────────────────────────
+    static QString writeErg(QTemporaryDir &dir, const QString &header)
+    {
+        const QString path = dir.filePath(QStringLiteral("plan.erg"));
+        QFile file(path);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+            return QString();
+        file.write(QStringLiteral("[COURSE HEADER]\nVERSION = 2\nUNITS = ENGLISH\n%1MINUTES\tWATTS\n[END COURSE HEADER]\n"
+                                  "[COURSE DATA]\n0.00\t150\n10.00\t150\n10.00\t250\n20.00\t250\n[END COURSE DATA]\n")
+                       .arg(header).toUtf8());
+        return path;
+    }
+
+    // A description that mentions FTP was read as the FTP line, so the workout
+    // kept the "Imported description" placeholder, which then went to Strava.
+    void ergImport_readsADescriptionThatMentionsFtp()
+    {
+        QTemporaryDir dir;
+        const QString path = writeErg(dir, QStringLiteral(
+            "DESCRIPTION = Thu Nov 26 - MT1 Sweet Spot + FTP check - 3x8min at 245 / 252 / 260 W\n"));
+        const Workout workout = ImporterWorkout::importWorkoutFromFile(path, 280);
+        QCOMPARE(workout.getDescription(),
+                 QStringLiteral("Thu Nov 26 - MT1 Sweet Spot + FTP check - 3x8min at 245 / 252 / 260 W"));
+        QVERIFY(workout.getNbInterval() > 0);
+    }
+
+    void ergImport_noDescriptionStaysEmptyAndFtpIsRead()
+    {
+        QTemporaryDir dir;
+        const QString path = writeErg(dir, QStringLiteral("FTP = 300\n"));
+        const Workout workout = ImporterWorkout::importWorkoutFromFile(path, 200);
+        QVERIFY(workout.getDescription().isEmpty());
+        QVERIFY(workout.getNbInterval() > 0);
+        // 250 W at an FTP of 300 (from the file, not the 200 passed in).
+        bool foundTarget = false;
+        for (const Interval &interval : workout.getLstInterval())
+            if (qAbs(interval.getFTP_start() - 250.0 / 300.0) < 0.01)
+                foundTarget = true;
+        QVERIFY(foundTarget);
+    }
 
     void initTestCase()
     {
