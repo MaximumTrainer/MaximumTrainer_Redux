@@ -1554,13 +1554,50 @@ void WorkoutDialog::setDualRecording(const QString &mainName, const QString &sec
     m_secondaryPowerName = secondaryName.trimmed();
     m_secondaryWorkout = new DataWorkout(workout, account->FTP, this);
     m_secondaryWorkout->setFeedsGraphs(false);
+    m_secondaryStaleTimer = new QTimer(this);
+    m_secondaryStaleTimer->setSingleShot(true);
+    m_secondaryStaleTimer->setInterval(4000);
+    connect(m_secondaryStaleTimer, &QTimer::timeout, this, [this]() {
+        m_secondaryPowerWindow.clear();
+        ui->widget_topMenu->setSecondaryPower(m_secondaryPowerName, -1, false, 0);
+    });
+    ui->widget_topMenu->setSecondaryPower(m_secondaryPowerName, -1, false, 0);
+    ui->widget_topMenu->setSecondaryPowerVisible(true);
     LOG_INFO("WorkoutDialog", QStringLiteral("dual recording: %1 + %2").arg(m_mainPowerName, m_secondaryPowerName));
+}
+
+// The 2nd meter's 3 s average and its gap to the main power over the same window.
+void WorkoutDialog::showSecondaryPower(int watts)
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    m_secondaryPowerWindow.append({now, watts});
+    const auto average = [now](QList<QPair<qint64, int>> &window, double &result) {
+        while (!window.isEmpty() && now - window.first().first > 3000)
+            window.removeFirst();
+        if (window.isEmpty())
+            return false;
+        double sum = 0;
+        for (const auto &sample : std::as_const(window))
+            sum += sample.second;
+        result = sum / window.size();
+        return true;
+    };
+    double secondary = 0;
+    double main = 0;
+    average(m_secondaryPowerWindow, secondary);
+    const bool hasMain = average(m_mainPowerWindow, main);
+    ui->widget_topMenu->setSecondaryPower(m_secondaryPowerName, qRound(secondary), hasMain,
+                                          qRound(secondary) - qRound(main));
+    m_secondaryStaleTimer->start();
 }
 
 void WorkoutDialog::SecondaryPowerDataReceived(int userID, int watts)
 {
     Q_UNUSED(userID)
-    if (!m_secondaryWorkout || watts < 0 || !isWorkoutStarted || isWorkoutPaused || isWorkoutOver)
+    if (!m_secondaryWorkout || watts < 0)
+        return;
+    showSecondaryPower(watts);
+    if (!isWorkoutStarted || isWorkoutPaused || isWorkoutOver)
         return;
     m_secondaryPowerSum += watts;
     ++m_secondaryPowerSamples;
@@ -1799,6 +1836,12 @@ void WorkoutDialog::PowerDataReceived(int userID, int value) {
     if (value < 0)
         return;
 
+    if (m_secondaryWorkout) {
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        m_mainPowerWindow.append({now, value});
+        while (now - m_mainPowerWindow.first().first > 3000)
+            m_mainPowerWindow.removeFirst();
+    }
     if (userID == 1 && m_groupRide) m_groupRide->recordPower(value);
     if (userID == 1 && m_race) {
         m_racePowerW = value;

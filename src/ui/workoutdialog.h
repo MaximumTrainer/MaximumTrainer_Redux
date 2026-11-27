@@ -467,6 +467,10 @@ private:
     double m_secondaryPowerSum = 0;
     int m_secondaryPowerSamples = 0;
     bool m_secondaryPowerSeen = false;
+    QList<QPair<qint64, int>> m_mainPowerWindow;       ///< last 3 s, for the 2nd-meter gap
+    QList<QPair<qint64, int>> m_secondaryPowerWindow;
+    QTimer *m_secondaryStaleTimer = nullptr;
+    void showSecondaryPower(int watts);
     SoundPlayer *soundPlayer;
 
     QTimer *timer_sec;

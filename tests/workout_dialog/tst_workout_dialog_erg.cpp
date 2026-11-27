@@ -293,6 +293,24 @@ private slots:
         QFile::remove(file);
     }
 
+    // The 2nd meter's live reading sits in the top bar with its gap to the main power.
+    void dualRecording_topBarShowsTheSecondMeter()
+    {
+        openDialog(false, 0);
+        auto *readout = m_dialog->findChild<QLabel *>(QStringLiteral("label_secondaryPower"));
+        QVERIFY(readout);
+        QVERIFY(!readout->isVisibleTo(m_dialog));
+        m_dialog->setDualRecording(QStringLiteral("Victory MaJet"), QStringLiteral("Assioma Duo"));
+        QVERIFY(readout->isVisibleTo(m_dialog));
+        QVERIFY(readout->text().contains(QStringLiteral("Assioma Duo")));
+        m_dialog->PowerDataReceived(1, 200);
+        m_dialog->SecondaryPowerDataReceived(1, 205);
+        QVERIFY2(readout->text().contains(QStringLiteral("205 W")), qPrintable(readout->text()));
+        QVERIFY2(readout->text().contains(QStringLiteral("(+5)")), qPrintable(readout->text()));
+        QCOMPARE(m_dialog->findChild<QWidget *>(QStringLiteral("wid_2_infoBoxPower"))
+                     ->findChild<QLabel *>(QStringLiteral("label_currentValue"))->text(), QStringLiteral("200"));
+    }
+
     void enterIsNotAHotkey()
     {
         openDialog(false, 0);   // started
