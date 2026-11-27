@@ -421,13 +421,7 @@ void Main_WorkoutPage::on_tableView_workout_doubleClicked(const QModelIndex &ind
     QModelIndex sourceIndex = proxyModel->mapToSource(index);
     Workout workoutToDo = tableModel->getWorkoutAtRow(sourceIndex);
 
-    if(account->enable_studio_mode && workoutToDo.getWorkoutNameEnum() == Workout::MAP_TEST) {
-        AsyncDialogs::information(this, QString(),
-            tr("MAP Test can only be done alone. Please disable studio mode to continue"));
-    }
-    else {
-        emit executeWorkout(workoutToDo);
-    }
+    emit executeWorkout(workoutToDo);
 
 
 }

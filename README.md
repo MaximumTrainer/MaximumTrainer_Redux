@@ -2,7 +2,7 @@
 
 An open-source, high-performance indoor cycling training application built with the **Qt framework (C++20)**. MaximumTrainer delivers structured interval workouts with real-time power, cadence, heart rate, and speed feedback, and controls smart trainers automatically via FTMS ERG mode. Browse and sync workouts from [intervals.icu](https://www.intervals.icu), or import your own `.erg` / `.mrc` / `.zwo` files. Ride the same workout with friends over the internet with **group workouts**: no account or subscription needed.
 
-> 📖 **Want to use the app?** See the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)** — pairing sensors, finding & building workouts, training, group workouts, Studio mode, and more.
+> 📖 **Want to use the app?** See the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)** — pairing sensors, finding & building workouts, training, group workouts, and more.
 
 ## Download
 
@@ -55,7 +55,7 @@ Prefer to compile it yourself? See [Building](#building) below.
 
 ## Using MaximumTrainer
 
-For everything about **using** the app — pairing sensors, finding / importing / creating workouts, ERG vs Slope, the workout player (video · web), group workouts, Studio mode, activity uploads, and troubleshooting — see the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)**.
+For everything about **using** the app — pairing sensors, finding / importing / creating workouts, ERG vs Slope, the workout player (video · web), group workouts, activity uploads, and troubleshooting — see the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)**.
 
 > **No hardware?** Turn on **Devices → Simulated Sensors**: the simulator emits realistic drifting
 > power / HR / cadence / speed and responds to ERG commands, so you can exercise the full workout flow — handy for
@@ -82,10 +82,6 @@ For everything about **using** the app — pairing sensors, finding / importing 
 | Courses (Beta) - ride Alpe d'Huez, Mont Ventoux, Central Park or Longchamp against bots |
 |---------------------------------------------------------------------------|
 | ![Course in progress - route from above with the riders, standings, live metrics, and the climb coloured by gradient](docs/assets/screenshots/screenshot_course_race.png) |
-
-| Studio mode — per-rider configuration |
-|---------------------------------------|
-| ![Studio mode configuration — per-rider name, FTP/LTHR, sensors, and ERG control for up to 8 riders](docs/assets/screenshots/screenshot_studio_mode.png) |
 
 ## Building
 
@@ -197,7 +193,6 @@ MaximumTrainer has a multi-tier test suite covering BLE parsing, service APIs, U
 | Credential store tests | `tests/credential_store/` | Round-trip read/write, overwrite, remove, missing key, multi-service, WASM no-op |
 | Config bootstrap tests | `tests/config_bootstrap/` | First-run default configuration, legacy settings migration, unreadable settings store, credential load failures logged without values |
 | Logger tests | `tests/logger/` | Log level filtering, output format, file write enable/disable |
-| Studio tests | `tests/studio/` | Multi-hub simultaneous signals, user-ID propagation, FTP scaling |
 | Workout export tests | `tests/workout_export/` | FIT workout steps (ramps, % FTP, cadence, intensity), file decodes as a FIT workout |
 | Course race tests | `tests/race/` | Bundled courses, lap wrapping, grades and next climb, speed from power/weight/grade, drafting, bots, standings; a 3 W/kg rider can stay with the 3 W/kg pace bots |
 | Group workout tests | `tests/group/` | Room-code parsing, message encode/decode, clock-offset estimate, rider-row states, group-ride start and telemetry; live relay test when `GROUP_RELAY_URL` is set |

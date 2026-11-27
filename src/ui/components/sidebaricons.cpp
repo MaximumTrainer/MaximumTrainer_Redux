@@ -29,23 +29,6 @@ QColor zoneColor(int zone)
     return color;
 }
 
-void drawRider(QPainter &painter, double centreX, double headY, double scale, const QColor &color)
-{
-    painter.setPen(QPen(kOutline, 5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-    painter.setBrush(color);
-    const double bottom = 120.0;
-    const double shoulder = headY + 20 * scale;
-    QPainterPath body;
-    body.moveTo(centreX - 27 * scale, bottom);
-    body.lineTo(centreX - 27 * scale, shoulder + 24 * scale);
-    body.quadTo(centreX - 27 * scale, shoulder, centreX, shoulder);
-    body.quadTo(centreX + 27 * scale, shoulder, centreX + 27 * scale, shoulder + 24 * scale);
-    body.lineTo(centreX + 27 * scale, bottom);
-    body.closeSubpath();
-    painter.drawPath(body);
-    painter.drawEllipse(QPointF(centreX, headY), 18 * scale, 18 * scale);
-}
-
 } // namespace
 
 QIcon SidebarIcons::workout()
@@ -99,15 +82,6 @@ QIcon SidebarIcons::devices()
         painter.setPen(QPen(Qt::white, 9, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
         painter.setBrush(Qt::NoBrush);
         painter.drawPolyline(rune, 6);
-    });
-}
-
-QIcon SidebarIcons::studio()
-{
-    return drawn([](QPainter &painter) {
-        drawRider(painter, 30, 46, 0.85, zoneColor(1));
-        drawRider(painter, 98, 46, 0.85, zoneColor(4));
-        drawRider(painter, 64, 32, 1.1, zoneColor(2));
     });
 }
 

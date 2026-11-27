@@ -32,21 +32,13 @@ FitActivityCreator::FitActivityCreator() {
 
     convertKphToMs = 0.277778;
 
-    studioMode = false;
 }
 
 
-QString FitActivityCreator::generateFileName(bool createDir, QString username, QString nameWorkout, QDateTime startTimeWorkout) {
+QString FitActivityCreator::generateFileName(QString username, QString nameWorkout, QDateTime startTimeWorkout) {
 
 
     QString nameFile = Util::getSystemPathHistory() + "/";
-    if (createDir) {
-        nameFile +=  startTimeWorkout.toLocalTime().toString("yyyy-MM-dd(hh-mm-ss)") + "_Studio_" + nameWorkout + "/";
-        folderPathStudio = nameFile;
-        QDir().mkdir(folderPathStudio);
-        studioMode = true;
-    }
-
     nameFile += startTimeWorkout.toLocalTime().toString("yyyy-MM-dd(hh-mm-ss)") + "-MT-" + username + "-" + nameWorkout + ".fit";
 
 
@@ -54,11 +46,11 @@ QString FitActivityCreator::generateFileName(bool createDir, QString username, Q
 }
 
 
-void FitActivityCreator::initialize_FIT_File(bool createDir, QString username, QString nameWorkout, QDateTime startTimeWorkout, bool rowing) {
+void FitActivityCreator::initialize_FIT_File(QString username, QString nameWorkout, QDateTime startTimeWorkout, bool rowing) {
     m_rowing = rowing;
 
 
-    fileName = generateFileName(createDir, username, nameWorkout, startTimeWorkout);
+    fileName = generateFileName(username, nameWorkout, startTimeWorkout);
 
 
 #ifdef Q_OS_WIN32
@@ -132,14 +124,8 @@ void FitActivityCreator::closeAndDeleteFile() {
 
     close_FIT_File();
 
-    if (studioMode) {
-        QDir myDir(folderPathStudio);
-        myDir.removeRecursively();
-    }
-    else {
-        QFile myfile(fileName);
-        myfile.remove();
-    }
+    QFile myfile(fileName);
+    myfile.remove();
 
 
 }

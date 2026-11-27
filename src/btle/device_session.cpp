@@ -33,8 +33,6 @@ DeviceSession::Mode DeviceSession::wantedMode() const
 {
     if (m_account->use_simulated_sensors)
         return Mode::Simulated;
-    if (m_account->enable_studio_mode)
-        return Mode::Studio;
     if (m_paused)
         return Mode::Paused;
     if (SensorConnector::slotsFor(BtleSensorStore::loadAll(), m_account->rowing_mode).isEmpty()

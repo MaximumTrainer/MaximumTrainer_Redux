@@ -36,7 +36,7 @@ public slots:
     void finishClock();
 
     // Virtual speed
-    void receiveUserInfo(int userID, double cda, double weightKG, int nbUser);
+    void receiveUserInfo(double cda, double weightKG);
     void receivePowerData(int userID, int powerWatts);
     void receiveSlopeData(int userID, double slope);
 
@@ -75,13 +75,11 @@ private :
     bool firstSpeedCheck;
 
 
-    int nbUser;
-    // TOCHECK: Consider making an array[nbUser] of Object with theses attributes:
-    QVector<double> cda;
-    QVector<double> weightKG;
-    QVector<double> currentSpeedMS;
-    QVector<int> currentPowerWatts;
-    QVector<double> currentSlope;
+    double cda = 30;
+    double weightKG = 80;
+    double currentSpeedMS = 0;
+    int currentPowerWatts = 0;
+    double currentSlope = 0;
 
 
 

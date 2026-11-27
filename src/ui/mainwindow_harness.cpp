@@ -71,7 +71,6 @@
 #include "btle_sensor_store.h"
 #endif
 #include "sensorswidget.h"
-#include "studiowidget.h"
 #include "asyncdialogs.h"
 #include "groupconfig.h"
 #include "groupsession.h"
@@ -94,16 +93,14 @@ static const int ssDelays[] = {
     500,   // after step  2 (captured WorkoutCreator)   → launch WorkoutDialog
     9000,  // after step  3 (launched WorkoutDialog)    → capture running workout
     200,   // after step  4 (captured workout)          → close WorkoutDialog
-    600,   // after step  5 (closed WorkoutDialog)      → enable studio mode
-    2000,  // after step  6 (enabled studio mode)       → capture Studio
-    500,   // after step  7 (captured Studio)           → switch to Intervals.icu
+    0,     // after step  5 (closed WorkoutDialog)      → (unused)
+    0,     // after step  6 (unused)
+    500,   // after step  7 (unused)                    → switch to Intervals.icu
     1500,  // after step  8 (switched to Intervals.icu) → capture Intervals.icu
     0,     // after step  9 (captured Intervals.icu)    → (unused)
     0,     // after step 10 (unused)
     500,   // after step 11 (unused)                    → switch to History
     1500,  // after step 12 (switched to History)       → capture History
-    600,   // after step 13 (captured History)          → launch studio workout
-    4000,  // after step 14 (launched studio workout)   → capture studio workout
 };
 
 Workout MainWindow::makeDemoWorkout() const
@@ -168,9 +165,8 @@ void MainWindow::launchDemoWorkout()
     ui->tabWidget_workout->setCurrentIndex(0);
 
     m_ssSimHub = new SimulatorHub(this);
-    m_ssSimHub->setUserID(1); // userID must be 1-based; default 0 causes arrUserStudioWidget[-1] OOB crash
     m_ssSimHub->setRowingMode(account->rowing_mode); // demo follows the app mode
-    m_ssWorkoutDlg = new WorkoutDialog(makeDemoWorkout(), lstRadio, vecUserStudio, this);
+    m_ssWorkoutDlg = new WorkoutDialog(makeDemoWorkout(), lstRadio, this);
 
     connectSimulatorHub(m_ssSimHub, m_ssWorkoutDlg);
 
@@ -306,11 +302,6 @@ void MainWindow::startScreenshotMode(const QString &outputDir)
     m_ssOutputDir = outputDir;
     m_ssStep      = 0;
 
-    // Remember the user's real studio settings; the studio capture steps toggle
-    // these, and they are restored before the app quits (see the final step).
-    m_ssSavedStudioEnabled = account->enable_studio_mode;
-    m_ssSavedRiderCount    = account->nb_user_studio;
-
     // Force offline so WorkoutDialog skips the online session check.
     // There is no server to reach in screenshot/CI mode, and the blocking
     // "could not retrieve session" message-box that appears after 3 failed
@@ -438,33 +429,9 @@ void MainWindow::screenshotNextStep()
         QCoreApplication::processEvents();
         break;
 
-    // ── Step 6: capture the Studio tab off (switch only) then on ─────────
-    case 6: {
-        StudioWidget *sw = qobject_cast<StudioWidget*>(ui->studioWidget);
-        ftb->setCurrentIndex(m_tabs.studio);
-
-        // Off: only the Studio Mode switch row should show, pinned at the top.
-        enableStudioMode(false);
-        if (sw) sw->reload();
-        QCoreApplication::processEvents();
-        grab().save(m_ssOutputDir + QLatin1String("/screenshot_studio_off.png"), "PNG");
-        qInfo() << "Screenshot: studio_off";
-
-        // On: reveal the full configuration UI for the studio_mode capture.
-        setNumberUserStudio(6);
-        enableStudioMode(true);
-        if (sw) sw->reload();
-        raise();
-        activateWindow();
-        QCoreApplication::processEvents();
-        break;
-    }
-
-    // ── Step 7: capture studio mode ───────────────────────────────────────
+    // Steps 6-7 used to capture the removed Studio page.
+    case 6:
     case 7:
-        grab().save(m_ssOutputDir + QLatin1String("/screenshot_studio_mode.png"), "PNG");
-        qInfo() << "Screenshot: studio_mode";
-        enableStudioMode(false);
         break;
 
     // ── Step 8: switch to Intervals.icu tab (tab 1) ─────────────────────
@@ -499,68 +466,6 @@ void MainWindow::screenshotNextStep()
         grab().save(m_ssOutputDir + QLatin1String("/screenshot_history.png"), "PNG");
         qInfo() << "Screenshot: history";
         break;
-
-    // ── Step 14: launch a Studio-mode workout with N simulated riders ─────
-    case 14: {
-        setNumberUserStudio(8);   // a full studio: 4 x 2 rider cards
-        enableStudioMode(true);
-        ftb->setCurrentIndex(0);
-        ui->tabWidget_workout->setCurrentIndex(0);
-
-        const int nbRiders = qBound(1, account->nb_user_studio, constants::nbMaxUserStudio);
-        QVector<UserStudio> riders = prepareStudioRiders(true);
-        // A believable class: varied names and FTPs, so most riders sit on
-        // their own target and a couple are off it.
-        static const char *const names[] = {"Julie", "Marc", "Sam", "Chloe", "Nico", "Lea", "Tom", "Ines"};
-        static const int ftps[] = {330, 300, 345, 280, 335, 340, 325, 360};
-        for (int i = 0; i < riders.size() && i < 8; ++i) {
-            riders[i].setDisplayName(QString::fromLatin1(names[i]));
-            riders[i].setFTP(ftps[i]);
-        }
-        m_ssWorkoutDlg = new WorkoutDialog(makeDemoWorkout(), lstRadio, riders, this);
-
-        for (int i = 0; i < nbRiders; ++i) {
-            SimulatorHub *simHub = new SimulatorHub(this);
-            simHub->setRowingMode(account->rowing_mode);
-            simHub->setUserID(i + 1);
-            connectSimulatorHub(simHub, m_ssWorkoutDlg);
-            simHub->start();
-            m_ssStudioHubs.append(simHub);
-        }
-        m_ssWorkoutDlg->resize(1350, 800);
-        m_ssWorkoutDlg->show();
-        m_ssWorkoutDlg->raise();
-        m_ssWorkoutDlg->activateWindow();
-        QCoreApplication::processEvents();
-        // Start it, so the capture shows live numbers on every rider card.
-        QKeyEvent startKey(QEvent::KeyPress, Qt::Key_Space, Qt::NoModifier);
-        QCoreApplication::sendEvent(m_ssWorkoutDlg, &startKey);
-        break;
-    }
-
-    // ── Step 15: capture the Studio workout, then quit ───────────────────
-    case 15:
-        if (m_ssWorkoutDlg) {
-            m_ssWorkoutDlg->raise();
-            QCoreApplication::processEvents();
-            m_ssWorkoutDlg->grab().save(
-                m_ssOutputDir + QLatin1String("/screenshot_studio_workout.png"), "PNG");
-            qInfo() << "Screenshot: studio_workout";
-            m_ssWorkoutDlg->hide();
-            delete m_ssWorkoutDlg;
-            m_ssWorkoutDlg = nullptr;
-        }
-        for (SimulatorHub *simHub : m_ssStudioHubs) {
-            simHub->stopDecodingMsg();
-            delete simHub;
-        }
-        m_ssStudioHubs.clear();
-        // Restore the user's real studio settings the capture steps changed.
-        account->enable_studio_mode = m_ssSavedStudioEnabled;
-        account->nb_user_studio     = m_ssSavedRiderCount;
-        account->saveDisplayPrefs();
-        scheduleScreenshotQuit();
-        return; // No further steps — quit is already scheduled.
 
     default:
         scheduleScreenshotQuit();
@@ -642,7 +547,6 @@ void MainWindow::runDeviceSessionCheck(const QString &outDir)
 #ifndef GC_WASM_BUILD
     QDir().mkpath(outDir);
     account->use_simulated_sensors = false;
-    account->enable_studio_mode = false;
     account->isOffline = true;
     account->display_video = 0;
     resize(1280, 800);

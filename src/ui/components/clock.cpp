@@ -13,13 +13,6 @@ Clock::Clock(QString objectName, QObject *parent) :
     totalTimePaused_msec = 0;
 
 
-    nbUser = 1;
-
-    cda = QVector<double>(constants::nbMaxUserStudio, 30);
-    weightKG = QVector<double>(constants::nbMaxUserStudio, 80);
-    currentSpeedMS = QVector<double>(constants::nbMaxUserStudio, 0);
-    currentPowerWatts = QVector<int>(constants::nbMaxUserStudio, 0);
-    currentSlope = QVector<double>(constants::nbMaxUserStudio, 0);
 
 
     timerClock = new QTimer(this);
@@ -97,34 +90,24 @@ void Clock::startClockSpeed() {
 }
 
 
-void Clock::receiveUserInfo(int userID, double cda, double weightKG, int nbUser) {
-
-
-    this->cda[userID-1] = cda;
-    this->weightKG[userID-1] = weightKG;
-
-
-    this->currentSpeedMS[userID-1] = 0;
-    this->currentPowerWatts[userID-1] = 0;
-    this->currentSlope[userID-1] = 0.0;
-
-
-    this->nbUser = nbUser;
-
-
+void Clock::receiveUserInfo(double cda, double weightKG) {
+    this->cda = cda;
+    this->weightKG = weightKG;
+    currentSpeedMS = 0;
+    currentPowerWatts = 0;
+    currentSlope = 0.0;
 }
 
 
 // Speed Related
 void Clock::receivePowerData(int userID, int powerWatts) {
-
-    this->currentPowerWatts[userID-1] = powerWatts;
+    if (userID == 1)
+        currentPowerWatts = powerWatts;
 }
 
 void Clock::receiveSlopeData(int userID, double slope) {
-
-
-    this->currentSlope[userID-1] = slope;
+    if (userID == 1)
+        currentSlope = slope;
 }
 
 
@@ -139,15 +122,10 @@ void Clock::timerSpeedTimeout() {
 
         double fractionSecond = diffTime / 1000.0;
 
-        // One pass per rider (1 solo, up to nbMaxUserStudio in Studio): integrate
-        // each rider's flat-road power→speed via the CyclingPhysics model, then
-        // emit it. Uses rider+bike mass (weightKG) and the rider's CdA.
-        for (int i=0; i<nbUser; i++) {
-            currentSpeedMS[i] = CyclingPhysics::stepSpeed(
-                currentSpeedMS[i], currentPowerWatts[i], weightKG[i], cda[i], fractionSecond);
-
-            emit virtualSpeed(i+1, currentSpeedMS[i], fractionSecond);
-        }
+        // Flat-road power→speed via the CyclingPhysics model, using rider+bike
+        // mass (weightKG) and the rider's CdA.
+        currentSpeedMS = CyclingPhysics::stepSpeed(currentSpeedMS, currentPowerWatts, weightKG, cda, fractionSecond);
+        emit virtualSpeed(1, currentSpeedMS, fractionSecond);
 
 
     }

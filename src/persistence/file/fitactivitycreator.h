@@ -26,7 +26,7 @@ public:
     }
 
 
-    void initialize_FIT_File(bool createDir, QString username, QString name, QDateTime startTimeWorkout, bool rowing = false);
+    void initialize_FIT_File(QString username, QString name, QDateTime startTimeWorkout, bool rowing = false);
     void close_FIT_File();
     void writeEndFile(double timeNow,
                       double avgIntervalSpeedKph, double avgCadence, double avgPower, double avgHr,
@@ -49,7 +49,7 @@ public:
 
 private :
     bool m_rowing = false; ///< Rowing (Beta): FIT sport for session/lap
-    QString generateFileName(bool createDir, QString username, QString name, QDateTime startTimeWorkout);
+    QString generateFileName(QString username, QString name, QDateTime startTimeWorkout);
 
 
 private :
@@ -57,8 +57,6 @@ private :
     bool fileIsComplete;
     bool fileIsOpen;
 
-    QString folderPathStudio;
-    bool studioMode;
 
     fit::Encode encode{fit::ProtocolVersion::V10};
     std::fstream file;

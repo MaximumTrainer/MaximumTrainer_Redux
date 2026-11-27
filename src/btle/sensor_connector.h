@@ -17,8 +17,8 @@ class BtleHub;
  *
  * Finds and connects a rider's saved sensors: one shared BLE scan, one BtleHub
  * per physical device (two roles saved on the same device share it), and a
- * status per role. It has no UI: the workout window shows its state (sensor
- * chips when solo; the Studio connection board and rider-card dots).
+ * status per role. It has no UI: the device bar and the workout window show
+ * its state as sensor chips.
  *
  * Hubs belong to the connector until takeHubs(); the destructor disconnects
  * and deletes whatever it still owns.
@@ -62,8 +62,6 @@ public:
     /// no longer deleted by it.
     void takeHubs();
 
-    /// Studio: the rider number every hub created from now on reports with.
-    void setHubUserId(int userId) { m_hubUserId = userId; }
 
 public slots:
     void start();
@@ -92,7 +90,6 @@ private:
     QMap<QString, QBluetoothDeviceInfo>   m_infoByDevice;
     bool                                  m_hubsTaken = false;
     QSet<BtleHub*>                        m_releasedHubs;
-    int                                   m_hubUserId = 0;
 
     static constexpr int kScanTimeoutMs = 15000;
 };

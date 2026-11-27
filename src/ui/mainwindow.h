@@ -18,7 +18,6 @@ class CoursesPage;
 #include "workout.h"
 #include "settings.h"
 #include "settingspage.h"
-#include "userstudio.h"
 #include "myconstants.h"
 #include "tab_intervals_icu.h"
 #include "historywidget.h"
@@ -99,13 +98,11 @@ private:
     /// to the workout as soon as it connects. Closing the workout keeps them.
     void startWorkoutOnLiveDevices(const Workout &workout);
 
-    /// Wire one rider's role→hub map to the dialog; distinct hubs accumulate in
-    /// \a allHubs for cleanup. Shared by the solo and Studio launch paths. With
-    /// \a releaseOnClose the hubs disconnect when the workout closes.
+    /// Wire the role→hub map to the dialog; distinct hubs accumulate in
+    /// \a allHubs. With \a releaseOnClose the hubs disconnect when the workout closes.
     void wireHubsToDialog(WorkoutDialog *w,
                           const QMap<BtleSensorRole, BtleHub*> &hubsByRole,
                           QSet<BtleHub*> &allHubs,
-                          int riderIndex = 0,
                           bool releaseOnClose = true);
 
     void rebuildDeviceBar();
@@ -115,10 +112,6 @@ private:
     DeviceSession     *m_devices = nullptr;
     SensorStatusStrip *m_deviceStrip = nullptr;
     QLabel            *m_deviceNote = nullptr;
-
-    /// Studio: open the workout window straight away and connect every
-    /// rider's saved sensors inside it, all at once.
-    void startStudioWorkoutConnectingSensors(const Workout &workout);
 public slots:
 #endif
 
@@ -133,8 +126,7 @@ private:
         int history = 3;
         int achievements = 4;
         int devices = 5;
-        int studio = 6;
-        int settings = 7;
+        int settings = 6;
     } m_tabs;
     /// The old menu bar's actions, as buttons on the pages they belong to.
     void setupPageActions();
@@ -157,17 +149,6 @@ private:
 #endif
 public slots:
 
-    //Coming from Studio QWebView ----------
-    void enableStudioMode(bool enable);
-    void setNumberUserStudio(int numberUser);
-    void updateVecStudio(QVector<UserStudio>);
-    void updateFieldForUser(int riderID, int fieldNumber, QVariant value);
-
-    /// Build the per-rider UserStudio vector to hand to a Studio-mode workout:
-    /// fills FTP/LTHR from the account when a rider left them unset, and sets the
-    /// metric-section visibility flags (hrID/powerID/…). \a simulator shows every
-    /// metric; otherwise the flags reflect that rider's saved BLE sensors.
-    QVector<UserStudio> prepareStudioRiders(bool simulator);
     void leftMenuChanged(int tabSelected);
 
     void goToWorkoutNameFilterFromIntervals(const QString &workoutName);
@@ -244,7 +225,6 @@ private:
     Workout makeDemoWorkout() const;
 
 private:
-    QVector<UserStudio> vecUserStudio;
 
     //pairing
     QList<int> lstDevicePaired;
@@ -296,11 +276,6 @@ private:
     WorkoutDialog *m_ssWorkoutDlg = nullptr;
     SimulatorHub  *m_ssSimHub     = nullptr;
 
-    QList<SimulatorHub*> m_ssStudioHubs;   // per-rider sim hubs for the studio-workout shot
-    // Saved so screenshot mode (which toggles studio mode + rider count for its
-    // captures) can restore the user's real settings before quitting.
-    bool m_ssSavedStudioEnabled = false;
-    int  m_ssSavedRiderCount    = 1;
 
 };
 

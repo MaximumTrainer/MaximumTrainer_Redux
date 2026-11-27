@@ -56,8 +56,7 @@ DialogConfig::DialogConfig(QList<Radio> lstRadio, QWidget *parent,  WorkoutDialo
     addRow(":/image/icon/general", tr("Start && alerts").replace(QStringLiteral("&&"), QStringLiteral("&")), GeneralPage);
 
     // The interval-summary overlay setting lives at the bottom of the General
-    // tab now (the standalone "Workout"/Studio tabs were removed). Studio mode
-    // is configured on the main-window Studio page; logging in Preferences.
+    // tab now (the standalone "Workout" tab was removed); logging in Preferences.
     buildIntervalSummaryGroup();
 
 

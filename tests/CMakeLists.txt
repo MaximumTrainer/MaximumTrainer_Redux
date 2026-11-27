@@ -56,7 +56,7 @@ set(WORKOUT_MODEL
     "${SRC}/model/repeatdata.cpp")
 set(APP_MODEL ${WORKOUT_MODEL}
     "${SRC}/app/util.cpp" "${SRC}/app/simplecrypt.cpp" "${SRC}/model/settings.cpp"
-    "${SRC}/model/sensor.cpp" "${SRC}/model/radio.cpp" "${SRC}/model/userstudio.cpp"
+    "${SRC}/model/sensor.cpp" "${SRC}/model/radio.cpp"
     "${SRC}/model/trackpoint.cpp" "${SRC}/fitness/achievements/achievement.cpp")
 set(APP_DAO
     "${SRC}/persistence/db/environnement.cpp" "${SRC}/persistence/db/extrequest.cpp"
@@ -139,10 +139,6 @@ mt_add_test(strava_tests
     SOURCES ${LOGGER} "${SRC}/persistence/db/strava_service.cpp" strava/tst_strava_service.cpp
     QT Network
     INCLUDES "${TST}/strava" "${SRC}/persistence/db" "${SRC}/app")
-
-mt_add_test(studio_tests
-    SOURCES ${LOGGER} "${SRC}/btle/simulator_hub.cpp" studio/tst_studio_mode.cpp
-    INCLUDES "${SRC}/btle" "${SRC}/app")
 
 if(TARGET Qt6::WebSockets)
 mt_add_test(group_tests

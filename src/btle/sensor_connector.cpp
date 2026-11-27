@@ -141,8 +141,6 @@ BtleHub *SensorConnector::hubForDevice(const QString &key, const QBluetoothDevic
         return existing;
 
     auto *hub = new BtleHub(this);
-    if (m_hubUserId > 0)
-        hub->setUserID(m_hubUserId);
     connect(hub, &BtleHub::deviceConnected, this, [this, hub]() {
         setStatusForHub(hub, Status::Connected);
         emit hubConnected(hub);

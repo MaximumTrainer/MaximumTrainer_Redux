@@ -29,19 +29,19 @@ bool BtleSensorStore::roleCoveredByTrainer(BtleSensorRole role)
 
 static constexpr const char *kTrainerProvidesHrKey = "trainerProvidesHr";
 
-bool BtleSensorStore::trainerProvidesHr(int riderIndex)
+bool BtleSensorStore::trainerProvidesHr()
 {
     QSettings settings;
-    settings.beginGroup(groupForRider(riderIndex));
+    settings.beginGroup(QLatin1String(kGroup));
     const bool provides = settings.value(QLatin1String(kTrainerProvidesHrKey), false).toBool();
     settings.endGroup();
     return provides;
 }
 
-void BtleSensorStore::setTrainerProvidesHr(bool provides, int riderIndex)
+void BtleSensorStore::setTrainerProvidesHr(bool provides)
 {
     QSettings settings;
-    settings.beginGroup(groupForRider(riderIndex));
+    settings.beginGroup(QLatin1String(kGroup));
     settings.setValue(QLatin1String(kTrainerProvidesHrKey), provides);
     settings.endGroup();
 }
@@ -100,19 +100,12 @@ QList<QBluetoothUuid> BtleSensorStore::serviceUuidsForRole(BtleSensorRole role)
     return {};
 }
 
-QString BtleSensorStore::groupForRider(int riderIndex)
-{
-    if (riderIndex <= 0)
-        return QLatin1String(kGroup);
-    return QLatin1String(kGroup) + QLatin1String("/rider") + QString::number(riderIndex);
-}
-
-QMap<BtleSensorRole, BtleSavedSensor> BtleSensorStore::loadAll(int riderIndex)
+QMap<BtleSensorRole, BtleSavedSensor> BtleSensorStore::loadAll()
 {
     QMap<BtleSensorRole, BtleSavedSensor> result;
 
     QSettings settings;
-    settings.beginGroup(groupForRider(riderIndex));
+    settings.beginGroup(QLatin1String(kGroup));
     for (BtleSensorRole role : allRoles()) {
         const QString key = roleKey(role);
 
@@ -131,12 +124,12 @@ QMap<BtleSensorRole, BtleSavedSensor> BtleSensorStore::loadAll(int riderIndex)
     return result;
 }
 
-void BtleSensorStore::saveSensor(const BtleSavedSensor &sensor, int riderIndex)
+void BtleSensorStore::saveSensor(const BtleSavedSensor &sensor)
 {
     const QString key = roleKey(sensor.role);
 
     QSettings settings;
-    settings.beginGroup(groupForRider(riderIndex));
+    settings.beginGroup(QLatin1String(kGroup));
     settings.setValue(key + QLatin1String("/name"),       sensor.name);
     settings.setValue(key + QLatin1String("/address"),    sensor.address);
     settings.setValue(key + QLatin1String("/deviceUuid"), sensor.deviceUuid);
@@ -144,12 +137,12 @@ void BtleSensorStore::saveSensor(const BtleSavedSensor &sensor, int riderIndex)
     settings.endGroup();
 }
 
-void BtleSensorStore::clearSensor(BtleSensorRole role, int riderIndex)
+void BtleSensorStore::clearSensor(BtleSensorRole role)
 {
     const QString key = roleKey(role);
 
     QSettings settings;
-    settings.beginGroup(groupForRider(riderIndex));
+    settings.beginGroup(QLatin1String(kGroup));
     settings.remove(key);
     settings.endGroup();
 }

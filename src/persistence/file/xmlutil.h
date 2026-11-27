@@ -9,7 +9,6 @@
 #include "repeatwidget.h"
 #include "account.h"
 #include "settings.h"
-#include "userstudio.h"
 #include "trackpoint.h"
 
 

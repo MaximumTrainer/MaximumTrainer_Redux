@@ -8,7 +8,6 @@
 #include "soundplayer.h"
 #include "sensor.h"
 #include "trackpoint.h"
-#include "userstudio.h"
 #include "networkmonitor.h"
 #include "config_bootstrap.h"
 #include "logger.h"
@@ -59,8 +58,7 @@ GlobalVars::GlobalVars(QObject *parent) :
         qRegisterMetaType<Sensor>("Sensor");
         qRegisterMetaType<QList<Sensor> >( "QList<Sensor>" );
         qRegisterMetaType<QList<int> >( "QList<int>" );
-        qRegisterMetaType<QVector<UserStudio> >( "QVector<UserStudio>" );
-        qRegisterMetaType<QList<Trackpoint> >( "QList<Trackpoint>" );
+            qRegisterMetaType<QList<Trackpoint> >( "QList<Trackpoint>" );
     }
 
     ///-------- INIT GLOBAL VAR ---------------------------

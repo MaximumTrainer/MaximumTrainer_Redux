@@ -72,11 +72,9 @@ void TstSettings::testDisplayPrefs_freshStoreGivesDefaults()
         QCOMPARE(account.control_trainer_resistance, true);
         QCOMPARE(account.virtual_shifting, true);
         QCOMPARE(account.use_zwift_click, false);
-        QCOMPARE(account.enable_studio_mode, false);
         QCOMPARE(account.distance_in_km, true);
         QCOMPARE(account.force_workout_window_on_top, false);
         QCOMPARE(account.strava_auto_upload, false);
-        QCOMPARE(account.nb_user_studio, 3);
         QCOMPARE(account.use_pm_for_cadence, false);
         QCOMPARE(account.use_pm_for_speed, false);
         QCOMPARE(account.show_included_workout, true);
@@ -154,11 +152,9 @@ void TstSettings::testDisplayPrefs_saveUsesOnDiskKeyNames()
         "control_trainer_resistance",
         "virtual_shifting",
         "use_zwift_click",
-        "enable_studio_mode",
         "distance_in_km",
         "force_workout_window_on_top",
         "strava_auto_upload",
-        "nb_user_studio",
         "use_pm_for_cadence",
         "use_pm_for_speed",
         "show_included_workout",
@@ -216,11 +212,9 @@ void TstSettings::testDisplayPrefs_roundTripsEveryField()
         writer.control_trainer_resistance = false;
         writer.virtual_shifting = true;
         writer.use_zwift_click = true;
-        writer.enable_studio_mode = true;
         writer.distance_in_km = false;
         writer.force_workout_window_on_top = true;
         writer.strava_auto_upload = true;
-        writer.nb_user_studio = 10;
         writer.use_pm_for_cadence = true;
         writer.use_pm_for_speed = true;
         writer.show_included_workout = false;
@@ -273,11 +267,9 @@ void TstSettings::testDisplayPrefs_roundTripsEveryField()
         QCOMPARE(reader.control_trainer_resistance, false);
         QCOMPARE(reader.virtual_shifting, true);
         QCOMPARE(reader.use_zwift_click, true);
-        QCOMPARE(reader.enable_studio_mode, true);
         QCOMPARE(reader.distance_in_km, false);
         QCOMPARE(reader.force_workout_window_on_top, true);
         QCOMPARE(reader.strava_auto_upload, true);
-        QCOMPARE(reader.nb_user_studio, 10);
         QCOMPARE(reader.use_pm_for_cadence, true);
         QCOMPARE(reader.use_pm_for_speed, true);
         QCOMPARE(reader.show_included_workout, false);

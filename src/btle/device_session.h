@@ -21,15 +21,14 @@ class ZwiftClickManager;
  * Keeps the solo rider's saved sensors and Zwift Click connected for as long as
  * the app runs, so a workout or course borrows live connections instead of
  * connecting from scratch every time. Missing devices are retried in the
- * background. Studio mode and simulated sensors keep their own per-ride flow:
- * the session then holds nothing.
+ * background. With simulated sensors the session holds nothing.
  */
 class DeviceSession : public QObject
 {
     Q_OBJECT
 
 public:
-    enum class Mode { Live, Studio, Simulated, NothingPaired, Paused };
+    enum class Mode { Live, Simulated, NothingPaired, Paused };
     Q_ENUM(Mode)
 
     struct Item {

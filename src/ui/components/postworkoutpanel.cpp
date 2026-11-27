@@ -534,7 +534,7 @@ void PostWorkoutPanel::setProfileNote(const QString &text)
 // Suggests a higher FTP when the recent rides show one (see FtpEstimator).
 void PostWorkoutPanel::addFtpSuggestion(QBoxLayout *layout)
 {
-    if (account->enable_studio_mode || account->rowing_mode || account->FTP <= 0)
+    if (account->rowing_mode || account->FTP <= 0)
         return;
     const FtpEstimator::Estimate estimate = FtpEstimator::fromRides(
         FtpEstimator::recentRides(Util::getSystemPathHistory(), QDateTime::currentDateTime()));

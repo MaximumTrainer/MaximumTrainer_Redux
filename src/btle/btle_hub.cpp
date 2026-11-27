@@ -151,10 +151,7 @@ bool BtleHub::isConnected() const
 // ─────────────────────────────────────────────────────────────────────────────
 void BtleHub::setLoad(int deviceId, double watts)
 {
-    // In Studio mode each rider's trainer only honours its own target.
-    if (m_filterControlByUserID && deviceId != m_userID)
-        return;
-
+    Q_UNUSED(deviceId)
     if (!m_ftmsService)
         return;
 
@@ -169,9 +166,7 @@ void BtleHub::setLoad(int deviceId, double watts)
 
 void BtleHub::setSlope(int deviceId, double grade)
 {
-    if (m_filterControlByUserID && deviceId != m_userID)
-        return;
-
+    Q_UNUSED(deviceId)
     if (!m_ftmsService)
         return;
 
@@ -192,9 +187,7 @@ void BtleHub::setSlope(int deviceId, double grade)
 
 void BtleHub::setResistanceLevel(int deviceId, int levelTenths)
 {
-    if (m_filterControlByUserID && deviceId != m_userID)
-        return;
-
+    Q_UNUSED(deviceId)
     if (!m_ftmsService)
         return;
 

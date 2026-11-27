@@ -114,7 +114,7 @@ void SensorsWidget::buildUi()
     mainLayout->addWidget(group);
 
     QLabel *hint = new QLabel(
-        tr("Saved sensors are connected automatically when you start a workout."), this);
+        tr("Saved sensors connect when the app starts and stay connected between rides."), this);
     hint->setWordWrap(true);
     hint->setStyleSheet(QStringLiteral("color: #777; font-size: 11px;"));
     mainLayout->addWidget(hint);

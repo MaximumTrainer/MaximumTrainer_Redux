@@ -26,7 +26,6 @@
 #include "settings.h"
 #include "soundplayer.h"
 #include "trackpoint.h"
-#include "userstudio.h"
 #include "workout.h"
 #include "workoutdialog.h"
 #include "workoutplotzoomer.h"
@@ -77,11 +76,10 @@ private:
         m_account->control_trainer_resistance = true;
         m_account->virtual_shifting = virtualShifting;
         m_account->erg_smoothing_duration_s = rampSeconds;
-        m_account->enable_studio_mode = false;
         m_account->display_video = 0;
         m_account->isOffline = true;
 
-        m_dialog = new WorkoutDialog(makeErgWorkout(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+        m_dialog = new WorkoutDialog(makeErgWorkout(), QList<Radio>(), nullptr);
         m_loads = new QSignalSpy(m_dialog, &WorkoutDialog::setLoad);
         m_slopes = new QSignalSpy(m_dialog, &WorkoutDialog::setSlope);
         m_resistances = new QSignalSpy(m_dialog, &WorkoutDialog::setResistance);
@@ -109,7 +107,6 @@ private slots:
         qRegisterMetaType<Sensor>("Sensor");
         qRegisterMetaType<QList<Sensor>>("QList<Sensor>");
         qRegisterMetaType<QList<int>>("QList<int>");
-        qRegisterMetaType<QVector<UserStudio>>("QVector<UserStudio>");
         qRegisterMetaType<QList<Trackpoint>>("QList<Trackpoint>");
 
         m_account = new Account(qApp);
@@ -146,11 +143,10 @@ private slots:
         m_account->control_trainer_resistance = false;
         m_account->virtual_shifting = virtualShifting;
         m_account->erg_smoothing_duration_s = 3;
-        m_account->enable_studio_mode = false;
         m_account->display_video = 0;
         m_account->isOffline = true;
 
-        m_dialog = new WorkoutDialog(makeErgWorkout(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+        m_dialog = new WorkoutDialog(makeErgWorkout(), QList<Radio>(), nullptr);
         m_loads = new QSignalSpy(m_dialog, &WorkoutDialog::setLoad);
         m_slopes = new QSignalSpy(m_dialog, &WorkoutDialog::setSlope);
         m_resistances = new QSignalSpy(m_dialog, &WorkoutDialog::setResistance);
@@ -228,8 +224,8 @@ private slots:
     }
 
 #ifndef Q_OS_WASM
-    // Studio and simulated sensors keep their per-ride flow: the app-wide
-    // session then holds no device, and nothing paired means nothing to connect.
+    // Simulated sensors keep their per-ride flow: the app-wide session then
+    // holds no device, and nothing paired means nothing to connect.
     void deviceSession_holdsNothingOutsideSoloLive()
     {
         m_account->use_zwift_click = false;
@@ -243,12 +239,6 @@ private slots:
         QVERIFY(!session.connector());
 
         m_account->use_simulated_sensors = false;
-        m_account->enable_studio_mode = true;
-        session.reconfigure();
-        QCOMPARE(session.mode(), DeviceSession::Mode::Studio);
-        QVERIFY(!session.connector());
-
-        m_account->enable_studio_mode = false;
         session.reconfigure();
         QCOMPARE(session.mode(), DeviceSession::Mode::NothingPaired);
 
@@ -290,8 +280,7 @@ private slots:
     void constructorStartsNoBluetoothScan()
     {
         m_account->use_zwift_click = true;
-        m_account->enable_studio_mode = false;
-        m_dialog = new WorkoutDialog(makeErgWorkout(), QList<Radio>(), QVector<UserStudio>(), nullptr);
+        m_dialog = new WorkoutDialog(makeErgWorkout(), QList<Radio>(), nullptr);
         m_account->use_zwift_click = false;
         QVERIFY(m_dialog->findChildren<ZwiftClickManager *>().isEmpty());
     }

@@ -201,13 +201,11 @@ void Account::loadDisplayPrefs() {
     virtual_shifting             = AppSettings::read(settings, Keys::VirtualShifting);
     use_zwift_click              = AppSettings::read(settings, Keys::UseZwiftClick);
     use_simulated_sensors        = AppSettings::read(settings, Keys::UseSimulatedSensors);
-    enable_studio_mode           = AppSettings::read(settings, Keys::EnableStudioMode);
     distance_in_km               = AppSettings::read(settings, Keys::DistanceInKm);
     force_workout_window_on_top  = AppSettings::read(settings, Keys::ForceWorkoutWindowOnTop);
     strava_auto_upload           = AppSettings::read(settings, Keys::StravaAutoUpload);
 
-    // Studio / power-meter / virtual-speed / included-content preferences.
-    nb_user_studio        = AppSettings::read(settings, Keys::NbUserStudio);
+    // Power-meter / virtual-speed / included-content preferences.
     use_pm_for_cadence    = AppSettings::read(settings, Keys::UsePmForCadence);
     use_pm_for_speed      = AppSettings::read(settings, Keys::UsePmForSpeed);
     show_included_workout = AppSettings::read(settings, Keys::ShowIncludedWorkout);
@@ -285,14 +283,12 @@ void Account::saveDisplayPrefs() {
     AppSettings::write(settings, Keys::VirtualShifting, virtual_shifting);
     AppSettings::write(settings, Keys::UseZwiftClick, use_zwift_click);
     AppSettings::write(settings, Keys::UseSimulatedSensors, use_simulated_sensors);
-    AppSettings::write(settings, Keys::EnableStudioMode, enable_studio_mode);
     AppSettings::write(settings, Keys::DistanceInKm, distance_in_km);
     AppSettings::write(settings, Keys::ForceWorkoutWindowOnTop, force_workout_window_on_top);
     AppSettings::write(settings, Keys::StravaAutoUpload, strava_auto_upload);
 
-    // Studio / power-meter / virtual-speed / included-content preferences.
+    // Power-meter / virtual-speed / included-content preferences.
     // Formerly server-saved; persisted locally so they survive a restart.
-    AppSettings::write(settings, Keys::NbUserStudio, nb_user_studio);
     AppSettings::write(settings, Keys::UsePmForCadence, use_pm_for_cadence);
     AppSettings::write(settings, Keys::UsePmForSpeed, use_pm_for_speed);
     AppSettings::write(settings, Keys::ShowIncludedWorkout, show_included_workout);
