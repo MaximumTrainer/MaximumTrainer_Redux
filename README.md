@@ -58,7 +58,7 @@ Prefer to compile it yourself? See [Building](#building) below.
 For everything about **using** the app — pairing sensors, finding / importing / creating workouts, ERG vs Slope, the workout player (video · web), group workouts, activity uploads, and troubleshooting — see the **[User Guide](https://maximumtrainer.github.io/MaximumTrainer_Redux/user-guide.html)**.
 
 > **No hardware?** Turn on **Devices → Simulated Sensors**: the simulator emits realistic drifting
-> power / HR / cadence / speed and responds to ERG commands, so you can exercise the full workout flow — handy for
+> power / HR / cadence / speed (plus a 2nd power meter for dual recording) and responds to ERG commands, so you can exercise the full workout flow — handy for
 > development and CI — without any Bluetooth devices.
 
 ## Screenshots

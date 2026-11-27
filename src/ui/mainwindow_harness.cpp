@@ -26,6 +26,11 @@
 #include <QLabel>
 
 #include "util.h"
+#include "bottombar.h"
+#include "sensorstatusstrip.h"
+#ifndef GC_WASM_BUILD
+#include "sensor_connector.h"
+#endif
 #include "infowidget.h"
 #ifndef GC_WASM_BUILD
 #include "device_session.h"
@@ -302,6 +307,21 @@ void MainWindow::startScreenshotMode(const QString &outputDir)
     QDir().mkpath(outputDir);
     m_ssOutputDir = outputDir;
     m_ssStep      = 0;
+
+    // The device bar as a rider sees it, without touching Bluetooth.
+    auto *demoBar = new SensorStatusStrip(this);
+    demoBar->setAutoHide(false);
+    demoBar->layout()->setContentsMargins(4, 2, 4, 2);
+#ifndef GC_WASM_BUILD
+    // The saved sensors, as on the Devices page, shown connected.
+    for (const SensorConnector::Slot &slot : SensorConnector::slotsFor(BtleSensorStore::loadAll(), account->rowing_mode)) {
+        demoBar->addSensor(int(slot.role), BtleSensorStore::roleDisplayName(slot.role), slot.saved.name);
+        demoBar->setState(int(slot.role), SensorStatusStrip::State::Connected);
+    }
+#endif
+    if (account->use_zwift_click)
+        demoBar->addSensor(1000, tr("Zwift Click"));   // shown searching, as before it wakes
+    ui->widget_bottomMenu->setStatusWidget(demoBar);
 
     // Force offline so WorkoutDialog skips the online session check.
     // There is no server to reach in screenshot/CI mode, and the blocking
