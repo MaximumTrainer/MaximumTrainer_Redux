@@ -148,8 +148,6 @@ bool BtleHub::isConnected() const
 void BtleHub::setLoad(int deviceId, double watts)
 {
     Q_UNUSED(deviceId)
-    if (!m_ftmsService)
-        return;
 
     // FTMS: Set Target Power (opcode 0x05), value = int16 watts
     qint16 w = static_cast<qint16>(qBound(-32768.0, watts, 32767.0));
@@ -163,8 +161,6 @@ void BtleHub::setLoad(int deviceId, double watts)
 void BtleHub::setSlope(int deviceId, double grade)
 {
     Q_UNUSED(deviceId)
-    if (!m_ftmsService)
-        return;
 
     // FTMS: Set Indoor Bike Simulation (opcode 0x11)
     // Parameters: wind speed (int16, 0.001 m/s), grade (int16, 0.01 %), crr, cw
@@ -184,8 +180,6 @@ void BtleHub::setSlope(int deviceId, double grade)
 void BtleHub::setResistanceLevel(int deviceId, int levelTenths)
 {
     Q_UNUSED(deviceId)
-    if (!m_ftmsService)
-        return;
 
     // FTMS: Set Target Resistance Level (opcode 0x04), value = int16 in 0.1 units
     // (same representation as the Supported Resistance Level Range, 0x2AD6).

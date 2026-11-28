@@ -6,6 +6,7 @@
 
 namespace {
 constexpr quint8 kRequestControl = 0x00;
+constexpr quint8 kStartOrResume = 0x07;
 constexpr quint8 kResponseCode = 0x80;
 constexpr quint8 kResultSuccess = 0x01;
 constexpr quint8 kResultControlNotPermitted = 0x05;
@@ -19,6 +20,23 @@ constexpr quint8 kStatusControlPermissionLost = 0xFF;
 QString opcodeText(quint8 opcode)
 {
     return QStringLiteral("0x%1").arg(opcode, 2, 16, QLatin1Char('0'));
+}
+
+qint16 int16At(const QByteArray &payload, int offset)
+{
+    return qint16(quint16(quint8(payload.at(offset))) | quint16(quint8(payload.at(offset + 1))) << 8);
+}
+
+QString targetText(const QByteArray &target)
+{
+    const quint8 opcode = quint8(target.at(0));
+    if (opcode == 0x05 && target.size() >= 3)
+        return QStringLiteral("power %1 W").arg(int16At(target, 1));
+    if (opcode == 0x04 && target.size() >= 3)
+        return QStringLiteral("resistance level %1").arg(int16At(target, 1) / 10.0, 0, 'f', 1);
+    if (opcode == 0x11 && target.size() >= 5)
+        return QStringLiteral("slope %1 %").arg(int16At(target, 3) / 100.0, 0, 'f', 2);
+    return QStringLiteral("op %1").arg(opcodeText(opcode));
 }
 } // namespace
 
@@ -41,8 +59,11 @@ FtmsControl::FtmsControl(QObject *parent)
     m_refresh = new QTimer(this);
     m_refresh->setInterval(kRefreshMs);
     connect(m_refresh, &QTimer::timeout, this, [this]() {
-        if (m_granted && !m_target.isEmpty())
-            reassert();
+        if (!m_granted || m_target.isEmpty())
+            return;
+        m_confirmed.clear();
+        m_refused.clear();
+        pump();
     });
 }
 
@@ -50,10 +71,13 @@ void FtmsControl::reset()
 {
     m_ready = false;
     m_granted = false;
+    m_started = false;
     m_inFlight = false;
     m_inFlightPayload.clear();
     m_confirmed.clear();
     m_refused.clear();
+    m_lastLoggedTarget.clear();
+    m_lastLoggedConfirmed.clear();
     m_opTimeout->stop();
     m_retry->stop();
     // The wanted target survives: it is what the trainer must hold once the
@@ -78,8 +102,11 @@ void FtmsControl::setTarget(const QByteArray &command)
 
 void FtmsControl::reassert()
 {
+    m_started = false;
     m_confirmed.clear();
     m_refused.clear();
+    m_lastLoggedTarget.clear();
+    m_lastLoggedConfirmed.clear();
     pump();
 }
 
@@ -92,8 +119,19 @@ void FtmsControl::pump()
         write(QByteArray(1, char(kRequestControl)));
         return;
     }
+    // FTMS wants Start or Resume before targets; some trainers acknowledge a
+    // target without it and keep their old resistance.
+    if (!m_started) {
+        LOG_INFO("BtleHub", QStringLiteral("FTMS Start/Resume sent"));
+        write(QByteArray(1, char(kStartOrResume)));
+        return;
+    }
     if (m_target.isEmpty() || m_target == m_confirmed || m_target == m_refused)
         return;
+    if (m_target != m_lastLoggedTarget) {
+        m_lastLoggedTarget = m_target;
+        LOG_INFO("BtleHub", QStringLiteral("FTMS target sent: %1").arg(targetText(m_target)));
+    }
     write(m_target);
 }
 
@@ -121,6 +159,7 @@ void FtmsControl::onControlPointIndication(const QByteArray &indication)
 
     if (requestOp == kRequestControl) {
         m_granted = result == kResultSuccess;
+        m_started = false;
         if (m_granted) {
             LOG_INFO("BtleHub", QStringLiteral("FTMS control granted by trainer"));
             emit granted();
@@ -133,10 +172,24 @@ void FtmsControl::onControlPointIndication(const QByteArray &indication)
         return;
     }
 
+    if (requestOp == kStartOrResume && result != kResultControlNotPermitted) {
+        // A trainer that does not support it (or is already running) still
+        // takes targets, so any other answer moves on to the target.
+        m_started = true;
+        LOG_INFO("BtleHub", QStringLiteral("FTMS Start/Resume answered (result %1)").arg(opcodeText(result)));
+        pump();
+        return;
+    }
+
     const bool answersOurOp = !answered.isEmpty() && quint8(answered.at(0)) == requestOp;
     if (result == kResultSuccess) {
-        if (answersOurOp)
+        if (answersOurOp) {
             m_confirmed = answered;
+            if (answered != m_lastLoggedConfirmed) {
+                m_lastLoggedConfirmed = answered;
+                LOG_INFO("BtleHub", QStringLiteral("FTMS target confirmed by trainer: %1").arg(targetText(answered)));
+            }
+        }
         LOG_VERBOSE("BtleHub", QStringLiteral("FTMS op %1 acknowledged by trainer").arg(opcodeText(requestOp)));
     } else if (result == kResultControlNotPermitted) {
         LOG_WARN("BtleHub", QStringLiteral("FTMS op %1 refused: trainer control lost, requesting it again")
@@ -162,10 +215,16 @@ void FtmsControl::onMachineStatus(const QByteArray &status)
                                 .arg(quint8(status.at(0)) == kStatusReset ? QStringLiteral("reset")
                                                                          : QStringLiteral("dropped our control")));
         m_granted = false;
+        m_started = false;
         m_confirmed.clear();
         pump();
         break;
     case kStatusStoppedByUser:
+        LOG_INFO("BtleHub", QStringLiteral("FTMS trainer stopped or paused, resuming it"));
+        m_started = false;
+        m_confirmed.clear();
+        pump();
+        break;
     case kStatusStartedByUser:
         m_confirmed.clear();
         pump();
@@ -191,8 +250,11 @@ void FtmsControl::onOpTimeout()
 {
     if (!m_inFlight)
         return;
+    const quint8 opcode = quint8(m_inFlightPayload.at(0));
     LOG_WARN("BtleHub", QStringLiteral("FTMS response to op %1 timed out, retrying")
-                            .arg(opcodeText(quint8(m_inFlightPayload.at(0)))));
+                            .arg(opcodeText(opcode)));
+    if (opcode == kStartOrResume)
+        m_started = true;   // not worth holding the target back for
     m_inFlight = false;
     m_inFlightPayload.clear();
     pump();

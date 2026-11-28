@@ -2000,6 +2000,7 @@ SensorStatusStrip *WorkoutDialog::sensorStrip()
 
 void WorkoutDialog::trainerConnected()
 {
+    LOG_INFO("WorkoutDialog", QStringLiteral("trainer wired to the workout, sending the current target"));
     enableTrainerControl();
     stopErgSmoothing();
     m_ergSmoothLast = 0;

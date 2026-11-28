@@ -14,7 +14,8 @@ class QTimer;
 /// write with ATT error 0x80), a newer target replaces an older queued one, and
 /// control is requested again whenever the trainer drops it (Machine Status
 /// "control permission lost" or "reset", a target refused with "control not
-/// permitted", a Request Control that never got an answer).
+/// permitted", a Request Control that never got an answer). Each grant is
+/// followed by Start or Resume before the target.
 class FtmsControl : public QObject
 {
     Q_OBJECT
@@ -34,8 +35,8 @@ public:
     /// Indoor Bike Simulation payload). Sent once control is held.
     void setTarget(const QByteArray &command);
     QByteArray target() const { return m_target; }
-    /// Send the current target again even if the trainer confirmed it, and get
-    /// control back first if it was lost. Called when a ride starts on a
+    /// Send Start or Resume and the current target again even if the trainer
+    /// confirmed them, and get control back first if it was lost. Called when a ride starts on a
     /// connection that was opened earlier.
     void reassert();
 
@@ -58,11 +59,14 @@ private:
 
     bool m_ready = false;
     bool m_granted = false;
+    bool m_started = false;   ///< Start or Resume answered since control was granted
     bool m_inFlight = false;
     QByteArray m_inFlightPayload;
     QByteArray m_target;
     QByteArray m_confirmed;   ///< the target the trainer last acknowledged
     QByteArray m_refused;     ///< a target the trainer refused; not retried until it changes
+    QByteArray m_lastLoggedTarget;
+    QByteArray m_lastLoggedConfirmed;
     QTimer *m_opTimeout = nullptr;
     QTimer *m_retry = nullptr;
     QTimer *m_refresh = nullptr;

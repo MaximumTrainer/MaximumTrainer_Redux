@@ -28,6 +28,8 @@
 #include "../../src/btle/ftms_control.h"
 #include "../../src/btle/simulator_hub.h"
 #include "../../src/btle/sensor_connector.h"
+#include "../../src/btle/zwift/zwift_click_hub.h"
+#include "../../src/btle/zwift/zwift_click_manager.h"
 #include "../../src/model/intervalsummaryutil.h"
 #include "btle_device_simulator.h"
 
@@ -188,6 +190,13 @@ private slots:
     void ftms_failedWriteIsRetried();
     void ftms_newConnectionKeepsTheWantedTarget();
     void ftms_refusedControlIsRequestedAgain();
+    void ftms_startOrResumeComesBetweenControlAndTarget();
+    void ftms_startOrResumeNotSupportedStillSendsTarget();
+    void ftms_unansweredStartOrResumeDoesNotHoldTheTargetBack();
+    void ftms_trainerStoppedIsResumedAndTargetRestored();
+    void ftms_rideStartResumesTheTrainerAgain();
+    void ftms_targetSetBeforeTheTrainerIsDiscoveredIsKept();
+    void zwiftClick_stopCutsHubsOffBeforeClosingThem();
 
 private:
     BtleHub *hub = nullptr;
@@ -1329,6 +1338,7 @@ void TstBtleHub::testCsc_implausibleCadenceIsDropped()
 // ─────────────────────────────────────────────────────────────────────────────
 namespace {
 const QByteArray kRequestControl = QByteArray(1, '\x00');
+const QByteArray kStartOrResume = QByteArray(1, '\x07');
 
 QByteArray targetPower(int watts)
 {
@@ -1359,6 +1369,16 @@ void grantControl(FtmsControl &control, QSignalSpy &writes)
     QCOMPARE(lastWrite(writes), kRequestControl);
     control.onControlPointIndication(answer(0x00, 0x01));
     QVERIFY(control.controlGranted());
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    control.onControlPointIndication(answer(0x07, 0x01));
+}
+
+void grantAgain(FtmsControl &control, QSignalSpy &writes)
+{
+    QCOMPARE(lastWrite(writes), kRequestControl);
+    control.onControlPointIndication(answer(0x00, 0x01));
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    control.onControlPointIndication(answer(0x07, 0x01));
 }
 } // namespace
 
@@ -1372,8 +1392,10 @@ void TstBtleHub::ftms_targetWaitsForControlThenIsSent()
     control.setReady();
     QCOMPARE(lastWrite(writes), kRequestControl);
     control.onControlPointIndication(answer(0x00, 0x01));
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    control.onControlPointIndication(answer(0x07, 0x01));
     QCOMPARE(lastWrite(writes), targetPower(150));
-    QCOMPARE(writes.count(), 2);
+    QCOMPARE(writes.count(), 3);
 }
 
 void TstBtleHub::ftms_oneOpInFlightAndNewestTargetWins()
@@ -1407,7 +1429,9 @@ void TstBtleHub::ftms_rideStartResendsTargetTheTrainerAlreadyConfirmed()
     QCOMPARE(writes.count(), sent);   // a confirmed duplicate is not BLE noise
 
     control.reassert();
-    QCOMPARE(writes.count(), sent + 1);
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    control.onControlPointIndication(answer(0x07, 0x01));
+    QCOMPARE(writes.count(), sent + 2);
     QCOMPARE(lastWrite(writes), targetPower(150));
 }
 
@@ -1421,8 +1445,7 @@ void TstBtleHub::ftms_controlPermissionLostRequestsControlAndRestoresTarget()
 
     control.onMachineStatus(QByteArray(1, char(0xFF)));
     QVERIFY(!control.controlGranted());
-    QCOMPARE(lastWrite(writes), kRequestControl);
-    control.onControlPointIndication(answer(0x00, 0x01));
+    grantAgain(control, writes);
     QCOMPARE(lastWrite(writes), targetPower(150));
 }
 
@@ -1435,8 +1458,7 @@ void TstBtleHub::ftms_trainerResetRestoresTarget()
     control.onControlPointIndication(answer(0x05, 0x01));
 
     control.onMachineStatus(QByteArray(1, char(0x01)));
-    QCOMPARE(lastWrite(writes), kRequestControl);
-    control.onControlPointIndication(answer(0x00, 0x01));
+    grantAgain(control, writes);
     QCOMPARE(lastWrite(writes), targetPower(200));
 }
 
@@ -1448,8 +1470,7 @@ void TstBtleHub::ftms_targetRefusedForControlRequestsControlAgain()
     control.setTarget(targetPower(150));
 
     control.onControlPointIndication(answer(0x05, 0x05));   // control not permitted
-    QCOMPARE(lastWrite(writes), kRequestControl);
-    control.onControlPointIndication(answer(0x00, 0x01));
+    grantAgain(control, writes);
     QCOMPARE(lastWrite(writes), targetPower(150));
 }
 
@@ -1476,8 +1497,7 @@ void TstBtleHub::ftms_unansweredRequestControlIsRetried()
     control.setReady();
     QCOMPARE(writes.count(), 1);
     QTRY_COMPARE_WITH_TIMEOUT(writes.count(), 2, FtmsControl::kOpTimeoutMs + 1000);
-    QCOMPARE(lastWrite(writes), kRequestControl);
-    control.onControlPointIndication(answer(0x00, 0x01));
+    grantAgain(control, writes);
     QCOMPARE(lastWrite(writes), targetPower(150));
 }
 
@@ -1516,9 +1536,114 @@ void TstBtleHub::ftms_refusedControlIsRequestedAgain()
     control.onControlPointIndication(answer(0x00, 0x05));
     QVERIFY(!control.controlGranted());
     QTRY_COMPARE_WITH_TIMEOUT(writes.count(), 2, FtmsControl::kRetryDelayMs + 1000);
-    QCOMPARE(lastWrite(writes), kRequestControl);
-    control.onControlPointIndication(answer(0x00, 0x01));
+    grantAgain(control, writes);
     QCOMPARE(lastWrite(writes), targetPower(150));
+}
+
+// Some trainers (Van Rysel D100, PR #529) acknowledge Set Target Power without
+// Start or Resume and keep their old resistance.
+void TstBtleHub::ftms_startOrResumeComesBetweenControlAndTarget()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    control.setTarget(targetPower(150));
+    control.setReady();
+    control.onControlPointIndication(answer(0x00, 0x01));
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    QCOMPARE(writes.count(), 2);   // the target waits for the answer
+    control.onControlPointIndication(answer(0x07, 0x01));
+    QCOMPARE(lastWrite(writes), targetPower(150));
+}
+
+void TstBtleHub::ftms_startOrResumeNotSupportedStillSendsTarget()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    control.setTarget(targetPower(150));
+    control.setReady();
+    control.onControlPointIndication(answer(0x00, 0x01));
+    control.onControlPointIndication(answer(0x07, 0x02));   // op code not supported
+    QCOMPARE(lastWrite(writes), targetPower(150));
+}
+
+void TstBtleHub::ftms_unansweredStartOrResumeDoesNotHoldTheTargetBack()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    control.setTarget(targetPower(150));
+    control.setReady();
+    control.onControlPointIndication(answer(0x00, 0x01));
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    QTRY_COMPARE_WITH_TIMEOUT(lastWrite(writes), targetPower(150), FtmsControl::kOpTimeoutMs + 1000);
+    QCOMPARE(writes.count(), 3);
+}
+
+void TstBtleHub::ftms_trainerStoppedIsResumedAndTargetRestored()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(targetPower(150));
+    control.onControlPointIndication(answer(0x05, 0x01));
+
+    control.onMachineStatus(QByteArray(1, char(0x02)));   // stopped or paused
+    QVERIFY(control.controlGranted());
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    control.onControlPointIndication(answer(0x07, 0x01));
+    QCOMPARE(lastWrite(writes), targetPower(150));
+}
+
+void TstBtleHub::ftms_rideStartResumesTheTrainerAgain()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(targetPower(150));
+    control.onControlPointIndication(answer(0x05, 0x01));
+
+    control.reassert();
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    control.onControlPointIndication(answer(0x07, 0x01));
+    QCOMPARE(lastWrite(writes), targetPower(150));
+}
+
+// A workout wired to the trainer while it reconnects sets its target before
+// the FTMS service is back; that target must reach the trainer afterwards.
+void TstBtleHub::ftms_targetSetBeforeTheTrainerIsDiscoveredIsKept()
+{
+    BtleHub trainer;
+    trainer.setLoad(1, 150);
+    auto *control = trainer.findChild<FtmsControl*>();
+    QVERIFY(control);
+    QCOMPARE(control->target(), targetPower(150));
+}
+
+// On Windows a controller reports its link closed while it is being torn down;
+// that report used to reach forgetHub mid-stop() and crashed the app when
+// Simulated Sensors was switched on.
+void TstBtleHub::zwiftClick_stopCutsHubsOffBeforeClosingThem()
+{
+    ZwiftClickManager manager;
+    manager.connectDevice(QBluetoothDeviceInfo(QBluetoothAddress(QStringLiteral("11:22:33:44:55:01")),
+                                               QStringLiteral("Zwift Ride"), 0));
+    manager.connectDevice(QBluetoothDeviceInfo(QBluetoothAddress(QStringLiteral("11:22:33:44:55:02")),
+                                               QStringLiteral("Zwift Ride"), 0));
+    const QList<ZwiftClickHub*> hubs = manager.findChildren<ZwiftClickHub*>();
+    QCOMPARE(hubs.size(), 2);
+    QSignalSpy dropped(&manager, &ZwiftClickManager::deviceDisconnected);
+    QSignalSpy changed(&manager, &ZwiftClickManager::connectionChanged);
+
+    manager.stop();
+    for (ZwiftClickHub *hub : hubs) {
+        emit hub->disconnected();
+        emit hub->connectionError(QStringLiteral("closed"));
+    }
+    QCOMPARE(dropped.count(), 0);
+    QCOMPARE(changed.count(), 0);
+    QCOMPARE(manager.connectedCount(), 0);
+
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    QVERIFY(manager.findChildren<ZwiftClickHub*>().isEmpty());
 }
 
 QTEST_MAIN(TstBtleHub)

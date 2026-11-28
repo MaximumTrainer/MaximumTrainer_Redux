@@ -6,6 +6,8 @@
 
 #include <QTimer>
 
+#include <utility>
+
 namespace {
 // Stable per-device key (deviceUuid on macOS, address otherwise) for dedup —
 // the scan surfaces the same controller several times (adv vs scan response)
@@ -110,8 +112,14 @@ void ZwiftClickManager::stop()
         m_agent->deleteLater();
         m_agent = nullptr;
     }
-    qDeleteAll(m_hubs);
-    m_hubs.clear();
+    // Cut each hub off before closing it, so a controller reporting its link
+    // closed while stop() runs never reaches forgetHub (which edits m_hubs).
+    const QList<ZwiftClickHub*> hubs = std::exchange(m_hubs, {});
+    for (ZwiftClickHub *hub : hubs) {
+        disconnect(hub, nullptr, this, nullptr);
+        hub->disconnectFromDevice();
+        hub->deleteLater();
+    }
     m_knownIds.clear();
 }
 
