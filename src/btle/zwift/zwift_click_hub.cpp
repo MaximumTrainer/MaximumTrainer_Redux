@@ -46,11 +46,16 @@ void ZwiftClickHub::teardown()
     }
 }
 
-void ZwiftClickHub::disconnectFromDevice() { teardown(); }
+void ZwiftClickHub::disconnectFromDevice()
+{
+    m_closed = true;
+    teardown();
+}
 
 void ZwiftClickHub::connectToDevice(const QBluetoothDeviceInfo &device)
 {
     teardown();
+    m_closed      = false;
     m_device      = device;
     m_name        = device.name();
     m_lastBitmap  = 0xFFFFFFFFu;
@@ -102,6 +107,8 @@ void ZwiftClickHub::watchdogTick()
 
 void ZwiftClickHub::startController()
 {
+    if (m_closed)
+        return;   // a retry or watchdog timer outliving disconnectFromDevice()
     if (m_controller) {
         // A watchdog reconnect tears the old controller down; detach its signals
         // first so its dying disconnected() does not propagate to the manager
@@ -132,6 +139,10 @@ void ZwiftClickHub::startController()
                     --m_retriesLeft;
                     LOG_WARN("ZwiftClick", QStringLiteral("%1 [%2]: controller error %3 (%4) — retrying (%5 left)")
                                  .arg(m_name, deviceAddress()).arg(int(err)).arg(es).arg(m_retriesLeft));
+                    // The failing controller still emits disconnected(); the
+                    // manager would forget this hub and connect the same
+                    // controller again from a fresh one while this retry runs.
+                    disconnect(m_controller, nullptr, this, nullptr);
                     QTimer::singleShot(1500, this, [this]() { startController(); });
                     return;
                 }
