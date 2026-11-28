@@ -198,6 +198,11 @@ private slots:
     void ftms_rideStartResumesTheTrainerAgain();
     void ftms_targetSetBeforeTheTrainerIsDiscoveredIsKept();
     void zwiftClick_stopCutsHubsOffBeforeClosingThem();
+    void ftms_ergAfterSimulationResetsTheTrainerFirst();
+    void ftms_simulationAfterErgResetsTheTrainerFirst();
+    void ftms_resistanceAfterSimulationNeedsNoReset();
+    void ftms_resetNotSupportedSendsTheTargetDirectly();
+    void ftms_newConnectionNeedsNoReset();
 
 private:
     BtleHub *hub = nullptr;
@@ -1340,6 +1345,23 @@ void TstBtleHub::testCsc_implausibleCadenceIsDropped()
 namespace {
 const QByteArray kRequestControl = QByteArray(1, '\x00');
 const QByteArray kStartOrResume = QByteArray(1, '\x07');
+const QByteArray kReset = QByteArray(1, '\x01');
+
+QByteArray flatRoad()
+{
+    QByteArray command(7, '\0');
+    command[0] = 0x11;
+    return command;
+}
+
+QByteArray resistanceLevel(int tenths)
+{
+    QByteArray command(3, '\0');
+    command[0] = 0x04;
+    command[1] = char(tenths & 0xFF);
+    command[2] = char((tenths >> 8) & 0xFF);
+    return command;
+}
 
 QByteArray targetPower(int watts)
 {
@@ -1654,6 +1676,101 @@ void TstBtleHub::zwiftClick_stopCutsHubsOffBeforeClosingThem()
 void TstBtleHub::testDetailsDiscoverySkipsValueReads()
 {
     QCOMPARE(BtleHub::kDetailsDiscoveryMode, QLowEnergyService::SkipValueDiscovery);
+}
+
+// 28 Nov (v0.0.353): closing a ride put the trainer on a flat road (0x11); the
+// next ride's Set Target Power was confirmed every second but the trainer
+// stayed on the flat road at ~50 W. A fresh connection used to clear the mode.
+void TstBtleHub::ftms_ergAfterSimulationResetsTheTrainerFirst()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(targetPower(248));
+    control.onControlPointIndication(answer(0x05, 0x01));
+    control.setTarget(flatRoad());                       // the ride closes
+    QCOMPARE(lastWrite(writes), kReset);
+    control.onControlPointIndication(answer(0x01, 0x01));
+    grantAgain(control, writes);
+    QCOMPARE(lastWrite(writes), flatRoad());
+    control.onControlPointIndication(answer(0x11, 0x01));
+
+    control.reassert();                                  // the next ride starts
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    control.setTarget(targetPower(142));
+    control.onControlPointIndication(answer(0x07, 0x04));   // already started
+    QCOMPARE(lastWrite(writes), kReset);
+    control.onControlPointIndication(answer(0x01, 0x01));
+    QVERIFY(!control.controlGranted());
+    grantAgain(control, writes);
+    QCOMPARE(lastWrite(writes), targetPower(142));
+}
+
+void TstBtleHub::ftms_simulationAfterErgResetsTheTrainerFirst()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(targetPower(200));
+    control.onControlPointIndication(answer(0x05, 0x01));
+    control.setTarget(resistanceLevel(40));
+    QCOMPARE(lastWrite(writes), kReset);
+    control.onControlPointIndication(answer(0x01, 0x01));
+    grantAgain(control, writes);
+    QCOMPARE(lastWrite(writes), resistanceLevel(40));
+}
+
+void TstBtleHub::ftms_resistanceAfterSimulationNeedsNoReset()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(flatRoad());
+    control.onControlPointIndication(answer(0x11, 0x01));
+    control.setTarget(resistanceLevel(40));
+    QCOMPARE(lastWrite(writes), resistanceLevel(40));
+
+    control.onControlPointIndication(answer(0x04, 0x01));
+    control.setTarget(targetPower(150));   // and a power change within ERG needs none either
+    control.onControlPointIndication(answer(0x01, 0x01));
+    grantAgain(control, writes);
+    control.onControlPointIndication(answer(0x05, 0x01));
+    const int sent = writes.count();
+    control.setTarget(targetPower(160));
+    QCOMPARE(writes.count(), sent + 1);
+    QCOMPARE(lastWrite(writes), targetPower(160));
+}
+
+void TstBtleHub::ftms_resetNotSupportedSendsTheTargetDirectly()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(flatRoad());
+    control.onControlPointIndication(answer(0x11, 0x01));
+    control.setTarget(targetPower(150));
+    QCOMPARE(lastWrite(writes), kReset);
+    control.onControlPointIndication(answer(0x01, 0x02));   // op code not supported
+    QVERIFY(control.controlGranted());
+    QCOMPARE(lastWrite(writes), targetPower(150));
+    control.onControlPointIndication(answer(0x05, 0x01));
+
+    control.setTarget(flatRoad());   // not asked again on this connection
+    QCOMPARE(lastWrite(writes), flatRoad());
+}
+
+void TstBtleHub::ftms_newConnectionNeedsNoReset()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(flatRoad());
+    control.onControlPointIndication(answer(0x11, 0x01));
+
+    control.reset();
+    control.setTarget(targetPower(150));
+    grantControl(control, writes);
+    QCOMPARE(lastWrite(writes), targetPower(150));
 }
 
 QTEST_MAIN(TstBtleHub)

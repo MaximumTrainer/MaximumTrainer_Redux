@@ -15,12 +15,16 @@ class QTimer;
 /// control is requested again whenever the trainer drops it (Machine Status
 /// "control permission lost" or "reset", a target refused with "control not
 /// permitted", a Request Control that never got an answer). Each grant is
-/// followed by Start or Resume before the target.
+/// followed by Start or Resume before the target, and switching between ERG and
+/// simulation/resistance goes through Reset first.
 class FtmsControl : public QObject
 {
     Q_OBJECT
 
 public:
+    /// What the trainer was last told to do on this connection.
+    enum class TrainerMode { None, Erg, Other };
+
     explicit FtmsControl(QObject *parent = nullptr);
 
     /// A new connection: forget control, the queue and what the trainer holds.
@@ -60,6 +64,8 @@ private:
     bool m_ready = false;
     bool m_granted = false;
     bool m_started = false;   ///< Start or Resume answered since control was granted
+    TrainerMode m_trainerMode = TrainerMode::None;
+    bool m_resetUnsupported = false;
     bool m_inFlight = false;
     QByteArray m_inFlightPayload;
     QByteArray m_target;
