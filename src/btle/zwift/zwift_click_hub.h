@@ -94,6 +94,7 @@ private:
     // Connect retry: "Unknown Error" on connect is usually transient.
     int m_retriesLeft = 0;
     static constexpr int MAX_RETRIES = 4;
+    bool m_closed = false;   ///< disconnectFromDevice() called; no more reconnects
 };
 
 #endif // ZWIFT_CLICK_HUB_H

@@ -8,7 +8,8 @@
 #include <QLowEnergyService>
 #include <QLowEnergyCharacteristic>
 #include <QTimer>
-#include <QQueue>
+
+class FtmsControl;
 
 /*
  * BtleHub
@@ -81,6 +82,11 @@ public slots:
     // instantly and power follows effort, so virtual gears feel like real gears.
     void setResistanceLevel(int deviceId, int levelTenths);
     void stopDecodingMsg();
+    /// A ride starts on this connection: make sure the trainer is under our
+    /// control and holds the current target (it may have dropped either since
+    /// the connection was opened).
+    void reassertControl();
+    bool ftmsControlGranted() const;
 
     // Test hook: inject raw BLE notification bytes as if received from hardware.
     // uuid is the 16-bit BT SIG characteristic UUID (e.g. 0x2A37 = Heart Rate).
@@ -109,21 +115,13 @@ private:
     // running count against MAX_RECONNECT_ATTEMPTS.
     void attemptConnection();
     void setupService(QLowEnergyService *service);
-    void beginNextServiceDetailsDiscovery();
-    void configureDiscoveredService(QLowEnergyService *service);
     void enableNotification(QLowEnergyService *service,
                             const QLowEnergyCharacteristic &characteristic);
     void enableIndication(QLowEnergyService *service,
                           const QLowEnergyCharacteristic &characteristic);
-    void requestFtmsControl();
-    void handleFtmsControlPointResponse(const QByteArray &value);
-    /// Queue (or send) an FTMS control-point command.  Ops are serialized —
-    /// one in flight until the trainer's response indication — and held back
-    /// until control is granted; overlapping writes are answered with ATT
-    /// error 0x80 by real trainers.  Queued commands coalesce: only the
-    /// newest target matters.
-    void sendFtmsCommand(const QByteArray &cmd);
-    void writeFtmsCommandNow(const QByteArray &cmd);
+    void writeFtmsControlPoint(const QByteArray &payload);
+    void onFtmsSetupWatchdog();
+    void reconnectForFtmsSetup();
 
     void parseHrMeasurement(const QByteArray &data);
     void parseCscMeasurement(const QByteArray &data);
@@ -143,23 +141,17 @@ private:
     QLowEnergyService *m_ftmsService     = nullptr;
     QLowEnergyService *m_moxyService     = nullptr;
     QLowEnergyService *m_batteryService  = nullptr;
-    QQueue<QLowEnergyService *> m_serviceDetailsQueue;
-    QLowEnergyService *m_serviceDetailsInFlight = nullptr;
 
-    bool m_ftmsControlRequested = false;
-    bool m_ftmsControlGranted   = false;
-    bool m_ftmsMachineStarted   = false;
     bool m_resistanceLevelSupported = false;   // FTMS 0x04 (from 0x2ACC feature)
 
-    // Control-point serialization: one op in flight until the trainer's
-    // response indication arrives; the newest deferred command waits in
-    // m_ftmsPendingCmd (a newer target supersedes an older queued one).
-    bool       m_ftmsOpInFlight = false;
-    QByteArray m_ftmsPendingCmd;
-    QByteArray m_ftmsLastSentCmd;   ///< payload of the op currently/last on the wire
-    QByteArray m_ftmsLastAckedCmd;  ///< last payload the trainer confirmed — duplicates are skipped
-    QTimer    *m_ftmsOpTimeout = nullptr; ///< releases a write whose response never came
-    static constexpr int FTMS_OP_TIMEOUT_MS = 2500;
+    FtmsControl *m_ftmsControl = nullptr;
+    // Reconnects when FTMS control is not up a while after discovery (a failed
+    // service detail discovery leaves the Control Point unusable for good).
+    QTimer *m_ftmsSetupWatchdog = nullptr;
+    int m_ftmsSetupReconnects = 0;
+    static constexpr int FTMS_SETUP_TIMEOUT_MS = 10000;
+    static constexpr int FTMS_SETUP_RETRY_MS = 1000;
+    static constexpr int MAX_FTMS_SETUP_RECONNECTS = 3;
 
     // Zero-out cadence / speed after a few missed messages
     QTimer *m_cscStopTimer = nullptr;

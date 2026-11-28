@@ -193,14 +193,14 @@ mt_add_test(intervals_icu_integration_tests
 # ── Bluetooth ────────────────────────────────────────────────────────────────
 if(TARGET Qt6::Bluetooth)
     mt_add_test(btle_tests
-        SOURCES ${LOGGER} "${SRC}/btle/btle_hub.cpp" "${SRC}/btle/simulator_hub.cpp"
+        SOURCES ${LOGGER} "${SRC}/btle/btle_hub.cpp" "${SRC}/btle/ftms_control.cpp" "${SRC}/btle/simulator_hub.cpp"
             "${SRC}/btle/sensor_connector.cpp" "${SRC}/btle/btle_sensor_store.cpp"
             btle/tst_btle_hub.cpp btle/btle_device_simulator.h
         QT Bluetooth
         INCLUDES "${SRC}/btle" "${SRC}/btle/zwift" "${SRC}/app")
 
     mt_add_test(btle_api_tests
-        SOURCES ${LOGGER} "${SRC}/btle/btle_hub.cpp" integration/tst_btle_api.cpp
+        SOURCES ${LOGGER} "${SRC}/btle/btle_hub.cpp" "${SRC}/btle/ftms_control.cpp" integration/tst_btle_api.cpp
         QT Bluetooth
         INCLUDES "${SRC}/btle" "${SRC}/btle/zwift" "${SRC}/app")
 

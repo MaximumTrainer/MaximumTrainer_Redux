@@ -163,6 +163,7 @@ void ZwiftClickManager::connectDevice(const QBluetoothDeviceInfo &info)
         emit deviceDisconnected(hub->deviceAddress());
         m_knownIds.remove(hub->deviceAddress());
         m_hubs.removeOne(hub);
+        hub->disconnectFromDevice();
         hub->deleteLater();
         // Pick the controller up again when it wakes. Queued: on Windows starting
         // a scan spins an event loop, which would free the hub emitting this.

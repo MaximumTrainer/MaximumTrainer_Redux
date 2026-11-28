@@ -16,6 +16,8 @@
  * FTMS parsing   – speed only, cadence only, power only, all three,
  *                  zero values
  * Trainer sims   – Elite (FTMS), Wahoo KICKR (power+CSC), Garmin Tacx (FTMS+CSC)
+ * FTMS control   – ERG target delivery: control handshake, one op in flight,
+ *                  control lost/refused/reset recovery, re-send at ride start
  */
 
 #include <QtTest/QtTest>
@@ -23,6 +25,7 @@
 
 #include "../../src/btle/btle_hub.h"
 #include "../../src/btle/btle_sensor_config.h"
+#include "../../src/btle/ftms_control.h"
 #include "../../src/btle/simulator_hub.h"
 #include "../../src/btle/sensor_connector.h"
 #include "../../src/model/intervalsummaryutil.h"
@@ -172,6 +175,19 @@ private slots:
     void testIntervalSummary_missed_above();
     void testIntervalSummary_missed_below();
     void testIntervalSummary_zeroTarget_returnsMet();
+
+    // FTMS control point: the ERG target must always reach the trainer
+    void ftms_targetWaitsForControlThenIsSent();
+    void ftms_oneOpInFlightAndNewestTargetWins();
+    void ftms_rideStartResendsTargetTheTrainerAlreadyConfirmed();
+    void ftms_controlPermissionLostRequestsControlAndRestoresTarget();
+    void ftms_trainerResetRestoresTarget();
+    void ftms_targetRefusedForControlRequestsControlAgain();
+    void ftms_otherRefusalIsNotRetriedInALoop();
+    void ftms_unansweredRequestControlIsRetried();
+    void ftms_failedWriteIsRetried();
+    void ftms_newConnectionKeepsTheWantedTarget();
+    void ftms_refusedControlIsRequestedAgain();
 
 private:
     BtleHub *hub = nullptr;
@@ -1304,6 +1320,205 @@ void TstBtleHub::testCsc_implausibleCadenceIsDropped()
     hub.simulateNotification(BTLE_UUID_CSC_MEASUREMENT, QByteArray::fromHex("02" "0000" "0000"));
     hub.simulateNotification(BTLE_UUID_CSC_MEASUREMENT, QByteArray::fromHex("02" "2800" "0004"));   // 40 revs in 1 s
     QVERIFY(cadence.isEmpty());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FTMS control point (ERG delivery). Regression guard for v0.0.350: the trainer
+// link outlives rides, and a trainer that dropped control (or never set it up)
+// kept every ERG target queued, so the trainer stayed at its default load.
+// ─────────────────────────────────────────────────────────────────────────────
+namespace {
+const QByteArray kRequestControl = QByteArray(1, '\x00');
+
+QByteArray targetPower(int watts)
+{
+    QByteArray command(3, '\0');
+    command[0] = 0x05;
+    command[1] = char(watts & 0xFF);
+    command[2] = char((watts >> 8) & 0xFF);
+    return command;
+}
+
+QByteArray answer(quint8 opcode, quint8 result)
+{
+    QByteArray indication(3, '\0');
+    indication[0] = char(0x80);
+    indication[1] = char(opcode);
+    indication[2] = char(result);
+    return indication;
+}
+
+QByteArray lastWrite(const QSignalSpy &writes)
+{
+    return writes.isEmpty() ? QByteArray() : writes.last().at(0).toByteArray();
+}
+
+void grantControl(FtmsControl &control, QSignalSpy &writes)
+{
+    control.setReady();
+    QCOMPARE(lastWrite(writes), kRequestControl);
+    control.onControlPointIndication(answer(0x00, 0x01));
+    QVERIFY(control.controlGranted());
+}
+} // namespace
+
+void TstBtleHub::ftms_targetWaitsForControlThenIsSent()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    control.setTarget(targetPower(150));
+    QCOMPARE(writes.count(), 0);
+
+    control.setReady();
+    QCOMPARE(lastWrite(writes), kRequestControl);
+    control.onControlPointIndication(answer(0x00, 0x01));
+    QCOMPARE(lastWrite(writes), targetPower(150));
+    QCOMPARE(writes.count(), 2);
+}
+
+void TstBtleHub::ftms_oneOpInFlightAndNewestTargetWins()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+
+    control.setTarget(targetPower(100));
+    QCOMPARE(lastWrite(writes), targetPower(100));
+    const int sent = writes.count();
+    control.setTarget(targetPower(120));
+    control.setTarget(targetPower(150));
+    QCOMPARE(writes.count(), sent);
+
+    control.onControlPointIndication(answer(0x05, 0x01));
+    QCOMPARE(writes.count(), sent + 1);
+    QCOMPARE(lastWrite(writes), targetPower(150));
+}
+
+void TstBtleHub::ftms_rideStartResendsTargetTheTrainerAlreadyConfirmed()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(targetPower(150));
+    control.onControlPointIndication(answer(0x05, 0x01));
+
+    const int sent = writes.count();
+    control.setTarget(targetPower(150));
+    QCOMPARE(writes.count(), sent);   // a confirmed duplicate is not BLE noise
+
+    control.reassert();
+    QCOMPARE(writes.count(), sent + 1);
+    QCOMPARE(lastWrite(writes), targetPower(150));
+}
+
+void TstBtleHub::ftms_controlPermissionLostRequestsControlAndRestoresTarget()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(targetPower(150));
+    control.onControlPointIndication(answer(0x05, 0x01));
+
+    control.onMachineStatus(QByteArray(1, char(0xFF)));
+    QVERIFY(!control.controlGranted());
+    QCOMPARE(lastWrite(writes), kRequestControl);
+    control.onControlPointIndication(answer(0x00, 0x01));
+    QCOMPARE(lastWrite(writes), targetPower(150));
+}
+
+void TstBtleHub::ftms_trainerResetRestoresTarget()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(targetPower(200));
+    control.onControlPointIndication(answer(0x05, 0x01));
+
+    control.onMachineStatus(QByteArray(1, char(0x01)));
+    QCOMPARE(lastWrite(writes), kRequestControl);
+    control.onControlPointIndication(answer(0x00, 0x01));
+    QCOMPARE(lastWrite(writes), targetPower(200));
+}
+
+void TstBtleHub::ftms_targetRefusedForControlRequestsControlAgain()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(targetPower(150));
+
+    control.onControlPointIndication(answer(0x05, 0x05));   // control not permitted
+    QCOMPARE(lastWrite(writes), kRequestControl);
+    control.onControlPointIndication(answer(0x00, 0x01));
+    QCOMPARE(lastWrite(writes), targetPower(150));
+}
+
+void TstBtleHub::ftms_otherRefusalIsNotRetriedInALoop()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(targetPower(4000));
+    control.onControlPointIndication(answer(0x05, 0x03));   // invalid parameter
+    const int sent = writes.count();
+    QTest::qWait(50);
+    QCOMPARE(writes.count(), sent);
+
+    control.setTarget(targetPower(150));
+    QCOMPARE(lastWrite(writes), targetPower(150));
+}
+
+void TstBtleHub::ftms_unansweredRequestControlIsRetried()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    control.setTarget(targetPower(150));
+    control.setReady();
+    QCOMPARE(writes.count(), 1);
+    QTRY_COMPARE_WITH_TIMEOUT(writes.count(), 2, FtmsControl::kOpTimeoutMs + 1000);
+    QCOMPARE(lastWrite(writes), kRequestControl);
+    control.onControlPointIndication(answer(0x00, 0x01));
+    QCOMPARE(lastWrite(writes), targetPower(150));
+}
+
+void TstBtleHub::ftms_failedWriteIsRetried()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(targetPower(150));
+    const int sent = writes.count();
+    control.onWriteFailed();
+    QTRY_COMPARE_WITH_TIMEOUT(writes.count(), sent + 1, FtmsControl::kRetryDelayMs + 1000);
+    QCOMPARE(lastWrite(writes), targetPower(150));
+}
+
+void TstBtleHub::ftms_newConnectionKeepsTheWantedTarget()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    grantControl(control, writes);
+    control.setTarget(targetPower(150));
+    control.onControlPointIndication(answer(0x05, 0x01));
+
+    control.reset();
+    QVERIFY(!control.controlGranted());
+    grantControl(control, writes);
+    QCOMPARE(lastWrite(writes), targetPower(150));
+}
+
+void TstBtleHub::ftms_refusedControlIsRequestedAgain()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
+    control.setTarget(targetPower(150));
+    control.setReady();
+    control.onControlPointIndication(answer(0x00, 0x05));
+    QVERIFY(!control.controlGranted());
+    QTRY_COMPARE_WITH_TIMEOUT(writes.count(), 2, FtmsControl::kRetryDelayMs + 1000);
+    QCOMPARE(lastWrite(writes), kRequestControl);
+    control.onControlPointIndication(answer(0x00, 0x01));
+    QCOMPARE(lastWrite(writes), targetPower(150));
 }
 
 QTEST_MAIN(TstBtleHub)

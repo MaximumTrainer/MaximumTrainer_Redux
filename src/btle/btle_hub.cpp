@@ -1,5 +1,6 @@
 #include "btle_hub.h"
 #include "btle_uuids.h"
+#include "ftms_control.h"
 
 #include "logger.h"
 #include <QLowEnergyDescriptor>
@@ -25,6 +26,7 @@ static const QBluetoothUuid FtmsIndoorBikeData      (quint16(0x2AD2));
 static const QBluetoothUuid FtmsRowerData           (quint16(0x2AD1));
 static const QBluetoothUuid FtmsControlPoint        (quint16(0x2AD9));
 static const QBluetoothUuid FtmsFeature             (quint16(0x2ACC));
+static const QBluetoothUuid FtmsMachineStatus       (quint16(0x2ADA));
 static const QBluetoothUuid BatteryLevel            (quint16(0x2A19));
 // Moxy Muscle Oxygen Monitor (proprietary UUIDs - not in BT SIG enum)
 static const QBluetoothUuid MoxyService             (quint16(0xAAB0));
@@ -49,21 +51,16 @@ BtleHub::BtleHub(QObject *parent)
     m_reconnectTimer->setSingleShot(true);
     connect(m_reconnectTimer, &QTimer::timeout, this, &BtleHub::onReconnectTimer);
 
-    // Frees the FTMS control point if a response indication never arrives
-    // (marginal signal, trainer quirk) so commands don't queue forever.
-    m_ftmsOpTimeout = new QTimer(this);
-    m_ftmsOpTimeout->setSingleShot(true);
-    connect(m_ftmsOpTimeout, &QTimer::timeout, this, [this]() {
-        if (!m_ftmsOpInFlight)
-            return;
-        LOG_WARN("BtleHub", QStringLiteral("FTMS response indication timed out — releasing control point"));
-        m_ftmsOpInFlight = false;
-        if (m_ftmsControlGranted && !m_ftmsPendingCmd.isEmpty()) {
-            const QByteArray next = m_ftmsPendingCmd;
-            m_ftmsPendingCmd.clear();
-            writeFtmsCommandNow(next);
-        }
+    m_ftmsControl = new FtmsControl(this);
+    connect(m_ftmsControl, &FtmsControl::writeRequested, this, &BtleHub::writeFtmsControlPoint);
+    connect(m_ftmsControl, &FtmsControl::granted, this, [this]() {
+        m_ftmsSetupWatchdog->stop();
+        m_ftmsSetupReconnects = 0;
     });
+
+    m_ftmsSetupWatchdog = new QTimer(this);
+    m_ftmsSetupWatchdog->setSingleShot(true);
+    connect(m_ftmsSetupWatchdog, &QTimer::timeout, this, &BtleHub::onFtmsSetupWatchdog);
 }
 
 BtleHub::~BtleHub()
@@ -81,6 +78,7 @@ void BtleHub::connectToDevice(const QBluetoothDeviceInfo &device)
     // attemptConnection(), which must NOT reset the budget.
     m_reconnectDevice   = device;
     m_reconnectAttempts = 0;
+    m_ftmsSetupReconnects = 0;
     m_userDisconnect    = false;
     attemptConnection();
 }
@@ -100,20 +98,13 @@ void BtleHub::attemptConnection()
     delete m_ftmsService;     m_ftmsService     = nullptr;
     delete m_moxyService;     m_moxyService     = nullptr;
     delete m_batteryService;  m_batteryService  = nullptr;
-    m_serviceDetailsQueue.clear();
-    m_serviceDetailsInFlight = nullptr;
 
     m_wheelBaselineSet      = false;
     m_crankBaselineSet      = false;
     m_cpsPowerSeen          = false;
     m_cscCadenceSeen        = false;
-    m_ftmsControlRequested  = false;
-    m_ftmsControlGranted    = false;
-    m_ftmsMachineStarted    = false;
-    m_ftmsOpInFlight        = false;
-    m_ftmsPendingCmd.clear();
-    m_ftmsLastSentCmd.clear();
-    m_ftmsLastAckedCmd.clear();
+    m_ftmsControl->reset();
+    m_ftmsSetupWatchdog->stop();
 
     m_controller = QLowEnergyController::createCentral(m_reconnectDevice, this);
 
@@ -138,6 +129,8 @@ void BtleHub::disconnectFromDevice()
     m_userDisconnect = true;
     if (m_reconnectTimer)
         m_reconnectTimer->stop();
+    if (m_ftmsSetupWatchdog)
+        m_ftmsSetupWatchdog->stop();
     if (m_controller) {
         m_controller->disconnectFromDevice();
     }
@@ -164,7 +157,7 @@ void BtleHub::setLoad(int deviceId, double watts)
     cmd[0] = 0x05;                      // Set Target Power opcode
     cmd[1] = static_cast<char>(w & 0xFF);
     cmd[2] = static_cast<char>((w >> 8) & 0xFF);
-    sendFtmsCommand(cmd);
+    m_ftmsControl->setTarget(cmd);
 }
 
 void BtleHub::setSlope(int deviceId, double grade)
@@ -185,7 +178,7 @@ void BtleHub::setSlope(int deviceId, double grade)
     cmd[4] = static_cast<char>((gradeParam >> 8) & 0xFF);
     cmd[5] = 0x00;                             // crr (uint8, 0.0001)
     cmd[6] = 0x00;                             // cw  (uint8, 0.01)
-    sendFtmsCommand(cmd);
+    m_ftmsControl->setTarget(cmd);
 }
 
 void BtleHub::setResistanceLevel(int deviceId, int levelTenths)
@@ -201,58 +194,65 @@ void BtleHub::setResistanceLevel(int deviceId, int levelTenths)
     cmd[0] = 0x04;                          // Set Target Resistance Level opcode
     cmd[1] = static_cast<char>(lvl & 0xFF);
     cmd[2] = static_cast<char>((lvl >> 8) & 0xFF);
-    sendFtmsCommand(cmd);
+    m_ftmsControl->setTarget(cmd);
 }
 
-// One control-point op in flight at a time: real trainers reject overlapping
-// writes with ATT error 0x80, and every op completes only when its response
-// indication ([0x80, opcode, result]) arrives.  Commands issued while waiting
-// (or before control is granted) are deferred; a newer one replaces an older.
-void BtleHub::sendFtmsCommand(const QByteArray &cmd)
+void BtleHub::writeFtmsControlPoint(const QByteArray &payload)
 {
-    LOG_DEBUG("BtleHub", QStringLiteral("FTMS target opcode=0x%1 payload=%2 control=%3 started=%4 inFlight=%5")
-                              .arg(cmd.isEmpty() ? 0 : quint8(cmd[0]), 2, 16, QLatin1Char('0'))
-                              .arg(QString::fromLatin1(cmd.toHex()))
-                              .arg(m_ftmsControlGranted)
-                              .arg(m_ftmsMachineStarted)
-                              .arg(m_ftmsOpInFlight));
-    // Identical to what the trainer already confirmed, with nothing newer on
-    // the wire or queued — re-sending would be pure BLE noise (the ERG
-    // smoothing layer re-emits unchanged targets every second during ramps).
-    if (cmd == m_ftmsLastAckedCmd && !m_ftmsOpInFlight && m_ftmsPendingCmd.isEmpty()) {
-        LOG_VERBOSE("BtleHub", QStringLiteral("FTMS duplicate of confirmed op 0x%1 skipped")
-                                 .arg(quint8(cmd[0]), 2, 16, QLatin1Char('0')));
+    QLowEnergyService *service = m_ftmsService;
+    const QLowEnergyCharacteristic controlPoint =
+        service ? service->characteristic(BtleUuid::FtmsControlPoint) : QLowEnergyCharacteristic();
+    if (!service || !controlPoint.isValid()) {
+        m_ftmsControl->onWriteFailed();
         return;
     }
-    if (!m_ftmsControlGranted || !m_ftmsMachineStarted || m_ftmsOpInFlight) {
-        m_ftmsPendingCmd = cmd;
-        return;
-    }
-    writeFtmsCommandNow(cmd);
+    service->writeCharacteristic(controlPoint, payload, QLowEnergyService::WriteWithResponse);
 }
 
-void BtleHub::writeFtmsCommandNow(const QByteArray &cmd)
+void BtleHub::reassertControl()
 {
-    if (!m_ftmsService) {
-        LOG_DEBUG("BtleHub", QStringLiteral("FTMS write skipped: service unavailable"));
+    if (!m_ftmsService)
         return;
-    }
-    QLowEnergyCharacteristic cp =
-        m_ftmsService->characteristic(BtleUuid::FtmsControlPoint);
-    if (!cp.isValid()) {
-        LOG_WARN("BtleHub", QStringLiteral("FTMS write skipped: Control Point 0x2AD9 unavailable"));
-        return;
-    }
+    m_ftmsControl->reassert();
+    // Control never came up on this connection: do not wait out the full
+    // watchdog before the ride needs it.
+    if (!m_ftmsControl->controlGranted() && !m_ftmsSetupWatchdog->isActive())
+        m_ftmsSetupWatchdog->start(FTMS_SETUP_TIMEOUT_MS);
+}
 
-    m_ftmsOpInFlight  = true;
-    m_ftmsLastSentCmd = cmd;
-    m_ftmsService->writeCharacteristic(cp, cmd,
-                                       QLowEnergyService::WriteWithResponse);
-    LOG_VERBOSE("BtleHub", QStringLiteral("FTMS op 0x%1 sent (%2 bytes)")
-                             .arg(quint8(cmd[0]), 2, 16, QLatin1Char('0'))
-                             .arg(cmd.size()));
-    if (m_ftmsOpTimeout)
-        m_ftmsOpTimeout->start(FTMS_OP_TIMEOUT_MS);
+bool BtleHub::ftmsControlGranted() const
+{
+    return m_ftmsControl->controlGranted();
+}
+
+void BtleHub::onFtmsSetupWatchdog()
+{
+    if (!m_ftmsService || m_ftmsControl->controlGranted() || m_userDisconnect)
+        return;
+    // A data-only FTMS device has no Control Point: nothing to set up.
+    if (m_ftmsService->state() == QLowEnergyService::RemoteServiceDiscovered
+            && !m_ftmsService->characteristic(BtleUuid::FtmsControlPoint).isValid())
+        return;
+    if (m_ftmsSetupReconnects >= MAX_FTMS_SETUP_RECONNECTS) {
+        LOG_WARN("BtleHub", QStringLiteral("FTMS control still not established after %1 reconnects")
+                                .arg(m_ftmsSetupReconnects));
+        return;
+    }
+    LOG_WARN("BtleHub", QStringLiteral("FTMS control not established (control point %1), reconnecting the trainer")
+                            .arg(m_ftmsControl->isReady() ? QStringLiteral("ready") : QStringLiteral("not set up")));
+    reconnectForFtmsSetup();
+}
+
+void BtleHub::reconnectForFtmsSetup()
+{
+    ++m_ftmsSetupReconnects;
+    // The old controller's disconnected() must not start the regular
+    // auto-reconnect on top of this one.
+    if (m_controller)
+        disconnect(m_controller, nullptr, this, nullptr);
+    m_cscStopTimer->stop();
+    emit deviceDisconnected();
+    attemptConnection();
 }
 
 void BtleHub::stopDecodingMsg()
@@ -291,6 +291,8 @@ void BtleHub::onControllerDisconnected()
 {
     LOG_INFO("BtleHub", QStringLiteral("Device disconnected"));
     m_cscStopTimer->stop();
+    m_ftmsSetupWatchdog->stop();
+    m_ftmsControl->reset();
     m_hrSeen = false;
     emit deviceDisconnected();
 
@@ -384,7 +386,8 @@ void BtleHub::onServiceDiscovered(const QBluetoothUuid &serviceUuid)
 void BtleHub::onDiscoveryFinished()
 {
     LOG_INFO("BtleHub", QStringLiteral("Service discovery finished"));
-    beginNextServiceDetailsDiscovery();
+    if (m_ftmsService)
+        m_ftmsSetupWatchdog->start(FTMS_SETUP_TIMEOUT_MS);
     emit serviceDiscoveryFinished();
     emit deviceConnected();
 }
@@ -405,70 +408,25 @@ void BtleHub::setupService(QLowEnergyService *service)
                 LOG_WARN("BtleHub", QStringLiteral("Service error %1 on %2")
                                         .arg(int(error))
                                         .arg(service->serviceUuid().toString()));
-                if (service == m_serviceDetailsInFlight) {
-                    LOG_WARN("BtleHub", QStringLiteral("Service detail discovery failed; advancing to next service"));
-                    m_serviceDetailsInFlight = nullptr;
-                    beginNextServiceDetailsDiscovery();
-                }
-                // A failed control-point write never gets a response
-                // indication — free the slot now (instead of waiting for the
-                // timeout) and let the freshest queued command retry.  The
-                // failed payload is NOT marked confirmed, so an identical
-                // re-send passes the duplicate filter.
-                if (service == m_ftmsService &&
-                    error == QLowEnergyService::CharacteristicWriteError &&
-                    m_ftmsOpInFlight) {
-                    m_ftmsOpInFlight = false;
-                    if (m_ftmsOpTimeout) m_ftmsOpTimeout->stop();
-                    if (m_ftmsPendingCmd.isEmpty())
-                        m_ftmsPendingCmd = m_ftmsLastSentCmd;   // retry the failed op
-                    if (m_ftmsControlGranted && m_ftmsMachineStarted &&
-                        !m_ftmsPendingCmd.isEmpty()) {
-                        const QByteArray next = m_ftmsPendingCmd;
-                        m_ftmsPendingCmd.clear();
-                        writeFtmsCommandNow(next);
-                    }
+                if (service != m_ftmsService)
+                    return;
+                if (error == QLowEnergyService::CharacteristicWriteError) {
+                    m_ftmsControl->onWriteFailed();
+                } else if (!m_ftmsControl->isReady()) {
+                    // The Control Point never got set up on this connection
+                    // (seen on Windows: details discovery fails with error 4),
+                    // so control can never be granted: reconnect soon.
+                    m_ftmsSetupWatchdog->start(FTMS_SETUP_RETRY_MS);
                 }
             });
 
-    m_serviceDetailsQueue.enqueue(service);
-    LOG_DEBUG("BtleHub", QStringLiteral("Queued BLE service detail discovery: %1 state=%2")
-                              .arg(service->serviceUuid().toString())
-                              .arg(int(service->state())));
-}
-
-void BtleHub::beginNextServiceDetailsDiscovery()
-{
-    if (m_serviceDetailsInFlight)
-        return;
-
-    while (!m_serviceDetailsQueue.isEmpty()) {
-        QLowEnergyService *service = m_serviceDetailsQueue.dequeue();
-        if (!service)
-            continue;
-        if (service->state() == QLowEnergyService::RemoteServiceDiscovered) {
-            configureDiscoveredService(service);
-            continue;
-        }
-        if (service->state() != QLowEnergyService::RemoteService) {
-            LOG_WARN("BtleHub", QStringLiteral("Cannot start detail discovery for %1: service state=%2")
-                                     .arg(service->serviceUuid().toString())
-                                     .arg(int(service->state())));
-            continue;
-        }
-
-        m_serviceDetailsInFlight = service;
-        LOG_DEBUG("BtleHub", QStringLiteral("Starting BLE service detail discovery: %1")
-                                  .arg(service->serviceUuid().toString()));
-        // Some trainers expose descriptors as readable in GATT metadata but
-        // BlueZ rejects those reads (NotPermitted). FullDiscovery then stays
-        // in RemoteServiceDiscovering and never reaches our notification or
-        // FTMS setup. We only need the characteristic/descriptor structure;
-        // values we actually need (FTMS Feature, Battery Level) are read
-        // explicitly after discovery.
+    // Structure only: the values the app needs (FTMS Feature, Battery Level)
+    // are read explicitly once the service is discovered. With full discovery,
+    // Qt's BlueZ backend never reports a service discovered when its last
+    // value read fails (BlueZ answers NotPermitted for some trainers'
+    // descriptors, e.g. the Van Rysel D100), so FTMS was never set up.
+    if (service->state() == QLowEnergyService::RemoteService)
         service->discoverDetails(QLowEnergyService::SkipValueDiscovery);
-        return;
-    }
 }
 
 void BtleHub::enableNotification(QLowEnergyService *service,
@@ -486,52 +444,18 @@ void BtleHub::enableNotification(QLowEnergyService *service,
 void BtleHub::enableIndication(QLowEnergyService *service,
                                const QLowEnergyCharacteristic &characteristic)
 {
-    if (!characteristic.isValid()) {
-        LOG_WARN("BtleHub", QStringLiteral("FTMS Control Point 0x2AD9 unavailable after service detail discovery"));
+    if (!characteristic.isValid())
         return;
-    }
 
     QLowEnergyDescriptor cccd =
         characteristic.descriptor(BtleUuid::ClientCharacteristicConfig);
-    if (cccd.isValid()) {
-        LOG_DEBUG("BtleHub", QStringLiteral("Enabling FTMS Control Point indications (CCCD 0200)"));
+    if (cccd.isValid())
         service->writeDescriptor(cccd, QByteArray::fromHex("0200")); // enable indications
-    } else {
-        LOG_WARN("BtleHub", QStringLiteral("FTMS Control Point has no CCCD for indications"));
-    }
-}
-
-void BtleHub::requestFtmsControl()
-{
-    if (!m_ftmsService || m_ftmsControlRequested) {
-        LOG_DEBUG("BtleHub", QStringLiteral("FTMS Request Control skipped: service=%1 alreadyRequested=%2")
-                                  .arg(m_ftmsService != nullptr).arg(m_ftmsControlRequested));
-        return;
-    }
-
-    QLowEnergyCharacteristic cp =
-        m_ftmsService->characteristic(BtleUuid::FtmsControlPoint);
-    if (!cp.isValid()) {
-        LOG_WARN("BtleHub", QStringLiteral("FTMS Request Control skipped: Control Point unavailable"));
-        return;
-    }
-
-    // Opcode 0x00 = Request Control
-    m_ftmsOpInFlight = true;
-    m_ftmsService->writeCharacteristic(cp, QByteArray(1, '\x00'),
-                                       QLowEnergyService::WriteWithResponse);
-    m_ftmsControlRequested = true;
-    if (m_ftmsOpTimeout)
-        m_ftmsOpTimeout->start(FTMS_OP_TIMEOUT_MS);
-    LOG_INFO("BtleHub", QStringLiteral("FTMS Request Control sent"));
 }
 
 void BtleHub::onDescriptorWritten(const QLowEnergyDescriptor &descriptor,
                                   const QByteArray &value)
 {
-    if (m_ftmsService && descriptor.uuid() == BtleUuid::ClientCharacteristicConfig)
-        LOG_DEBUG("BtleHub", QStringLiteral("FTMS CCCD write confirmed: %1")
-                                  .arg(QString::fromLatin1(value.toHex())));
     // The FTMS Control Point requires indications (CCCD = 0x0200) to be
     // enabled before the trainer will process commands; Request Control is
     // therefore only sent once that descriptor write is confirmed.
@@ -539,61 +463,7 @@ void BtleHub::onDescriptorWritten(const QLowEnergyDescriptor &descriptor,
         descriptor.uuid() == BtleUuid::ClientCharacteristicConfig &&
         value == QByteArray::fromHex("0200")) {
         LOG_INFO("BtleHub", QStringLiteral("FTMS Control Point indications enabled"));
-        requestFtmsControl();
-    }
-}
-
-void BtleHub::handleFtmsControlPointResponse(const QByteArray &value)
-{
-    LOG_DEBUG("BtleHub", QStringLiteral("FTMS Control Point indication: %1")
-                              .arg(QString::fromLatin1(value.toHex())));
-    // Indication format: [0x80, request opcode, result code]
-    // result 0x01 = success; anything else is a refusal (0x02 not supported,
-    // 0x03 invalid parameter, 0x04 operation failed, 0x05 control not permitted).
-    if (value.size() < 3 || quint8(value[0]) != 0x80)
-        return;
-
-    const quint8 requestOp = quint8(value[1]);
-    const quint8 result    = quint8(value[2]);
-
-    // Whatever the verdict, the op is complete — the control point is free.
-    m_ftmsOpInFlight = false;
-    if (m_ftmsOpTimeout)
-        m_ftmsOpTimeout->stop();
-
-    if (result != 0x01) {
-        LOG_WARN("BtleHub", QStringLiteral("FTMS control point refused opcode 0x%1 (result 0x%2)")
-                                .arg(requestOp, 2, 16, QLatin1Char('0'))
-                                .arg(result, 2, 16, QLatin1Char('0')));
-        if (requestOp == 0x00) {
-            m_ftmsControlGranted = false;
-            return;
-        }
-        // A refused target falls through: the pending (newer) command still
-        // deserves its attempt.
-    } else if (requestOp == 0x00) {   // Request Control granted
-        m_ftmsControlGranted = true;
-        LOG_INFO("BtleHub", QStringLiteral("FTMS control granted by trainer"));
-        // FTMS requires Start/Resume before target-setting commands take
-        // effect. Some trainers (including the Van Rysel D100) still report
-        // measurements after Request Control while silently ignoring targets.
-        writeFtmsCommandNow(QByteArray(1, '\x07'));
-        return;
-    } else if (requestOp == 0x07) {   // Start/Resume acknowledged
-        m_ftmsMachineStarted = true;
-        LOG_INFO("BtleHub", QStringLiteral("FTMS machine started"));
-    } else {
-        m_ftmsLastAckedCmd = m_ftmsLastSentCmd;
-        LOG_VERBOSE("BtleHub", QStringLiteral("FTMS op 0x%1 acknowledged by trainer")
-                                 .arg(requestOp, 2, 16, QLatin1Char('0')));
-    }
-
-    // Send the command that queued up while this op was in flight (a target
-    // issued before the grant, or one that superseded an older write).
-    if (m_ftmsControlGranted && m_ftmsMachineStarted && !m_ftmsPendingCmd.isEmpty()) {
-        const QByteArray next = m_ftmsPendingCmd;
-        m_ftmsPendingCmd.clear();
-        writeFtmsCommandNow(next);
+        m_ftmsControl->setReady();
     }
 }
 
@@ -622,31 +492,9 @@ void BtleHub::onServiceStateChanged(QLowEnergyService::ServiceState state)
     if (!service)
         return;
 
-    if (service == m_ftmsService)
-        LOG_DEBUG("BtleHub", QStringLiteral("FTMS service state changed: %1")
-                                  .arg(int(state)));
-
-    if (state != QLowEnergyService::RemoteServiceDiscovered) {
-        if (state == QLowEnergyService::InvalidService && service == m_serviceDetailsInFlight) {
-            LOG_WARN("BtleHub", QStringLiteral("Service became invalid during detail discovery: %1")
-                                     .arg(service->serviceUuid().toString()));
-            m_serviceDetailsInFlight = nullptr;
-            beginNextServiceDetailsDiscovery();
-        }
+    if (state != QLowEnergyService::RemoteServiceDiscovered)
         return;
-    }
 
-    configureDiscoveredService(service);
-    if (service == m_serviceDetailsInFlight) {
-        LOG_DEBUG("BtleHub", QStringLiteral("Completed BLE service detail discovery: %1")
-                                  .arg(service->serviceUuid().toString()));
-        m_serviceDetailsInFlight = nullptr;
-        beginNextServiceDetailsDiscovery();
-    }
-}
-
-void BtleHub::configureDiscoveredService(QLowEnergyService *service)
-{
     // Enable notifications for every measurement characteristic we care about
     if (service == m_hrService) {
         enableNotification(service,
@@ -661,10 +509,6 @@ void BtleHub::configureDiscoveredService(QLowEnergyService *service)
             service->characteristic(BtleUuid::CyclingPowerMeasurement));
     }
     else if (service == m_ftmsService) {
-        const auto controlPoint = service->characteristic(BtleUuid::FtmsControlPoint);
-        const auto controlPointCccd = controlPoint.descriptor(BtleUuid::ClientCharacteristicConfig);
-        LOG_DEBUG("BtleHub", QStringLiteral("FTMS details ready: Control Point valid=%1 CCCD valid=%2")
-                                  .arg(controlPoint.isValid()).arg(controlPointCccd.isValid()));
         enableNotification(service,
             service->characteristic(BtleUuid::FtmsIndoorBikeData));
         // Rowers expose Rower Data (0x2AD1) on the same FTMS service instead
@@ -677,6 +521,9 @@ void BtleHub::configureDiscoveredService(QLowEnergyService *service)
         // point, which left ERG mode stuck at the trainer's default load.
         enableIndication(service,
             service->characteristic(BtleUuid::FtmsControlPoint));
+        // Machine Status tells us when the trainer drops our control or resets.
+        enableNotification(service,
+            service->characteristic(BtleUuid::FtmsMachineStatus));
         // One-shot read of the feature char to learn if Set Target Resistance
         // Level (0x04) is supported (drives virtual-shifting mode selection).
         QLowEnergyCharacteristic feat = service->characteristic(BtleUuid::FtmsFeature);
@@ -718,7 +565,9 @@ void BtleHub::onCharacteristicChanged(const QLowEnergyCharacteristic &characteri
     else if (uuid == BtleUuid::FtmsRowerData)
         parseFtmsRowerData(value);
     else if (uuid == BtleUuid::FtmsControlPoint)
-        handleFtmsControlPointResponse(value);
+        m_ftmsControl->onControlPointIndication(value);
+    else if (uuid == BtleUuid::FtmsMachineStatus)
+        m_ftmsControl->onMachineStatus(value);
     else if (uuid == BtleUuid::FtmsFeature)
         parseFtmsFeature(value);
     else if (uuid == BtleUuid::MoxyMeasurement)
