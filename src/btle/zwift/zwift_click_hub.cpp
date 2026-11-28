@@ -9,6 +9,8 @@
 #include <QLowEnergyDescriptor>
 #include <QTimer>
 
+#include <utility>
+
 namespace {
 const QByteArray kNotifyOn = QByteArray::fromHex("0100");
 
@@ -37,12 +39,21 @@ bool ZwiftClickHub::isConnected() const
 void ZwiftClickHub::teardown()
 {
     if (m_watchdog) m_watchdog->stop();
-    if (m_batteryService) { m_batteryService->deleteLater(); m_batteryService = nullptr; }
-    if (m_service) { m_service->deleteLater(); m_service = nullptr; }
-    if (m_controller) {
-        m_controller->disconnectFromDevice();
-        m_controller->deleteLater();
-        m_controller = nullptr;
+    // Detached and cleared before disconnecting: on Windows disconnectFromDevice()
+    // emits disconnected() synchronously, which reached the manager mid-teardown
+    // and re-entered this function (a crash when Simulated Sensors was switched on).
+    if (QLowEnergyService *battery = std::exchange(m_batteryService, nullptr)) {
+        disconnect(battery, nullptr, this, nullptr);
+        battery->deleteLater();
+    }
+    if (QLowEnergyService *service = std::exchange(m_service, nullptr)) {
+        disconnect(service, nullptr, this, nullptr);
+        service->deleteLater();
+    }
+    if (QLowEnergyController *controller = std::exchange(m_controller, nullptr)) {
+        disconnect(controller, nullptr, this, nullptr);
+        controller->disconnectFromDevice();
+        controller->deleteLater();
     }
 }
 
@@ -109,15 +120,9 @@ void ZwiftClickHub::startController()
 {
     if (m_closed)
         return;   // a retry or watchdog timer outliving disconnectFromDevice()
-    if (m_controller) {
-        // A watchdog reconnect tears the old controller down; detach its signals
-        // first so its dying disconnected() does not propagate to the manager
-        // (which would delete this hub mid-reconnect).
-        disconnect(m_controller, nullptr, this, nullptr);
-        m_controller->disconnectFromDevice();
-        m_controller->deleteLater();
-        m_controller = nullptr;
-    }
+    // A watchdog reconnect tears the old controller down without telling the
+    // manager (which would delete this hub mid-reconnect).
+    teardown();
     m_controller = QLowEnergyController::createCentral(m_device, this);
 
     connect(m_controller, &QLowEnergyController::connected, this,
