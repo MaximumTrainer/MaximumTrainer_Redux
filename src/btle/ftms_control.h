@@ -22,8 +22,9 @@ class FtmsControl : public QObject
     Q_OBJECT
 
 public:
-    /// What the trainer was last told to do on this connection.
-    enum class TrainerMode { None, Erg, Other };
+    /// What the trainer was last told to do on this connection; Unknown until
+    /// the first Reset on a new connection, None right after a Reset.
+    enum class TrainerMode { Unknown, None, Erg, Other };
 
     explicit FtmsControl(QObject *parent = nullptr);
 
@@ -64,7 +65,7 @@ private:
     bool m_ready = false;
     bool m_granted = false;
     bool m_started = false;   ///< Start or Resume answered since control was granted
-    TrainerMode m_trainerMode = TrainerMode::None;
+    TrainerMode m_trainerMode = TrainerMode::Unknown;
     bool m_resetUnsupported = false;
     bool m_inFlight = false;
     QByteArray m_inFlightPayload;
