@@ -218,6 +218,13 @@ void DeviceSession::retry(int key)
 void DeviceSession::setRideActive(bool active)
 {
     m_rideActive = active;
+    // The trainer link was opened before this ride; the trainer may have
+    // dropped our control or its target since. Once per ride, like the fresh
+    // connection every ride used to get.
+    if (active) {
+        if (BtleHub *trainer = trainerHub())
+            trainer->reassertControl();
+    }
     if (!m_click || m_clickReleased)
         return;
     if (active) {
