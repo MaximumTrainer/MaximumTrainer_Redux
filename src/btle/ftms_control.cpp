@@ -80,7 +80,7 @@ void FtmsControl::reset()
     m_ready = false;
     m_granted = false;
     m_started = false;
-    m_trainerMode = TrainerMode::None;
+    m_trainerMode = TrainerMode::Unknown;
     m_resetUnsupported = false;
     m_inFlight = false;
     m_inFlightPayload.clear();
@@ -129,6 +129,14 @@ void FtmsControl::pump()
         write(QByteArray(1, char(kRequestControl)));
         return;
     }
+    // A trainer keeps its mode across connections (28 Nov: still a flat road
+    // from the previous app run, so the first ride's ERG target was confirmed
+    // and ignored). Clear it once per connection, as soon as control is held.
+    if (m_trainerMode == TrainerMode::Unknown && !m_resetUnsupported) {
+        LOG_INFO("BtleHub", QStringLiteral("FTMS new connection: resetting the trainer to clear its previous mode"));
+        write(QByteArray(1, char(kReset)));
+        return;
+    }
     // FTMS wants Start or Resume before targets; some trainers acknowledge a
     // target without it and keep their old resistance.
     if (!m_started) {
@@ -142,7 +150,8 @@ void FtmsControl::pump()
     // Target Power and keep riding as a flat road (JetBlack Victory, 28 Nov):
     // a fresh connection used to clear the mode, so put the trainer back to its
     // defaults the same way before switching between ERG and the other modes.
-    if (m_trainerMode != TrainerMode::None && modeOf(m_target) != m_trainerMode && !m_resetUnsupported) {
+    if (m_trainerMode != TrainerMode::None && m_trainerMode != TrainerMode::Unknown
+            && modeOf(m_target) != m_trainerMode && !m_resetUnsupported) {
         LOG_INFO("BtleHub", QStringLiteral("FTMS switching to %1: resetting the trainer first")
                                 .arg(modeOf(m_target) == TrainerMode::Erg ? QStringLiteral("ERG")
                                                                           : QStringLiteral("simulation/resistance")));

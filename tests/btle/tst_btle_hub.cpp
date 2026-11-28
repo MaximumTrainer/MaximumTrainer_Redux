@@ -202,7 +202,8 @@ private slots:
     void ftms_simulationAfterErgResetsTheTrainerFirst();
     void ftms_resistanceAfterSimulationNeedsNoReset();
     void ftms_resetNotSupportedSendsTheTargetDirectly();
-    void ftms_newConnectionNeedsNoReset();
+    void ftms_newConnectionResetsTheTrainerOnce();
+    void ftms_resetNotSupportedOnConnectStillSendsTarget();
 
 private:
     BtleHub *hub = nullptr;
@@ -1386,12 +1387,22 @@ QByteArray lastWrite(const QSignalSpy &writes)
     return writes.isEmpty() ? QByteArray() : writes.last().at(0).toByteArray();
 }
 
+// The first grant on a connection is followed by Reset, which drops control.
+void clearConnectMode(FtmsControl &control, QSignalSpy &writes)
+{
+    QCOMPARE(lastWrite(writes), kReset);
+    control.onControlPointIndication(answer(0x01, 0x01));
+    QCOMPARE(lastWrite(writes), kRequestControl);
+    control.onControlPointIndication(answer(0x00, 0x01));
+}
+
 void grantControl(FtmsControl &control, QSignalSpy &writes)
 {
     control.setReady();
     QCOMPARE(lastWrite(writes), kRequestControl);
     control.onControlPointIndication(answer(0x00, 0x01));
     QVERIFY(control.controlGranted());
+    clearConnectMode(control, writes);
     QCOMPARE(lastWrite(writes), kStartOrResume);
     control.onControlPointIndication(answer(0x07, 0x01));
 }
@@ -1415,10 +1426,11 @@ void TstBtleHub::ftms_targetWaitsForControlThenIsSent()
     control.setReady();
     QCOMPARE(lastWrite(writes), kRequestControl);
     control.onControlPointIndication(answer(0x00, 0x01));
+    clearConnectMode(control, writes);
     QCOMPARE(lastWrite(writes), kStartOrResume);
     control.onControlPointIndication(answer(0x07, 0x01));
     QCOMPARE(lastWrite(writes), targetPower(150));
-    QCOMPARE(writes.count(), 3);
+    QCOMPARE(writes.count(), 5);
 }
 
 void TstBtleHub::ftms_oneOpInFlightAndNewestTargetWins()
@@ -1520,7 +1532,11 @@ void TstBtleHub::ftms_unansweredRequestControlIsRetried()
     control.setReady();
     QCOMPARE(writes.count(), 1);
     QTRY_COMPARE_WITH_TIMEOUT(writes.count(), 2, FtmsControl::kOpTimeoutMs + 1000);
-    grantAgain(control, writes);
+    QCOMPARE(lastWrite(writes), kRequestControl);
+    control.onControlPointIndication(answer(0x00, 0x01));
+    clearConnectMode(control, writes);
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    control.onControlPointIndication(answer(0x07, 0x01));
     QCOMPARE(lastWrite(writes), targetPower(150));
 }
 
@@ -1559,7 +1575,11 @@ void TstBtleHub::ftms_refusedControlIsRequestedAgain()
     control.onControlPointIndication(answer(0x00, 0x05));
     QVERIFY(!control.controlGranted());
     QTRY_COMPARE_WITH_TIMEOUT(writes.count(), 2, FtmsControl::kRetryDelayMs + 1000);
-    grantAgain(control, writes);
+    QCOMPARE(lastWrite(writes), kRequestControl);
+    control.onControlPointIndication(answer(0x00, 0x01));
+    clearConnectMode(control, writes);
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    control.onControlPointIndication(answer(0x07, 0x01));
     QCOMPARE(lastWrite(writes), targetPower(150));
 }
 
@@ -1572,8 +1592,9 @@ void TstBtleHub::ftms_startOrResumeComesBetweenControlAndTarget()
     control.setTarget(targetPower(150));
     control.setReady();
     control.onControlPointIndication(answer(0x00, 0x01));
+    clearConnectMode(control, writes);
     QCOMPARE(lastWrite(writes), kStartOrResume);
-    QCOMPARE(writes.count(), 2);   // the target waits for the answer
+    QCOMPARE(writes.count(), 4);   // the target waits for the answer
     control.onControlPointIndication(answer(0x07, 0x01));
     QCOMPARE(lastWrite(writes), targetPower(150));
 }
@@ -1585,6 +1606,7 @@ void TstBtleHub::ftms_startOrResumeNotSupportedStillSendsTarget()
     control.setTarget(targetPower(150));
     control.setReady();
     control.onControlPointIndication(answer(0x00, 0x01));
+    clearConnectMode(control, writes);
     control.onControlPointIndication(answer(0x07, 0x02));   // op code not supported
     QCOMPARE(lastWrite(writes), targetPower(150));
 }
@@ -1596,9 +1618,10 @@ void TstBtleHub::ftms_unansweredStartOrResumeDoesNotHoldTheTargetBack()
     control.setTarget(targetPower(150));
     control.setReady();
     control.onControlPointIndication(answer(0x00, 0x01));
+    clearConnectMode(control, writes);
     QCOMPARE(lastWrite(writes), kStartOrResume);
     QTRY_COMPARE_WITH_TIMEOUT(lastWrite(writes), targetPower(150), FtmsControl::kOpTimeoutMs + 1000);
-    QCOMPARE(writes.count(), 3);
+    QCOMPARE(writes.count(), 5);
 }
 
 void TstBtleHub::ftms_trainerStoppedIsResumedAndTargetRestored()
@@ -1759,7 +1782,10 @@ void TstBtleHub::ftms_resetNotSupportedSendsTheTargetDirectly()
     QCOMPARE(lastWrite(writes), flatRoad());
 }
 
-void TstBtleHub::ftms_newConnectionNeedsNoReset()
+// 28 Nov (v0.0.354): the trainer was still a flat road from the previous app
+// run, so the first ride's ERG target was confirmed and ignored. Every new
+// connection resets the trainer once, then needs no second reset.
+void TstBtleHub::ftms_newConnectionResetsTheTrainerOnce()
 {
     FtmsControl control;
     QSignalSpy writes(&control, &FtmsControl::writeRequested);
@@ -1767,9 +1793,43 @@ void TstBtleHub::ftms_newConnectionNeedsNoReset()
     control.setTarget(flatRoad());
     control.onControlPointIndication(answer(0x11, 0x01));
 
-    control.reset();
+    control.reset();                       // the app restarts / reconnects
+    control.setTarget(targetPower(141));
+    control.setReady();
+    control.onControlPointIndication(answer(0x00, 0x01));
+    QCOMPARE(lastWrite(writes), kReset);   // not the target
+    control.onControlPointIndication(answer(0x01, 0x01));
+    QVERIFY(!control.controlGranted());
+    QCOMPARE(lastWrite(writes), kRequestControl);
+    control.onControlPointIndication(answer(0x00, 0x01));
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    control.onControlPointIndication(answer(0x07, 0x01));
+    QCOMPARE(lastWrite(writes), targetPower(141));
+    control.onControlPointIndication(answer(0x05, 0x01));
+
+    control.reassert();                    // ride start on the same connection
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    control.onControlPointIndication(answer(0x07, 0x04));
+    QCOMPARE(lastWrite(writes), targetPower(141));   // re-sent, no reset
+    control.onControlPointIndication(answer(0x05, 0x01));
+    const int sent = writes.count();
+    control.setTarget(targetPower(142));
+    QCOMPARE(writes.count(), sent + 1);
+    QCOMPARE(lastWrite(writes), targetPower(142));
+}
+
+void TstBtleHub::ftms_resetNotSupportedOnConnectStillSendsTarget()
+{
+    FtmsControl control;
+    QSignalSpy writes(&control, &FtmsControl::writeRequested);
     control.setTarget(targetPower(150));
-    grantControl(control, writes);
+    control.setReady();
+    control.onControlPointIndication(answer(0x00, 0x01));
+    QCOMPARE(lastWrite(writes), kReset);
+    control.onControlPointIndication(answer(0x01, 0x02));   // op code not supported
+    QVERIFY(control.controlGranted());
+    QCOMPARE(lastWrite(writes), kStartOrResume);
+    control.onControlPointIndication(answer(0x07, 0x01));
     QCOMPARE(lastWrite(writes), targetPower(150));
 }
 
