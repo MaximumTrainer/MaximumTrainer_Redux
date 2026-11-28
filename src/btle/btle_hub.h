@@ -30,6 +30,9 @@ class BtleHub : public QObject
     Q_OBJECT
 
 public:
+    /// Service details are discovered without reading values (see setupService).
+    static constexpr QLowEnergyService::DiscoveryMode kDetailsDiscoveryMode =
+        QLowEnergyService::SkipValueDiscovery;
     explicit BtleHub(QObject *parent = nullptr);
     ~BtleHub() override;
 
