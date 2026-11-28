@@ -8,6 +8,7 @@
 #include <QLowEnergyService>
 #include <QLowEnergyCharacteristic>
 #include <QTimer>
+#include <QQueue>
 
 /*
  * BtleHub
@@ -108,6 +109,8 @@ private:
     // running count against MAX_RECONNECT_ATTEMPTS.
     void attemptConnection();
     void setupService(QLowEnergyService *service);
+    void beginNextServiceDetailsDiscovery();
+    void configureDiscoveredService(QLowEnergyService *service);
     void enableNotification(QLowEnergyService *service,
                             const QLowEnergyCharacteristic &characteristic);
     void enableIndication(QLowEnergyService *service,
@@ -140,9 +143,12 @@ private:
     QLowEnergyService *m_ftmsService     = nullptr;
     QLowEnergyService *m_moxyService     = nullptr;
     QLowEnergyService *m_batteryService  = nullptr;
+    QQueue<QLowEnergyService *> m_serviceDetailsQueue;
+    QLowEnergyService *m_serviceDetailsInFlight = nullptr;
 
     bool m_ftmsControlRequested = false;
     bool m_ftmsControlGranted   = false;
+    bool m_ftmsMachineStarted   = false;
     bool m_resistanceLevelSupported = false;   // FTMS 0x04 (from 0x2ACC feature)
 
     // Control-point serialization: one op in flight until the trainer's
