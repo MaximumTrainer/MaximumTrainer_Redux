@@ -195,6 +195,8 @@ if(TARGET Qt6::Bluetooth)
     mt_add_test(btle_tests
         SOURCES ${LOGGER} "${SRC}/btle/btle_hub.cpp" "${SRC}/btle/ftms_control.cpp" "${SRC}/btle/simulator_hub.cpp"
             "${SRC}/btle/sensor_connector.cpp" "${SRC}/btle/btle_sensor_store.cpp"
+            "${SRC}/btle/zwift/zwift_click_hub.cpp" "${SRC}/btle/zwift/zwift_click_manager.cpp"
+            "${SRC}/btle/zwift/zwift_click_protocol.cpp"
             btle/tst_btle_hub.cpp btle/btle_device_simulator.h
         QT Bluetooth
         INCLUDES "${SRC}/btle" "${SRC}/btle/zwift" "${SRC}/app")
