@@ -6,6 +6,8 @@
 
 namespace {
 constexpr quint8 kRequestControl = 0x00;
+constexpr quint8 kReset = 0x01;
+constexpr quint8 kSetTargetPower = 0x05;
 constexpr quint8 kStartOrResume = 0x07;
 constexpr quint8 kResponseCode = 0x80;
 constexpr quint8 kResultSuccess = 0x01;
@@ -20,6 +22,12 @@ constexpr quint8 kStatusControlPermissionLost = 0xFF;
 QString opcodeText(quint8 opcode)
 {
     return QStringLiteral("0x%1").arg(opcode, 2, 16, QLatin1Char('0'));
+}
+
+FtmsControl::TrainerMode modeOf(const QByteArray &target)
+{
+    return quint8(target.at(0)) == kSetTargetPower ? FtmsControl::TrainerMode::Erg
+                                                   : FtmsControl::TrainerMode::Other;
 }
 
 qint16 int16At(const QByteArray &payload, int offset)
@@ -72,6 +80,8 @@ void FtmsControl::reset()
     m_ready = false;
     m_granted = false;
     m_started = false;
+    m_trainerMode = TrainerMode::None;
+    m_resetUnsupported = false;
     m_inFlight = false;
     m_inFlightPayload.clear();
     m_confirmed.clear();
@@ -128,6 +138,17 @@ void FtmsControl::pump()
     }
     if (m_target.isEmpty() || m_target == m_confirmed || m_target == m_refused)
         return;
+    // A trainer left in simulation or resistance mode can acknowledge Set
+    // Target Power and keep riding as a flat road (JetBlack Victory, 28 Nov):
+    // a fresh connection used to clear the mode, so put the trainer back to its
+    // defaults the same way before switching between ERG and the other modes.
+    if (m_trainerMode != TrainerMode::None && modeOf(m_target) != m_trainerMode && !m_resetUnsupported) {
+        LOG_INFO("BtleHub", QStringLiteral("FTMS switching to %1: resetting the trainer first")
+                                .arg(modeOf(m_target) == TrainerMode::Erg ? QStringLiteral("ERG")
+                                                                          : QStringLiteral("simulation/resistance")));
+        write(QByteArray(1, char(kReset)));
+        return;
+    }
     if (m_target != m_lastLoggedTarget) {
         m_lastLoggedTarget = m_target;
         LOG_INFO("BtleHub", QStringLiteral("FTMS target sent: %1").arg(targetText(m_target)));
@@ -172,6 +193,21 @@ void FtmsControl::onControlPointIndication(const QByteArray &indication)
         return;
     }
 
+    if (requestOp == kReset && result != kResultControlNotPermitted) {
+        if (result == kResultSuccess) {
+            // Reset drops control and the session, like a new connection.
+            m_granted = false;
+            m_started = false;
+            m_confirmed.clear();
+            m_trainerMode = TrainerMode::None;
+        } else {
+            m_resetUnsupported = true;
+        }
+        LOG_INFO("BtleHub", QStringLiteral("FTMS Reset answered (result %1)").arg(opcodeText(result)));
+        pump();
+        return;
+    }
+
     if (requestOp == kStartOrResume && result != kResultControlNotPermitted) {
         // A trainer that does not support it (or is already running) still
         // takes targets, so any other answer moves on to the target.
@@ -185,6 +221,7 @@ void FtmsControl::onControlPointIndication(const QByteArray &indication)
     if (result == kResultSuccess) {
         if (answersOurOp) {
             m_confirmed = answered;
+            m_trainerMode = modeOf(answered);
             if (answered != m_lastLoggedConfirmed) {
                 m_lastLoggedConfirmed = answered;
                 LOG_INFO("BtleHub", QStringLiteral("FTMS target confirmed by trainer: %1").arg(targetText(answered)));
@@ -255,6 +292,8 @@ void FtmsControl::onOpTimeout()
                             .arg(opcodeText(opcode)));
     if (opcode == kStartOrResume)
         m_started = true;   // not worth holding the target back for
+    if (opcode == kReset)
+        m_resetUnsupported = true;   // a refused target asks for control again if it did reset
     m_inFlight = false;
     m_inFlightPayload.clear();
     pump();
