@@ -124,6 +124,7 @@ private slots:
     void testFtms_tooShort_ignored();
     void testFtmsFeature_resistanceSupported();
     void testFtmsFeature_resistanceNotSupported();
+    void testDetailsDiscoverySkipsValueReads();
 
     // ── Brand-specific trainer simulations ───────────────────────────────────
     void testEliteTrainer_singlePacket();
@@ -1644,6 +1645,15 @@ void TstBtleHub::zwiftClick_stopCutsHubsOffBeforeClosingThem()
 
     QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
     QVERIFY(manager.findChildren<ZwiftClickHub*>().isEmpty());
+}
+
+// Qt's BlueZ backend marks a service discovered only after its last
+// FullDiscovery value read succeeds; one NotPermitted descriptor (Van Rysel
+// D100, PR #529) left FTMS discovering forever, so ERG was never set up. The
+// values the hub needs are read explicitly instead.
+void TstBtleHub::testDetailsDiscoverySkipsValueReads()
+{
+    QCOMPARE(BtleHub::kDetailsDiscoveryMode, QLowEnergyService::SkipValueDiscovery);
 }
 
 QTEST_MAIN(TstBtleHub)

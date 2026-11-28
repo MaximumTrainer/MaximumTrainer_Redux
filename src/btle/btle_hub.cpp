@@ -420,7 +420,7 @@ void BtleHub::setupService(QLowEnergyService *service)
     // value read fails (BlueZ answers NotPermitted for some trainers'
     // descriptors, e.g. the Van Rysel D100), so FTMS was never set up.
     if (service->state() == QLowEnergyService::RemoteService)
-        service->discoverDetails(QLowEnergyService::SkipValueDiscovery);
+        service->discoverDetails(kDetailsDiscoveryMode);
 }
 
 void BtleHub::enableNotification(QLowEnergyService *service,
